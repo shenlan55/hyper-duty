@@ -1,0 +1,112 @@
+<template>
+  <div class="dashboard-container">
+    <h1>欢迎使用 Hyper Duty 系统</h1>
+    <div class="dashboard-stats">
+      <el-card shadow="hover" class="stat-card">
+        <div class="stat-content">
+          <div class="stat-info">
+            <div class="stat-number">10</div>
+            <div class="stat-label">部门总数</div>
+          </div>
+          <div class="stat-icon">
+            <el-icon class="icon-large"><OfficeBuilding /></el-icon>
+          </div>
+        </div>
+      </el-card>
+      <el-card shadow="hover" class="stat-card">
+        <div class="stat-content">
+          <div class="stat-info">
+            <div class="stat-number">50</div>
+            <div class="stat-label">人员总数</div>
+          </div>
+          <div class="stat-icon">
+            <el-icon class="icon-large"><UserFilled /></el-icon>
+          </div>
+        </div>
+      </el-card>
+      <el-card shadow="hover" class="stat-card">
+        <div class="stat-content">
+          <div class="stat-info">
+            <div class="stat-number">24</div>
+            <div class="stat-label">今日登录</div>
+          </div>
+          <div class="stat-icon">
+            <el-icon class="icon-large"><View /></el-icon>
+          </div>
+        </div>
+      </el-card>
+    </div>
+    <div class="dashboard-tips">
+      <el-alert
+        title="系统提示"
+        type="info"
+        description="欢迎使用Hyper Duty系统，这是一个基于Spring Boot+Vue3的部门和人员管理系统。您可以通过左侧菜单访问各种功能模块。"
+        show-icon
+      />
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { OfficeBuilding, UserFilled, View } from '@element-plus/icons-vue'
+</script>
+
+<style scoped>
+.dashboard-container {
+  padding: 20px;
+}
+
+h1 {
+  font-size: 24px;
+  margin-bottom: 30px;
+  color: #303133;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  height: 120px;
+}
+
+.stat-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  padding: 0 20px;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #606266;
+}
+
+.stat-icon {
+  color: #409eff;
+  margin-left: 20px;
+}
+
+.icon-large {
+  font-size: 48px;
+}
+
+.dashboard-tips {
+  margin-top: 20px;
+}
+</style>
