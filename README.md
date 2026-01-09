@@ -14,3 +14,9 @@
 4. 访问应用 ：
    - 前端： http://localhost:5173
    - 登录账号：admin/123456
+
+
+技术栈 ：
+
+- 后端：Spring Boot 3.1.0 + Spring Security + MyBatis Plus 3.5.6 + Druid
+- 前端：Vue 3 + Vite 4.5.0 + Element Plus + Pinia + Vue Router
