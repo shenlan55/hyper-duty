@@ -24,6 +24,7 @@
           clearable
           class="dept-filter"
           @change="handleDeptFilter"
+          filterable
         >
           <el-option label="全部部门" value="" />
           <el-option

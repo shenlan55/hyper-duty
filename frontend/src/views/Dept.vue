@@ -24,14 +24,19 @@
           </div>
           <el-table
             v-loading="loading"
-            :data="filteredDeptList"
+            :data="deptTreeData"
             style="width: 100%"
             row-key="id"
+            :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+            default-expand-all
           >
-            <el-table-column prop="id" label="ID" width="80" />
             <el-table-column prop="deptName" label="部门名称" min-width="180" />
             <el-table-column prop="deptCode" label="部门编码" width="150" />
-            <el-table-column prop="parentId" label="上级部门ID" width="120" />
+            <el-table-column label="上级部门编码" width="120">
+              <template #default="scope">
+                {{ getParentDeptCode(scope.row.parentId) }}
+              </template>
+            </el-table-column>
             <el-table-column prop="sort" label="排序" width="100" />
             <el-table-column prop="status" label="状态" width="100">
               <template #default="scope">
@@ -123,12 +128,14 @@
           <el-select
             v-model="deptForm.parentId"
             placeholder="请选择上级部门"
+            filterable
+            clearable
           >
-            <el-option label="无上级部门" value="0" />
+            <el-option label="无上级部门" :value="0" />
             <el-option
-              v-for="dept in deptList"
+              v-for="dept in indentedDeptOptions"
               :key="dept.id"
-              :label="dept.deptName"
+              :label="dept.label"
               :value="dept.id"
             />
           </el-select>
@@ -161,7 +168,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { Plus, Edit, Delete, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -221,6 +228,9 @@ const treeProps = {
   label: 'deptName'
 }
 
+// 带缩进的部门选项
+const indentedDeptOptions = ref([])
+
 // 过滤后的部门列表
 const filteredDeptList = computed(() => {
   if (!searchQuery.value) {
@@ -241,6 +251,9 @@ const fetchDeptList = async () => {
       deptList.value = response.data
       // 构建树结构数据
       buildDeptTree(response.data)
+      // 生成带缩进的部门选项
+      generateIndentedOptions()
+      console.log('Indented options:', indentedDeptOptions.value)
     }
   } catch (error) {
     console.error('获取部门列表失败:', error)
@@ -252,13 +265,125 @@ const fetchDeptList = async () => {
 
 // 构建部门树
 const buildDeptTree = (data) => {
-  // 这里简化处理，实际应该递归构建树结构
-  deptTreeData.value = data
+  // 先深拷贝数据，避免修改原数据
+  const items = JSON.parse(JSON.stringify(data))
+  
+  // 递归构建部门树
+  const buildTree = (items, parentId = 0) => {
+    const tree = []
+    for (const item of items) {
+      if (item.parentId === parentId) {
+        const children = buildTree(items, item.id)
+        if (children.length > 0) {
+          item.children = children
+          item.hasChildren = true
+          // 子部门按sort字段排序
+          item.children.sort((a, b) => a.sort - b.sort)
+        }
+        tree.push(item)
+      }
+    }
+    // 同一层级部门按sort字段排序
+    tree.sort((a, b) => a.sort - b.sort)
+    return tree
+  }
+  
+  deptTreeData.value = buildTree(items)
+}
+
+// 根据上级部门ID获取部门编码
+const getParentDeptCode = (parentId) => {
+  if (parentId === 0) {
+    return '0'
+  }
+  // 遍历所有部门，查找上级部门
+  for (const dept of deptList.value) {
+    if (dept.id === parentId) {
+      return dept.deptCode
+    }
+  }
+  return '0'
+}
+
+// 生成带缩进的部门选项
+const generateIndentedOptions = () => {
+  const options = []
+  
+  // 递归生成带缩进的选项，使用简单的空格缩进
+  const generateOptions = (items, level = 0) => {
+    for (const item of items) {
+      // 使用简单的空格缩进，每级两个空格
+      const indent = '  '.repeat(level)
+      
+      options.push({
+        id: item.id,
+        label: `${indent}${item.deptName}`,
+        deptName: item.deptName
+      })
+      
+      // 递归处理子部门
+      if (item.children && item.children.length > 0) {
+        generateOptions(item.children, level + 1)
+      }
+    }
+  }
+  
+  generateOptions(deptTreeData.value)
+  indentedDeptOptions.value = options
 }
 
 // 搜索
 const handleSearch = () => {
   currentPage.value = 1
+  filterDeptTree()
+}
+
+// 监听搜索输入变化，实现实时搜索
+watch(searchQuery, () => {
+  handleSearch()
+})
+
+// 过滤部门树
+const filterDeptTree = () => {
+  if (!searchQuery.value) {
+    // 没有搜索条件，显示完整树
+    buildDeptTree(deptList.value)
+  } else {
+    // 有搜索条件，构建过滤后的树
+    const searchTerm = searchQuery.value.toLowerCase()
+    
+    // 获取所有匹配的部门
+    const matchedDepts = deptList.value.filter(dept => 
+      dept.deptName.toLowerCase().includes(searchTerm) || 
+      dept.deptCode.toLowerCase().includes(searchTerm)
+    )
+    
+    // 获取所有匹配部门及其祖先部门的ID集合
+    const requiredIds = new Set()
+    for (const dept of matchedDepts) {
+      requiredIds.add(dept.id)
+      // 递归查找所有祖先部门
+      findAllAncestors(dept.parentId, requiredIds)
+    }
+    
+    // 过滤出需要显示的部门
+    const filteredData = deptList.value.filter(dept => requiredIds.has(dept.id))
+    
+    // 构建过滤后的树
+    buildDeptTree(filteredData)
+  }
+}
+
+// 递归查找所有祖先部门
+const findAllAncestors = (parentId, idSet) => {
+  if (parentId === 0) return
+  
+  const parentDept = deptList.value.find(dept => dept.id === parentId)
+  if (parentDept) {
+    idSet.add(parentId)
+    // 继续查找父部门的祖先
+    findAllAncestors(parentDept.parentId, idSet)
+  }
 }
 
 // 分页处理
