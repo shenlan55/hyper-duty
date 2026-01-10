@@ -261,7 +261,19 @@ const handleLogout = async () => {
 
 // 初始化标签页
 onMounted(() => {
-  addTab(route.path)
+  // 清空标签页，只保留首页
+  tabs.value = [
+    {
+      path: '/dashboard',
+      name: routeNameMap['/dashboard']
+    }
+  ]
+  // 刷新页面时，默认回到首页
+  activeTab.value = '/dashboard'
+  // 如果当前路由不是首页，重定向到首页
+  if (route.path !== '/dashboard') {
+    router.push('/dashboard')
+  }
 })
 </script>
 
