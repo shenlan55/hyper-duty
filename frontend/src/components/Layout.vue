@@ -34,9 +34,10 @@
           class="sidebar-menu"
           router
           unique-opened
-          :background-color="'#001529'"
-          :text-color="'rgba(255, 255, 255, 0.8)'"
-          :active-text-color="'#fff'"
+          :background-color="'#fff'"
+          :text-color="'#303133'"
+          :active-text-color="'#1177BB'"
+          :default-openeds="['system']"
         >
           <!-- 动态二级菜单 -->
           <template v-if="leftMenus.length > 0">
@@ -422,11 +423,13 @@ onMounted(() => {
 }
 
 .sidebar {
-  background-color: #001529;
-  color: #fff;
+  background-color: #fff;
+  color: #303133;
   height: 100%;
   overflow-y: auto;
   transition: width 0.3s;
+  border-right: 1px solid #e6e6e6;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.09);
 }
 
 .right-content {
@@ -443,18 +446,18 @@ onMounted(() => {
 }
 
 .sidebar-menu :deep(.el-menu-item) {
-  color: rgba(255, 255, 255, 0.8);
+  color: #303133;
   height: 50px;
   line-height: 50px;
 }
 
 .sidebar-menu :deep(.el-menu-item:hover) {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(17, 119, 187, 0.1);
 }
 
 .sidebar-menu :deep(.el-menu-item.is-active) {
-  background-color: #1890ff;
-  color: #fff;
+  background-color: rgba(17, 119, 187, 0.2);
+  color: #1177BB;
 }
 
 .content {

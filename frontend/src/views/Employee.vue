@@ -164,17 +164,17 @@
                 placeholder="请选择性别"
                 style="width: 100%"
               >
-                <el-option label="未知" value="0" />
-                <el-option label="男" value="1" />
-                <el-option label="女" value="2" />
+                <el-option label="未知" :value="0" />
+                <el-option label="男" :value="1" />
+                <el-option label="女" :value="2" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="employeeForm.status">
-            <el-radio label="1">启用</el-radio>
-            <el-radio label="0">禁用</el-radio>
+            <el-radio :label="1">启用</el-radio>
+            <el-radio :label="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
