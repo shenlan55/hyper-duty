@@ -240,7 +240,7 @@ const employeeRules = {
     { min: 2, max: 50, message: '人员姓名长度在 2 到 50 个字符', trigger: 'blur' }
   ],
   employeeCode: [
-    { required: true, message: '请输入人员编码', trigger: 'blur' },
+    { required: false, message: '请输入人员编码', trigger: 'blur' },
     { min: 2, max: 20, message: '人员编码长度在 2 到 20 个字符', trigger: 'blur' }
   ],
   deptId: [

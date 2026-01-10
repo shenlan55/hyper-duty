@@ -21,14 +21,14 @@ CREATE TABLE IF NOT EXISTS sys_employee (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '人员ID',
     employee_name VARCHAR(50) NOT NULL COMMENT '人员姓名',
     dept_id BIGINT NOT NULL COMMENT '所属部门ID',
-    employee_code VARCHAR(20) NOT NULL COMMENT '人员编码',
+    employee_code VARCHAR(20) COMMENT '人员编码',
     phone VARCHAR(11) COMMENT '手机号码',
     email VARCHAR(50) COMMENT '邮箱',
     gender TINYINT DEFAULT 0 COMMENT '性别：0未知，1男，2女',
     status TINYINT DEFAULT 1 COMMENT '状态：0禁用，1启用',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    UNIQUE KEY uk_employee_code (employee_code),
+    UNIQUE KEY uk_employee_code (employee_code(20)) WHERE (employee_code IS NOT NULL),
     FOREIGN KEY (dept_id) REFERENCES sys_dept(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='人员表';
 
