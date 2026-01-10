@@ -1,5 +1,31 @@
 import axios from 'axios'
 
+// JWT解码工具函数
+const decodeJWT = (token) => {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    }).join(''))
+    return JSON.parse(jsonPayload)
+  } catch (error) {
+    return null
+  }
+}
+
+// 检查JWT是否过期
+const isJWTExpired = (token) => {
+  if (!token) return true
+  
+  const decoded = decodeJWT(token)
+  if (!decoded || !decoded.exp) return true
+  
+  // 检查token是否过期（当前时间大于过期时间）
+  const currentTime = Math.floor(Date.now() / 1000)
+  return currentTime > decoded.exp
+}
+
 // 创建axios实例
 const request = axios.create({
   baseURL: 'http://localhost:8080/api', // 后端API基础URL
@@ -12,6 +38,14 @@ request.interceptors.request.use(
     // 添加token到请求头
     const token = localStorage.getItem('token')
     if (token) {
+      // 检查token是否过期
+      if (isJWTExpired(token)) {
+        // token过期，清除token并重定向到登录页
+        localStorage.removeItem('token')
+        localStorage.removeItem('username')
+        window.location.href = '/login'
+        return Promise.reject(new Error('Token expired'))
+      }
       config.headers.Authorization = `Bearer ${token}`
     }
     return config

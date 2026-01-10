@@ -14,6 +14,7 @@ import java.util.Map;
 @Component
 public class JwtUtil {
 
+    // 使用安全的随机密钥生成器，HS512算法需要至少512位密钥
     private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS512); // 生成安全的随机密钥
     private final long expirationTime = 86400000; // 1天
 

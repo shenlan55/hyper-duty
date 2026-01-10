@@ -13,7 +13,6 @@ com\lasu\hyperduty\dto\UserVO.class
 com\lasu\hyperduty\common\ResponseResult.class
 com\lasu\hyperduty\utils\JwtUtil.class
 com\lasu\hyperduty\controller\AuthController.class
-com\lasu\hyperduty\security\JwtAuthenticationFilter.class
 com\lasu\hyperduty\controller\SysDeptController.class
 com\lasu\hyperduty\service\impl\SysUserServiceImpl.class
 com\lasu\hyperduty\service\SysDeptService.class
