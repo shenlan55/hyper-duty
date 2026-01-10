@@ -431,14 +431,14 @@ onMounted(async () => {
 
 <style scoped>
 .employee-container {
-  padding: 20px;
+  padding: 10px;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .page-header h2 {
@@ -448,14 +448,14 @@ onMounted(async () => {
 }
 
 .content-card {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .table-toolbar {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
-  gap: 20px;
+  margin-bottom: 10px;
+  gap: 10px;
 }
 
 .search-input {
@@ -469,6 +469,6 @@ onMounted(async () => {
 .pagination-container {
   display: flex;
   justify-content: flex-end;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 </style>

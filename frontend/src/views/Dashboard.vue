@@ -53,20 +53,20 @@ import { OfficeBuilding, UserFilled, View } from '@element-plus/icons-vue'
 
 <style scoped>
 .dashboard-container {
-  padding: 20px;
+  padding: 10px;
 }
 
 h1 {
   font-size: 24px;
-  margin-bottom: 30px;
+  margin-bottom: 15px;
   color: #303133;
 }
 
 .dashboard-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+  gap: 10px;
+  margin-bottom: 15px;
 }
 
 .stat-card {
@@ -78,7 +78,7 @@ h1 {
   justify-content: space-between;
   align-items: center;
   height: 100%;
-  padding: 0 20px;
+  padding: 0 10px;
 }
 
 .stat-info {
@@ -99,7 +99,7 @@ h1 {
 
 .stat-icon {
   color: #409eff;
-  margin-left: 20px;
+  margin-left: 10px;
 }
 
 .icon-large {
@@ -107,6 +107,6 @@ h1 {
 }
 
 .dashboard-tips {
-  margin-top: 20px;
+  margin-top: 10px;
 }
 </style>

@@ -487,14 +487,14 @@ onMounted(() => {
 
 <style scoped>
 .dept-container {
-  padding: 20px;
+  padding: 10px;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .page-header h2 {
@@ -504,18 +504,18 @@ onMounted(() => {
 }
 
 .dept-tabs {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .content-card {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .table-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .search-input {
@@ -525,7 +525,7 @@ onMounted(() => {
 .pagination-container {
   display: flex;
   justify-content: flex-end;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .tree-node {
