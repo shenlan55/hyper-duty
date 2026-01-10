@@ -122,7 +122,7 @@ import { useUserStore } from '../stores/user'
 import { logout } from '../api/auth'
 import { ElMessage } from 'element-plus'
 import { 
-  House, Setting, OfficeBuilding, UserFilled, Menu, ArrowDown, 
+  House, Setting, OfficeBuilding, UserFilled, User, Menu, ArrowDown, 
   SwitchButton 
 } from '@element-plus/icons-vue'
 
@@ -142,21 +142,26 @@ const topMenus = [
     children: []
   },
   {
-    id: 'system',
-    name: '系统管理',
-    children: [
-      {
-        name: '部门管理',
-        path: '/dept',
-        icon: OfficeBuilding
-      },
-      {
-        name: '人员管理',
-        path: '/employee',
-        icon: UserFilled
-      }
-    ]
-  }
+      id: 'system',
+      name: '系统管理',
+      children: [
+        {
+          name: '部门管理',
+          path: '/dept',
+          icon: OfficeBuilding
+        },
+        {
+          name: '人员管理',
+          path: '/employee',
+          icon: UserFilled
+        },
+        {
+          name: '用户管理',
+          path: '/user',
+          icon: User
+        }
+      ]
+    }
 ]
 
 // 当前激活的一级菜单
@@ -181,7 +186,8 @@ const activeTab = ref('/dashboard')
 const routeNameMap = {
   '/dashboard': '首页',
   '/dept': '部门管理',
-  '/employee': '人员管理'
+  '/employee': '人员管理',
+  '/user': '用户管理'
 }
 
 // 添加标签页
@@ -226,7 +232,7 @@ watch(() => route.path, (newPath) => {
   // 根据当前路由更新激活的一级菜单
   if (newPath === '/dashboard') {
     activeTopMenu.value = 'dashboard'
-  } else if (newPath.startsWith('/dept') || newPath.startsWith('/employee')) {
+  } else if (newPath.startsWith('/dept') || newPath.startsWith('/employee') || newPath.startsWith('/user')) {
     activeTopMenu.value = 'system'
   }
   // 添加标签页

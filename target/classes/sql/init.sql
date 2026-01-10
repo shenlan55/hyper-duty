@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS sys_employee (
     status TINYINT DEFAULT 1 COMMENT '状态：0禁用，1启用',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    UNIQUE KEY uk_employee_code (employee_code(20)) WHERE (employee_code IS NOT NULL),
+    UNIQUE KEY uk_employee_code (employee_code),
+    INDEX idx_employee_code (employee_code),
     FOREIGN KEY (dept_id) REFERENCES sys_dept(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='人员表';
 

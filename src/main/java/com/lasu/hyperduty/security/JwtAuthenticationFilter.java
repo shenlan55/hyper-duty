@@ -19,11 +19,15 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Autowired
     private JwtUtil jwtUtil;
-
-    @Autowired
     private SysUserService sysUserService;
+
+    // 使用构造函数注入，避免循环依赖
+    @Autowired
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, SysUserService sysUserService) {
+        this.jwtUtil = jwtUtil;
+        this.sysUserService = sysUserService;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) 

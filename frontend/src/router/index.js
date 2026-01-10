@@ -30,6 +30,12 @@ const routes = [
         name: 'Employee',
         component: () => import('../views/Employee.vue'),
         meta: { title: '人员管理' }
+      },
+      {
+        path: 'user',
+        name: 'User',
+        component: () => import('../views/User.vue'),
+        meta: { title: '用户管理' }
       }
     ]
   }
