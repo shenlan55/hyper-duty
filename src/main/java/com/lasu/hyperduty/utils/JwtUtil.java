@@ -14,7 +14,7 @@ import java.util.Map;
 @Component
 public class JwtUtil {
 
-    private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+    private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS512); // 生成安全的随机密钥
     private final long expirationTime = 86400000; // 1天
 
     public String generateToken(String username) {
