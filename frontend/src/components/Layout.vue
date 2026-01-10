@@ -10,6 +10,9 @@
         class="sidebar-menu"
         router
         unique-opened
+        :background-color="'#001529'"
+        :text-color="'rgba(255, 255, 255, 0.8)'"
+        :active-text-color="'#fff'"
       >
         <el-menu-item index="/dashboard">
           <template #icon>
