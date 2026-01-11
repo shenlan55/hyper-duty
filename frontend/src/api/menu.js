@@ -49,3 +49,11 @@ export function deleteMenu(id) {
     method: 'delete'
   })
 }
+
+// 获取当前用户菜单
+export function getUserMenus() {
+  return request({
+    url: '/menu/user',
+    method: 'get'
+  })
+}

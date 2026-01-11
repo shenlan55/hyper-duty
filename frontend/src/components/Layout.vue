@@ -72,17 +72,15 @@
             router
             @select="handleTopMenuChange"
           >
-            <el-menu-item index="dashboard">
+            <el-menu-item
+              v-for="menu in topMenus"
+              :key="menu.id"
+              :index="menu.id"
+            >
               <template #icon>
-                <el-icon><House /></el-icon>
+                <el-icon><component :is="iconMap[menu.icon] || House" /></el-icon>
               </template>
-              <span>首页</span>
-            </el-menu-item>
-            <el-menu-item index="system">
-              <template #icon>
-                <el-icon><Setting /></el-icon>
-              </template>
-              <span>系统管理</span>
+              <span>{{ menu.name }}</span>
             </el-menu-item>
           </el-menu>
         </div>
@@ -120,6 +118,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { logout } from '../api/auth'
+import { getUserMenus } from '../api/menu'
 import { ElMessage } from 'element-plus'
 import { 
   House, Setting, OfficeBuilding, UserFilled, User, Menu, ArrowDown, 
@@ -133,52 +132,16 @@ const collapsed = ref(false)
 
 const username = computed(() => userStore.username)
 
-// 顶部一级菜单数据
-const topMenus = [
-  {
-    id: 'dashboard',
-    name: '首页',
-    path: '/dashboard',
-    children: []
-  },
-  { id: 'system',
-      name: '系统管理',
-      children: [
-        {
-          name: '部门管理',
-          path: '/dept',
-          icon: OfficeBuilding
-        },
-        {
-          name: '人员管理',
-          path: '/employee',
-          icon: UserFilled
-        },
-        {
-          name: '用户管理',
-          path: '/user',
-          icon: User
-        },
-        {
-          name: '菜单管理',
-          path: '/menu',
-          icon: Menu
-        },
-        {
-          name: '角色管理',
-          path: '/role',
-          icon: User
-        }
-      ]
-    }
-]
+// 动态菜单数据
+const topMenus = ref([])
+const loading = ref(false)
 
 // 当前激活的一级菜单
 const activeTopMenu = ref('dashboard')
 
 // 动态二级菜单
 const leftMenus = computed(() => {
-  const menu = topMenus.find(m => m.id === activeTopMenu.value)
+  const menu = topMenus.value.find(m => m.id === activeTopMenu.value)
   return menu?.children || []
 })
 
@@ -191,14 +154,74 @@ const activeMenu = computed(() => {
 const tabs = ref([])
 const activeTab = ref('/dashboard')
 
+// 图标映射
+const iconMap = {
+  'House': House,
+  'Setting': Setting,
+  'OfficeBuilding': OfficeBuilding,
+  'UserFilled': UserFilled,
+  'User': User,
+  'Menu': Menu
+}
+
 // 路由名称映射
-const routeNameMap = {
-  '/dashboard': '首页',
-  '/dept': '部门管理',
-  '/employee': '人员管理',
-  '/user': '用户管理',
-  '/menu': '菜单管理',
-  '/role': '角色管理'
+const routeNameMap = ref({
+  '/dashboard': '首页'
+})
+
+// 获取用户菜单
+const fetchUserMenus = async () => {
+  loading.value = true
+  try {
+    const response = await getUserMenus()
+    if (response.code === 200) {
+      // 处理菜单数据，后端返回的已经是树形结构
+      const menus = response.data
+      
+      // 转换菜单数据格式，适配前端需要的结构
+      topMenus.value = menus.map(menu => {
+        // 构建一级菜单
+        const firstLevelMenu = {
+          id: menu.id.toString(),
+          name: menu.menuName,
+          path: menu.path,
+          icon: menu.icon,
+          children: []
+        }
+        
+        // 更新路由名称映射
+        routeNameMap.value[menu.path] = menu.menuName
+        
+        // 处理二级菜单
+        if (menu.children && menu.children.length > 0) {
+          firstLevelMenu.children = menu.children.map(childMenu => {
+            // 更新路由名称映射
+            routeNameMap.value[childMenu.path] = childMenu.menuName
+            
+            return {
+              name: childMenu.menuName,
+              path: childMenu.path,
+              icon: iconMap[childMenu.icon] || Menu
+            }
+          })
+        }
+        
+        return firstLevelMenu
+      })
+      
+      // 如果有菜单，设置第一个为默认激活
+      if (topMenus.value.length > 0) {
+        activeTopMenu.value = topMenus.value[0].id
+      }
+    } else {
+      ElMessage.error('获取菜单失败：' + response.message)
+    }
+  } catch (error) {
+    console.error('获取菜单失败：', error)
+    ElMessage.error('获取菜单失败：' + error.message)
+  } finally {
+    loading.value = false
+  }
 }
 
 // 添加标签页
@@ -206,7 +229,7 @@ const addTab = (path) => {
   if (!tabs.value.some(tab => tab.path === path)) {
     tabs.value.push({
       path,
-      name: routeNameMap[path] || path
+      name: routeNameMap.value[path] || path
     })
   }
   activeTab.value = path
@@ -241,10 +264,21 @@ const handleTabRemove = (path) => {
 // 监听路由变化，更新激活的一级菜单和添加标签页
 watch(() => route.path, (newPath) => {
   // 根据当前路由更新激活的一级菜单
-  if (newPath === '/dashboard') {
-    activeTopMenu.value = 'dashboard'
-  } else if (newPath.startsWith('/dept') || newPath.startsWith('/employee') || newPath.startsWith('/user')) {
-    activeTopMenu.value = 'system'
+  let found = false
+  for (const menu of topMenus.value) {
+    if (menu.path === newPath) {
+      activeTopMenu.value = menu.id
+      found = true
+      break
+    }
+    for (const child of menu.children || []) {
+      if (child.path === newPath) {
+        activeTopMenu.value = menu.id
+        found = true
+        break
+      }
+    }
+    if (found) break
   }
   // 添加标签页
   addTab(newPath)
@@ -253,12 +287,15 @@ watch(() => route.path, (newPath) => {
 // 切换一级菜单
 const handleTopMenuChange = (index) => {
   activeTopMenu.value = index
-  // 如果是首页，直接跳转
-  if (index === 'dashboard') {
-    router.push('/dashboard')
-  } else if (index === 'system' && leftMenus.value.length > 0) {
-    // 否则跳转到第一个二级菜单
-    router.push(leftMenus.value[0].path)
+  const menu = topMenus.value.find(m => m.id === index)
+  if (menu) {
+    if (menu.children && menu.children.length > 0) {
+      // 跳转到第一个二级菜单
+      router.push(menu.children[0].path)
+    } else {
+      // 直接跳转到一级菜单路径
+      router.push(menu.path)
+    }
   }
 }
 
@@ -277,17 +314,22 @@ const handleLogout = async () => {
   }
 }
 
-// 初始化标签页
-onMounted(() => {
-  // 清空标签页，只保留首页
+// 初始化
+onMounted(async () => {
+  // 获取用户菜单
+  await fetchUserMenus()
+  
+  // 初始化标签页，只保留首页
   tabs.value = [
     {
       path: '/dashboard',
-      name: routeNameMap['/dashboard']
+      name: '首页'
     }
   ]
+  
   // 刷新页面时，默认回到首页
   activeTab.value = '/dashboard'
+  
   // 如果当前路由不是首页，重定向到首页
   if (route.path !== '/dashboard') {
     router.push('/dashboard')

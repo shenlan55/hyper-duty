@@ -3,6 +3,7 @@ package com.lasu.hyperduty.controller;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.SysMenu;
 import com.lasu.hyperduty.service.SysMenuService;
+import com.lasu.hyperduty.service.SysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +18,9 @@ public class SysMenuController {
 
     @Autowired
     private SysMenuService sysMenuService;
+    
+    @Autowired
+    private SysUserService sysUserService;
 
     /**
      * 获取所有菜单列表（树形结构）
@@ -81,5 +85,24 @@ public class SysMenuController {
         List<SysMenu> menus = sysMenuService.list();
         List<SysMenu> menuTree = sysMenuService.buildMenuTree(menus);
         return ResponseResult.success(menuTree);
+    }
+    
+    /**
+     * 根据用户ID获取菜单列表（树形结构）
+     * @return 菜单列表
+     */
+    @GetMapping("/user")
+    public ResponseResult<List<SysMenu>> getMenusByUserId() {
+        // 从SecurityContext中获取当前用户
+        org.springframework.security.core.userdetails.User userDetails = 
+                (org.springframework.security.core.userdetails.User) org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+        
+        // 从数据库中根据用户名查询用户ID
+        com.lasu.hyperduty.entity.SysUser sysUser = sysUserService.getByUsername(userDetails.getUsername());
+        Long userId = sysUser.getId();
+        
+        List<SysMenu> menus = sysMenuService.getMenusByUserId(userId);
+        return ResponseResult.success(menus);
     }
 }
