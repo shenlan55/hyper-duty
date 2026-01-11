@@ -10,13 +10,13 @@ CREATE DATABASE IF NOT EXISTS hyper_duty DEFAULT CHARACTER SET utf8mb4 COLLATE u
 USE hyper_duty;
 
 -- 删除现有表
-# DROP TABLE IF EXISTS sys_role_menu;
-# DROP TABLE IF EXISTS sys_user_role;
-# DROP TABLE IF EXISTS sys_menu;
-# DROP TABLE IF EXISTS sys_role;
-# DROP TABLE IF EXISTS sys_user;
-# DROP TABLE IF EXISTS sys_employee;
-# DROP TABLE IF EXISTS sys_dept;
+DROP TABLE IF EXISTS sys_role_menu;
+DROP TABLE IF EXISTS sys_user_role;
+DROP TABLE IF EXISTS sys_menu;
+DROP TABLE IF EXISTS sys_role;
+DROP TABLE IF EXISTS sys_user;
+DROP TABLE IF EXISTS sys_employee;
+DROP TABLE IF EXISTS sys_dept;
 
 -- 部门表
 CREATE TABLE IF NOT EXISTS sys_dept (
