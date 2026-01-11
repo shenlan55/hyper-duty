@@ -54,11 +54,14 @@ export function getRoleMenu(roleId) {
 }
 
 // 保存角色菜单
-export function saveRoleMenu(data) {
+export function saveRoleMenu(roleId, menuIds) {
   return request({
     url: '/role/menu',
     method: 'post',
-    data
+    data: {
+      roleId,
+      menuIds
+    }
   })
 }
 
