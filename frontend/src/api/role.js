@@ -75,7 +75,9 @@ export function saveRoleUser(roleId, userIds) {
   return request({
     url: '/role/user',
     method: 'post',
-    params: { roleId },
-    data: userIds
+    data: {
+      roleId,
+      userIds
+    }
   })
 }

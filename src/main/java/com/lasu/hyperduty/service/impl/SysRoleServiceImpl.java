@@ -3,6 +3,7 @@ package com.lasu.hyperduty.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.SysRole;
 import com.lasu.hyperduty.entity.SysRoleMenu;
+import com.lasu.hyperduty.entity.SysUserRole;
 import com.lasu.hyperduty.mapper.SysRoleMapper;
 import com.lasu.hyperduty.mapper.SysRoleMenuMapper;
 import com.lasu.hyperduty.service.SysRoleService;
