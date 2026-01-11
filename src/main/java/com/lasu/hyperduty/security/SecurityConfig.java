@@ -42,6 +42,7 @@ public class SecurityConfig {
                     org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
                     configuration.addAllowedOrigin("http://localhost:8187");
                     configuration.addAllowedOrigin("http://localhost:5173"); // 同时支持README中提到的默认端口
+                    configuration.addAllowedOrigin("http://localhost:5174"); // 支持当前使用的端口
                     configuration.addAllowedMethod("*");
                     configuration.addAllowedHeader("*");
                     configuration.setAllowCredentials(true);

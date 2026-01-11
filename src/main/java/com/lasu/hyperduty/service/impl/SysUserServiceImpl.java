@@ -15,6 +15,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -102,9 +103,29 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             throw new UsernameNotFoundException("用户已禁用");
         }
 
-        // 这里可以添加角色和权限设置，暂时只返回用户基本信息
-        return new User(sysUser.getUsername(), sysUser.getPassword(), 
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        
+        try {
+            // 获取用户角色编码
+            List<String> roleCodes = sysUserMapper.selectRoleCodesByUserId(sysUser.getId());
+            // 获取用户权限标识
+            List<String> perms = sysUserMapper.selectPermsByUserId(sysUser.getId());
+            
+            // 添加角色
+            for (String roleCode : roleCodes) {
+                authorities.add(new SimpleGrantedAuthority(roleCode));
+            }
+            
+            // 添加权限
+            for (String perm : perms) {
+                authorities.add(new SimpleGrantedAuthority(perm));
+            }
+        } catch (Exception e) {
+            // 如果获取角色或权限失败，至少给用户一个默认角色
+            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        }
+
+        return new User(sysUser.getUsername(), sysUser.getPassword(), authorities);
     }
 
 }

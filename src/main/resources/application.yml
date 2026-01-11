@@ -16,6 +16,11 @@ spring:
       test-while-idle: true
       test-on-borrow: false
       test-on-return: false
+    # 数据库初始化配置
+  sql:
+    init:
+      schema-locations: classpath:sql/init.sql
+      mode: always
 
 server:
   port: 8080

@@ -141,8 +141,7 @@ const topMenus = [
     path: '/dashboard',
     children: []
   },
-  {
-      id: 'system',
+  { id: 'system',
       name: '系统管理',
       children: [
         {
@@ -158,6 +157,16 @@ const topMenus = [
         {
           name: '用户管理',
           path: '/user',
+          icon: User
+        },
+        {
+          name: '菜单管理',
+          path: '/menu',
+          icon: Menu
+        },
+        {
+          name: '角色管理',
+          path: '/role',
           icon: User
         }
       ]
@@ -187,7 +196,9 @@ const routeNameMap = {
   '/dashboard': '首页',
   '/dept': '部门管理',
   '/employee': '人员管理',
-  '/user': '用户管理'
+  '/user': '用户管理',
+  '/menu': '菜单管理',
+  '/role': '角色管理'
 }
 
 // 添加标签页

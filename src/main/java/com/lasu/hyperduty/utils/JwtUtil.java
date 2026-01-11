@@ -6,7 +6,11 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
 
-import java.security.Key;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -14,9 +18,22 @@ import java.util.Map;
 @Component
 public class JwtUtil {
 
-    // 使用安全的随机密钥生成器，HS512算法需要至少512位密钥
-    private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS512); // 生成安全的随机密钥
+    private final PrivateKey privateKey;
+    private final PublicKey publicKey;
     private final long expirationTime = 86400000; // 1天
+
+    // 生成RSA密钥对
+    public JwtUtil() {
+        try {
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+            keyPairGenerator.initialize(2048); // 使用2048位RSA密钥
+            KeyPair keyPair = keyPairGenerator.generateKeyPair();
+            this.privateKey = keyPair.getPrivate();
+            this.publicKey = keyPair.getPublic();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Failed to generate RSA key pair", e);
+        }
+    }
 
     public String generateToken(String username) {
         Map<String, Object> claims = new HashMap<>();
@@ -32,7 +49,7 @@ public class JwtUtil {
                 .setSubject(subject)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
-                .signWith(key, SignatureAlgorithm.HS512)
+                .signWith(privateKey, SignatureAlgorithm.RS256) // 使用RSA256算法签名
                 .compact();
     }
 
@@ -46,7 +63,7 @@ public class JwtUtil {
 
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
-                .setSigningKey(key)
+                .setSigningKey(publicKey) // 使用公钥验证签名
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
