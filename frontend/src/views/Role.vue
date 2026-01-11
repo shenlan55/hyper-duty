@@ -16,13 +16,15 @@
         <el-table-column prop="description" label="角色描述"></el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="scope">
-            <el-switch v-model="scope.row.status" active-value="1" inactive-value="0" @change="handleStatusChange(scope.row)"></el-switch>
+            <el-switch v-model="scope.row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(scope.row)"></el-switch>
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="180" align="center"></el-table-column>
-        <el-table-column label="操作" width="200" align="center">
+        <el-table-column label="操作" width="320" align="center">
           <template #default="scope">
             <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button type="success" size="small" @click="handleMenuAuth(scope.row)">菜单授权</el-button>
+            <el-button type="warning" size="small" @click="handleUserBind(scope.row)">用户绑定</el-button>
             <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
@@ -53,7 +55,7 @@
           <el-input v-model="form.description" type="textarea" rows="3" placeholder="请输入角色描述"></el-input>
         </el-form-item>
         <el-form-item label="状态">
-          <el-switch v-model="form.status" active-value="1" inactive-value="0"></el-switch>
+          <el-switch v-model="form.status" :active-value="1" :inactive-value="0"></el-switch>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -63,13 +65,65 @@
         </span>
       </template>
     </el-dialog>
+    
+    <!-- 菜单授权对话框 -->
+    <el-dialog v-model="menuAuthVisible" title="角色菜单授权" width="600px">
+      <div class="menu-auth-container">
+        <el-tree
+          :data="menuTree"
+          show-checkbox
+          node-key="id"
+          :props="menuTreeProps"
+          ref="menuTreeRef"
+          default-expand-all
+        ></el-tree>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="menuAuthVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleMenuAuthSubmit">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+    
+    <!-- 用户绑定对话框 -->
+    <el-dialog v-model="userBindVisible" title="角色用户绑定" width="600px">
+      <div class="user-bind-container">
+        <el-select
+          v-model="selectedUserIds"
+          multiple
+          filterable
+          remote
+          reserve-keyword
+          placeholder="请选择要绑定的用户"
+          :remote-method="remoteUserSearch"
+          :loading="userLoading"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="user in userList"
+            :key="user.id"
+            :label="user.username + ' (' + (user.employeeName || '未关联') + ')'"
+            :value="user.id"
+          ></el-option>
+        </el-select>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="userBindVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleUserBindSubmit">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listRole, addRole, updateRole, deleteRole } from '../api/role'
+import { listRole, addRole, updateRole, deleteRole, getRoleMenu, saveRoleMenu, getRoleUser, saveRoleUser } from '../api/role'
+import { getMenuList } from '../api/menu'
+import { getUserList } from '../api/user'
 
 // 角色列表数据
 const roleList = ref([])
@@ -101,6 +155,22 @@ const rules = {
 // 对话框状态
 const dialogVisible = ref(false)
 const formRef = ref(null)
+
+// 菜单授权相关
+const menuAuthVisible = ref(false)
+const menuTreeRef = ref(null)
+const menuTree = ref([])
+const currentRoleId = ref(null)
+const menuTreeProps = {
+  label: 'menuName',
+  children: 'children'
+}
+
+// 用户绑定相关
+const userBindVisible = ref(false)
+const userList = ref([])
+const selectedUserIds = ref([])
+const userLoading = ref(false)
 
 // 加载角色列表
 const loadRoleList = async () => {
@@ -200,6 +270,122 @@ const handleStatusChange = async (row) => {
     ElMessage.error('更新状态失败：' + error.message)
     // 恢复原状态
     row.status = row.status === 1 ? 0 : 1
+  }
+}
+
+// 加载菜单树
+const loadMenuTree = async () => {
+  try {
+    const response = await getMenuList()
+    if (response.code === 200) {
+      menuTree.value = response.data
+    } else {
+      ElMessage.error('获取菜单列表失败：' + response.message)
+    }
+  } catch (error) {
+    ElMessage.error('获取菜单列表失败：' + error.message)
+  }
+}
+
+// 处理菜单授权
+const handleMenuAuth = async (row) => {
+  currentRoleId.value = row.id
+  menuAuthVisible.value = true
+  
+  // 加载菜单树
+  await loadMenuTree()
+  
+  // 获取角色已有菜单
+  try {
+    const response = await getRoleMenu(row.id)
+    if (response.code === 200) {
+      const menuIds = response.data
+      // 设置默认勾选
+      if (menuTreeRef.value && menuIds.length > 0) {
+        menuTreeRef.value.setCheckedKeys(menuIds)
+      }
+    } else {
+      ElMessage.error('获取角色菜单失败：' + response.message)
+    }
+  } catch (error) {
+    ElMessage.error('获取角色菜单失败：' + error.message)
+  }
+}
+
+// 提交菜单授权
+const handleMenuAuthSubmit = async () => {
+  if (!menuTreeRef.value || !currentRoleId.value) return
+  
+  try {
+    // 获取选中的菜单ID
+    const checkedKeys = menuTreeRef.value.getCheckedKeys()
+    
+    const response = await saveRoleMenu(currentRoleId.value, checkedKeys)
+    
+    if (response.code === 200) {
+      ElMessage.success('菜单授权成功')
+      menuAuthVisible.value = false
+    } else {
+      ElMessage.error('菜单授权失败：' + response.message)
+    }
+  } catch (error) {
+    ElMessage.error('菜单授权失败：' + error.message)
+  }
+}
+
+// 远程搜索用户
+const remoteUserSearch = async (query) => {
+  if (userList.value.length === 0) {
+    try {
+      userLoading.value = true
+      const response = await getUserList()
+      if (response.code === 200) {
+        userList.value = response.data
+      } else {
+        ElMessage.error('获取用户列表失败：' + response.message)
+      }
+    } catch (error) {
+      ElMessage.error('获取用户列表失败：' + error.message)
+    } finally {
+      userLoading.value = false
+    }
+  }
+}
+
+// 处理用户绑定
+const handleUserBind = async (row) => {
+  currentRoleId.value = row.id
+  userBindVisible.value = true
+  selectedUserIds.value = []
+  
+  // 获取角色已有用户
+  try {
+    const response = await getRoleUser(row.id)
+    if (response.code === 200) {
+      selectedUserIds.value = response.data
+    } else {
+      ElMessage.error('获取角色用户失败：' + response.message)
+    }
+  } catch (error) {
+    ElMessage.error('获取角色用户失败：' + error.message)
+  }
+}
+
+// 提交用户绑定
+const handleUserBindSubmit = async () => {
+  if (!currentRoleId.value) return
+  
+  try {
+    const response = await saveRoleUser(currentRoleId.value, selectedUserIds.value)
+    
+    if (response.code === 200) {
+      ElMessage.success('用户绑定成功')
+      userBindVisible.value = false
+    } else {
+      ElMessage.error('用户绑定失败：' + response.message)
+    }
+  } catch (error) {
+    ElMessage.error('用户绑定失败：' + error.message)
   }
 }
 

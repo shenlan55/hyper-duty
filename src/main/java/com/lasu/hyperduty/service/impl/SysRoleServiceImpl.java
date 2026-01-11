@@ -46,5 +46,31 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         
         return true;
     }
+    
+    @Override
+    public List<Long> getUserIdsByRoleId(Long roleId) {
+        return baseMapper.selectUserIdsByRoleId(roleId);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean saveRoleUser(Long roleId, List<Long> userIds) {
+        // 删除原有角色用户关联
+        baseMapper.deleteUserByRoleId(roleId);
+        
+        // 添加新的角色用户关联
+        if (userIds != null && !userIds.isEmpty()) {
+            List<SysUserRole> userRoleList = userIds.stream().map(userId -> {
+                SysUserRole userRole = new SysUserRole();
+                userRole.setRoleId(roleId);
+                userRole.setUserId(userId);
+                return userRole;
+            }).collect(java.util.stream.Collectors.toList());
+            
+            return baseMapper.batchInsertUserRoles(userRoleList) > 0;
+        }
+        
+        return true;
+    }
 
 }

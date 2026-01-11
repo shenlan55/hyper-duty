@@ -38,7 +38,7 @@ public class SysRoleController {
      * @param id 角色ID
      * @return 角色详情
      */
-    @GetMapping("/{id}")
+    @GetMapping("/detail/{id}")
     public ResponseResult<SysRole> getRoleById(@PathVariable Long id) {
         SysRole role = sysRoleService.getById(id);
         return ResponseResult.success(role);
@@ -97,6 +97,29 @@ public class SysRoleController {
     @PostMapping("/menu")
     public ResponseResult<Boolean> saveRoleMenu(@RequestParam Long roleId, @RequestBody List<Long> menuIds) {
         boolean result = sysRoleService.saveRoleMenu(roleId, menuIds);
+        return ResponseResult.success(result);
+    }
+    
+    /**
+     * 获取角色用户
+     * @param roleId 角色ID
+     * @return 用户ID列表
+     */
+    @GetMapping("/user/{roleId}")
+    public ResponseResult<List<Long>> getRoleUser(@PathVariable Long roleId) {
+        List<Long> userIds = sysRoleService.getUserIdsByRoleId(roleId);
+        return ResponseResult.success(userIds);
+    }
+    
+    /**
+     * 保存角色用户
+     * @param roleId 角色ID
+     * @param userIds 用户ID列表
+     * @return 是否保存成功
+     */
+    @PostMapping("/user")
+    public ResponseResult<Boolean> saveRoleUser(@RequestParam Long roleId, @RequestBody List<Long> userIds) {
+        boolean result = sysRoleService.saveRoleUser(roleId, userIds);
         return ResponseResult.success(result);
     }
 

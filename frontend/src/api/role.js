@@ -14,7 +14,7 @@ export function listRole(params) {
 // 获取角色详情
 export function getRole(id) {
   return request({
-    url: `/role/${id}`,
+    url: `/role/detail/${id}`,
     method: 'get'
   })
 }
@@ -59,5 +59,23 @@ export function saveRoleMenu(data) {
     url: '/role/menu',
     method: 'post',
     data
+  })
+}
+
+// 获取角色用户
+export function getRoleUser(roleId) {
+  return request({
+    url: `/role/user/${roleId}`,
+    method: 'get'
+  })
+}
+
+// 保存角色用户
+export function saveRoleUser(roleId, userIds) {
+  return request({
+    url: '/role/user',
+    method: 'post',
+    params: { roleId },
+    data: userIds
   })
 }
