@@ -1,7 +1,22 @@
+-- 设置字符集
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
+SET CHARACTER_SET_DATABASE=utf8mb4;
+SET CHARACTER_SET_SERVER=utf8mb4;
+
 -- 创建数据库
 CREATE DATABASE IF NOT EXISTS hyper_duty DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 USE hyper_duty;
+
+-- 删除现有表
+# DROP TABLE IF EXISTS sys_role_menu;
+# DROP TABLE IF EXISTS sys_user_role;
+# DROP TABLE IF EXISTS sys_menu;
+# DROP TABLE IF EXISTS sys_role;
+# DROP TABLE IF EXISTS sys_user;
+# DROP TABLE IF EXISTS sys_employee;
+# DROP TABLE IF EXISTS sys_dept;
 
 -- 部门表
 CREATE TABLE IF NOT EXISTS sys_dept (
