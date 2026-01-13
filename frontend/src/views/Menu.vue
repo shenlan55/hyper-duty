@@ -3,7 +3,7 @@
     <h2>菜单管理</h2>
     <el-button type="primary" @click="handleAddMenu" style="margin-bottom: 20px">+ 添加菜单</el-button>
     
-    <el-table :data="menuList" style="width: 100%" :tree-props="{ children: 'children', hasChildren: 'hasChildren' }">
+    <el-table :data="menuList" style="width: 100%" :tree-props="{ children: 'children', hasChildren: 'hasChildren' }" row-key="id">
       <el-table-column prop="menuName" label="菜单名称" min-width="200">
         <template #default="scope">
           <el-icon v-if="scope.row.type === 1"><OfficeBuilding /></el-icon>
@@ -25,7 +25,8 @@
       <el-table-column prop="icon" label="菜单图标" width="120">
         <template #default="scope">
           <el-icon>
-            <component :is="scope.row.icon" v-if="scope.row.icon" />
+            <!-- 根据图标名称渲染对应的组件 -->
+            <component :is="iconList.find(item => item.name === scope.row.icon)?.component" v-if="scope.row.icon" />
           </el-icon>
         </template>
       </el-table-column>
@@ -40,9 +41,9 @@
           />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="150" fixed="right">
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="scope">
-          <el-button type="primary" size="small" @click="handleEditMenu(scope.row)">
+          <el-button type="primary" size="small" @click="handleEditMenu(scope.row)" style="margin-right: 8px">
             <el-icon><Edit /></el-icon>
             编辑
           </el-button>
@@ -96,7 +97,22 @@
           <el-input v-model="menuForm.perm" placeholder="请输入权限标识" />
         </el-form-item>
         <el-form-item label="菜单图标" prop="icon">
-          <el-input v-model="menuForm.icon" placeholder="请输入菜单图标" />
+          <el-select v-model="menuForm.icon" placeholder="请选择菜单图标">
+            <el-option label="无" value="" />
+            <el-option
+              v-for="icon in iconList"
+              :key="icon.name"
+              :label="icon.label"
+              :value="icon.name"
+            >
+              <div style="display: flex; align-items: center; padding: 4px 0;">
+                <el-icon style="margin-right: 8px;">
+                  <component :is="icon.component" />
+                </el-icon>
+                <span>{{ icon.label }} ({{ icon.name }})</span>
+              </div>
+            </el-option>
+          </el-select>
         </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="menuForm.sort" :min="0" />
@@ -122,7 +138,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Menu, OfficeBuilding, Operation, Edit, Delete } from '@element-plus/icons-vue'
+import { 
+  Menu, OfficeBuilding, Operation, Edit, Delete, HomeFilled, Setting, 
+  OfficeBuilding as OfficeBuildingFilled, UserFilled, User, Menu as MenuFilled 
+} from '@element-plus/icons-vue'
 import { getMenuList, getMenuById, addMenu, updateMenu, deleteMenu, getMenuTree } from '../api/menu'
 
 const menuList = ref([])
@@ -143,6 +162,16 @@ const menuForm = reactive({
   status: 1
 })
 
+// 图标列表，用于选择
+const iconList = [
+  { name: 'HomeFilled', label: '首页', component: HomeFilled },
+  { name: 'Setting', label: '设置', component: Setting },
+  { name: 'OfficeBuilding', label: '部门', component: OfficeBuildingFilled },
+  { name: 'UserFilled', label: '人员', component: UserFilled },
+  { name: 'User', label: '用户', component: User },
+  { name: 'Menu', label: '菜单', component: MenuFilled }
+]
+
 const menuRules = reactive({
   menuName: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
   type: [{ required: true, message: '请选择菜单类型', trigger: 'change' }],
@@ -154,8 +183,24 @@ const loadMenuData = async () => {
   try {
     const response = await getMenuTree()
     if (response.code === 200) {
-      allMenus.value = flattenMenuTree(response.data)
-      menuList.value = response.data
+      // 处理菜单数据，添加hasChildren属性，用于树形表格显示
+      const processMenuTree = (menus) => {
+        return menus.map(menu => {
+          // 深拷贝菜单对象
+          const processedMenu = { ...menu }
+          // 设置hasChildren属性
+          processedMenu.hasChildren = processedMenu.children && processedMenu.children.length > 0
+          // 递归处理子菜单
+          if (processedMenu.children && processedMenu.children.length > 0) {
+            processedMenu.children = processMenuTree(processedMenu.children)
+          }
+          return processedMenu
+        })
+      }
+      
+      const menuData = processMenuTree(response.data)
+      allMenus.value = flattenMenuTree(menuData)
+      menuList.value = menuData
     }
   } catch (error) {
     ElMessage.error('获取菜单列表失败')
