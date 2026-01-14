@@ -140,7 +140,10 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Menu, OfficeBuilding, Operation, Edit, Delete, HomeFilled, Setting, 
-  OfficeBuilding as OfficeBuildingFilled, UserFilled, User, Menu as MenuFilled 
+  OfficeBuilding as OfficeBuildingFilled, UserFilled, User, Menu as MenuFilled,
+  DocumentCopy, 
+  List, Search, Plus, Check, ArrowDown, ArrowUp, ArrowLeft, ArrowRight,
+  SwitchButton, View, House
 } from '@element-plus/icons-vue'
 import { getMenuList, getMenuById, addMenu, updateMenu, deleteMenu, getMenuTree } from '../api/menu'
 
@@ -164,12 +167,40 @@ const menuForm = reactive({
 
 // 图标列表，用于选择
 const iconList = [
+  // 基础图标
   { name: 'HomeFilled', label: '首页', component: HomeFilled },
+  { name: 'House', label: '房屋', component: House },
   { name: 'Setting', label: '设置', component: Setting },
-  { name: 'OfficeBuilding', label: '部门', component: OfficeBuildingFilled },
+  { name: 'Menu', label: '菜单', component: MenuFilled },
+  { name: 'List', label: '列表', component: List },
+  { name: 'View', label: '视图', component: View },
+  { name: 'Operation', label: '操作', component: Operation },
+  
+  // 人员/用户相关
   { name: 'UserFilled', label: '人员', component: UserFilled },
   { name: 'User', label: '用户', component: User },
-  { name: 'Menu', label: '菜单', component: MenuFilled }
+  
+  // 部门/组织相关
+  { name: 'OfficeBuilding', label: '部门', component: OfficeBuildingFilled },
+  
+  // 文档相关
+  { name: 'DocumentCopy', label: '文档副本', component: DocumentCopy },
+  
+  // 操作相关
+  { name: 'Edit', label: '编辑', component: Edit },
+  { name: 'Delete', label: '删除', component: Delete },
+  { name: 'Plus', label: '添加', component: Plus },
+  { name: 'Check', label: '确认', component: Check },
+  { name: 'Search', label: '搜索', component: Search },
+  
+  // 箭头相关
+  { name: 'ArrowUp', label: '向上箭头', component: ArrowUp },
+  { name: 'ArrowDown', label: '向下箭头', component: ArrowDown },
+  { name: 'ArrowLeft', label: '向左箭头', component: ArrowLeft },
+  { name: 'ArrowRight', label: '向右箭头', component: ArrowRight },
+  
+  // 其他
+  { name: 'SwitchButton', label: '开关', component: SwitchButton }
 ]
 
 const menuRules = reactive({
