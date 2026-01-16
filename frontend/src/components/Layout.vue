@@ -47,7 +47,18 @@
               :index="menu.path"
             >
               <template #icon>
-                <el-icon><component :is="menu.icon" /></el-icon>
+                <!-- 支持两种图标类型：1. Element Plus图标组件 2. 直接字符串/Emoji -->
+                <template v-if="iconMap[menu.icon]">
+                  <el-icon><component :is="iconMap[menu.icon]" /></el-icon>
+                </template>
+                <template v-else-if="menu.icon">
+                  <!-- 直接显示图标字符串/Emoji -->
+                  <span class="custom-icon">{{ menu.icon }}</span>
+                </template>
+                <template v-else>
+                  <!-- 默认图标 -->
+                  <el-icon><Menu /></el-icon>
+                </template>
               </template>
               <span>{{ menu.name }}</span>
             </el-menu-item>
@@ -122,7 +133,8 @@ import { getUserMenus } from '../api/menu'
 import { ElMessage } from 'element-plus'
 import { 
   House, Setting, OfficeBuilding, UserFilled, User, Menu, ArrowDown, 
-  SwitchButton 
+  SwitchButton, HomeFilled, Operation, Edit, Delete, Plus, Check, Search,
+  ArrowUp, ArrowLeft, ArrowRight, DocumentCopy, List, View
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -161,7 +173,22 @@ const iconMap = {
   'OfficeBuilding': OfficeBuilding,
   'UserFilled': UserFilled,
   'User': User,
-  'Menu': Menu
+  'Menu': Menu,
+  'HomeFilled': HomeFilled,
+  'Operation': Operation,
+  'Edit': Edit,
+  'Delete': Delete,
+  'Plus': Plus,
+  'Check': Check,
+  'Search': Search,
+  'ArrowUp': ArrowUp,
+  'ArrowDown': ArrowDown,
+  'ArrowLeft': ArrowLeft,
+  'ArrowRight': ArrowRight,
+  'SwitchButton': SwitchButton,
+  'DocumentCopy': DocumentCopy,
+  'List': List,
+  'View': View
 }
 
 // 路由名称映射
@@ -178,14 +205,14 @@ const fetchUserMenus = async () => {
       // 处理菜单数据，后端返回的已经是树形结构
       const menus = response.data
       
-      // 转换菜单数据格式，适配前端需要的结构
-      topMenus.value = menus.map(menu => {
+        // 转换菜单数据格式，适配前端需要的结构
+      topMenus.value = menus.filter(menu => menu).map(menu => {
         // 构建一级菜单
         const firstLevelMenu = {
           id: menu.id.toString(),
           name: menu.menuName,
           path: menu.path,
-          icon: menu.icon,
+          icon: menu.menuIcon,
           children: []
         }
         
@@ -194,14 +221,14 @@ const fetchUserMenus = async () => {
         
         // 处理二级菜单
         if (menu.children && menu.children.length > 0) {
-          firstLevelMenu.children = menu.children.map(childMenu => {
+          firstLevelMenu.children = menu.children.filter(childMenu => childMenu).map(childMenu => {
             // 更新路由名称映射
             routeNameMap.value[childMenu.path] = childMenu.menuName
             
             return {
               name: childMenu.menuName,
               path: childMenu.path,
-              icon: iconMap[childMenu.icon] || Menu
+              icon: childMenu.menuIcon
             }
           })
         }
@@ -517,6 +544,14 @@ onMounted(async () => {
 .sidebar-menu :deep(.el-menu-item.is-active) {
   background-color: rgba(17, 119, 187, 0.2);
   color: #1177BB;
+}
+
+/* 自定义图标样式，确保与Element Plus图标大小对齐 */
+.custom-icon {
+  font-size: 18px;
+  display: inline-block;
+  width: 20px;
+  text-align: center;
 }
 
 .content {
