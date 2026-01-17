@@ -6,7 +6,8 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/hyper_duty?useUnicode=true&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&useLegacyDatetimeCode=false
     username: root
-    password: 123456
+    #password: 123456
+    password: Feiwu2023!
     druid:
       initial-size: 5
       min-idle: 5

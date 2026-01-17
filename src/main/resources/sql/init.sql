@@ -10,13 +10,16 @@ CREATE DATABASE IF NOT EXISTS hyper_duty DEFAULT CHARACTER SET utf8mb4 COLLATE u
 USE hyper_duty;
 
 -- 删除现有表
-DROP TABLE IF EXISTS sys_role_menu;
-DROP TABLE IF EXISTS sys_user_role;
-DROP TABLE IF EXISTS sys_menu;
-DROP TABLE IF EXISTS sys_role;
-DROP TABLE IF EXISTS sys_user;
-DROP TABLE IF EXISTS sys_employee;
-DROP TABLE IF EXISTS sys_dept;
+# DROP TABLE IF EXISTS duty_record;
+# DROP TABLE IF EXISTS duty_assignment;
+# DROP TABLE IF EXISTS duty_schedule;
+# DROP TABLE IF EXISTS sys_role_menu;
+# DROP TABLE IF EXISTS sys_user_role;
+# DROP TABLE IF EXISTS sys_menu;
+# DROP TABLE IF EXISTS sys_role;
+# DROP TABLE IF EXISTS sys_user;
+# DROP TABLE IF EXISTS sys_employee;
+# DROP TABLE IF EXISTS sys_dept;
 
 -- 部门表
 CREATE TABLE IF NOT EXISTS sys_dept (
@@ -61,6 +64,53 @@ CREATE TABLE IF NOT EXISTS sys_user (
     UNIQUE KEY uk_employee_id (employee_id),
     FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+
+-- 值班表
+CREATE TABLE IF NOT EXISTS duty_schedule (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '值班表ID',
+    schedule_name VARCHAR(100) NOT NULL COMMENT '值班表名称',
+    description VARCHAR(200) COMMENT '描述',
+    start_date DATE NOT NULL COMMENT '开始日期',
+    end_date DATE NOT NULL COMMENT '结束日期',
+    status TINYINT DEFAULT 1 COMMENT '状态：0禁用，1启用',
+    create_by BIGINT COMMENT '创建人ID',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='值班表';
+
+-- 值班安排表
+CREATE TABLE IF NOT EXISTS duty_assignment (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '值班安排ID',
+    schedule_id BIGINT NOT NULL COMMENT '关联值班表ID',
+    duty_date DATE NOT NULL COMMENT '值班日期',
+    duty_shift INT DEFAULT 1 COMMENT '值班班次：1白班，2晚班，3夜班',
+    employee_id BIGINT NOT NULL COMMENT '值班人员ID',
+    status TINYINT DEFAULT 1 COMMENT '状态：0取消，1正常',
+    remark VARCHAR(200) COMMENT '备注',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    FOREIGN KEY (schedule_id) REFERENCES duty_schedule(id) ON DELETE CASCADE,
+    FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='值班安排表';
+
+-- 值班记录表
+CREATE TABLE IF NOT EXISTS duty_record (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '值班记录ID',
+    assignment_id BIGINT NOT NULL COMMENT '关联值班安排ID',
+    employee_id BIGINT NOT NULL COMMENT '值班人员ID',
+    check_in_time DATETIME COMMENT '签到时间',
+    check_out_time DATETIME COMMENT '签退时间',
+    duty_status TINYINT DEFAULT 1 COMMENT '值班状态：1正常，2迟到，3早退，4缺勤，5请假',
+    check_in_remark VARCHAR(200) COMMENT '签到备注',
+    check_out_remark VARCHAR(200) COMMENT '签退备注',
+    overtime_hours DECIMAL(5,2) DEFAULT 0 COMMENT '加班时长',
+    approval_status VARCHAR(20) DEFAULT 'pending' COMMENT '审批状态：pending待审批，approved已审批，rejected已拒绝',
+    manager_remark VARCHAR(200) COMMENT '经理备注',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    FOREIGN KEY (assignment_id) REFERENCES duty_assignment(id) ON DELETE CASCADE,
+    FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='值班记录表';
 
 -- 初始化数据
 -- 插入默认部门，使用INSERT IGNORE避免重复插入
@@ -153,7 +203,11 @@ INSERT IGNORE INTO sys_menu (menu_name, parent_id, path, component, perm, type, 
 ('人员管理', 2, '/employee', 'views/Employee.vue', 'sys:employee:list', 2, 'User', 2, 1),
 ('用户管理', 2, '/user', 'views/User.vue', 'sys:user:list', 2, 'Avatar', 3, 1),
 ('菜单管理', 2, '/menu', 'views/Menu.vue', 'sys:menu:list', 2, 'Menu', 4, 1),
-('角色管理', 2, '/role', 'views/Role.vue', 'sys:role:list', 2, 'DocumentCopy', 5, 1);
+('角色管理', 2, '/role', 'views/Role.vue', 'sys:role:list', 2, 'DocumentCopy', 5, 1),
+('值班管理', 0, '', '', '', 1, 'Calendar', 3, 1),
+('值班表管理', 8, '/duty/schedule', 'views/duty/DutySchedule.vue', 'duty:schedule:list', 2, 'DocumentCopy', 1, 1),
+('值班安排', 8, '/duty/assignment', 'views/duty/DutyAssignment.vue', 'duty:assignment:list', 2, 'Calendar', 2, 1),
+('值班记录', 8, '/duty/record', 'views/duty/DutyRecord.vue', 'duty:record:list', 2, 'Document', 3, 1);
 
 -- 初始化用户角色关联，使用INSERT IGNORE避免重复插入
 INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES
@@ -171,4 +225,8 @@ INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES
 (2, 2), -- 系统管理
 (2, 3), -- 部门管理
 (2, 4), -- 人员管理
-(2, 5); -- 用户管理;
+(2, 5), -- 用户管理
+(2, 8), -- 值班管理
+(2, 9), -- 值班表管理
+(2, 10), -- 值班安排
+(2, 11); -- 值班记录;

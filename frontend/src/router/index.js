@@ -48,6 +48,32 @@ const routes = [
         name: 'Role',
         component: () => import('../views/Role.vue'),
         meta: { title: '角色管理' }
+      },
+      {
+        path: 'duty',
+        name: 'Duty',
+        component: () => import('../views/duty/DutyLayout.vue'),
+        meta: { title: '值班管理' },
+        children: [
+          {
+            path: 'schedule',
+            name: 'DutySchedule',
+            component: () => import('../views/duty/DutySchedule.vue'),
+            meta: { title: '值班表管理' }
+          },
+          {
+            path: 'assignment',
+            name: 'DutyAssignment',
+            component: () => import('../views/duty/DutyAssignment.vue'),
+            meta: { title: '值班安排' }
+          },
+          {
+            path: 'record',
+            name: 'DutyRecord',
+            component: () => import('../views/duty/DutyRecord.vue'),
+            meta: { title: '值班记录' }
+          }
+        ]
       }
     ]
   }

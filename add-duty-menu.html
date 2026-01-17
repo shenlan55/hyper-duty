@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>添加值班管理菜单</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f5f7fa;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1177BB;
+            text-align: center;
+        }
+        .button {
+            background-color: #1177BB;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .button:hover {
+            background-color: #0d5f96;
+        }
+        .result {
+            background-color: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border: 1px solid #e6e6e6;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: white;
+            border-radius: 4px;
+            border-left: 4px solid #1177BB;
+        }
+        .success {
+            color: #67c23a;
+        }
+        .error {
+            color: #f56c6c;
+        }
+        .info {
+            color: #909399;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>添加值班管理菜单</h1>
+        <p class="info">本页面用于通过API添加值班管理菜单到系统中</p>
+        
+        <div class="step">
+            <h3>步骤1：设置API基础地址</h3>
+            <input type="text" id="apiBaseUrl" value="http://localhost:8080/api" style="width: 300px; padding: 8px; margin-right: 10px;">
+            <button class="button" onclick="testConnection()">测试连接</button>
+            <div id="connectionResult" class="result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>步骤2：添加值班管理菜单</h3>
+            <button class="button" onclick="addDutyMenu()">开始添加</button>
+            <div id="addResult" class="result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>步骤3：验证菜单是否添加成功</h3>
+            <button class="button" onclick="verifyMenus()">验证菜单</button>
+            <div id="verifyResult" class="result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>调试信息</h3>
+            <div id="debugInfo" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // 基础配置
+        let apiBaseUrl = 'http://localhost:8080/api';
+        let token = '';
+        let dutyMenuId = null;
+        
+        // 更新API基础地址
+        document.getElementById('apiBaseUrl').addEventListener('input', function(e) {
+            apiBaseUrl = e.target.value;
+        });
+        
+        // 测试连接
+        async function testConnection() {
+            const resultDiv = document.getElementById('connectionResult');
+            resultDiv.innerHTML = '<span class="info">正在测试连接...</span>';
+            
+            try {
+                // 先尝试登录获取token
+                const loginResponse = await axios.post(`${apiBaseUrl}/auth/login`, {
+                    username: 'admin',
+                    password: '123456'
+                });
+                
+                if (loginResponse.data.code === 200) {
+                    token = loginResponse.data.data.token;
+                    resultDiv.innerHTML = '<span class="success">连接成功！已获取到token</span>';
+                    
+                    // 保存token到axios默认头
+                    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">连接失败：${loginResponse.data.message}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">连接失败：${error.message}</span>`;
+            }
+        }
+        
+        // 添加值班管理菜单
+        async function addDutyMenu() {
+            const resultDiv = document.getElementById('addResult');
+            resultDiv.innerHTML = '<span class="info">正在添加值班管理菜单...</span>';
+            
+            try {
+                // 1. 添加值班管理目录菜单
+                const dutyMenuResponse = await axios.post(`${apiBaseUrl}/menu`, {
+                    menuName: '值班管理',
+                    parentId: 0,
+                    path: '/duty',
+                    component: 'views/duty/DutyLayout.vue',
+                    perm: '',
+                    type: 1,
+                    icon: 'Calendar',
+                    sort: 3,
+                    status: 1
+                });
+                
+                if (dutyMenuResponse.data.code === 200) {
+                    dutyMenuId = dutyMenuResponse.data.data.id;
+                    resultDiv.innerHTML += `<br><span class="success">✓ 值班管理目录菜单添加成功，ID: ${dutyMenuId}</span>`;
+                    
+                    // 2. 添加值班表管理菜单
+                    const scheduleMenuResponse = await axios.post(`${apiBaseUrl}/menu`, {
+                        menuName: '值班表管理',
+                        parentId: dutyMenuId,
+                        path: '/duty/schedule',
+                        component: 'views/duty/DutySchedule.vue',
+                        perm: 'duty:schedule:list',
+                        type: 2,
+                        icon: 'DocumentCopy',
+                        sort: 1,
+                        status: 1
+                    });
+                    
+                    if (scheduleMenuResponse.data.code === 200) {
+                        resultDiv.innerHTML += `<br><span class="success">✓ 值班表管理菜单添加成功</span>`;
+                    } else {
+                        resultDiv.innerHTML += `<br><span class="error">✗ 值班表管理菜单添加失败</span>`;
+                    }
+                    
+                    // 3. 添加值班安排菜单
+                    const assignmentMenuResponse = await axios.post(`${apiBaseUrl}/menu`, {
+                        menuName: '值班安排',
+                        parentId: dutyMenuId,
+                        path: '/duty/assignment',
+                        component: 'views/duty/DutyAssignment.vue',
+                        perm: 'duty:assignment:list',
+                        type: 2,
+                        icon: 'Calendar',
+                        sort: 2,
+                        status: 1
+                    });
+                    
+                    if (assignmentMenuResponse.data.code === 200) {
+                        resultDiv.innerHTML += `<br><span class="success">✓ 值班安排菜单添加成功</span>`;
+                    } else {
+                        resultDiv.innerHTML += `<br><span class="error">✗ 值班安排菜单添加失败</span>`;
+                    }
+                    
+                    // 4. 添加值班记录菜单
+                    const recordMenuResponse = await axios.post(`${apiBaseUrl}/menu`, {
+                        menuName: '值班记录',
+                        parentId: dutyMenuId,
+                        path: '/duty/record',
+                        component: 'views/duty/DutyRecord.vue',
+                        perm: 'duty:record:list',
+                        type: 2,
+                        icon: 'Document',
+                        sort: 3,
+                        status: 1
+                    });
+                    
+                    if (recordMenuResponse.data.code === 200) {
+                        resultDiv.innerHTML += `<br><span class="success">✓ 值班记录菜单添加成功</span>`;
+                    } else {
+                        resultDiv.innerHTML += `<br><span class="error">✗ 值班记录菜单添加失败</span>`;
+                    }
+                    
+                    resultDiv.innerHTML += `<br><span class="success">所有值班管理菜单添加完成！</span>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">添加失败：${dutyMenuResponse.data.message}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">添加失败：${error.message}</span>`;
+                console.error('添加菜单失败:', error);
+            }
+        }
+        
+        // 验证菜单是否添加成功
+        async function verifyMenus() {
+            const resultDiv = document.getElementById('verifyResult');
+            resultDiv.innerHTML = '<span class="info">正在验证菜单...</span>';
+            
+            try {
+                // 获取所有菜单
+                const response = await axios.get(`${apiBaseUrl}/menu/list`);
+                
+                if (response.data.code === 200) {
+                    const menus = response.data.data;
+                    let dutyMenuFound = false;
+                    let scheduleMenuFound = false;
+                    let assignmentMenuFound = false;
+                    let recordMenuFound = false;
+                    
+                    // 查找值班管理菜单
+                    for (const menu of menus) {
+                        if (menu.menuName === '值班管理') {
+                            dutyMenuFound = true;
+                            resultDiv.innerHTML += `<br><span class="success">✓ 找到值班管理目录菜单</span>`;
+                            
+                            // 查找子菜单
+                            if (menu.children && menu.children.length > 0) {
+                                for (const child of menu.children) {
+                                    if (child.menuName === '值班表管理') {
+                                        scheduleMenuFound = true;
+                                        resultDiv.innerHTML += `<br><span class="success">✓ 找到值班表管理菜单</span>`;
+                                    } else if (child.menuName === '值班安排') {
+                                        assignmentMenuFound = true;
+                                        resultDiv.innerHTML += `<br><span class="success">✓ 找到值班安排菜单</span>`;
+                                    } else if (child.menuName === '值班记录') {
+                                        recordMenuFound = true;
+                                        resultDiv.innerHTML += `<br><span class="success">✓ 找到值班记录菜单</span>`;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    
+                    if (!dutyMenuFound) {
+                        resultDiv.innerHTML += `<br><span class="error">✗ 未找到值班管理目录菜单</span>`;
+                    }
+                    if (!scheduleMenuFound) {
+                        resultDiv.innerHTML += `<br><span class="error">✗ 未找到值班表管理菜单</span>`;
+                    }
+                    if (!assignmentMenuFound) {
+                        resultDiv.innerHTML += `<br><span class="error">✗ 未找到值班安排菜单</span>`;
+                    }
+                    if (!recordMenuFound) {
+                        resultDiv.innerHTML += `<br><span class="error">✗ 未找到值班记录菜单</span>`;
+                    }
+                    
+                    if (dutyMenuFound && scheduleMenuFound && assignmentMenuFound && recordMenuFound) {
+                        resultDiv.innerHTML += `<br><span class="success">所有值班管理菜单验证通过！</span>`;
+                    }
+                } else {
+                    resultDiv.innerHTML = `<span class="error">验证失败：${response.data.message}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">验证失败：${error.message}</span>`;
+                console.error('验证菜单失败:', error);
+            }
+        }
+    </script>
+</body>
+</html>

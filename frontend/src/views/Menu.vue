@@ -141,7 +141,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Menu, OfficeBuilding, Operation, Edit, Delete, HomeFilled, Setting, 
   OfficeBuilding as OfficeBuildingFilled, UserFilled, User, Menu as MenuFilled,
-  DocumentCopy, 
+  DocumentCopy, Calendar, Document,
   List, Search, Plus, Check, ArrowDown, ArrowUp, ArrowLeft, ArrowRight,
   SwitchButton, View, House
 } from '@element-plus/icons-vue'
@@ -185,6 +185,10 @@ const iconList = [
   
   // 文档相关
   { name: 'DocumentCopy', label: '文档副本', component: DocumentCopy },
+  { name: 'Document', label: '文档', component: Document },
+  
+  // 日历/值班相关
+  { name: 'Calendar', label: '日历', component: Calendar },
   
   // 操作相关
   { name: 'Edit', label: '编辑', component: Edit },

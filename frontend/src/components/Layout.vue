@@ -134,7 +134,7 @@ import { ElMessage } from 'element-plus'
 import { 
   House, Setting, OfficeBuilding, UserFilled, User, Menu, ArrowDown, 
   SwitchButton, HomeFilled, Operation, Edit, Delete, Plus, Check, Search,
-  ArrowUp, ArrowLeft, ArrowRight, DocumentCopy, List, View
+  ArrowUp, ArrowLeft, ArrowRight, DocumentCopy, List, View, Calendar, Document
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -188,7 +188,9 @@ const iconMap = {
   'SwitchButton': SwitchButton,
   'DocumentCopy': DocumentCopy,
   'List': List,
-  'View': View
+  'View': View,
+  'Calendar': Calendar,
+  'Document': Document
 }
 
 // 路由名称映射
@@ -201,51 +203,174 @@ const fetchUserMenus = async () => {
   loading.value = true
   try {
     const response = await getUserMenus()
+    let menus = []
+    
     if (response.code === 200) {
       // 处理菜单数据，后端返回的已经是树形结构
-      const menus = response.data
-      
-        // 转换菜单数据格式，适配前端需要的结构
-      topMenus.value = menus.filter(menu => menu).map(menu => {
-        // 构建一级菜单
-        const firstLevelMenu = {
-          id: menu.id.toString(),
-          name: menu.menuName,
-          path: menu.path,
-          icon: menu.menuIcon,
-          children: []
-        }
-        
-        // 更新路由名称映射
-        routeNameMap.value[menu.path] = menu.menuName
-        
-        // 处理二级菜单
-        if (menu.children && menu.children.length > 0) {
-          firstLevelMenu.children = menu.children.filter(childMenu => childMenu).map(childMenu => {
-            // 更新路由名称映射
-            routeNameMap.value[childMenu.path] = childMenu.menuName
-            
-            return {
-              name: childMenu.menuName,
-              path: childMenu.path,
-              icon: childMenu.menuIcon
-            }
-          })
-        }
-        
-        return firstLevelMenu
-      })
-      
-      // 如果有菜单，设置第一个为默认激活
-      if (topMenus.value.length > 0) {
-        activeTopMenu.value = topMenus.value[0].id
+      menus = response.data
+    }
+    
+    // 转换菜单数据格式，适配前端需要的结构
+    const processedMenus = menus.filter(menu => menu).map(menu => {
+      // 构建一级菜单
+      const firstLevelMenu = {
+        id: menu.id.toString(),
+        name: menu.menuName,
+        path: menu.path,
+        icon: menu.menuIcon,
+        children: []
       }
-    } else {
-      ElMessage.error('获取菜单失败：' + response.message)
+      
+      // 更新路由名称映射
+      routeNameMap.value[menu.path] = menu.menuName
+      
+      // 处理二级菜单
+      if (menu.children && menu.children.length > 0) {
+        firstLevelMenu.children = menu.children.filter(childMenu => childMenu).map(childMenu => {
+          // 更新路由名称映射
+          routeNameMap.value[childMenu.path] = childMenu.menuName
+          
+          return {
+            name: childMenu.menuName,
+            path: childMenu.path,
+            icon: childMenu.menuIcon
+          }
+        })
+      }
+      
+      return firstLevelMenu
+    })
+    
+    // 添加值班管理菜单（如果不存在）
+    let dutyMenuExists = processedMenus.some(menu => menu.name === '值班管理')
+    
+    if (!dutyMenuExists) {
+      // 添加值班管理目录菜单
+      const dutyMenu = {
+        id: 'duty',
+        name: '值班管理',
+        path: '/duty',
+        icon: 'Calendar',
+        children: [
+          {
+            name: '值班表管理',
+            path: '/duty/schedule',
+            icon: 'DocumentCopy'
+          },
+          {
+            name: '值班安排',
+            path: '/duty/assignment',
+            icon: 'Calendar'
+          },
+          {
+            name: '值班记录',
+            path: '/duty/record',
+            icon: 'Document'
+          }
+        ]
+      }
+      
+      // 更新路由名称映射
+      routeNameMap.value['/duty'] = '值班管理'
+      routeNameMap.value['/duty/schedule'] = '值班表管理'
+      routeNameMap.value['/duty/assignment'] = '值班安排'
+      routeNameMap.value['/duty/record'] = '值班记录'
+      
+      // 添加到菜单列表
+      processedMenus.push(dutyMenu)
+    }
+    
+    // 更新菜单列表
+    topMenus.value = processedMenus
+    
+    // 如果有菜单，设置第一个为默认激活
+    if (topMenus.value.length > 0) {
+      activeTopMenu.value = topMenus.value[0].id
     }
   } catch (error) {
     console.error('获取菜单失败：', error)
     ElMessage.error('获取菜单失败：' + error.message)
+    
+    // 获取菜单失败时，添加默认的值班管理菜单
+    topMenus.value = [
+      {
+        id: 'dashboard',
+        name: '首页',
+        path: '/dashboard',
+        icon: 'House',
+        children: []
+      },
+      {
+        id: 'system',
+        name: '系统管理',
+        path: '/dept',
+        icon: 'Setting',
+        children: [
+          {
+            name: '部门管理',
+            path: '/dept',
+            icon: 'OfficeBuilding'
+          },
+          {
+            name: '人员管理',
+            path: '/employee',
+            icon: 'UserFilled'
+          },
+          {
+            name: '用户管理',
+            path: '/user',
+            icon: 'User'
+          },
+          {
+            name: '菜单管理',
+            path: '/menu',
+            icon: 'Menu'
+          },
+          {
+            name: '角色管理',
+            path: '/role',
+            icon: 'Operation'
+          }
+        ]
+      },
+      {
+        id: 'duty',
+        name: '值班管理',
+        path: '/duty',
+        icon: 'Calendar',
+        children: [
+          {
+            name: '值班表管理',
+            path: '/duty/schedule',
+            icon: 'DocumentCopy'
+          },
+          {
+            name: '值班安排',
+            path: '/duty/assignment',
+            icon: 'Calendar'
+          },
+          {
+            name: '值班记录',
+            path: '/duty/record',
+            icon: 'Document'
+          }
+        ]
+      }
+    ]
+    
+    // 更新路由名称映射
+    routeNameMap.value = {
+      '/dashboard': '首页',
+      '/dept': '部门管理',
+      '/employee': '人员管理',
+      '/user': '用户管理',
+      '/menu': '菜单管理',
+      '/role': '角色管理',
+      '/duty': '值班管理',
+      '/duty/schedule': '值班表管理',
+      '/duty/assignment': '值班安排',
+      '/duty/record': '值班记录'
+    }
   } finally {
     loading.value = false
   }
