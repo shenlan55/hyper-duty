@@ -36,9 +36,13 @@ public class DutyRecord implements Serializable {
     private String approvalStatus;
     
     private String managerRemark;
-    
+
+    private Long substituteEmployeeId;
+
+    private Integer substituteType;
+
     private LocalDateTime createTime;
-    
+
     private LocalDateTime updateTime;
 
 }

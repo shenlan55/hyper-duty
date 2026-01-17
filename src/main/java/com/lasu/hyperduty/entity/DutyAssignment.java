@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @TableName("duty_assignment")
 public class DutyAssignment implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID =1L;
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
@@ -33,5 +33,11 @@ public class DutyAssignment implements Serializable {
     private LocalDateTime createTime;
     
     private LocalDateTime updateTime;
+
+    private Long shiftConfigId;
+
+    private Long versionId;
+
+    private Integer isOvertime;
 
 }

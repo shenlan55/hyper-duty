@@ -72,6 +72,42 @@ const routes = [
             name: 'DutyRecord',
             component: () => import('../views/duty/DutyRecord.vue'),
             meta: { title: '值班记录' }
+          },
+          {
+            path: 'shift-config',
+            name: 'ShiftConfig',
+            component: () => import('../views/duty/ShiftConfig.vue'),
+            meta: { title: '班次配置' }
+          },
+          {
+            path: 'leave-request',
+            name: 'LeaveRequest',
+            component: () => import('../views/duty/LeaveRequest.vue'),
+            meta: { title: '请假申请' }
+          },
+          {
+            path: 'leave-approval',
+            name: 'LeaveApproval',
+            component: () => import('../views/duty/LeaveApproval.vue'),
+            meta: { title: '请假审批' }
+          },
+          {
+            path: 'swap-request',
+            name: 'SwapRequest',
+            component: () => import('../views/duty/SwapRequest.vue'),
+            meta: { title: '调班管理' }
+          },
+          {
+            path: 'statistics',
+            name: 'Statistics',
+            component: () => import('../views/duty/Statistics.vue'),
+            meta: { title: '排班统计' }
+          },
+          {
+            path: 'operation-log',
+            name: 'OperationLog',
+            component: () => import('../views/duty/OperationLog.vue'),
+            meta: { title: '操作日志' }
           }
         ]
       }

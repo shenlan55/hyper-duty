@@ -291,6 +291,50 @@
             style="width: 100%"
           />
         </el-form-item>
+        <el-form-item v-if="editForm.dutyStatus === 3" label="替补人员" prop="substituteEmployeeId">
+          <el-radio-group v-model="substituteType" @change="handleSubstituteTypeChange">
+            <el-radio :label="1">自动匹配</el-radio>
+            <el-radio :label="2">手动选择</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="editForm.dutyStatus === 3 && substituteType === 1" label="推荐替补人员">
+          <el-select
+            v-model="editForm.substituteEmployeeId"
+            placeholder="请选择替补人员"
+            style="width: 100%"
+            :loading="substituteLoading"
+          >
+            <el-option
+              v-for="employee in availableSubstitutes"
+              :key="employee.id"
+              :label="employee.employeeName"
+              :value="employee.id"
+            >
+              <span>{{ employee.employeeName }}</span>
+              <span style="float: right; color: #8492a6; font-size: 13px">
+                {{ getEmployeeDeptName(employee.deptId) }}
+              </span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="editForm.dutyStatus === 3 && substituteType === 2" label="选择替补人员" prop="substituteEmployeeId">
+          <el-select
+            v-model="editForm.substituteEmployeeId"
+            placeholder="请选择替补人员"
+            style="width: 100%"
+            filterable
+            remote
+            :remote-method="remoteSearchEmployee"
+            :loading="employeeLoading"
+          >
+            <el-option
+              v-for="employee in employeeList"
+              :key="employee.id"
+              :label="employee.employeeName"
+              :value="employee.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="管理员备注" prop="managerRemark">
           <el-input
             v-model="editForm.managerRemark"
@@ -320,10 +364,12 @@ import {
   checkIn,
   checkOut,
   updateRecord,
-  deleteRecord
+  deleteRecord,
+  getAvailableSubstitutes
 } from '../../api/duty/record'
 import { getEmployeeList } from '../../api/employee'
 import { getAssignmentList } from '../../api/duty/assignment'
+import { getDeptList } from '../../api/dept'
 
 // 响应式数据
 const searchQuery = ref('')
@@ -403,8 +449,16 @@ const editForm = reactive({
   checkOutRemark: '',
   overtimeHours: 0,
   approvalStatus: '待审批',
-  managerRemark: ''
+  managerRemark: '',
+  substituteEmployeeId: null,
+  substituteType: 1
 })
+
+const substituteType = ref(1)
+const availableSubstitutes = ref([])
+const substituteLoading = ref(false)
+
+const deptList = ref([])
 
 // 表单验证规则
 const checkInRules = {
@@ -452,6 +506,11 @@ const getStatusType = (status) => {
 // 获取审批类型
 const getApprovalType = (status) => {
   return approvalType[status] || 'info'
+}
+
+const getEmployeeDeptName = (deptId) => {
+  const dept = deptList.value.find(d => d.id === deptId)
+  return dept ? dept.deptName : '未知部门'
 }
 
 // 过滤后的值班记录列表
@@ -561,9 +620,15 @@ const openCheckOutDialog = (record) => {
 }
 
 // 打开编辑对话框
-const openEditDialog = (record) => {
+const openEditDialog = async (record) => {
   currentRecord.value = record
   Object.assign(editForm, record)
+  substituteType.value = record.substituteType || 1
+  
+  if (record.dutyStatus === 3 && substituteType.value === 1) {
+    await fetchAvailableSubstitutes(record.id)
+  }
+  
   editDialogVisible.value = true
 }
 
@@ -626,6 +691,8 @@ const handleEditSave = async () => {
     await editFormRef.value.validate()
     editLoading.value = true
     
+    editForm.substituteType = substituteType.value
+    
     const response = await updateRecord(editForm)
     
     if (response.code === 200) {
@@ -667,10 +734,47 @@ const handleDelete = async (id) => {
   }
 }
 
+const handleSubstituteTypeChange = async (type) => {
+  if (type === 1 && currentRecord.value) {
+    await fetchAvailableSubstitutes(currentRecord.value.id)
+  }
+}
+
+const fetchAvailableSubstitutes = async (recordId) => {
+  substituteLoading.value = true
+  try {
+    const response = await getAvailableSubstitutes(recordId)
+    if (response.code === 200) {
+      availableSubstitutes.value = response.data
+      if (availableSubstitutes.value.length > 0) {
+        editForm.substituteEmployeeId = availableSubstitutes.value[0].id
+      }
+    }
+  } catch (error) {
+    console.error('获取替补人员失败:', error)
+    ElMessage.error('获取替补人员失败')
+  } finally {
+    substituteLoading.value = false
+  }
+}
+
+const fetchDeptList = async () => {
+  try {
+    const response = await getDeptList()
+    if (response.code === 200) {
+      deptList.value = response.data
+    }
+  } catch (error) {
+    console.error('获取部门列表失败:', error)
+    ElMessage.error('获取部门列表失败')
+  }
+}
+
 // 生命周期钩子
 onMounted(async () => {
   await fetchEmployeeList()
   await fetchAssignmentList()
+  await fetchDeptList()
   await fetchRecordList()
 })
 </script>
