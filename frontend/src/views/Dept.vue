@@ -90,10 +90,10 @@
               <div class="tree-node">
                 <span>{{ node.label }}</span>
                 <span class="tree-node-actions">
-                  <el-button type="text" size="small" @click="openEditDialog(data)">
+                  <el-button link size="small" @click="openEditDialog(data)">
                     <el-icon><Edit /></el-icon>
                   </el-button>
-                  <el-button type="text" size="small" @click="handleDelete(data.id)">
+                  <el-button link size="small" @click="handleDelete(data.id)">
                     <el-icon><Delete /></el-icon>
                   </el-button>
                 </span>

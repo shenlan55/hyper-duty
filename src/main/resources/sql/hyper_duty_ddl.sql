@@ -118,6 +118,39 @@ CREATE TABLE IF NOT EXISTS sys_role_menu (
     FOREIGN KEY (menu_id) REFERENCES sys_menu(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色菜单关联表';
 
+-- 字典类型表
+CREATE TABLE IF NOT EXISTS sys_dict_type (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '字典类型ID',
+    dict_name VARCHAR(100) NOT NULL COMMENT '字典名称',
+    dict_code VARCHAR(100) NOT NULL UNIQUE COMMENT '字典编码',
+    description VARCHAR(200) COMMENT '字典描述',
+    status TINYINT DEFAULT 1 COMMENT '状态：0禁用，1启用',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_dict_code (dict_code),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字典类型表';
+
+-- 字典数据表
+CREATE TABLE IF NOT EXISTS sys_dict_data (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '字典数据ID',
+    dict_type_id BIGINT NOT NULL COMMENT '字典类型ID',
+    dict_label VARCHAR(100) NOT NULL COMMENT '字典标签',
+    dict_value VARCHAR(100) NOT NULL COMMENT '字典键值',
+    dict_sort INT DEFAULT 0 COMMENT '字典排序',
+    css_class VARCHAR(100) COMMENT '样式属性（其他样式扩展）',
+    list_class VARCHAR(100) COMMENT '表格回显样式',
+    is_default TINYINT DEFAULT 0 COMMENT '是否默认：0否，1是',
+    status TINYINT DEFAULT 1 COMMENT '状态：0禁用，1启用',
+    remark VARCHAR(500) COMMENT '备注',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_dict_type_id (dict_type_id),
+    INDEX idx_dict_value (dict_value),
+    INDEX idx_status (status),
+    FOREIGN KEY (dict_type_id) REFERENCES sys_dict_type(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字典数据表';
+
 -- 值班表
 CREATE TABLE IF NOT EXISTS duty_schedule (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '值班表ID',
@@ -375,4 +408,4 @@ FOREIGN KEY (substitute_employee_id) REFERENCES sys_employee(id) ON DELETE SET N
 -- ========================================
 -- DDL 脚本执行完成
 -- ========================================
-SELECT 'Hyper Duty DDL 脚本执行完成！共创建19个表' AS message;
+SELECT 'Hyper Duty DDL 脚本执行完成！共创建21个表' AS message;

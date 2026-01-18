@@ -44,6 +44,7 @@ INSERT IGNORE INTO sys_menu (menu_name, parent_id, path, component, perm, type, 
 ('用户管理', 2, '/user', 'views/User.vue', 'sys:user:list', 2, 'Avatar', 3, 1),
 ('菜单管理', 2, '/menu', 'views/Menu.vue', 'sys:menu:list', 2, 'Menu', 4, 1),
 ('角色管理', 2, '/role', 'views/Role.vue', 'sys:role:list', 2, 'DocumentCopy', 5, 1),
+('字典管理', 2, '/dict', 'views/Dict.vue', 'sys:dict:list', 2, 'List', 6, 1),
 ('值班管理', 0, '', '', '', 1, 'Calendar', 3, 1),
 ('值班表管理', 8, '/duty/schedule', 'views/duty/DutySchedule.vue', 'duty:schedule:list', 2, 'DocumentCopy', 1, 1),
 ('值班安排', 8, '/duty/assignment', 'views/duty/DutyAssignment.vue', 'duty:assignment:list', 2, 'Calendar', 2, 1),
@@ -69,7 +70,8 @@ INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES
 (2, 8), -- 值班管理
 (2, 9), -- 值班表管理
 (2, 10), -- 值班安排
-(2, 11); -- 值班记录
+(2, 11), -- 值班记录
+(2, 12); -- 字典管理
 
 -- ========================================
 -- 第二部分：值班管理扩展数据
@@ -86,12 +88,12 @@ INSERT IGNORE INTO sys_menu (menu_name, parent_id, path, component, perm, type, 
 
 -- 普通用户增加值班管理菜单权限
 INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES
-(2, 12), -- 班次配置
-(2, 13), -- 请假申请
-(2, 14), -- 请假审批
-(2, 15), -- 调班管理
-(2, 16), -- 排班统计
-(2, 17); -- 操作日志
+(2, 14), -- 班次配置
+(2, 15), -- 请假申请
+(2, 16), -- 请假审批
+(2, 17), -- 调班管理
+(2, 18), -- 排班统计
+(2, 19); -- 操作日志
 
 -- 插入默认班次配置
 INSERT IGNORE INTO duty_shift_config (shift_name, shift_code, shift_type, start_time, end_time, duration_hours, break_hours, is_overtime_shift, status, sort) VALUES

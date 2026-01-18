@@ -69,7 +69,6 @@
             :default-active="activeTopMenu"
             class="top-menu"
             mode="horizontal"
-            router
             @select="handleTopMenuChange"
           >
             <el-menu-item
@@ -104,9 +103,7 @@
         </div>
         <!-- 内容区域 -->
         <el-main class="content">
-          <keep-alive>
-            <router-view v-if="$route.path === activeTab" />
-          </keep-alive>
+          <router-view v-if="$route.path === activeTab" />
         </el-main>
       </div>
     </div>
@@ -145,6 +142,16 @@ const activeTopMenu = ref('dashboard')
 // 动态二级菜单
 const leftMenus = computed(() => {
   const menu = topMenus.value.find(m => m.id === activeTopMenu.value)
+  
+  // 首页菜单没有子菜单，显示首页本身
+  if (activeTopMenu.value === 'dashboard' || activeTopMenu.value === '1') {
+    return [{
+      name: '首页',
+      path: '/dashboard',
+      icon: 'HomeFilled'
+    }]
+  }
+  
   return menu?.children || []
 })
 
@@ -236,6 +243,7 @@ const fetchUserMenus = async () => {
           else if (childPath === '/user') childPath = '/system/user'
           else if (childPath === '/menu') childPath = '/system/menu'
           else if (childPath === '/role') childPath = '/system/role'
+          else if (childPath === '/dict') childPath = '/system/dict'
           
           // 更新路由名称映射
           routeNameMap.value[childPath] = childMenu.menuName
@@ -259,6 +267,24 @@ const fetchUserMenus = async () => {
     
     // 添加值班管理菜单（如果不存在）
     let dutyMenuExists = processedMenus.some(menu => menu.name === '值班管理')
+    
+    // 添加首页菜单（如果不存在）
+    let dashboardMenuExists = processedMenus.some(menu => menu.name === '首页')
+    
+    if (!dashboardMenuExists) {
+      processedMenus.unshift({
+        id: 'dashboard',
+        name: '首页',
+        path: '/dashboard',
+        icon: 'HomeFilled',
+        children: [{
+          name: '首页',
+          path: '/dashboard',
+          icon: 'HomeFilled'
+        }]
+      })
+      routeNameMap.value['/dashboard'] = '首页'
+    }
     
     if (!dutyMenuExists) {
       // 添加值班管理目录菜单
