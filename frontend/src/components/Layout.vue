@@ -46,20 +46,9 @@
               :key="menu.path"
               :index="menu.path"
             >
-              <template #icon>
-                <!-- 支持两种图标类型：1. Element Plus图标组件 2. 直接字符串/Emoji -->
-                <template v-if="iconMap[menu.icon]">
-                  <el-icon><component :is="iconMap[menu.icon]" /></el-icon>
-                </template>
-                <template v-else-if="menu.icon">
-                  <!-- 直接显示图标字符串/Emoji -->
-                  <span class="custom-icon">{{ menu.icon }}</span>
-                </template>
-                <template v-else>
-                  <!-- 默认图标 -->
-                  <el-icon><Menu /></el-icon>
-                </template>
-              </template>
+              <el-icon style="vertical-align: middle; margin-right: 8px;">
+                <component :is="menu.icon && iconMap[menu.icon] ? iconMap[menu.icon] : Menu" />
+              </el-icon>
               <span>{{ menu.name }}</span>
             </el-menu-item>
           </template>
@@ -89,7 +78,7 @@
               :index="menu.id"
             >
               <template #icon>
-                <el-icon><component :is="iconMap[menu.icon] || House" /></el-icon>
+                <el-icon><component :is="menu.icon && iconMap[menu.icon] ? iconMap[menu.icon] : House" /></el-icon>
               </template>
               <span>{{ menu.name }}</span>
             </el-menu-item>
@@ -134,7 +123,9 @@ import { ElMessage } from 'element-plus'
 import { 
   House, Setting, OfficeBuilding, UserFilled, User, Menu, ArrowDown, 
   SwitchButton, HomeFilled, Operation, Edit, Delete, Plus, Check, Search,
-  ArrowUp, ArrowLeft, ArrowRight, DocumentCopy, List, View, Calendar, Document
+  ArrowUp, ArrowLeft, ArrowRight, DocumentCopy, List, View, Calendar, Document,
+  Avatar, WarningFilled, InfoFilled, SuccessFilled, QuestionFilled, StarFilled,
+  Clock, CircleCheck, Refresh, DataAnalysis
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -190,7 +181,17 @@ const iconMap = {
   'List': List,
   'View': View,
   'Calendar': Calendar,
-  'Document': Document
+  'Document': Document,
+  'Avatar': Avatar,
+  'WarningFilled': WarningFilled,
+  'InfoFilled': InfoFilled,
+  'SuccessFilled': SuccessFilled,
+  'QuestionFilled': QuestionFilled,
+  'StarFilled': StarFilled,
+  'Clock': Clock,
+  'CircleCheck': CircleCheck,
+  'Refresh': Refresh,
+  'DataAnalysis': DataAnalysis
 }
 
 // 路由名称映射
@@ -217,7 +218,7 @@ const fetchUserMenus = async () => {
         id: menu.id.toString(),
         name: menu.menuName,
         path: menu.path,
-        icon: menu.menuIcon,
+        icon: menu.icon,
         children: []
       }
       
@@ -227,15 +228,30 @@ const fetchUserMenus = async () => {
       // 处理二级菜单
       if (menu.children && menu.children.length > 0) {
         firstLevelMenu.children = menu.children.filter(childMenu => childMenu).map(childMenu => {
+          let childPath = childMenu.path
+          
+          // 修复系统管理子菜单路径
+          if (childPath === '/dept') childPath = '/system/dept'
+          else if (childPath === '/employee') childPath = '/system/employee'
+          else if (childPath === '/user') childPath = '/system/user'
+          else if (childPath === '/menu') childPath = '/system/menu'
+          else if (childPath === '/role') childPath = '/system/role'
+          
           // 更新路由名称映射
-          routeNameMap.value[childMenu.path] = childMenu.menuName
+          routeNameMap.value[childPath] = childMenu.menuName
           
           return {
             name: childMenu.menuName,
-            path: childMenu.path,
-            icon: childMenu.menuIcon
+            path: childPath,
+            icon: childMenu.icon
           }
         })
+      }
+      
+      // 修复系统管理父菜单路径
+      if (menu.menuName === '系统管理') {
+        firstLevelMenu.path = '/system'
+        routeNameMap.value['/system'] = menu.menuName
       }
       
       return firstLevelMenu
@@ -303,32 +319,32 @@ const fetchUserMenus = async () => {
       {
         id: 'system',
         name: '系统管理',
-        path: '/dept',
+        path: '/system',
         icon: 'Setting',
         children: [
           {
             name: '部门管理',
-            path: '/dept',
+            path: '/system/dept',
             icon: 'OfficeBuilding'
           },
           {
             name: '人员管理',
-            path: '/employee',
+            path: '/system/employee',
             icon: 'UserFilled'
           },
           {
             name: '用户管理',
-            path: '/user',
+            path: '/system/user',
             icon: 'User'
           },
           {
             name: '菜单管理',
-            path: '/menu',
+            path: '/system/menu',
             icon: 'Menu'
           },
           {
             name: '角色管理',
-            path: '/role',
+            path: '/system/role',
             icon: 'Operation'
           }
         ]
@@ -361,11 +377,12 @@ const fetchUserMenus = async () => {
     // 更新路由名称映射
     routeNameMap.value = {
       '/dashboard': '首页',
-      '/dept': '部门管理',
-      '/employee': '人员管理',
-      '/user': '用户管理',
-      '/menu': '菜单管理',
-      '/role': '角色管理',
+      '/system': '系统管理',
+      '/system/dept': '部门管理',
+      '/system/employee': '人员管理',
+      '/system/user': '用户管理',
+      '/system/menu': '菜单管理',
+      '/system/role': '角色管理',
       '/duty': '值班管理',
       '/duty/schedule': '值班表管理',
       '/duty/assignment': '值班安排',
@@ -660,6 +677,12 @@ onMounted(async () => {
   color: #303133;
   height: 50px;
   line-height: 50px;
+}
+
+.sidebar-menu :deep(.el-menu-item .el-icon) {
+  font-size: 18px;
+  width: 20px;
+  text-align: center;
 }
 
 .sidebar-menu :deep(.el-menu-item:hover) {

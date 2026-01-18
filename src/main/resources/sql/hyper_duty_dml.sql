@@ -106,6 +106,18 @@ INSERT IGNORE INTO duty_schedule_rule (rule_name, rule_code, schedule_cycle, max
 ('默认排班规则', 'DEFAULT_RULE', 2, 3, 48.00, 200.00, 4, '同部门优先,其次按班次匹配', '检测重复排班、超负载排班', 1);
 
 -- ========================================
+-- 第三部分：更新系统管理菜单路径
+-- ========================================
+
+-- 更新系统管理菜单路径
+UPDATE sys_menu SET path = '/system' WHERE menu_name = '系统管理' AND parent_id = 0;
+UPDATE sys_menu SET path = '/system/dept' WHERE menu_name = '部门管理';
+UPDATE sys_menu SET path = '/system/employee' WHERE menu_name = '人员管理';
+UPDATE sys_menu SET path = '/system/user' WHERE menu_name = '用户管理';
+UPDATE sys_menu SET path = '/system/menu' WHERE menu_name = '菜单管理';
+UPDATE sys_menu SET path = '/system/role' WHERE menu_name = '角色管理';
+
+-- ========================================
 -- DML 脚本执行完成
 -- ========================================
-SELECT 'Hyper Duty DML 脚本执行完成！共插入17个菜单、5个班次配置、1个排班规则' AS message;
+SELECT 'Hyper Duty DML 脚本执行完成！共插入17个菜单、5个班次配置、1个排班规则，已更新系统管理菜单路径' AS message;

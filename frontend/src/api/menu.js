@@ -19,7 +19,7 @@ export function getMenuById(id) {
 // 获取菜单树形结构
 export function getMenuTree() {
   return request({
-    url: '/menu/list',
+    url: '/menu/tree',
     method: 'get'
   })
 }

@@ -24,9 +24,8 @@
       <el-table-column prop="perm" label="权限标识" min-width="150" />
       <el-table-column prop="icon" label="菜单图标" width="120">
         <template #default="scope">
-          <el-icon>
-            <!-- 根据图标名称渲染对应的组件 -->
-            <component :is="iconList.find(item => item.name === scope.row.icon)?.component" v-if="scope.row.icon" />
+          <el-icon v-if="scope.row.icon">
+            <component :is="getIconComponent(scope.row.icon)" />
           </el-icon>
         </template>
       </el-table-column>
@@ -55,7 +54,6 @@
       </el-table-column>
     </el-table>
 
-    <!-- 添加/编辑菜单对话框 -->
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
@@ -76,7 +74,7 @@
               :value="menu.id"
               :disabled="menu.type === 3"
             >
-              <span style="margin-left: {{ menu.level * 20 }}px">{{ menu.menuName }}</span>
+              <span :style="{ marginLeft: menu.level * 20 + 'px' }">{{ menu.menuName }}</span>
             </el-option>
           </el-select>
         </el-form-item>
@@ -140,10 +138,13 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Menu, OfficeBuilding, Operation, Edit, Delete, HomeFilled, Setting, 
-  OfficeBuilding as OfficeBuildingFilled, UserFilled, User, Menu as MenuFilled,
-  DocumentCopy, Calendar, Document,
-  List, Search, Plus, Check, ArrowDown, ArrowUp, ArrowLeft, ArrowRight,
-  SwitchButton, View, House
+  UserFilled, User, Menu as MenuFilled, DocumentCopy, List, Search, Plus, 
+  Check, ArrowDown, ArrowUp, ArrowLeft, ArrowRight, SwitchButton, View, 
+  House, Avatar, Document, Calendar, Clock, CircleCheck, Refresh, 
+  DataAnalysis, Bell, Message, ChatDotRound, Phone, Location, Link, 
+  Star, StarFilled, Lock, Unlock, Warning, WarningFilled, InfoFilled, SuccessFilled, QuestionFilled, 
+  Close, ZoomIn, ZoomOut, FullScreen, Download, Upload, Sort, 
+  Filter, Share, Printer, Files, Folder, FolderOpened, Notebook
 } from '@element-plus/icons-vue'
 import { getMenuList, getMenuById, addMenu, updateMenu, deleteMenu, getMenuTree } from '../api/menu'
 
@@ -165,9 +166,7 @@ const menuForm = reactive({
   status: 1
 })
 
-// 图标列表，用于选择
 const iconList = [
-  // 基础图标
   { name: 'HomeFilled', label: '首页', component: HomeFilled },
   { name: 'House', label: '房屋', component: House },
   { name: 'Setting', label: '设置', component: Setting },
@@ -175,37 +174,62 @@ const iconList = [
   { name: 'List', label: '列表', component: List },
   { name: 'View', label: '视图', component: View },
   { name: 'Operation', label: '操作', component: Operation },
-  
-  // 人员/用户相关
   { name: 'UserFilled', label: '人员', component: UserFilled },
   { name: 'User', label: '用户', component: User },
-  
-  // 部门/组织相关
-  { name: 'OfficeBuilding', label: '部门', component: OfficeBuildingFilled },
-  
-  // 文档相关
+  { name: 'Avatar', label: '头像', component: Avatar },
+  { name: 'OfficeBuilding', label: '部门', component: OfficeBuilding },
   { name: 'DocumentCopy', label: '文档副本', component: DocumentCopy },
   { name: 'Document', label: '文档', component: Document },
-  
-  // 日历/值班相关
+  { name: 'Files', label: '文件', component: Files },
+  { name: 'Folder', label: '文件夹', component: Folder },
+  { name: 'FolderOpened', label: '打开文件夹', component: FolderOpened },
+  { name: 'Notebook', label: '笔记本', component: Notebook },
   { name: 'Calendar', label: '日历', component: Calendar },
-  
-  // 操作相关
+  { name: 'Clock', label: '时钟', component: Clock },
   { name: 'Edit', label: '编辑', component: Edit },
   { name: 'Delete', label: '删除', component: Delete },
   { name: 'Plus', label: '添加', component: Plus },
   { name: 'Check', label: '确认', component: Check },
+  { name: 'CircleCheck', label: '圆形确认', component: CircleCheck },
   { name: 'Search', label: '搜索', component: Search },
-  
-  // 箭头相关
+  { name: 'Refresh', label: '刷新', component: Refresh },
+  { name: 'ZoomIn', label: '放大', component: ZoomIn },
+  { name: 'ZoomOut', label: '缩小', component: ZoomOut },
+  { name: 'FullScreen', label: '全屏', component: FullScreen },
+  { name: 'Sort', label: '排序', component: Sort },
+  { name: 'Filter', label: '筛选', component: Filter },
+  { name: 'Share', label: '分享', component: Share },
+  { name: 'Printer', label: '打印', component: Printer },
+  { name: 'Download', label: '下载', component: Download },
+  { name: 'Upload', label: '上传', component: Upload },
   { name: 'ArrowUp', label: '向上箭头', component: ArrowUp },
   { name: 'ArrowDown', label: '向下箭头', component: ArrowDown },
   { name: 'ArrowLeft', label: '向左箭头', component: ArrowLeft },
   { name: 'ArrowRight', label: '向右箭头', component: ArrowRight },
-  
-  // 其他
-  { name: 'SwitchButton', label: '开关', component: SwitchButton }
+  { name: 'SuccessFilled', label: '成功', component: SuccessFilled },
+  { name: 'Warning', label: '警告', component: Warning },
+  { name: 'WarningFilled', label: '警告填充', component: WarningFilled },
+  { name: 'InfoFilled', label: '信息', component: InfoFilled },
+  { name: 'QuestionFilled', label: '问题', component: QuestionFilled },
+  { name: 'Close', label: '关闭', component: Close },
+  { name: 'Lock', label: '锁定', component: Lock },
+  { name: 'Unlock', label: '解锁', component: Unlock },
+  { name: 'Star', label: '星星', component: Star },
+  { name: 'StarFilled', label: '星星填充', component: StarFilled },
+  { name: 'SwitchButton', label: '开关', component: SwitchButton },
+  { name: 'Bell', label: '铃铛', component: Bell },
+  { name: 'Message', label: '消息', component: Message },
+  { name: 'ChatDotRound', label: '聊天圆点', component: ChatDotRound },
+  { name: 'Phone', label: '电话', component: Phone },
+  { name: 'Location', label: '位置', component: Location },
+  { name: 'Link', label: '链接', component: Link },
+  { name: 'DataAnalysis', label: '数据分析', component: DataAnalysis }
 ]
+
+const getIconComponent = (iconName) => {
+  const icon = iconList.find(item => item.name === iconName)
+  return icon ? icon.component : null
+}
 
 const menuRules = reactive({
   menuName: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
@@ -213,19 +237,14 @@ const menuRules = reactive({
   sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
 })
 
-// 加载菜单数据
 const loadMenuData = async () => {
   try {
     const response = await getMenuTree()
     if (response.code === 200) {
-      // 处理菜单数据，添加hasChildren属性，用于树形表格显示
       const processMenuTree = (menus) => {
         return menus.map(menu => {
-          // 深拷贝菜单对象
           const processedMenu = { ...menu }
-          // 设置hasChildren属性
           processedMenu.hasChildren = processedMenu.children && processedMenu.children.length > 0
-          // 递归处理子菜单
           if (processedMenu.children && processedMenu.children.length > 0) {
             processedMenu.children = processMenuTree(processedMenu.children)
           }
@@ -242,7 +261,6 @@ const loadMenuData = async () => {
   }
 }
 
-// 扁平化菜单树
 const flattenMenuTree = (menus, level = 0) => {
   let result = []
   menus.forEach(menu => {
@@ -255,20 +273,22 @@ const flattenMenuTree = (menus, level = 0) => {
   return result
 }
 
-// 处理添加菜单
 const handleAddMenu = () => {
   dialogTitle.value = '添加菜单'
   resetForm()
   dialogVisible.value = true
 }
 
-// 处理编辑菜单
 const handleEditMenu = async (menu) => {
   dialogTitle.value = '编辑菜单'
   try {
     const response = await getMenuById(menu.id)
     if (response.code === 200) {
-      Object.assign(menuForm, response.data)
+      const menuData = response.data
+      if (menuData.icon && !iconList.find(item => item.name === menuData.icon)) {
+        menuData.icon = ''
+      }
+      Object.assign(menuForm, menuData)
       dialogVisible.value = true
     }
   } catch (error) {
@@ -276,7 +296,6 @@ const handleEditMenu = async (menu) => {
   }
 }
 
-// 处理删除菜单
 const handleDeleteMenu = async (id) => {
   try {
     await ElMessageBox.confirm('确定要删除该菜单吗？', '警告', {
@@ -296,19 +315,16 @@ const handleDeleteMenu = async (id) => {
   }
 }
 
-// 处理状态变更
 const handleStatusChange = async (menu) => {
   try {
     await updateMenu(menu)
     ElMessage.success('状态更新成功')
   } catch (error) {
     ElMessage.error('状态更新失败')
-    // 恢复原来的状态
     menu.status = menu.status === 1 ? 0 : 1
   }
 }
 
-// 重置表单
 const resetForm = () => {
   menuForm.id = null
   menuForm.menuName = ''
@@ -325,7 +341,6 @@ const resetForm = () => {
   }
 }
 
-// 提交表单
 const handleSubmit = async () => {
   if (!menuFormRef.value) return
   await menuFormRef.value.validate(async (valid) => {
@@ -349,7 +364,6 @@ const handleSubmit = async () => {
   })
 }
 
-// 组件挂载时加载数据
 onMounted(() => {
   loadMenuData()
 })

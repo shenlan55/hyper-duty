@@ -20,34 +20,42 @@ const routes = [
         meta: { title: '首页' }
       },
       {
-        path: 'dept',
-        name: 'Dept',
-        component: () => import('../views/Dept.vue'),
-        meta: { title: '部门管理' }
-      },
-      {
-        path: 'employee',
-        name: 'Employee',
-        component: () => import('../views/Employee.vue'),
-        meta: { title: '人员管理' }
-      },
-      {
-        path: 'user',
-        name: 'User',
-        component: () => import('../views/User.vue'),
-        meta: { title: '用户管理' }
-      },
-      {
-        path: 'menu',
-        name: 'Menu',
-        component: () => import('../views/Menu.vue'),
-        meta: { title: '菜单管理' }
-      },
-      {
-        path: 'role',
-        name: 'Role',
-        component: () => import('../views/Role.vue'),
-        meta: { title: '角色管理' }
+        path: 'system',
+        name: 'System',
+        component: () => import('../views/system/SystemLayout.vue'),
+        meta: { title: '系统管理' },
+        children: [
+          {
+            path: 'dept',
+            name: 'Dept',
+            component: () => import('../views/Dept.vue'),
+            meta: { title: '部门管理' }
+          },
+          {
+            path: 'employee',
+            name: 'Employee',
+            component: () => import('../views/Employee.vue'),
+            meta: { title: '人员管理' }
+          },
+          {
+            path: 'user',
+            name: 'User',
+            component: () => import('../views/User.vue'),
+            meta: { title: '用户管理' }
+          },
+          {
+            path: 'menu',
+            name: 'Menu',
+            component: () => import('../views/Menu.vue'),
+            meta: { title: '菜单管理' }
+          },
+          {
+            path: 'role',
+            name: 'Role',
+            component: () => import('../views/Role.vue'),
+            meta: { title: '角色管理' }
+          }
+        ]
       },
       {
         path: 'duty',
