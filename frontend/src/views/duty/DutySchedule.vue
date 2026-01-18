@@ -29,8 +29,16 @@
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="scheduleName" label="值班表名称" min-width="150" />
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="startDate" label="开始日期" width="150" />
-        <el-table-column prop="endDate" label="结束日期" width="150" />
+        <el-table-column prop="startDate" label="开始日期" width="150">
+          <template #default="scope">
+            {{ formatDate(scope.row.startDate) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="endDate" label="结束日期" width="150">
+          <template #default="scope">
+            {{ formatDate(scope.row.endDate) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="scope">
             <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
@@ -38,7 +46,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" />
+        <el-table-column prop="createTime" label="创建时间" width="180">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.createTime) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="scope">
             <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
@@ -144,6 +156,7 @@ import {
   updateSchedule,
   deleteSchedule
 } from '../../api/duty/schedule'
+import { formatDate, formatDateTime } from '../../utils/dateUtils'
 
 // 响应式数据
 const searchQuery = ref('')

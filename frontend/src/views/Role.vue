@@ -19,7 +19,11 @@
             <el-switch v-model="scope.row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(scope.row)"></el-switch>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" align="center"></el-table-column>
+        <el-table-column prop="createTime" label="创建时间" width="180" align="center">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.createTime) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="320" align="center">
           <template #default="scope">
             <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
@@ -124,6 +128,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { listRole, addRole, updateRole, deleteRole, getRoleMenu, saveRoleMenu, getRoleUser, saveRoleUser } from '../api/role'
 import { getMenuList } from '../api/menu'
 import { getUserList } from '../api/user'
+import { formatDateTime } from '../utils/dateUtils'
 
 // 角色列表数据
 const roleList = ref([])

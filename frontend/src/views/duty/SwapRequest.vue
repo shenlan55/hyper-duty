@@ -20,7 +20,7 @@
         <el-table-column prop="targetEmployeeName" label="目标值班人员" width="120" />
         <el-table-column label="调班信息" width="250">
           <template #default="scope">
-            {{ scope.row.swapDate }} {{ getShiftName(scope.row.swapShift) }}
+            {{ formatDate(scope.row.swapDate) }} {{ getShiftName(scope.row.swapShift) }}
           </template>
         </el-table-column>
         <el-table-column prop="reason" label="调班原因" min-width="200" show-overflow-tooltip />
@@ -31,7 +31,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="申请时间" width="180" />
+        <el-table-column prop="createTime" label="申请时间" width="180">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.createTime) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="scope">
             <el-button
@@ -175,6 +179,7 @@ import {
   confirmSwapRequest
 } from '../../api/duty/swapRequest'
 import { getEmployeeList } from '../../api/employee'
+import { formatDate, formatDateTime } from '../../utils/dateUtils'
 
 const loading = ref(false)
 const dialogVisible = ref(false)

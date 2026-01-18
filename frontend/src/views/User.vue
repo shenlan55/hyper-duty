@@ -40,7 +40,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" />
+        <el-table-column prop="createTime" label="创建时间" width="180">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.createTime) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="scope">
             <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
@@ -123,6 +127,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getEmployeeList } from '../api/employee'
 import { getUserList, addUser, updateUser, deleteUser } from '../api/user'
+import { formatDateTime } from '../utils/dateUtils'
 
 // 搜索查询
 const searchQuery = ref('')

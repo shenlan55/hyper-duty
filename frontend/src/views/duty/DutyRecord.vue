@@ -23,7 +23,11 @@
         row-key="id"
       >
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="dutyDate" label="值班日期" width="150" />
+        <el-table-column prop="dutyDate" label="值班日期" width="150">
+          <template #default="scope">
+            {{ formatDate(scope.row.dutyDate) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="dutyShift" label="班次" width="100">
           <template #default="scope">
             <el-tag :type="'info'">
@@ -36,8 +40,16 @@
             {{ getEmployeeName(scope.row.employeeId) }}
           </template>
         </el-table-column>
-        <el-table-column prop="checkInTime" label="签到时间" width="180" />
-        <el-table-column prop="checkOutTime" label="签退时间" width="180" />
+        <el-table-column prop="checkInTime" label="签到时间" width="180">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.checkInTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="checkOutTime" label="签退时间" width="180">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.checkOutTime) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="dutyStatus" label="值班状态" width="120">
           <template #default="scope">
             <el-tag
@@ -370,6 +382,7 @@ import {
 import { getEmployeeList } from '../../api/employee'
 import { getAssignmentList } from '../../api/duty/assignment'
 import { getDeptList } from '../../api/dept'
+import { formatDate, formatDateTime } from '../../utils/dateUtils'
 
 // 响应式数据
 const searchQuery = ref('')

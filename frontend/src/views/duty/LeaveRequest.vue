@@ -30,7 +30,7 @@
         </el-table-column>
         <el-table-column label="请假时间" width="250">
           <template #default="scope">
-            {{ scope.row.startDate }} {{ scope.row.startTime }} - {{ scope.row.endDate }} {{ scope.row.endTime }}
+            {{ formatDate(scope.row.startDate) }} {{ scope.row.startTime }} - {{ formatDate(scope.row.endDate) }} {{ scope.row.endTime }}
           </template>
         </el-table-column>
         <el-table-column prop="totalHours" label="请假时长(小时)" width="130" />
@@ -41,7 +41,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="申请时间" width="180" />
+        <el-table-column prop="createTime" label="申请时间" width="180">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.createTime) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="scope">
             <el-button type="primary" size="small" @click="openViewDialog(scope.row)">
@@ -216,6 +220,7 @@ import {
   deleteLeaveRequest
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
+import { formatDate, formatDateTime } from '../../utils/dateUtils'
 
 const loading = ref(false)
 const dialogVisible = ref(false)

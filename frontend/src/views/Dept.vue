@@ -45,7 +45,11 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="createTime" label="创建时间" width="180" />
+            <el-table-column prop="createTime" label="创建时间" width="180">
+              <template #default="scope">
+                {{ formatDateTime(scope.row.createTime) }}
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="180" fixed="right">
               <template #default="scope">
                 <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
@@ -178,6 +182,7 @@ import {
   updateDept,
   deleteDept
 } from '../api/dept'
+import { formatDateTime } from '../utils/dateUtils'
 
 // 响应式数据
 const activeTab = ref('list')

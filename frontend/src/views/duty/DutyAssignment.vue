@@ -42,7 +42,11 @@
         row-key="id"
       >
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="dutyDate" label="值班日期" width="150" />
+        <el-table-column prop="dutyDate" label="值班日期" width="150">
+          <template #default="scope">
+            {{ formatDate(scope.row.dutyDate) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="dutyShift" label="班次" width="100">
           <template #default="scope">
             <el-tag :type="'info'">
@@ -63,7 +67,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="createTime" label="创建时间" width="180" />
+        <el-table-column prop="createTime" label="创建时间" width="180">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.createTime) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="scope">
             <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
@@ -205,6 +213,7 @@ import {
 } from '../../api/duty/assignment'
 import { getScheduleList } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
+import { formatDate, formatDateTime } from '../../utils/dateUtils'
 
 // 响应式数据
 const searchQuery = ref('')
