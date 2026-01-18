@@ -2,7 +2,7 @@
   <div class="dict-container">
     <div class="page-header">
       <h2>字典管理</h2>
-      <el-button type="primary" @click="openTypeDialog">
+      <el-button type="primary" @click="openTypeDialog(null)">
         <el-icon><Plus /></el-icon>
         添加字典类型
       </el-button>
@@ -63,7 +63,7 @@
                 type="primary"
                 size="small"
                 :disabled="!selectedDictTypeId"
-                @click="openDataDialog"
+                @click="openDataDialog(null)"
               >
                 <el-icon><Plus /></el-icon>
                 添加字典数据
@@ -130,7 +130,7 @@
           <el-input v-model="typeForm.dictCode" placeholder="请输入字典编码" />
         </el-form-item>
         <el-form-item label="字典描述" prop="description">
-          <el-input v-model="typeForm.description" type="textarea" rows="3" placeholder="请输入字典描述" />
+          <el-input v-model="typeForm.description" type="textarea" :rows="3" placeholder="请输入字典描述" />
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="typeForm.status" :active-value="1" :inactive-value="0" />
@@ -170,7 +170,7 @@
           <el-switch v-model="dataForm.status" :active-value="1" :inactive-value="0" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
-          <el-input v-model="dataForm.remark" type="textarea" rows="3" placeholder="请输入备注" />
+          <el-input v-model="dataForm.remark" type="textarea" :rows="3" placeholder="请输入备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -320,13 +320,13 @@ const openTypeDialog = (row = null) => {
   if (row) {
     Object.assign(typeForm, row)
   } else {
-    Object.assign(typeForm, {
-      id: null,
-      dictName: '',
-      dictCode: '',
-      description: '',
-      status: 1
-    })
+    typeForm.id = null
+    typeForm.dictName = ''
+    typeForm.dictCode = ''
+    typeForm.description = ''
+    typeForm.status = 1
+    delete typeForm.createTime
+    delete typeForm.updateTime
   }
   typeDialogVisible.value = true
 }
@@ -336,18 +336,18 @@ const openDataDialog = (row = null) => {
   if (row) {
     Object.assign(dataForm, row)
   } else {
-    Object.assign(dataForm, {
-      id: null,
-      dictTypeId: selectedDictTypeId.value,
-      dictLabel: '',
-      dictValue: '',
-      dictSort: 0,
-      cssClass: '',
-      listClass: '',
-      isDefault: 0,
-      status: 1,
-      remark: ''
-    })
+    dataForm.id = null
+    dataForm.dictTypeId = selectedDictTypeId.value
+    dataForm.dictLabel = ''
+    dataForm.dictValue = ''
+    dataForm.dictSort = 0
+    dataForm.cssClass = ''
+    dataForm.listClass = ''
+    dataForm.isDefault = 0
+    dataForm.status = 1
+    dataForm.remark = ''
+    delete dataForm.createTime
+    delete dataForm.updateTime
   }
   dataDialogVisible.value = true
 }

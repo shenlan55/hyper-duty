@@ -56,7 +56,7 @@
           <el-input v-model="form.roleCode" placeholder="请输入角色编码"></el-input>
         </el-form-item>
         <el-form-item label="角色描述" prop="description">
-          <el-input v-model="form.description" type="textarea" rows="3" placeholder="请输入角色描述"></el-input>
+          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入角色描述"></el-input>
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0"></el-switch>

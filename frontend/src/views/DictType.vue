@@ -77,7 +77,7 @@
           <el-input v-model="form.dictCode" placeholder="请输入字典编码" />
         </el-form-item>
         <el-form-item label="字典描述" prop="description">
-          <el-input v-model="form.description" type="textarea" rows="3" placeholder="请输入字典描述" />
+          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入字典描述" />
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
