@@ -29,6 +29,10 @@ public class SysEmployee implements Serializable {
 
     private Integer gender;
 
+    private Long dictTypeId;
+
+    private Long dictDataId;
+
     private Integer status;
 
     private LocalDateTime createTime;

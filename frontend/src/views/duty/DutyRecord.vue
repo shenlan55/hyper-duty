@@ -305,8 +305,8 @@
         </el-form-item>
         <el-form-item v-if="editForm.dutyStatus === 3" label="替补人员" prop="substituteEmployeeId">
           <el-radio-group v-model="substituteType" @change="handleSubstituteTypeChange">
-            <el-radio :label="1">自动匹配</el-radio>
-            <el-radio :label="2">手动选择</el-radio>
+            <el-radio :value="1">自动匹配</el-radio>
+            <el-radio :value="2">手动选择</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item v-if="editForm.dutyStatus === 3 && substituteType === 1" label="推荐替补人员">

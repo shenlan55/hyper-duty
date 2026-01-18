@@ -54,9 +54,22 @@
         <el-table-column prop="email" label="邮箱" min-width="200" />
         <el-table-column prop="gender" label="性别" width="100">
           <template #default="scope">
-            <el-tag :type="scope.row.gender === 1 ? 'info' : scope.row.gender === 2 ? 'success' : 'default'">
+            <el-tag 
+              :class="scope.row.gender === 1 ? 'gender-tag-male' : scope.row.gender === 2 ? 'gender-tag-female' : 'gender-tag-unknown'"
+              size="small"
+            >
               {{ scope.row.gender === 1 ? '男' : scope.row.gender === 2 ? '女' : '未知' }}
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="dictTypeId" label="字典类型" min-width="150">
+          <template #default="scope">
+            {{ getDictTypeName(scope.row.dictTypeId) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="dictDataId" label="字典数据" min-width="150">
+          <template #default="scope">
+            {{ getDictDataLabel(scope.row.dictDataId, scope.row.dictTypeId) }}
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
@@ -175,10 +188,48 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="字典类型" prop="dictTypeId">
+              <el-select
+                v-model="employeeForm.dictTypeId"
+                placeholder="请选择字典类型"
+                style="width: 100%"
+                clearable
+                @change="handleDictTypeChange"
+              >
+                <el-option
+                  v-for="dictType in dictTypeList"
+                  :key="dictType.id"
+                  :label="dictType.dictName"
+                  :value="dictType.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="字典数据" prop="dictDataId">
+              <el-select
+                v-model="employeeForm.dictDataId"
+                placeholder="请选择字典数据"
+                style="width: 100%"
+                clearable
+                :disabled="!employeeForm.dictTypeId"
+              >
+                <el-option
+                  v-for="dictData in dictDataList"
+                  :key="dictData.id"
+                  :label="dictData.dictLabel"
+                  :value="dictData.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="employeeForm.status">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="0">禁用</el-radio>
+            <el-radio :value="1">启用</el-radio>
+            <el-radio :value="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -205,6 +256,8 @@ import {
   deleteEmployee
 } from '../api/employee'
 import { getDeptList } from '../api/dept'
+import { listDictType } from '../api/dictType'
+import { getDictDataByType } from '../api/dictData'
 import { formatDateTime } from '../utils/dateUtils'
 
 // 响应式数据
@@ -223,6 +276,15 @@ const pageSize = ref(10)
 // 部门数据
 const deptList = ref([])
 
+// 字典类型数据
+const dictTypeList = ref([])
+
+// 字典数据（按字典类型ID分组）
+const dictDataMap = ref(new Map())
+
+// 字典数据（用于表单下拉框）
+const dictDataList = ref([])
+
 // 人员数据
 const employeeList = ref([])
 
@@ -235,6 +297,8 @@ const employeeForm = reactive({
   phone: '',
   email: '',
   gender: 0,
+  dictTypeId: null,
+  dictDataId: null,
   status: 1
 })
 
@@ -293,6 +357,21 @@ const getDeptName = (deptId) => {
   return dept ? dept.deptName : ''
 }
 
+// 获取字典类型名称
+const getDictTypeName = (dictTypeId) => {
+  const dictType = dictTypeList.value.find(d => d.id === dictTypeId)
+  return dictType ? dictType.dictName : ''
+}
+
+// 获取字典数据标签
+const getDictDataLabel = (dictDataId, dictTypeId) => {
+  if (!dictDataId || !dictTypeId) return ''
+  const dictDataList = dictDataMap.value.get(dictTypeId)
+  if (!dictDataList) return ''
+  const dictData = dictDataList.find(d => d.id === dictDataId)
+  return dictData ? dictData.dictLabel : ''
+}
+
 // 获取部门列表
 const fetchDeptList = async () => {
   try {
@@ -303,6 +382,56 @@ const fetchDeptList = async () => {
   } catch (error) {
     console.error('获取部门列表失败:', error)
     ElMessage.error('获取部门列表失败')
+  }
+}
+
+// 获取字典类型列表
+const fetchDictTypeList = async () => {
+  try {
+    const response = await listDictType({ pageNum: 1, pageSize: 1000 })
+    if (response.code === 200) {
+      dictTypeList.value = response.data.records
+      
+      // 预加载所有字典类型的字典数据
+      for (const dictType of dictTypeList.value) {
+        await fetchDictDataByType(dictType.id)
+      }
+    }
+  } catch (error) {
+    console.error('获取字典类型列表失败:', error)
+  }
+}
+
+// 获取字典数据（按字典类型）
+const fetchDictDataByType = async (dictTypeId) => {
+  try {
+    const response = await getDictDataByType(dictTypeId)
+    if (response.code === 200) {
+      dictDataMap.value.set(dictTypeId, response.data)
+    }
+  } catch (error) {
+    console.error('获取字典数据失败:', error)
+  }
+}
+
+// 获取字典数据（用于表单下拉框）
+const fetchDictDataList = async (dictTypeId) => {
+  try {
+    const response = await getDictDataByType(dictTypeId)
+    if (response.code === 200) {
+      dictDataList.value = response.data
+    }
+  } catch (error) {
+    console.error('获取字典数据失败:', error)
+  }
+}
+
+// 字典类型变化时加载对应的字典数据
+const handleDictTypeChange = (dictTypeId) => {
+  if (dictTypeId) {
+    fetchDictDataList(dictTypeId)
+  } else {
+    dictDataList.value = []
   }
 }
 
@@ -354,6 +483,11 @@ const openEditDialog = (employee) => {
   Object.assign(employeeForm, employee)
   dialogTitle.value = '编辑人员'
   dialogVisible.value = true
+  
+  // 如果有字典类型，加载对应的字典数据
+  if (employee.dictTypeId) {
+    fetchDictDataList(employee.dictTypeId)
+  }
 }
 
 // 重置表单
@@ -369,8 +503,11 @@ const resetForm = () => {
     phone: '',
     email: '',
     gender: 0,
+    dictTypeId: null,
+    dictDataId: null,
     status: 1
   })
+  dictDataList.value = []
 }
 
 // 保存人员
@@ -430,6 +567,7 @@ const handleDelete = async (id) => {
 // 生命周期钩子
 onMounted(async () => {
   await fetchDeptList()
+  await fetchDictTypeList()
   await fetchEmployeeList()
 })
 </script>
@@ -475,5 +613,23 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   margin-top: 10px;
+}
+
+.gender-tag-male {
+  background-color: #ECF5FF;
+  color: #409EFF;
+  border-color: #D9ECFF;
+}
+
+.gender-tag-female {
+  background-color: #FEF0F0;
+  color: #F56C6C;
+  border-color: #FDE2E2;
+}
+
+.gender-tag-unknown {
+  background-color: #F4F4F5;
+  color: #909399;
+  border-color: #E9E9EB;
 }
 </style>

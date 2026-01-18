@@ -40,11 +40,15 @@ CREATE TABLE IF NOT EXISTS sys_employee (
     phone VARCHAR(11) COMMENT '手机号码',
     email VARCHAR(50) COMMENT '邮箱',
     gender TINYINT DEFAULT 0 COMMENT '性别：0未知，1男，2女',
+    dict_type_id BIGINT COMMENT '字典类型ID',
+    dict_data_id BIGINT COMMENT '字典数据ID',
     status TINYINT DEFAULT 1 COMMENT '状态：0禁用，1启用',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     UNIQUE KEY uk_employee_code (employee_code),
     INDEX idx_employee_code (employee_code),
+    INDEX idx_dict_type_id (dict_type_id),
+    INDEX idx_dict_data_id (dict_data_id),
     FOREIGN KEY (dept_id) REFERENCES sys_dept(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='人员表';
 
