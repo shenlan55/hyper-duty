@@ -112,6 +112,8 @@
                 type="date"
                 placeholder="选择开始日期"
                 style="width: 100%"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
               />
             </el-form-item>
           </el-col>
@@ -122,6 +124,8 @@
                 type="date"
                 placeholder="选择结束日期"
                 style="width: 100%"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
               />
             </el-form-item>
           </el-col>

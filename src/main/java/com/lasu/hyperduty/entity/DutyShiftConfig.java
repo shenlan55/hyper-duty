@@ -28,6 +28,8 @@ public class DutyShiftConfig implements Serializable {
 
     private String endTime;
 
+    private Integer isCrossDay;
+
     private BigDecimal durationHours;
 
     private BigDecimal breakHours;
