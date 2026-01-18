@@ -5,5 +5,20 @@
     <select id="selectMenuIdsByRoleId" resultType="java.lang.Long">
         SELECT menu_id FROM sys_role_menu WHERE role_id = #{roleId}
     </select>
+    
+    <select id="selectUserIdsByRoleId" resultType="java.lang.Long">
+        SELECT user_id FROM sys_user_role WHERE role_id = #{roleId}
+    </select>
+    
+    <delete id="deleteUserByRoleId" parameterType="java.lang.Long">
+        DELETE FROM sys_user_role WHERE role_id = #{roleId}
+    </delete>
+    
+    <insert id="batchInsertUserRoles" parameterType="java.util.List">
+        INSERT INTO sys_user_role (user_id, role_id) VALUES
+        <foreach collection="list" item="userRole" separator=",">
+            (#{userRole.userId}, #{userRole.roleId})
+        </foreach>
+    </insert>
 
 </mapper>

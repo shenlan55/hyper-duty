@@ -48,6 +48,12 @@ request.interceptors.request.use(
       }
       config.headers.Authorization = `Bearer ${token}`
     }
+    
+    // 设置POST请求的默认Content-Type为application/json
+    if (config.method === 'post' && !config.headers['Content-Type']) {
+      config.headers['Content-Type'] = 'application/json'
+    }
+    
     return config
   },
   error => {

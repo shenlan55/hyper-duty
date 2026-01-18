@@ -19,7 +19,7 @@ export function getMenuById(id) {
 // 获取菜单树形结构
 export function getMenuTree() {
   return request({
-    url: '/menu/list',
+    url: '/menu/tree',
     method: 'get'
   })
 }
@@ -47,5 +47,13 @@ export function deleteMenu(id) {
   return request({
     url: `/menu/${id}`,
     method: 'delete'
+  })
+}
+
+// 获取当前用户菜单
+export function getUserMenus() {
+  return request({
+    url: '/menu/user',
+    method: 'get'
   })
 }

@@ -45,7 +45,11 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="createTime" label="创建时间" width="180" />
+            <el-table-column prop="createTime" label="创建时间" width="180">
+              <template #default="scope">
+                {{ formatDateTime(scope.row.createTime) }}
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="180" fixed="right">
               <template #default="scope">
                 <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
@@ -86,10 +90,10 @@
               <div class="tree-node">
                 <span>{{ node.label }}</span>
                 <span class="tree-node-actions">
-                  <el-button type="text" size="small" @click="openEditDialog(data)">
+                  <el-button link size="small" @click="openEditDialog(data)">
                     <el-icon><Edit /></el-icon>
                   </el-button>
-                  <el-button type="text" size="small" @click="handleDelete(data.id)">
+                  <el-button link size="small" @click="handleDelete(data.id)">
                     <el-icon><Delete /></el-icon>
                   </el-button>
                 </span>
@@ -150,8 +154,8 @@
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="deptForm.status">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="0">禁用</el-radio>
+            <el-radio :value="1">启用</el-radio>
+            <el-radio :value="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -178,6 +182,7 @@ import {
   updateDept,
   deleteDept
 } from '../api/dept'
+import { formatDateTime } from '../utils/dateUtils'
 
 // 响应式数据
 const activeTab = ref('list')

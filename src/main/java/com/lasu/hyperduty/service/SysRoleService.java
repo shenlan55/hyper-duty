@@ -24,5 +24,20 @@ public interface SysRoleService extends IService<SysRole> {
      * @return 是否成功
      */
     boolean saveRoleMenu(Long roleId, List<Long> menuIds);
+    
+    /**
+     * 获取角色用户列表
+     * @param roleId 角色ID
+     * @return 用户ID列表
+     */
+    List<Long> getUserIdsByRoleId(Long roleId);
+    
+    /**
+     * 保存角色用户
+     * @param roleId 角色ID
+     * @param userIds 用户ID列表
+     * @return 是否成功
+     */
+    boolean saveRoleUser(Long roleId, List<Long> userIds);
 
 }

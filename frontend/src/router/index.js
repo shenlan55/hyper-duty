@@ -20,34 +20,110 @@ const routes = [
         meta: { title: '首页' }
       },
       {
-        path: 'dept',
-        name: 'Dept',
-        component: () => import('../views/Dept.vue'),
-        meta: { title: '部门管理' }
+        path: 'system',
+        name: 'System',
+        component: () => import('../views/system/SystemLayout.vue'),
+        meta: { title: '系统管理' },
+        children: [
+          {
+            path: 'dept',
+            name: 'Dept',
+            component: () => import('../views/Dept.vue'),
+            meta: { title: '部门管理' }
+          },
+          {
+            path: 'employee',
+            name: 'Employee',
+            component: () => import('../views/Employee.vue'),
+            meta: { title: '人员管理' }
+          },
+          {
+            path: 'user',
+            name: 'User',
+            component: () => import('../views/User.vue'),
+            meta: { title: '用户管理' }
+          },
+          {
+            path: 'menu',
+            name: 'Menu',
+            component: () => import('../views/Menu.vue'),
+            meta: { title: '菜单管理' }
+          },
+          {
+            path: 'role',
+            name: 'Role',
+            component: () => import('../views/Role.vue'),
+            meta: { title: '角色管理' }
+          },
+          {
+            path: 'dict',
+            name: 'Dict',
+            component: () => import('../views/Dict.vue'),
+            meta: { title: '字典管理' }
+          }
+        ]
       },
       {
-        path: 'employee',
-        name: 'Employee',
-        component: () => import('../views/Employee.vue'),
-        meta: { title: '人员管理' }
-      },
-      {
-        path: 'user',
-        name: 'User',
-        component: () => import('../views/User.vue'),
-        meta: { title: '用户管理' }
-      },
-      {
-        path: 'menu',
-        name: 'Menu',
-        component: () => import('../views/Menu.vue'),
-        meta: { title: '菜单管理' }
-      },
-      {
-        path: 'role',
-        name: 'Role',
-        component: () => import('../views/Role.vue'),
-        meta: { title: '角色管理' }
+        path: 'duty',
+        name: 'Duty',
+        component: () => import('../views/duty/DutyLayout.vue'),
+        meta: { title: '值班管理' },
+        children: [
+          {
+            path: 'schedule',
+            name: 'DutySchedule',
+            component: () => import('../views/duty/DutySchedule.vue'),
+            meta: { title: '值班表管理' }
+          },
+          {
+            path: 'assignment',
+            name: 'DutyAssignment',
+            component: () => import('../views/duty/DutyAssignment.vue'),
+            meta: { title: '值班安排' }
+          },
+          {
+            path: 'record',
+            name: 'DutyRecord',
+            component: () => import('../views/duty/DutyRecord.vue'),
+            meta: { title: '值班记录' }
+          },
+          {
+            path: 'shift-config',
+            name: 'ShiftConfig',
+            component: () => import('../views/duty/ShiftConfig.vue'),
+            meta: { title: '班次配置' }
+          },
+          {
+            path: 'leave-request',
+            name: 'LeaveRequest',
+            component: () => import('../views/duty/LeaveRequest.vue'),
+            meta: { title: '请假申请' }
+          },
+          {
+            path: 'leave-approval',
+            name: 'LeaveApproval',
+            component: () => import('../views/duty/LeaveApproval.vue'),
+            meta: { title: '请假审批' }
+          },
+          {
+            path: 'swap-request',
+            name: 'SwapRequest',
+            component: () => import('../views/duty/SwapRequest.vue'),
+            meta: { title: '调班管理' }
+          },
+          {
+            path: 'statistics',
+            name: 'Statistics',
+            component: () => import('../views/duty/Statistics.vue'),
+            meta: { title: '排班统计' }
+          },
+          {
+            path: 'operation-log',
+            name: 'OperationLog',
+            component: () => import('../views/duty/OperationLog.vue'),
+            meta: { title: '操作日志' }
+          }
+        ]
       }
     ]
   }

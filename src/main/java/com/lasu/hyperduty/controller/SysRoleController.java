@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 角色管理控制器
@@ -38,7 +40,7 @@ public class SysRoleController {
      * @param id 角色ID
      * @return 角色详情
      */
-    @GetMapping("/{id}")
+    @GetMapping("/detail/{id}")
     public ResponseResult<SysRole> getRoleById(@PathVariable Long id) {
         SysRole role = sysRoleService.getById(id);
         return ResponseResult.success(role);
@@ -90,13 +92,42 @@ public class SysRoleController {
 
     /**
      * 保存角色菜单
-     * @param roleId 角色ID
-     * @param menuIds 菜单ID列表
+     * @param request 请求参数，包含角色ID和菜单ID列表
      * @return 是否保存成功
      */
     @PostMapping("/menu")
-    public ResponseResult<Boolean> saveRoleMenu(@RequestParam Long roleId, @RequestBody List<Long> menuIds) {
+    public ResponseResult<Boolean> saveRoleMenu(@RequestBody Map<String, Object> request) {
+        Long roleId = Long.parseLong(request.get("roleId").toString());
+        List<Long> menuIds = ((List<?>) request.get("menuIds")).stream()
+            .map(item -> Long.parseLong(item.toString()))
+            .collect(Collectors.toList());
         boolean result = sysRoleService.saveRoleMenu(roleId, menuIds);
+        return ResponseResult.success(result);
+    }
+    
+    /**
+     * 获取角色用户
+     * @param roleId 角色ID
+     * @return 用户ID列表
+     */
+    @GetMapping("/user/{roleId}")
+    public ResponseResult<List<Long>> getRoleUser(@PathVariable("roleId") Long roleId) {
+        List<Long> userIds = sysRoleService.getUserIdsByRoleId(roleId);
+        return ResponseResult.success(userIds);
+    }
+    
+    /**
+     * 保存角色用户
+     * @param request 请求参数，包含角色ID和用户ID列表
+     * @return 是否保存成功
+     */
+    @PostMapping("/user")
+    public ResponseResult<Boolean> saveRoleUser(@RequestBody Map<String, Object> request) {
+        Long roleId = Long.parseLong(request.get("roleId").toString());
+        List<Long> userIds = ((List<?>) request.get("userIds")).stream()
+            .map(item -> Long.parseLong(item.toString()))
+            .collect(Collectors.toList());
+        boolean result = sysRoleService.saveRoleUser(roleId, userIds);
         return ResponseResult.success(result);
     }
 
