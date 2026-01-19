@@ -71,4 +71,13 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
                 .orderByDesc(LeaveRequest::getCreateTime)
                 .list();
     }
+
+    @Override
+    public List<LeaveRequest> getPendingApprovalsByScheduleId(Long scheduleId) {
+        return lambdaQuery()
+                .eq(LeaveRequest::getScheduleId, scheduleId)
+                .eq(LeaveRequest::getApprovalStatus, "pending")
+                .orderByDesc(LeaveRequest::getCreateTime)
+                .list();
+    }
 }

@@ -16,4 +16,6 @@ public interface LeaveRequestService extends IService<LeaveRequest> {
     List<LeaveRequest> getPendingApprovals(Long approverId);
 
     List<LeaveRequest> getMyLeaveRequests(Long employeeId);
+
+    List<LeaveRequest> getPendingApprovalsByScheduleId(Long scheduleId);
 }

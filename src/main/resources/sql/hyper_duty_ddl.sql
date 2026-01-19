@@ -168,6 +168,22 @@ CREATE TABLE IF NOT EXISTS duty_schedule (
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='值班表';
 
+-- 值班表人员关联表
+CREATE TABLE IF NOT EXISTS duty_schedule_employee (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+    schedule_id BIGINT NOT NULL COMMENT '值班表ID',
+    employee_id BIGINT NOT NULL COMMENT '员工ID',
+    is_leader TINYINT DEFAULT 0 COMMENT '是否值班长：0否，1是',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    UNIQUE KEY uk_schedule_employee (schedule_id, employee_id),
+    INDEX idx_schedule_id (schedule_id),
+    INDEX idx_employee_id (employee_id),
+    INDEX idx_is_leader (is_leader),
+    FOREIGN KEY (schedule_id) REFERENCES duty_schedule(id) ON DELETE CASCADE,
+    FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='值班表人员关联表';
+
 -- 值班安排表
 CREATE TABLE IF NOT EXISTS duty_assignment (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '值班安排ID',
@@ -268,6 +284,7 @@ CREATE TABLE IF NOT EXISTS leave_request (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '请假申请ID',
     request_no VARCHAR(50) NOT NULL UNIQUE COMMENT '申请编号',
     employee_id BIGINT NOT NULL COMMENT '申请人ID',
+    schedule_id BIGINT COMMENT '值班表ID',
     leave_type TINYINT NOT NULL COMMENT '请假类型:1-事假,2-病假,3-年假,4-调休,5-其他',
     start_date DATE NOT NULL COMMENT '开始日期',
     end_date DATE NOT NULL COMMENT '结束日期',
@@ -288,9 +305,11 @@ CREATE TABLE IF NOT EXISTS leave_request (
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_request_no (request_no),
     INDEX idx_employee_id (employee_id),
+    INDEX idx_schedule_id (schedule_id),
     INDEX idx_approval_status (approval_status),
     INDEX idx_date_range (start_date, end_date),
     FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE,
+    FOREIGN KEY (schedule_id) REFERENCES duty_schedule(id) ON DELETE SET NULL,
     FOREIGN KEY (current_approver_id) REFERENCES sys_employee(id) ON DELETE SET NULL,
     FOREIGN KEY (substitute_employee_id) REFERENCES sys_employee(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='请假申请表';

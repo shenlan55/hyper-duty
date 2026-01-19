@@ -2,6 +2,7 @@ package com.lasu.hyperduty.controller;
 
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.dto.LoginDTO;
+import com.lasu.hyperduty.entity.SysUser;
 import com.lasu.hyperduty.service.SysUserService;
 import com.lasu.hyperduty.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,13 +42,21 @@ public class AuthController {
         // 将认证信息存入SecurityContext
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
+        // 获取用户信息
+        SysUser user = sysUserService.lambdaQuery()
+                .eq(SysUser::getUsername, loginDTO.getUsername())
+                .one();
+
         // 生成JWT令牌
         String token = jwtUtil.generateToken(loginDTO.getUsername());
 
-        // 获取用户信息
+        // 构建返回数据
         Map<String, Object> userInfo = new HashMap<>();
         userInfo.put("username", loginDTO.getUsername());
         userInfo.put("token", token);
+        if (user != null) {
+            userInfo.put("employeeId", user.getEmployeeId());
+        }
 
         return ResponseResult.success("登录成功", userInfo);
     }

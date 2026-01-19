@@ -1,6 +1,5 @@
 import request from '../../utils/request'
 
-// 获取值班表列表
 export function getScheduleList() {
   return request({
     url: '/duty/schedule/list',
@@ -8,7 +7,6 @@ export function getScheduleList() {
   })
 }
 
-// 根据ID获取值班表详情
 export function getScheduleById(id) {
   return request({
     url: `/duty/schedule/${id}`,
@@ -16,7 +14,20 @@ export function getScheduleById(id) {
   })
 }
 
-// 添加值班表
+export function getScheduleEmployees(id) {
+  return request({
+    url: `/duty/schedule/${id}/employees`,
+    method: 'get'
+  })
+}
+
+export function getScheduleLeaders(id) {
+  return request({
+    url: `/duty/schedule/${id}/leaders`,
+    method: 'get'
+  })
+}
+
 export function addSchedule(data) {
   return request({
     url: '/duty/schedule',
@@ -25,7 +36,6 @@ export function addSchedule(data) {
   })
 }
 
-// 修改值班表
 export function updateSchedule(data) {
   return request({
     url: '/duty/schedule',
@@ -34,7 +44,30 @@ export function updateSchedule(data) {
   })
 }
 
-// 删除值班表
+export function updateScheduleEmployees(id, employeeIds) {
+  return request({
+    url: `/duty/schedule/${id}/employees`,
+    method: 'put',
+    data: employeeIds
+  })
+}
+
+export function updateScheduleEmployeesAndLeaders(id, employeeIds, leaderIds) {
+  return request({
+    url: `/duty/schedule/${id}/employees-and-leaders`,
+    method: 'put',
+    data: { employeeIds, leaderIds }
+  })
+}
+
+export function updateScheduleLeaders(id, leaderIds) {
+  return request({
+    url: `/duty/schedule/${id}/leaders`,
+    method: 'put',
+    data: leaderIds
+  })
+}
+
 export function deleteSchedule(id) {
   return request({
     url: `/duty/schedule/${id}`,

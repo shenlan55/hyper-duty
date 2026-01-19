@@ -23,6 +23,8 @@ public class LeaveRequest implements Serializable {
 
     private Long employeeId;
 
+    private Long scheduleId;
+
     private Integer leaveType;
 
     private LocalDate startDate;

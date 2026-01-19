@@ -2,10 +2,27 @@
   <div class="leave-approval-container">
     <div class="page-header">
       <h2>请假审批</h2>
-      <el-button type="primary" @click="refreshList">
-        <el-icon><Refresh /></el-icon>
-        刷新列表
-      </el-button>
+      <div class="header-actions">
+        <el-select
+          v-model="selectedScheduleId"
+          placeholder="选择值班表"
+          clearable
+          class="schedule-select"
+          @change="handleScheduleChange"
+          style="width: 250px; margin-right: 10px"
+        >
+          <el-option
+            v-for="schedule in scheduleList"
+            :key="schedule.id"
+            :label="schedule.scheduleName"
+            :value="schedule.id"
+          />
+        </el-select>
+        <el-button type="primary" @click="refreshList">
+          <el-icon><Refresh /></el-icon>
+          刷新列表
+        </el-button>
+      </div>
     </div>
 
     <el-card shadow="hover" class="content-card">
@@ -160,10 +177,15 @@ import { Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getPendingApprovals,
+  getPendingApprovalsByScheduleId,
   approveLeaveRequest
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
+import { getScheduleList } from '../../api/duty/schedule'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
+import { useUserStore } from '../../stores/user'
+
+const userStore = useUserStore()
 
 const loading = ref(false)
 const approveDialogVisible = ref(false)
@@ -172,6 +194,8 @@ const viewDialogVisible = ref(false)
 const approveFormRef = ref()
 const requestList = ref([])
 const employeeList = ref([])
+const scheduleList = ref([])
+const selectedScheduleId = ref('')
 const currentRequest = ref({})
 const currentApproverId = ref(1)
 
@@ -251,13 +275,31 @@ const fetchEmployeeList = async () => {
     }
   } catch (error) {
     console.error('获取员工列表失败:', error)
+    ElMessage.error('获取员工列表失败')
+  }
+}
+
+const fetchScheduleList = async () => {
+  try {
+    const response = await getScheduleList()
+    if (response.code === 200) {
+      scheduleList.value = response.data
+    }
+  } catch (error) {
+    console.error('获取值班表列表失败:', error)
+    ElMessage.error('获取值班表列表失败')
   }
 }
 
 const fetchPendingApprovals = async () => {
   loading.value = true
   try {
-    const response = await getPendingApprovals(currentApproverId.value)
+    let response
+    if (selectedScheduleId.value) {
+      response = await getPendingApprovalsByScheduleId(selectedScheduleId.value)
+    } else {
+      response = await getPendingApprovals(userStore.employeeId)
+    }
     if (response.code === 200) {
       requestList.value = response.data
     }
@@ -267,6 +309,10 @@ const fetchPendingApprovals = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleScheduleChange = () => {
+  fetchPendingApprovals()
 }
 
 const refreshList = () => {
@@ -317,6 +363,7 @@ const handleApprove = async () => {
 
 onMounted(async () => {
   await fetchEmployeeList()
+  await fetchScheduleList()
   await fetchPendingApprovals()
 })
 </script>
@@ -337,6 +384,16 @@ onMounted(async () => {
   margin: 0;
   font-size: 20px;
   color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-select {
+  width: 250px;
 }
 
 .content-card {

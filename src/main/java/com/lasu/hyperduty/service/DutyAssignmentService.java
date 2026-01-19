@@ -5,4 +5,5 @@ import com.lasu.hyperduty.entity.DutyAssignment;
 
 public interface DutyAssignmentService extends IService<DutyAssignment> {
 
+    void deleteByScheduleIdAndDateRange(Long scheduleId, String startDate, String endDate);
 }

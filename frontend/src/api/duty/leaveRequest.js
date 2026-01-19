@@ -21,6 +21,13 @@ export function getPendingApprovals(approverId) {
   })
 }
 
+export function getPendingApprovalsByScheduleId(scheduleId) {
+  return request({
+    url: `/duty/leave-request/pending/schedule/${scheduleId}`,
+    method: 'get'
+  })
+}
+
 export function getLeaveRequestById(id) {
   return request({
     url: `/duty/leave-request/${id}`,

@@ -34,6 +34,12 @@ public class LeaveRequestController {
         return ResponseResult.success(list);
     }
 
+    @GetMapping("/pending/schedule/{scheduleId}")
+    public ResponseResult<List<LeaveRequest>> getPendingApprovalsByScheduleId(@PathVariable Long scheduleId) {
+        List<LeaveRequest> list = leaveRequestService.getPendingApprovalsByScheduleId(scheduleId);
+        return ResponseResult.success(list);
+    }
+
     @GetMapping("/{id}")
     public ResponseResult<LeaveRequest> getLeaveRequestById(@PathVariable Long id) {
         LeaveRequest request = leaveRequestService.getById(id);

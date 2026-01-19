@@ -50,3 +50,12 @@ export function deleteAssignment(id) {
     method: 'delete'
   })
 }
+
+// 批量删除值班安排
+export function deleteBatchAssignments(scheduleId, startDate, endDate) {
+  return request({
+    url: '/duty/assignment/batch-delete',
+    method: 'delete',
+    params: { scheduleId, startDate, endDate }
+  })
+}
