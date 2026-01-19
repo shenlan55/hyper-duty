@@ -30,7 +30,7 @@
         </el-table-column>
         <el-table-column label="请假时间" width="250">
           <template #default="scope">
-            {{ formatDate(scope.row.startDate) }} {{ scope.row.startTime }} - {{ formatDate(scope.row.endDate) }} {{ scope.row.endTime }}
+            {{ formatDate(scope.row.startDate) }} {{ scope.row.startTime || '' }} - {{ formatDate(scope.row.endDate) }} {{ scope.row.endTime || '' }}
           </template>
         </el-table-column>
         <el-table-column prop="totalHours" label="请假时长(小时)" width="130" />
@@ -75,6 +75,16 @@
         :rules="rules"
         label-position="top"
       >
+        <el-form-item label="值班表" prop="scheduleId">
+          <el-select v-model="form.scheduleId" placeholder="请选择值班表" style="width: 100%">
+            <el-option
+              v-for="schedule in scheduleList"
+              :key="schedule.id"
+              :label="schedule.scheduleName"
+              :value="schedule.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="请假类型" prop="leaveType">
@@ -185,7 +195,7 @@
     <el-dialog
       v-model="viewDialogVisible"
       title="请假详情"
-      width="700px"
+      width="900px"
     >
       <el-descriptions :column="2" border>
         <el-descriptions-item label="申请编号">{{ currentRequest.requestNo }}</el-descriptions-item>
@@ -196,16 +206,55 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="请假时长">{{ currentRequest.totalHours }}小时</el-descriptions-item>
-        <el-descriptions-item label="开始时间">{{ currentRequest.startDate }} {{ currentRequest.startTime }}</el-descriptions-item>
-        <el-descriptions-item label="结束时间">{{ currentRequest.endDate }} {{ currentRequest.endTime }}</el-descriptions-item>
+        <el-descriptions-item label="开始时间">{{ currentRequest.startDate }} {{ currentRequest.startTime || '' }}</el-descriptions-item>
+        <el-descriptions-item label="结束时间">{{ currentRequest.endDate }} {{ currentRequest.endTime || '' }}</el-descriptions-item>
         <el-descriptions-item label="审批状态">
           <el-tag :type="getApprovalStatusColor(currentRequest.approvalStatus)">
             {{ getApprovalStatusName(currentRequest.approvalStatus) }}
           </el-tag>
         </el-descriptions-item>
+        <el-descriptions-item v-if="currentRequest.currentApproverId" label="当前审批人">
+          {{ getEmployeeName(currentRequest.currentApproverId) }}
+        </el-descriptions-item>
         <el-descriptions-item label="请假原因" :span="2">{{ currentRequest.reason }}</el-descriptions-item>
-        <el-descriptions-item label="申请时间" :span="2">{{ currentRequest.createTime }}</el-descriptions-item>
+        <el-descriptions-item label="申请时间" :span="2">{{ formatDateTime(currentRequest.createTime) }}</el-descriptions-item>
+        <el-descriptions-item v-if="currentRequest.substituteEmployeeId" label="替补人员">
+          {{ getEmployeeName(currentRequest.substituteEmployeeId) }}
+        </el-descriptions-item>
+        <el-descriptions-item v-if="currentRequest.rejectReason" label="拒绝原因" :span="2">
+          {{ currentRequest.rejectReason }}
+        </el-descriptions-item>
       </el-descriptions>
+      
+      <div v-if="currentRequest.approvalRecords && currentRequest.approvalRecords.length > 0" class="approval-records">
+        <h3>审批记录</h3>
+        <el-timeline>
+          <el-timeline-item
+            v-for="(record, index) in currentRequest.approvalRecords"
+            :key="index"
+            :timestamp="formatDateTime(record.createTime)"
+            placement="top"
+            :type="record.approvalStatus === 'approved' ? 'success' : record.approvalStatus === 'rejected' ? 'danger' : 'primary'"
+          >
+            <el-card>
+              <h4>{{ getApproverName(record.approverId) }}</h4>
+              <p><strong>审批结果：</strong>
+                <el-tag :type="getApprovalStatusColor(record.approvalStatus)">
+                  {{ getApprovalStatusName(record.approvalStatus) }}
+                </el-tag>
+              </p>
+              <p v-if="record.approvalOpinion"><strong>审批意见：</strong>{{ record.approvalOpinion }}</p>
+              <p v-if="record.rejectReason"><strong>拒绝原因：</strong>{{ record.rejectReason }}</p>
+            </el-card>
+          </el-timeline-item>
+        </el-timeline>
+      </div>
+      
+      <div v-if="currentRequest.approvalStatus === 'rejected'" class="re-submit-section">
+        <el-button type="primary" @click="handleReSubmit">
+          重新提交
+        </el-button>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -217,10 +266,15 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getMyLeaveRequests,
   submitLeaveRequest,
-  deleteLeaveRequest
+  deleteLeaveRequest,
+  getApprovalRecords
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
+import { getScheduleList } from '../../api/duty/schedule'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
+import { useUserStore } from '../../stores/user'
+
+const userStore = useUserStore()
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -230,12 +284,14 @@ const dialogTitle = ref('申请请假')
 const formRef = ref()
 const requestList = ref([])
 const employeeList = ref([])
+const scheduleList = ref([])
 const currentRequest = ref({})
 const fileList = ref([])
 
 const form = reactive({
   id: null,
   employeeId: null,
+  scheduleId: null,
   leaveType: 1,
   startDate: null,
   endDate: null,
@@ -247,6 +303,9 @@ const form = reactive({
 })
 
 const rules = {
+  scheduleId: [
+    { required: true, message: '请选择值班表', trigger: 'blur' }
+  ],
   leaveType: [
     { required: true, message: '请选择请假类型', trigger: 'blur' }
   ],
@@ -315,6 +374,11 @@ const getEmployeeName = (employeeId) => {
   return employee ? employee.employeeName : '未知'
 }
 
+const getApproverName = (approverId) => {
+  const employee = employeeList.value.find(e => e.id === approverId)
+  return employee ? employee.employeeName : '未知'
+}
+
 const fetchEmployeeList = async () => {
   try {
     const response = await getEmployeeList()
@@ -326,10 +390,21 @@ const fetchEmployeeList = async () => {
   }
 }
 
+const fetchScheduleList = async () => {
+  try {
+    const response = await getScheduleList()
+    if (response.code === 200) {
+      scheduleList.value = response.data
+    }
+  } catch (error) {
+    console.error('获取值班表列表失败:', error)
+  }
+}
+
 const fetchMyLeaveRequests = async () => {
   loading.value = true
   try {
-    const response = await getMyLeaveRequests(1)
+    const response = await getMyLeaveRequests(userStore.employeeId)
     if (response.code === 200) {
       requestList.value = response.data
     }
@@ -347,9 +422,32 @@ const openAddDialog = () => {
   dialogVisible.value = true
 }
 
-const openViewDialog = (row) => {
+const openViewDialog = async (row) => {
   currentRequest.value = row
+  
+  if (row.approvalStatus === 'rejected' || row.approvalStatus === 'approved') {
+    await fetchApprovalRecords(row.id)
+  }
+  
   viewDialogVisible.value = true
+}
+
+const fetchApprovalRecords = async (requestId) => {
+  try {
+    const response = await getApprovalRecords(requestId)
+    if (response.code === 200) {
+      currentRequest.value.approvalRecords = response.data
+    }
+  } catch (error) {
+    console.error('获取审批记录失败:', error)
+  }
+}
+
+const handleReSubmit = () => {
+  resetForm()
+  dialogTitle.value = '重新提交请假'
+  dialogVisible.value = true
+  viewDialogVisible.value = false
 }
 
 const resetForm = () => {
@@ -358,7 +456,8 @@ const resetForm = () => {
   }
   Object.assign(form, {
     id: null,
-    employeeId: 1,
+    employeeId: userStore.employeeId,
+    scheduleId: null,
     leaveType: 1,
     startDate: null,
     endDate: null,
@@ -434,6 +533,7 @@ const handleExceed = (files) => {
 
 onMounted(async () => {
   await fetchEmployeeList()
+  await fetchScheduleList()
   await fetchMyLeaveRequests()
 })
 </script>
@@ -458,5 +558,41 @@ onMounted(async () => {
 
 .content-card {
   margin-bottom: 10px;
+}
+
+.approval-records {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.approval-records h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #303133;
+}
+
+.approval-records .el-card {
+  margin-bottom: 10px;
+}
+
+.approval-records .el-card h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #303133;
+}
+
+.approval-records .el-card p {
+  margin: 5px 0;
+  color: #606266;
+}
+
+.re-submit-section {
+  margin-top: 20px;
+  text-align: center;
+  padding: 20px;
+  background-color: #f0f9ff;
+  border-radius: 4px;
 }
 </style>

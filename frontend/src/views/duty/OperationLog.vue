@@ -125,7 +125,7 @@
         <el-descriptions-item v-if="currentLog.errorMsg" label="错误信息" :span="2">
           <el-tag type="danger">{{ currentLog.errorMsg }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="操作时间" :span="2">{{ currentLog.createTime }}</el-descriptions-item>
+        <el-descriptions-item label="操作时间" :span="2">{{ formatDateTime(currentLog.createTime) }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>

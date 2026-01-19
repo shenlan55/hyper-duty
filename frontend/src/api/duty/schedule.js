@@ -74,3 +74,27 @@ export function deleteSchedule(id) {
     method: 'delete'
   })
 }
+
+export function generateAutoSchedule(scheduleId, startDate, endDate, ruleId) {
+  return request({
+    url: '/duty/auto-schedule/generate',
+    method: 'post',
+    params: { scheduleId, startDate, endDate, ruleId }
+  })
+}
+
+export function generateAutoScheduleByWorkHours(scheduleId, startDate, endDate, ruleId, employeeId) {
+  return request({
+    url: '/duty/auto-schedule/generate-by-work-hours',
+    method: 'post',
+    params: { scheduleId, startDate, endDate, ruleId, employeeId }
+  })
+}
+
+export function getEmployeeMonthlyWorkHours(scheduleId, startDate, endDate) {
+  return request({
+    url: '/duty/auto-schedule/employee-monthly-work-hours',
+    method: 'get',
+    params: { scheduleId, startDate, endDate }
+  })
+}

@@ -8,6 +8,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/duty/leave-request")
@@ -56,9 +57,32 @@ public class LeaveRequestController {
     public ResponseResult<Void> approveLeaveRequest(@PathVariable Long requestId,
                                                  @RequestParam Long approverId,
                                                  @RequestParam String approvalStatus,
-                                                 @RequestParam(required = false) String opinion) {
-        boolean success = leaveRequestService.approveLeaveRequest(requestId, approverId, approvalStatus, opinion);
+                                                 @RequestParam(required = false) String opinion,
+                                                 @RequestParam(required = false) String scheduleAction,
+                                                 @RequestParam(required = false) String scheduleType,
+                                                 @RequestParam(required = false) String scheduleDateRange) {
+        boolean success = leaveRequestService.approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, scheduleType, scheduleDateRange);
         return success ? ResponseResult.success() : ResponseResult.error("审批失败");
+    }
+
+    @GetMapping("/approval-records/{requestId}")
+    public ResponseResult<List<Object>> getApprovalRecords(@PathVariable Long requestId) {
+        List<Object> records = leaveRequestService.getApprovalRecords(requestId);
+        return ResponseResult.success(records);
+    }
+
+    @GetMapping("/check-schedule")
+    public ResponseResult<Map<String, Object>> checkEmployeeSchedule(@RequestParam Long employeeId,
+                                                                     @RequestParam String startDate,
+                                                                     @RequestParam String endDate) {
+        Map<String, Object> result = leaveRequestService.checkEmployeeSchedule(employeeId, startDate, endDate);
+        return ResponseResult.success(result);
+    }
+
+    @PutMapping("/confirm-schedule/{requestId}")
+    public ResponseResult<Void> confirmScheduleCompletion(@PathVariable Long requestId, @RequestParam Long approverId) {
+        boolean success = leaveRequestService.confirmScheduleCompletion(requestId, approverId);
+        return success ? ResponseResult.success() : ResponseResult.error("确认失败");
     }
 
     @DeleteMapping("/{id}")

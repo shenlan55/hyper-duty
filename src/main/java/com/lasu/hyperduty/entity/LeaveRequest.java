@@ -57,6 +57,14 @@ public class LeaveRequest implements Serializable {
 
     private String rejectReason;
 
+    private String approvalOpinion;
+
+    private Integer scheduleCompleted;
+
+    private LocalDateTime scheduleCompletedTime;
+
+    private Long scheduleCompletedBy;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
