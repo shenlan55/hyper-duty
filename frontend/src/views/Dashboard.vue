@@ -5,7 +5,7 @@
       <el-card shadow="hover" class="stat-card">
         <div class="stat-content">
           <div class="stat-info">
-            <div class="stat-number">10</div>
+            <div class="stat-number">{{ statistics.deptCount || 0 }}</div>
             <div class="stat-label">部门总数</div>
           </div>
           <div class="stat-icon">
@@ -16,7 +16,7 @@
       <el-card shadow="hover" class="stat-card">
         <div class="stat-content">
           <div class="stat-info">
-            <div class="stat-number">50</div>
+            <div class="stat-number">{{ statistics.employeeCount || 0 }}</div>
             <div class="stat-label">人员总数</div>
           </div>
           <div class="stat-icon">
@@ -27,7 +27,7 @@
       <el-card shadow="hover" class="stat-card">
         <div class="stat-content">
           <div class="stat-info">
-            <div class="stat-number">24</div>
+            <div class="stat-number">{{ statistics.todayLoginCount || 0 }}</div>
             <div class="stat-label">今日登录</div>
           </div>
           <div class="stat-icon">
@@ -48,7 +48,32 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import { OfficeBuilding, UserFilled, View } from '@element-plus/icons-vue'
+import { getDashboardStatistics } from '../api/system/statistics'
+
+const statistics = ref({
+  deptCount: 0,
+  employeeCount: 0,
+  todayLoginCount: 0
+})
+
+// 加载统计数据
+const loadStatistics = async () => {
+  try {
+    const response = await getDashboardStatistics()
+    if (response.code === 200) {
+      statistics.value = response.data
+    }
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
+  }
+}
+
+// 页面挂载时加载数据
+onMounted(() => {
+  loadStatistics()
+})
 </script>
 
 <style scoped>

@@ -26,6 +26,8 @@ public class DutySchedule implements Serializable {
     
     private LocalDate endDate;
     
+    private Long scheduleModeId;
+    
     private Integer status;
     
     private Long createBy;

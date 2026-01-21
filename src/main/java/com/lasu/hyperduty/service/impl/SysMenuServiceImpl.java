@@ -74,11 +74,15 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 包含子菜单的菜单
      */
     private SysMenu findChildren(SysMenu menu, List<SysMenu> menus) {
+        List<SysMenu> children = new ArrayList<>();
         for (SysMenu subMenu : menus) {
             if (subMenu.getParentId().equals(menu.getId())) {
-                menu.getChildren().add(findChildren(subMenu, menus));
+                children.add(findChildren(subMenu, menus));
             }
         }
+        // 对子菜单按照sort字段升序排序
+        children.sort((m1, m2) -> Integer.compare(m1.getSort(), m2.getSort()));
+        menu.setChildren(children);
         return menu;
     }
 

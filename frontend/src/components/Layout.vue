@@ -46,19 +46,14 @@
               :key="menu.path"
               :index="menu.path"
             >
-              <el-icon style="vertical-align: middle; margin-right: 8px;">
-                <component :is="menu.icon && iconMap[menu.icon] ? iconMap[menu.icon] : Menu" />
-              </el-icon>
+              <template #icon>
+                <el-icon>
+                  <component :is="menu.icon && iconMap[menu.icon] ? iconMap[menu.icon] : Menu" />
+                </el-icon>
+              </template>
               <span>{{ menu.name }}</span>
             </el-menu-item>
           </template>
-          <!-- 首页菜单项 -->
-          <el-menu-item v-else-if="activeTopMenu === 'dashboard'" index="/dashboard">
-            <template #icon>
-              <el-icon><House /></el-icon>
-            </template>
-            <span>首页</span>
-          </el-menu-item>
         </el-menu>
       </el-aside>
       <!-- 右侧内容区 -->
@@ -141,10 +136,9 @@ const activeTopMenu = ref('dashboard')
 
 // 动态二级菜单
 const leftMenus = computed(() => {
-  const menu = topMenus.value.find(m => m.id === activeTopMenu.value)
   
   // 首页菜单没有子菜单，显示首页本身
-  if (activeTopMenu.value === 'dashboard' || activeTopMenu.value === '1') {
+  if (activeTopMenu.value === 'dashboard') {
     return [{
       name: '首页',
       path: '/dashboard',
@@ -152,6 +146,8 @@ const leftMenus = computed(() => {
     }]
   }
   
+  // 其他菜单返回子菜单
+  const menu = topMenus.value.find(m => m.id === activeTopMenu.value)
   return menu?.children || []
 })
 
@@ -219,7 +215,7 @@ const fetchUserMenus = async () => {
     }
     
     // 转换菜单数据格式，适配前端需要的结构
-    const processedMenus = menus.filter(menu => menu).map(menu => {
+    let processedMenus = menus.filter(menu => menu).map(menu => {
       // 构建一级菜单
       const firstLevelMenu = {
         id: menu.id.toString(),
@@ -244,6 +240,7 @@ const fetchUserMenus = async () => {
           else if (childPath === '/menu') childPath = '/system/menu'
           else if (childPath === '/role') childPath = '/system/role'
           else if (childPath === '/dict') childPath = '/system/dict'
+          else if (childPath === '/operation-log') childPath = '/system/operation-log'
           
           // 更新路由名称映射
           routeNameMap.value[childPath] = childMenu.menuName
@@ -322,13 +319,31 @@ const fetchUserMenus = async () => {
       processedMenus.push(dutyMenu)
     }
     
+    // 过滤掉重复的首页菜单
+    processedMenus = processedMenus.filter(menu => menu.name !== '首页')
+    
+    // 添加唯一的首页菜单到开头
+    const dashboardMenu = {
+      id: 'dashboard',
+      name: '首页',
+      path: '/dashboard',
+      icon: 'HomeFilled',
+      children: [{
+        name: '首页',
+        path: '/dashboard',
+        icon: 'HomeFilled'
+      }]
+    }
+    
+    // 确保首页菜单在第一个位置
+    processedMenus.unshift(dashboardMenu)
+    routeNameMap.value['/dashboard'] = '首页'
+    
     // 更新菜单列表
     topMenus.value = processedMenus
     
-    // 如果有菜单，设置第一个为默认激活
-    if (topMenus.value.length > 0) {
-      activeTopMenu.value = topMenus.value[0].id
-    }
+    // 始终设置首页为默认激活
+    activeTopMenu.value = 'dashboard'
   } catch (error) {
     console.error('获取菜单失败：', error)
     ElMessage.error('获取菜单失败：' + error.message)
@@ -372,6 +387,16 @@ const fetchUserMenus = async () => {
             name: '角色管理',
             path: '/system/role',
             icon: 'Operation'
+          },
+          {
+            name: '字典管理',
+            path: '/system/dict',
+            icon: 'List'
+          },
+          {
+            name: '操作日志',
+            path: '/system/operation-log',
+            icon: 'Document'
           }
         ]
       },
@@ -409,6 +434,8 @@ const fetchUserMenus = async () => {
       '/system/user': '用户管理',
       '/system/menu': '菜单管理',
       '/system/role': '角色管理',
+      '/system/dict': '字典管理',
+      '/system/operation-log': '操作日志',
       '/duty': '值班管理',
       '/duty/schedule': '值班表管理',
       '/duty/assignment': '值班安排',
@@ -458,22 +485,27 @@ const handleTabRemove = (path) => {
 
 // 监听路由变化，更新激活的一级菜单和添加标签页
 watch(() => route.path, (newPath) => {
-  // 根据当前路由更新激活的一级菜单
-  let found = false
-  for (const menu of topMenus.value) {
-    if (menu.path === newPath) {
-      activeTopMenu.value = menu.id
-      found = true
-      break
-    }
-    for (const child of menu.children || []) {
-      if (child.path === newPath) {
+  // 特殊处理首页路由
+  if (newPath === '/dashboard') {
+    activeTopMenu.value = 'dashboard'
+  } else {
+    // 根据当前路由更新激活的一级菜单
+    let found = false
+    for (const menu of topMenus.value) {
+      if (menu.path === newPath) {
         activeTopMenu.value = menu.id
         found = true
         break
       }
+      for (const child of menu.children || []) {
+        if (child.path === newPath) {
+          activeTopMenu.value = menu.id
+          found = true
+          break
+        }
+      }
+      if (found) break
     }
-    if (found) break
   }
   // 添加标签页
   addTab(newPath)

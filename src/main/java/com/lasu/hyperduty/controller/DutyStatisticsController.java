@@ -48,4 +48,12 @@ public class DutyStatisticsController {
         allStatistics.put("trend", dutyStatisticsService.getMonthlyTrend());
         return ResponseResult.success(allStatistics);
     }
+
+    @GetMapping("/employee")
+    public ResponseResult<List<Map<String, Object>>> getEmployeeStatistics(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
+        List<Map<String, Object>> statistics = dutyStatisticsService.getEmployeeStatistics(year, month);
+        return ResponseResult.success(statistics);
+    }
 }

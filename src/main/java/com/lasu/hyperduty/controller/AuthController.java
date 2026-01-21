@@ -2,6 +2,7 @@ package com.lasu.hyperduty.controller;
 
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.dto.LoginDTO;
+import com.lasu.hyperduty.entity.SysUser;
 import com.lasu.hyperduty.service.SysUserService;
 import com.lasu.hyperduty.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,9 @@ public class AuthController {
     @Autowired
     private SysUserService sysUserService;
 
+    @Autowired
+    private com.lasu.hyperduty.service.SysEmployeeService sysEmployeeService;
+
     @PostMapping("/login")
     public ResponseResult<Map<String, Object>> login(@Validated @RequestBody LoginDTO loginDTO) {
         // 进行认证
@@ -41,13 +45,32 @@ public class AuthController {
         // 将认证信息存入SecurityContext
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // 生成JWT令牌
-        String token = jwtUtil.generateToken(loginDTO.getUsername());
-
         // 获取用户信息
+        SysUser user = sysUserService.lambdaQuery()
+                .eq(SysUser::getUsername, loginDTO.getUsername())
+                .one();
+
+        // 生成JWT令牌
+        String token;
+        if (user != null) {
+            // 获取员工信息
+            com.lasu.hyperduty.entity.SysEmployee employee = sysEmployeeService.getById(user.getEmployeeId());
+            if (employee != null) {
+                token = jwtUtil.generateToken(loginDTO.getUsername(), user.getEmployeeId(), employee.getEmployeeName());
+            } else {
+                token = jwtUtil.generateToken(loginDTO.getUsername());
+            }
+        } else {
+            token = jwtUtil.generateToken(loginDTO.getUsername());
+        }
+
+        // 构建返回数据
         Map<String, Object> userInfo = new HashMap<>();
         userInfo.put("username", loginDTO.getUsername());
         userInfo.put("token", token);
+        if (user != null) {
+            userInfo.put("employeeId", user.getEmployeeId());
+        }
 
         return ResponseResult.success("登录成功", userInfo);
     }

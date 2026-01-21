@@ -44,3 +44,11 @@ export function exportStatisticsExcel(params) {
     responseType: 'blob'
   })
 }
+
+export function getEmployeeStatistics(year, month) {
+  return request({
+    url: '/duty/statistics/employee',
+    method: 'get',
+    params: { year, month }
+  })
+}

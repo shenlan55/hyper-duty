@@ -46,15 +46,13 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="scope">
             <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
               编辑
+            </el-button>
+            <el-button type="success" size="small" @click="openEmployeeDialog(scope.row)">
+              人员
             </el-button>
             <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
               删除
@@ -76,7 +74,6 @@
       </div>
     </el-card>
 
-    <!-- 添加/编辑值班表对话框 -->
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
@@ -112,6 +109,8 @@
                 type="date"
                 placeholder="选择开始日期"
                 style="width: 100%"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
               />
             </el-form-item>
           </el-col>
@@ -122,6 +121,8 @@
                 type="date"
                 placeholder="选择结束日期"
                 style="width: 100%"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
               />
             </el-form-item>
           </el-col>
@@ -143,6 +144,53 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="employeeDialogVisible"
+      title="值班人员管理"
+      width="700px"
+    >
+      <div class="employee-manage">
+        <el-tabs v-model="activeTab">
+          <el-tab-pane label="人员列表" name="list">
+            <div class="selected-employees">
+              <div class="section-title">已选人员（{{ selectedEmployeeList.length }}人）</div>
+              <el-transfer
+                v-model="selectedEmployeeList"
+                :data="allEmployeeList"
+                :titles="['可选人员', '已选人员']"
+                filterable
+                filter-placeholder="搜索人员"
+              />
+            </div>
+          </el-tab-pane>
+          <el-tab-pane label="值班长设置" name="leader">
+            <div class="leader-setting">
+              <div class="section-title">设置值班长（{{ selectedLeaderList.length }}人）</div>
+              <el-checkbox-group v-model="selectedLeaderList">
+                <div class="leader-list">
+                  <el-checkbox
+                    v-for="employee in selectedEmployeeList"
+                    :key="employee"
+                    :value="employee"
+                  >
+                    {{ getEmployeeName(employee) }}
+                  </el-checkbox>
+                </div>
+              </el-checkbox-group>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="employeeDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="employeeDialogLoading" @click="handleSaveEmployees">
+            保存
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -152,13 +200,19 @@ import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getScheduleList,
+  getScheduleById,
   addSchedule,
   updateSchedule,
-  deleteSchedule
+  deleteSchedule,
+  getScheduleEmployees,
+  getScheduleLeaders,
+  updateScheduleEmployees,
+  updateScheduleLeaders,
+  updateScheduleEmployeesAndLeaders
 } from '../../api/duty/schedule'
+import { getEmployeeList } from '../../api/employee'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 
-// 响应式数据
 const searchQuery = ref('')
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -166,14 +220,19 @@ const dialogLoading = ref(false)
 const dialogTitle = ref('添加值班表')
 const scheduleFormRef = ref()
 
-// 分页数据
+const employeeDialogVisible = ref(false)
+const employeeDialogLoading = ref(false)
+const currentScheduleId = ref(null)
+const activeTab = ref('list')
+const selectedLeaderList = ref([])
+
 const currentPage = ref(1)
 const pageSize = ref(10)
 
-// 值班表数据
 const scheduleList = ref([])
+const allEmployeeList = ref([])
+const selectedEmployeeList = ref([])
 
-// 表单数据
 const scheduleForm = reactive({
   id: null,
   scheduleName: '',
@@ -183,7 +242,6 @@ const scheduleForm = reactive({
   status: 1
 })
 
-// 表单验证规则
 const scheduleRules = {
   scheduleName: [
     { required: true, message: '请输入值班表名称', trigger: 'blur' },
@@ -197,11 +255,9 @@ const scheduleRules = {
   ]
 }
 
-// 过滤后的值班表列表
 const filteredScheduleList = computed(() => {
   let list = scheduleList.value
   
-  // 按搜索词过滤
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     list = list.filter(schedule => 
@@ -212,14 +268,17 @@ const filteredScheduleList = computed(() => {
   return list
 })
 
-// 分页后的值班表列表
 const pagedScheduleList = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
   return filteredScheduleList.value.slice(start, end)
 })
 
-// 获取值班表列表
+const getEmployeeName = (employeeId) => {
+  const employee = allEmployeeList.value.find(e => e.key === employeeId)
+  return employee ? employee.label : '未知人员'
+}
+
 const fetchScheduleList = async () => {
   loading.value = true
   try {
@@ -235,12 +294,26 @@ const fetchScheduleList = async () => {
   }
 }
 
-// 搜索
+const fetchEmployeeList = async () => {
+  try {
+    const response = await getEmployeeList()
+    if (response.code === 200) {
+      allEmployeeList.value = response.data.map(emp => ({
+        key: emp.id,
+        label: emp.employeeName,
+        disabled: emp.status !== 1
+      }))
+    }
+  } catch (error) {
+    console.error('获取员工列表失败:', error)
+    ElMessage.error('获取员工列表失败')
+  }
+}
+
 const handleSearch = () => {
   currentPage.value = 1
 }
 
-// 分页处理
 const handleSizeChange = (size) => {
   pageSize.value = size
   currentPage.value = 1
@@ -250,21 +323,18 @@ const handleCurrentChange = (page) => {
   currentPage.value = page
 }
 
-// 打开添加对话框
 const openAddDialog = () => {
   resetForm()
   dialogTitle.value = '添加值班表'
   dialogVisible.value = true
 }
 
-// 打开编辑对话框
 const openEditDialog = (schedule) => {
   Object.assign(scheduleForm, schedule)
   dialogTitle.value = '编辑值班表'
   dialogVisible.value = true
 }
 
-// 重置表单
 const resetForm = () => {
   if (scheduleFormRef.value) {
     scheduleFormRef.value.resetFields()
@@ -279,7 +349,6 @@ const resetForm = () => {
   })
 }
 
-// 保存值班表
 const handleSave = async () => {
   try {
     await scheduleFormRef.value.validate()
@@ -287,10 +356,8 @@ const handleSave = async () => {
     
     let response
     if (scheduleForm.id) {
-      // 编辑值班表
       response = await updateSchedule(scheduleForm)
     } else {
-      // 添加值班表
       response = await addSchedule(scheduleForm)
     }
     
@@ -309,7 +376,6 @@ const handleSave = async () => {
   }
 }
 
-// 删除值班表
 const handleDelete = async (id) => {
   try {
     await ElMessageBox.confirm('确定要删除该值班表吗？', '删除确认', {
@@ -333,9 +399,43 @@ const handleDelete = async (id) => {
   }
 }
 
-// 生命周期钩子
+const openEmployeeDialog = async (schedule) => {
+  currentScheduleId.value = schedule.id
+  try {
+    const [employeeRes, leaderRes] = await Promise.all([
+      getScheduleEmployees(schedule.id),
+      getScheduleLeaders(schedule.id)
+    ])
+    if (employeeRes.code === 200) {
+      selectedEmployeeList.value = employeeRes.data || []
+    }
+    if (leaderRes.code === 200) {
+      selectedLeaderList.value = leaderRes.data || []
+    }
+  } catch (error) {
+    console.error('获取值班人员失败:', error)
+    ElMessage.error('获取值班人员失败')
+  }
+  employeeDialogVisible.value = true
+}
+
+const handleSaveEmployees = async () => {
+  try {
+    employeeDialogLoading.value = true
+    await updateScheduleEmployeesAndLeaders(currentScheduleId.value, selectedEmployeeList.value, selectedLeaderList.value)
+    ElMessage.success('保存值班人员成功')
+    employeeDialogVisible.value = false
+  } catch (error) {
+    console.error('保存值班人员失败:', error)
+    ElMessage.error('保存值班人员失败')
+  } finally {
+    employeeDialogLoading.value = false
+  }
+}
+
 onMounted(async () => {
   await fetchScheduleList()
+  await fetchEmployeeList()
 })
 </script>
 
@@ -376,5 +476,32 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   margin-top: 10px;
+}
+
+.employee-manage {
+  padding: 10px 0;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #303133;
+}
+
+.selected-employees {
+  margin-bottom: 20px;
+}
+
+.leader-setting {
+  padding: 10px 0;
+}
+
+.leader-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
 }
 </style>

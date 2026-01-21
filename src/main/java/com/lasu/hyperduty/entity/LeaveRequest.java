@@ -23,6 +23,8 @@ public class LeaveRequest implements Serializable {
 
     private Long employeeId;
 
+    private Long scheduleId;
+
     private Integer leaveType;
 
     private LocalDate startDate;
@@ -54,6 +56,14 @@ public class LeaveRequest implements Serializable {
     private String substituteStatus;
 
     private String rejectReason;
+
+    private String approvalOpinion;
+
+    private Integer scheduleCompleted;
+
+    private LocalDateTime scheduleCompletedTime;
+
+    private Long scheduleCompletedBy;
 
     private LocalDateTime createTime;
 

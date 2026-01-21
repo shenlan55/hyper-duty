@@ -82,6 +82,42 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <el-card shadow="hover" class="table-card">
+      <div class="chart-header">
+        <h3>员工排班统计</h3>
+        <div class="filter-controls">
+          <el-date-picker
+            v-model="selectedDate"
+            type="month"
+            placeholder="选择月份"
+            format="YYYY年MM月"
+            value-format="YYYY-MM"
+            @change="handleDateChange"
+            style="margin-right: 10px"
+          />
+          <el-button type="primary" @click="fetchEmployeeStatistics" :loading="employeeLoading">
+            查询
+          </el-button>
+        </div>
+      </div>
+      <el-table :data="employeeStatistics" border stripe v-loading="employeeLoading">
+        <el-table-column prop="employeeName" label="员工姓名" width="120" />
+        <el-table-column label="年月" width="100">
+          <template #default="scope">
+            {{ scope.row.year }}年{{ scope.row.month }}月
+          </template>
+        </el-table-column>
+        <el-table-column prop="plannedHours" label="计划工时(小时)" width="150" />
+        <el-table-column prop="actualHours" label="实际工时(小时)" width="150" />
+        <el-table-column prop="actualDays" label="实际天数" width="120" />
+        <el-table-column label="完成率" width="120">
+          <template #default="scope">
+            {{ getCompletionRate(scope.row) }}%
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
@@ -90,10 +126,11 @@ import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import { Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { getAllStatistics, exportStatisticsExcel } from '@/api/duty/statistics'
+import { getAllStatistics, exportStatisticsExcel, getEmployeeStatistics } from '@/api/duty/statistics'
 
 const loading = ref(false)
 const exportLoading = ref(false)
+const employeeLoading = ref(false)
 const shiftChartRef = ref()
 const trendChartRef = ref()
 
@@ -104,6 +141,12 @@ const statistics = reactive({
   trend: []
 })
 
+const employeeStatistics = ref([])
+// 默认查询当前月份
+const currentDate = new Date()
+const formattedMonth = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0')
+const selectedDate = ref(formattedMonth)
+
 const getTotalAssignments = computed(() => {
   return statistics.dept.reduce((sum, dept) => sum + (dept.assignmentCount || 0), 0)
 })
@@ -113,6 +156,11 @@ const getAvgAssignments = computed(() => {
   const count = statistics.dept.length || 0
   return count > 0 ? (total / count).toFixed(1) : 0
 })
+
+const getCompletionRate = (row) => {
+  if (!row.plannedHours || row.plannedHours === 0) return 0
+  return ((row.actualHours / row.plannedHours) * 100).toFixed(1)
+}
 
 const fetchStatistics = async () => {
   loading.value = true
@@ -258,8 +306,36 @@ const exportExcel = async () => {
   }
 }
 
+const handleDateChange = (value) => {
+  selectedDate.value = value
+}
+
+const fetchEmployeeStatistics = async () => {
+  employeeLoading.value = true
+  try {
+    let year = null
+    let month = null
+    if (selectedDate.value) {
+      const [yearStr, monthStr] = selectedDate.value.split('-')
+      year = parseInt(yearStr)
+      month = parseInt(monthStr)
+    }
+    
+    const response = await getEmployeeStatistics(year, month)
+    if (response.code === 200) {
+      employeeStatistics.value = response.data
+    }
+  } catch (error) {
+    console.error('获取员工统计数据失败:', error)
+    ElMessage.error('获取员工统计数据失败')
+  } finally {
+    employeeLoading.value = false
+  }
+}
+
 onMounted(async () => {
   await fetchStatistics()
+  await fetchEmployeeStatistics()
 })
 </script>
 

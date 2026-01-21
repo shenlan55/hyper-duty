@@ -107,6 +107,14 @@ INSERT IGNORE INTO duty_shift_config (shift_name, shift_code, shift_type, start_
 INSERT IGNORE INTO duty_schedule_rule (rule_name, rule_code, schedule_cycle, max_daily_shifts, max_weekly_hours, max_monthly_hours, min_rest_days, substitute_priority_rule, conflict_detection_rule, status) VALUES
 ('默认排班规则', 'DEFAULT_RULE', 2, 3, 48.00, 200.00, 4, '同部门优先,其次按班次匹配', '检测重复排班、超负载排班', 1);
 
+-- 插入默认排班模式
+INSERT IGNORE INTO duty_schedule_mode (mode_name, mode_code, mode_type, algorithm_class, description, status, sort) VALUES
+('单班制', 'SINGLE_SHIFT', 1, 'com.lasu.hyperduty.service.algorithm.impl.DaytimeAllNightShiftRotationAlgorithm', '每天只有一个班次，适合小型团队', 1, 1),
+('两班倒', 'TWO_SHIFTS', 1, 'com.lasu.hyperduty.service.algorithm.impl.ThreeDayRotationAlgorithm', '早班和晚班交替，适合24小时服务', 1, 2),
+('三班倒', 'THREE_SHIFTS', 1, 'com.lasu.hyperduty.service.algorithm.impl.ThreeDayRotationAlgorithm', '早、中、晚三班循环，适合连续生产', 1, 3),
+('四班三倒', 'FOUR_THREE_SHIFTS', 1, 'com.lasu.hyperduty.service.algorithm.impl.FourDayRotationAlgorithm', '四个班，每班工作三天休息一天', 1, 4),
+('弹性排班', 'FLEXIBLE_SHIFT', 3, 'com.lasu.hyperduty.service.algorithm.impl.DaytimeAllNightShiftRotationAlgorithm', '根据需求灵活安排班次', 1, 5);
+
 -- ========================================
 -- 第三部分：更新系统管理菜单路径
 -- ========================================
@@ -118,6 +126,14 @@ UPDATE sys_menu SET path = '/system/employee' WHERE menu_name = '人员管理';
 UPDATE sys_menu SET path = '/system/user' WHERE menu_name = '用户管理';
 UPDATE sys_menu SET path = '/system/menu' WHERE menu_name = '菜单管理';
 UPDATE sys_menu SET path = '/system/role' WHERE menu_name = '角色管理';
+UPDATE sys_menu SET path = '/system/dict' WHERE menu_name = '字典管理';
+
+-- 将操作日志菜单移动到系统管理下，并设置正确的排序
+UPDATE sys_menu SET parent_id = (SELECT id FROM sys_menu WHERE menu_name = '系统管理' AND parent_id = 0), 
+                   path = '/system/operation-log', 
+                   perm = 'sys:log:list',
+                   sort = 7 
+WHERE menu_name = '操作日志';
 
 -- ========================================
 -- DML 脚本执行完成

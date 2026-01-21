@@ -25,4 +25,11 @@ public interface OperationLogService extends IService<OperationLog> {
 
     List<OperationLog> searchLogs(Long operatorId, String operationType, 
                                  String operationModule, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * 统计今日登录次数
+     * @param today 今天日期
+     * @return 今日登录次数
+     */
+    long countTodayLogin(LocalDate today);
 }

@@ -44,3 +44,4 @@ export function updateShiftConfigStatus(id, status) {
     params: { status }
   })
 }
+

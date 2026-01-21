@@ -2,10 +2,27 @@
   <div class="leave-approval-container">
     <div class="page-header">
       <h2>请假审批</h2>
-      <el-button type="primary" @click="refreshList">
-        <el-icon><Refresh /></el-icon>
-        刷新列表
-      </el-button>
+      <div class="header-actions">
+        <el-select
+          v-model="selectedScheduleId"
+          placeholder="选择值班表"
+          clearable
+          class="schedule-select"
+          @change="handleScheduleChange"
+          style="width: 250px; margin-right: 10px"
+        >
+          <el-option
+            v-for="schedule in scheduleList"
+            :key="schedule.id"
+            :label="schedule.scheduleName"
+            :value="schedule.id"
+          />
+        </el-select>
+        <el-button type="primary" @click="refreshList">
+          <el-icon><Refresh /></el-icon>
+          刷新列表
+        </el-button>
+      </div>
     </div>
 
     <el-card shadow="hover" class="content-card">
@@ -30,7 +47,7 @@
         </el-table-column>
         <el-table-column label="请假时间" width="250">
           <template #default="scope">
-            {{ formatDate(scope.row.startDate) }} {{ scope.row.startTime }} - {{ formatDate(scope.row.endDate) }} {{ scope.row.endTime }}
+            {{ formatDate(scope.row.startDate) }} {{ scope.row.startTime || '' }} - {{ formatDate(scope.row.endDate) }} {{ scope.row.endTime || '' }}
           </template>
         </el-table-column>
         <el-table-column prop="totalHours" label="请假时长(小时)" width="130" />
@@ -88,10 +105,44 @@
           <el-descriptions-item label="请假原因" :span="2">{{ currentRequest.reason }}</el-descriptions-item>
         </el-descriptions>
         <el-form-item label="审批结果" prop="approvalStatus">
-          <el-radio-group v-model="approveForm.approvalStatus">
-            <el-radio label="approved">通过</el-radio>
-            <el-radio label="rejected">拒绝</el-radio>
+          <el-radio-group v-model="approveForm.approvalStatus" @change="handleApprovalStatusChange">
+            <el-radio value="approved">通过</el-radio>
+            <el-radio value="rejected">拒绝</el-radio>
           </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="approveForm.approvalStatus === 'approved'" label="排班处理" prop="scheduleAction">
+          <el-radio-group v-model="approveForm.scheduleAction">
+            <el-radio value="check">检查排班</el-radio>
+            <el-radio value="auto">自动排班</el-radio>
+            <el-radio value="skip">跳过</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'auto'" label="排班方式" prop="scheduleType">
+          <el-radio-group v-model="approveForm.scheduleType">
+            <el-radio value="rotate">轮换排班</el-radio>
+            <el-radio value="balance">均衡排班</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'auto'" label="排班日期范围" prop="scheduleDateRange">
+          <el-date-picker
+            v-model="approveForm.scheduleDateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 100%"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item v-if="approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'check'" label="排班状态">
+          <el-tag :type="scheduleStatus.type">{{ scheduleStatus.text }}</el-tag>
+          <el-button v-if="scheduleStatus.type === 'success'" type="primary" size="small" @click="handleConfirmSchedule">
+            确认排班完成
+          </el-button>
+          <el-button v-if="scheduleStatus.type === 'warning'" type="primary" size="small" @click="goToSchedule">
+            去排班
+          </el-button>
         </el-form-item>
         <el-form-item v-if="approveForm.approvalStatus === 'rejected'" label="拒绝原因" prop="rejectReason">
           <el-input
@@ -134,15 +185,15 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="请假时长">{{ currentRequest.totalHours }}小时</el-descriptions-item>
-        <el-descriptions-item label="开始时间">{{ currentRequest.startDate }} {{ currentRequest.startTime }}</el-descriptions-item>
-        <el-descriptions-item label="结束时间">{{ currentRequest.endDate }} {{ currentRequest.endTime }}</el-descriptions-item>
+        <el-descriptions-item label="开始时间">{{ currentRequest.startDate }} {{ currentRequest.startTime || '' }}</el-descriptions-item>
+        <el-descriptions-item label="结束时间">{{ currentRequest.endDate }} {{ currentRequest.endTime || '' }}</el-descriptions-item>
         <el-descriptions-item label="审批状态">
           <el-tag :type="getApprovalStatusColor(currentRequest.approvalStatus)">
             {{ getApprovalStatusName(currentRequest.approvalStatus) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="请假原因" :span="2">{{ currentRequest.reason }}</el-descriptions-item>
-        <el-descriptions-item label="申请时间" :span="2">{{ currentRequest.createTime }}</el-descriptions-item>
+        <el-descriptions-item label="申请时间" :span="2">{{ formatDateTime(currentRequest.createTime) }}</el-descriptions-item>
         <el-descriptions-item v-if="currentRequest.substituteEmployeeId" label="替补人员">
           {{ getEmployeeName(currentRequest.substituteEmployeeId) }}
         </el-descriptions-item>
@@ -157,13 +208,26 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getPendingApprovals,
-  approveLeaveRequest
+  getPendingApprovalsByScheduleId,
+  approveLeaveRequest,
+  confirmScheduleCompletion,
+  checkEmployeeSchedule
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
+import { getScheduleList } from '../../api/duty/schedule'
+import {
+  generateAutoSchedule,
+  generateAutoScheduleByWorkHours,
+  getEmployeeMonthlyWorkHours
+} from '../../api/duty/autoSchedule'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
+import { useUserStore } from '../../stores/user'
+
+const userStore = useUserStore()
 
 const loading = ref(false)
 const approveDialogVisible = ref(false)
@@ -172,6 +236,8 @@ const viewDialogVisible = ref(false)
 const approveFormRef = ref()
 const requestList = ref([])
 const employeeList = ref([])
+const scheduleList = ref([])
+const selectedScheduleId = ref('')
 const currentRequest = ref({})
 const currentApproverId = ref(1)
 
@@ -180,7 +246,10 @@ const approveForm = reactive({
   approverId: 1,
   approvalStatus: 'approved',
   rejectReason: '',
-  approvalOpinion: ''
+  approvalOpinion: '',
+  scheduleAction: 'check',
+  scheduleType: 'rotate',
+  scheduleDateRange: null
 })
 
 const approveRules = {
@@ -191,6 +260,11 @@ const approveRules = {
     { required: true, message: '请输入拒绝原因', trigger: 'blur' }
   ]
 }
+
+const scheduleStatus = reactive({
+  type: 'info',
+  text: '未检查'
+})
 
 const leaveTypeMap = {
   1: '事假',
@@ -251,13 +325,31 @@ const fetchEmployeeList = async () => {
     }
   } catch (error) {
     console.error('获取员工列表失败:', error)
+    ElMessage.error('获取员工列表失败')
+  }
+}
+
+const fetchScheduleList = async () => {
+  try {
+    const response = await getScheduleList()
+    if (response.code === 200) {
+      scheduleList.value = response.data
+    }
+  } catch (error) {
+    console.error('获取值班表列表失败:', error)
+    ElMessage.error('获取值班表列表失败')
   }
 }
 
 const fetchPendingApprovals = async () => {
   loading.value = true
   try {
-    const response = await getPendingApprovals(currentApproverId.value)
+    let response
+    if (selectedScheduleId.value) {
+      response = await getPendingApprovalsByScheduleId(selectedScheduleId.value)
+    } else {
+      response = await getPendingApprovals(userStore.employeeId)
+    }
     if (response.code === 200) {
       requestList.value = response.data
     }
@@ -267,6 +359,10 @@ const fetchPendingApprovals = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleScheduleChange = () => {
+  fetchPendingApprovals()
 }
 
 const refreshList = () => {
@@ -293,11 +389,38 @@ const handleApprove = async () => {
     await approveFormRef.value.validate()
     approveLoading.value = true
     
+    if (approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'check') {
+      await checkSchedule()
+      return
+    }
+    
+    if (approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'auto') {
+      const [startDate, endDate] = approveForm.scheduleDateRange
+      let response
+      
+      if (approveForm.scheduleType === 'rotate') {
+        response = await generateAutoSchedule(selectedScheduleId.value, startDate, endDate, 1)
+      } else if (approveForm.scheduleType === 'balance') {
+        response = await generateAutoScheduleByWorkHours(selectedScheduleId.value, startDate, endDate, 1, currentRequest.value.employeeId)
+      }
+      
+      if (response.code !== 200) {
+        ElMessage.error('自动排班失败')
+        approveLoading.value = false
+        return
+      }
+      
+      ElMessage.success('自动排班成功')
+    }
+    
     const response = await approveLeaveRequest(
       approveForm.requestId,
       approveForm.approverId,
       approveForm.approvalStatus,
-      approveForm.approvalStatus === 'rejected' ? approveForm.rejectReason : approveForm.approvalOpinion
+      approveForm.approvalStatus === 'rejected' ? approveForm.rejectReason : approveForm.approvalOpinion,
+      approveForm.scheduleAction,
+      approveForm.scheduleType,
+      approveForm.scheduleDateRange
     )
     
     if (response.code === 200) {
@@ -315,8 +438,66 @@ const handleApprove = async () => {
   }
 }
 
+const handleApprovalStatusChange = (status) => {
+  if (status === 'rejected') {
+    approveForm.scheduleAction = 'skip'
+  } else {
+    approveForm.scheduleAction = 'check'
+  }
+}
+
+const checkSchedule = async () => {
+  try {
+    const response = await checkEmployeeSchedule(currentRequest.value.employeeId, currentRequest.value.startDate, currentRequest.value.endDate)
+    
+    if (response.code === 200) {
+      if (response.data.hasSchedule) {
+        scheduleStatus.type = 'danger'
+        scheduleStatus.text = '已有排班，请先调整'
+        ElMessage.warning('申请人请假期间已有排班，请先调整排班')
+      } else {
+        scheduleStatus.type = 'success'
+        scheduleStatus.text = '无排班，可以审批'
+        ElMessage.success('申请人请假期间无排班，可以审批')
+      }
+    }
+  } catch (error) {
+    console.error('检查排班失败:', error)
+    ElMessage.error('检查排班失败')
+  }
+}
+
+const goToSchedule = () => {
+  const router = useRouter()
+  router.push({
+    path: '/duty/assignment',
+    query: {
+      scheduleId: selectedScheduleId.value,
+      date: currentRequest.value.startDate
+    }
+  })
+}
+
+const handleConfirmSchedule = async () => {
+  try {
+    const response = await confirmScheduleCompletion(approveForm.requestId, approveForm.approverId)
+    
+    if (response.code === 200) {
+      ElMessage.success('排班完成确认成功')
+      approveDialogVisible.value = false
+      fetchPendingApprovals()
+    } else {
+      ElMessage.error(response.message || '确认失败')
+    }
+  } catch (error) {
+    console.error('确认排班完成失败:', error)
+    ElMessage.error('确认排班完成失败')
+  }
+}
+
 onMounted(async () => {
   await fetchEmployeeList()
+  await fetchScheduleList()
   await fetchPendingApprovals()
 })
 </script>
@@ -337,6 +518,16 @@ onMounted(async () => {
   margin: 0;
   font-size: 20px;
   color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-select {
+  width: 250px;
 }
 
 .content-card {

@@ -40,6 +40,20 @@ public class JwtUtil {
         return createToken(claims, username);
     }
 
+    /**
+     * 生成包含用户信息的token
+     * @param username 用户名
+     * @param employeeId 员工ID
+     * @param name 员工姓名
+     * @return token字符串
+     */
+    public String generateToken(String username, Long employeeId, String name) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("employeeId", employeeId);
+        claims.put("name", name);
+        return createToken(claims, username);
+    }
+
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationTime);
@@ -61,7 +75,7 @@ public class JwtUtil {
         return extractAllClaims(token).getExpiration();
     }
 
-    private Claims extractAllClaims(String token) {
+    public Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .setSigningKey(publicKey) // 使用公钥验证签名
                 .build()

@@ -25,7 +25,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="startTime" label="上班时间" width="120" />
-        <el-table-column prop="endTime" label="下班时间" width="120" />
+        <el-table-column prop="endTime" label="下班时间" width="120">
+          <template #default="scope">
+            {{ scope.row.endTime }}<span v-if="scope.row.isCrossDay" style="color: #F56C6C; margin-left: 5px;">(次日)</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="durationHours" label="时长(小时)" width="120" />
         <el-table-column prop="breakHours" label="休息时长(小时)" width="140" />
         <el-table-column prop="isOvertimeShift" label="是否加班班次" width="120">
@@ -98,6 +102,7 @@
           <el-col :span="12">
             <el-form-item label="班次类型" prop="shiftType">
               <el-select v-model="form.shiftType" placeholder="请选择班次类型" style="width: 100%">
+                <el-option label="白班" :value="0" />
                 <el-option label="早班" :value="1" />
                 <el-option label="中班" :value="2" />
                 <el-option label="晚班" :value="3" />
@@ -136,6 +141,13 @@
                 format="HH:mm:ss"
                 value-format="HH:mm:ss"
               />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="是否跨天">
+              <el-switch v-model="form.isCrossDay" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -226,6 +238,7 @@ const form = reactive({
   shiftType: 1,
   startTime: '',
   endTime: '',
+  isCrossDay: false,
   durationHours: 8,
   breakHours: 0,
   isOvertimeShift: 0,
@@ -255,6 +268,7 @@ const rules = {
 }
 
 const shiftTypeMap = {
+  0: '白班',
   1: '早班',
   2: '中班',
   3: '晚班',
@@ -263,6 +277,7 @@ const shiftTypeMap = {
 }
 
 const shiftTypeColorMap = {
+  0: 'primary',
   1: 'success',
   2: 'info',
   3: 'warning',
@@ -316,6 +331,7 @@ const resetForm = () => {
     shiftType: 1,
     startTime: '',
     endTime: '',
+    isCrossDay: false,
     durationHours: 8,
     breakHours: 0,
     isOvertimeShift: 0,
@@ -329,11 +345,16 @@ const handleSave = async () => {
     await formRef.value.validate()
     dialogLoading.value = true
     
+    const formData = {
+      ...form,
+      isCrossDay: form.isCrossDay ? 1 : 0
+    }
+    
     let response
     if (form.id) {
-      response = await updateShiftConfig(form)
+      response = await updateShiftConfig(formData)
     } else {
-      response = await addShiftConfig(form)
+      response = await addShiftConfig(formData)
     }
     
     if (response.code === 200) {

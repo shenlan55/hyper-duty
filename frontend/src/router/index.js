@@ -60,7 +60,14 @@ const routes = [
             name: 'Dict',
             component: () => import('../views/Dict.vue'),
             meta: { title: '字典管理' }
-          }
+          },
+          {
+            path: 'operation-log',
+            name: 'OperationLog',
+            component: () => import('../views/duty/OperationLog.vue'),
+            meta: { title: '操作日志' }
+          },
+
         ]
       },
       {
@@ -116,12 +123,6 @@ const routes = [
             name: 'Statistics',
             component: () => import('../views/duty/Statistics.vue'),
             meta: { title: '排班统计' }
-          },
-          {
-            path: 'operation-log',
-            name: 'OperationLog',
-            component: () => import('../views/duty/OperationLog.vue'),
-            meta: { title: '操作日志' }
           }
         ]
       }

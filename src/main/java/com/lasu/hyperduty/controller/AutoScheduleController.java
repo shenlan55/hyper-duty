@@ -6,8 +6,10 @@ import com.lasu.hyperduty.service.AutoScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/duty/auto-schedule")
@@ -46,5 +48,47 @@ public class AutoScheduleController {
                 dutyDate, dutyShift, excludeEmployeeId
         );
         return ResponseResult.success(employees);
+    }
+
+    @PostMapping("/generate-by-work-hours")
+    public ResponseResult<List<DutyAssignment>> generateScheduleByWorkHours(
+            @RequestParam Long scheduleId,
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate,
+            @RequestParam(required = false) Long ruleId,
+            @RequestParam Long employeeId) {
+        List<DutyAssignment> assignments = autoScheduleService.generateAutoScheduleByWorkHours(
+                scheduleId, startDate, endDate, ruleId, employeeId
+        );
+        return ResponseResult.success(assignments);
+    }
+
+    @GetMapping("/employee-monthly-work-hours")
+    public ResponseResult<Map<Long, BigDecimal>> getEmployeeMonthlyWorkHours(
+            @RequestParam Long scheduleId,
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+        Map<Long, BigDecimal> workHours = autoScheduleService.getEmployeeMonthlyWorkHours(
+                scheduleId, startDate, endDate
+        );
+        return ResponseResult.success(workHours);
+    }
+
+    /**
+     * 根据排班模式生成排班
+     */
+    @PostMapping("/generate-by-mode")
+    public ResponseResult<List<DutyAssignment>> generateScheduleByMode(
+            @RequestBody Map<String, Object> params) {
+        Long scheduleId = Long.valueOf(params.get("scheduleId").toString());
+        LocalDate startDate = LocalDate.parse(params.get("startDate").toString());
+        LocalDate endDate = LocalDate.parse(params.get("endDate").toString());
+        Long modeId = Long.valueOf(params.get("modeId").toString());
+        Map<String, Object> configParams = (Map<String, Object>) params.get("configParams");
+        
+        List<DutyAssignment> assignments = autoScheduleService.generateScheduleByMode(
+                scheduleId, startDate, endDate, modeId, configParams
+        );
+        return ResponseResult.success(assignments);
     }
 }

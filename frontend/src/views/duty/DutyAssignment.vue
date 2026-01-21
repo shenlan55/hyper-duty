@@ -2,14 +2,7 @@
   <div class="assignment-container">
     <div class="page-header">
       <h2>值班安排</h2>
-      <el-button type="primary" @click="openAddDialog">
-        <el-icon><Plus /></el-icon>
-        添加值班安排
-      </el-button>
-    </div>
-
-    <el-card shadow="hover" class="content-card">
-      <div class="table-toolbar">
+      <div class="header-actions">
         <el-select
           v-model="selectedScheduleId"
           placeholder="选择值班表"
@@ -25,79 +18,51 @@
             :value="schedule.id"
           />
         </el-select>
-        <el-input
-          v-model="searchQuery"
-          placeholder="请输入人员姓名"
-          prefix-icon="Search"
-          clearable
-          class="search-input"
-          @input="handleSearch"
-        />
+        <el-button type="primary" @click="openBatchDialog" :disabled="!selectedScheduleId || !isLeader">
+          <el-icon><Plus /></el-icon>
+          批量排班
+        </el-button>
+        <el-button type="danger" @click="openClearDialog" :disabled="!selectedScheduleId || !isLeader">
+          <el-icon><Delete /></el-icon>
+          批量清空
+        </el-button>
       </div>
+    </div>
 
-      <el-table
-        v-loading="loading"
-        :data="pagedAssignmentList"
-        style="width: 100%"
-        row-key="id"
-      >
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="dutyDate" label="值班日期" width="150">
-          <template #default="scope">
-            {{ formatDate(scope.row.dutyDate) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="dutyShift" label="班次" width="100">
-          <template #default="scope">
-            <el-tag :type="'info'">
-              {{ getShiftName(scope.row.dutyShift) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="employeeId" label="值班人员" min-width="150">
-          <template #default="scope">
-            {{ getEmployeeName(scope.row.employeeId) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
-              {{ scope.row.status === 1 ? '有效' : '无效' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="remark" label="备注" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="createTime" label="创建时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="scope">
-            <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
-              编辑
+    <el-card shadow="hover" class="content-card">
+      <el-calendar v-model="currentDate">
+        <template #date-cell="{ data }">
+          <div class="calendar-cell">
+            <div class="date-number">{{ data.day.split('-').slice(2).join('-') }}</div>
+            <div class="duty-list">
+              <div
+                v-for="assignment in getAssignmentsByDate(data.day)"
+                :key="assignment.id"
+                class="duty-item"
+                :class="{ 'clickable': isLeader }"
+                @click="isLeader ? openEditDialog(assignment) : null"
+              >
+                <el-tag :type="getShiftTypeColor(assignment.dutyShift)" size="small">
+                  {{ getShiftName(assignment.dutyShift) }}
+                </el-tag>
+                <span class="employee-name">{{ getEmployeeName(assignment.employeeId) }}</span>
+              </div>
+            </div>
+            <el-button
+              v-if="selectedScheduleId && isLeader && !hasAssignment(data.day)"
+              type="primary"
+              size="small"
+              text
+              @click="openAddDialog(data.day)"
+              class="add-btn"
+            >
+              <el-icon><Plus /></el-icon>
             </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="filteredAssignmentList.length"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
+          </div>
+        </template>
+      </el-calendar>
     </el-card>
 
-    <!-- 添加/编辑值班安排对话框 -->
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
@@ -109,70 +74,50 @@
         :rules="assignmentRules"
         label-position="top"
       >
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="值班表" prop="scheduleId">
-              <el-select
-                v-model="assignmentForm.scheduleId"
-                placeholder="请选择值班表"
-                style="width: 100%"
-              >
-                <el-option
-                  v-for="schedule in scheduleList"
-                  :key="schedule.id"
-                  :label="schedule.scheduleName"
-                  :value="schedule.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="值班日期" prop="dutyDate">
-              <el-date-picker
-                v-model="assignmentForm.dutyDate"
-                type="date"
-                placeholder="选择值班日期"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="班次" prop="dutyShift">
-              <el-select
-                v-model="assignmentForm.dutyShift"
-                placeholder="请选择班次"
-                style="width: 100%"
-              >
-                <el-option label="早班" :value="1" />
-                <el-option label="中班" :value="2" />
-                <el-option label="晚班" :value="3" />
-                <el-option label="全天" :value="4" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="值班人员" prop="employeeId">
-              <el-select
-                v-model="assignmentForm.employeeId"
-                placeholder="请选择值班人员"
-                style="width: 100%"
-                filterable
-                remote
-                :remote-method="remoteSearchEmployee"
-                :loading="employeeLoading"
-              >
-                <el-option
-                  v-for="employee in employeeList"
-                  :key="employee.id"
-                  :label="employee.employeeName"
-                  :value="employee.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="值班日期" prop="dutyDate">
+          <el-date-picker
+            v-model="assignmentForm.dutyDate"
+            type="date"
+            placeholder="选择值班日期"
+            style="width: 100%"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item label="班次" prop="dutyShift">
+          <el-select
+            v-model="assignmentForm.dutyShift"
+            placeholder="请选择班次"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="shift in shiftConfigList"
+              :key="shift.id"
+              :label="shift.shiftName"
+              :value="shift.id"
+            >
+              <span>{{ shift.shiftName }}</span>
+              <span style="float: right; color: #8492a6; font-size: 12px">
+                {{ shift.startTime }} - {{ shift.endTime }}
+              </span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="值班人员" prop="employeeId">
+          <el-select
+            v-model="assignmentForm.employeeId"
+            placeholder="请选择值班人员"
+            style="width: 100%"
+            filterable
+          >
+            <el-option
+              v-for="employee in scheduleEmployeeList"
+              :key="employee.id"
+              :label="employee.employeeName"
+              :value="employee.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="assignmentForm.status">
             <el-radio :value="1">有效</el-radio>
@@ -197,59 +142,242 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="batchDialogVisible"
+      title="批量排班"
+      width="700px"
+    >
+      <el-form
+        ref="batchFormRef"
+        :model="batchForm"
+        :rules="batchRules"
+        label-position="top"
+      >
+        <el-form-item label="日期范围" prop="dateRange">
+          <el-date-picker
+            v-model="batchForm.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 100%"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item label="排班方式" prop="scheduleType">
+          <el-radio-group v-model="batchForm.scheduleType">
+            <el-radio :value="1">轮换排班</el-radio>
+            <el-radio :value="2">固定排班</el-radio>
+            <el-radio :value="3">排班模式</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="排班模式" prop="scheduleModeId" v-if="batchForm.scheduleType === 3">
+          <el-select
+            v-model="batchForm.scheduleModeId"
+            placeholder="请选择排班模式"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="mode in scheduleModeList"
+              :key="mode.id"
+              :label="mode.modeName"
+              :value="mode.id"
+            >
+              <span>{{ mode.modeName }}</span>
+              <span style="float: right; color: #8492a6; font-size: 12px;">{{ mode.description }}</span>
+            </el-option>
+          </el-select>
+          <el-alert
+            v-if="scheduleModeList.length === 0"
+            type="warning"
+            message="暂无可用的排班模式，请联系管理员配置"
+            show-icon
+            :closable="false"
+            style="margin-top: 8px"
+          />
+        </el-form-item>
+        <el-form-item label="每组人数" prop="groupSize" v-if="batchForm.scheduleType === 3">
+          <el-input
+            v-model="batchForm.groupSize"
+            type="number"
+            placeholder="请输入每组人数"
+            style="width: 100%"
+            :min="1"
+          />
+        </el-form-item>
+        <el-form-item label="夜班人数" prop="nightShiftCount" v-if="batchForm.scheduleType === 3">
+          <el-input
+            v-model="batchForm.nightShiftCount"
+            type="number"
+            placeholder="请输入夜班人数（仅白班组内全员、夜班轮值模式需要）"
+            style="width: 100%"
+            :min="1"
+          />
+        </el-form-item>
+        <el-form-item label="班次" prop="dutyShift" v-if="batchForm.scheduleType !== 3">
+          <el-select
+            v-model="batchForm.dutyShift"
+            placeholder="请选择班次"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="shift in shiftConfigList"
+              :key="shift.id"
+              :label="shift.shiftName"
+              :value="shift.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="值班人员" prop="employeeIds">
+          <el-select
+            v-model="batchForm.employeeIds"
+            placeholder="请选择值班人员"
+            style="width: 100%"
+            multiple
+            filterable
+          >
+            <el-option
+              v-for="employee in scheduleEmployeeList"
+              :key="employee.id"
+              :label="employee.employeeName"
+              :value="employee.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input
+            v-model="batchForm.remark"
+            placeholder="请输入备注"
+            type="textarea"
+            :rows="3"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="batchDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="batchDialogLoading" @click="handleBatchSave">
+            确定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="clearDialogVisible"
+      title="批量清空排班"
+      width="500px"
+    >
+      <el-form
+        ref="clearFormRef"
+        :model="clearForm"
+        :rules="clearRules"
+        label-position="top"
+      >
+        <el-form-item label="日期范围" prop="dateRange">
+          <el-date-picker
+            v-model="clearForm.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 100%"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-alert
+          title="警告"
+          type="warning"
+          description="清空操作不可恢复，请谨慎操作！"
+          :closable="false"
+          show-icon
+        />
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="clearDialogVisible = false">取消</el-button>
+          <el-button type="danger" :loading="clearDialogLoading" @click="handleClearSave">
+            确认清空
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getAssignmentList,
   getAssignmentsByScheduleId,
   addAssignment,
   updateAssignment,
-  deleteAssignment
+  deleteAssignment,
+  deleteBatchAssignments
 } from '../../api/duty/assignment'
-import { getScheduleList } from '../../api/duty/schedule'
+import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleModeList } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
+import { getShiftConfigList } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
+import { useUserStore } from '../../stores/user'
 
-// 响应式数据
-const searchQuery = ref('')
+const userStore = useUserStore()
+
 const selectedScheduleId = ref('')
+const currentDate = ref(new Date())
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogLoading = ref(false)
 const dialogTitle = ref('添加值班安排')
 const assignmentFormRef = ref()
-const employeeLoading = ref(false)
 
-// 分页数据
-const currentPage = ref(1)
-const pageSize = ref(10)
+const batchDialogVisible = ref(false)
+const batchDialogLoading = ref(false)
+const batchFormRef = ref()
 
-// 数据列表
 const scheduleList = ref([])
-const employeeList = ref([])
+const allEmployeeList = ref([])
+const scheduleEmployeeList = ref([])
+const scheduleLeaderList = ref([])
+const shiftConfigList = ref([])
 const assignmentList = ref([])
+const scheduleModeList = ref([])
 
-// 表单数据
 const assignmentForm = reactive({
   id: null,
   scheduleId: null,
   dutyDate: null,
-  dutyShift: 1,
+  dutyShift: null,
   employeeId: null,
   status: 1,
   remark: ''
 })
 
-// 表单验证规则
+const batchForm = reactive({
+  dateRange: null,
+  scheduleType: 1,
+  dutyShift: null,
+  employeeIds: [],
+  remark: '',
+  scheduleModeId: null,
+  groupSize: 1,
+  nightShiftCount: 1
+})
+
+const clearDialogVisible = ref(false)
+const clearDialogLoading = ref(false)
+const clearFormRef = ref()
+
+const clearForm = reactive({
+  dateRange: null
+})
+
 const assignmentRules = {
-  scheduleId: [
-    { required: true, message: '请选择值班表', trigger: 'blur' }
-  ],
   dutyDate: [
     { required: true, message: '请选择值班日期', trigger: 'blur' }
   ],
@@ -261,71 +389,77 @@ const assignmentRules = {
   ]
 }
 
-// 班次名称映射
-const shiftNames = {
-  1: '早班',
-  2: '中班',
-  3: '晚班',
-  4: '全天'
+const batchRules = {
+  dateRange: [
+    { required: true, message: '请选择日期范围', trigger: 'blur' }
+  ],
+  dutyShift: [
+    { required: true, message: '请选择班次', trigger: 'blur' },
+    { required: true, message: '请选择班次', trigger: 'change' }
+  ],
+  employeeIds: [
+    { required: true, message: '请选择值班人员', trigger: 'blur' },
+    { required: true, message: '请选择值班人员', trigger: 'change' }
+  ],
+  scheduleModeId: [
+    { required: true, message: '请选择排班模式', trigger: 'blur' },
+    { required: true, message: '请选择排班模式', trigger: 'change' }
+  ],
+  groupSize: [
+    { required: true, message: '请输入每组人数', trigger: 'blur' },
+    { min: 1, message: '每组人数至少为1', trigger: 'blur' }
+  ],
+  nightShiftCount: [
+    { required: true, message: '请输入夜班人数', trigger: 'blur' },
+    { min: 1, message: '夜班人数至少为1', trigger: 'blur' }
+  ]
 }
 
-// 获取班次名称
-const getShiftName = (shift) => {
-  return shiftNames[shift] || '未知班次'
+const clearRules = {
+  dateRange: [
+    { required: true, message: '请选择日期范围', trigger: 'blur' }
+  ]
 }
 
-// 获取员工姓名
+const shiftNames = computed(() => {
+  const map = {}
+  shiftConfigList.value.forEach(shift => {
+    map[shift.id] = shift.shiftName
+  })
+  return map
+})
+
+const getShiftName = (shiftId) => {
+  return shiftNames.value[shiftId] || '未知班次'
+}
+
+const getShiftTypeColor = (shiftId) => {
+  const shift = shiftConfigList.value.find(s => s.id === shiftId)
+  if (!shift) return 'info'
+  const colorMap = {
+    0: 'primary',
+    1: 'success',
+    2: 'info',
+    3: 'warning',
+    4: 'primary',
+    5: 'danger'
+  }
+  return colorMap[shift.shiftType] || 'info'
+}
+
 const getEmployeeName = (employeeId) => {
-  const employee = employeeList.value.find(e => e.id === employeeId)
+  const employee = allEmployeeList.value.find(e => e.id === employeeId)
   return employee ? employee.employeeName : '未知人员'
 }
 
-// 过滤后的值班安排列表
-const filteredAssignmentList = computed(() => {
-  let list = assignmentList.value
-  
-  // 按搜索词过滤
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    list = list.filter(assignment => {
-      const employeeName = getEmployeeName(assignment.employeeId).toLowerCase()
-      return employeeName.includes(query)
-    })
-  }
-  
-  return list
-})
-
-// 分页后的值班安排列表
-const pagedAssignmentList = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filteredAssignmentList.value.slice(start, end)
-})
-
-// 远程搜索员工
-const remoteSearchEmployee = async (query) => {
-  if (query) {
-    employeeLoading.value = true
-    try {
-      const response = await getEmployeeList()
-      if (response.code === 200) {
-        employeeList.value = response.data.filter(employee => 
-          employee.employeeName.toLowerCase().includes(query.toLowerCase())
-        )
-      }
-    } catch (error) {
-      console.error('搜索员工失败:', error)
-    } finally {
-      employeeLoading.value = false
-    }
-  } else {
-    // 如果搜索词为空，加载所有员工
-    await fetchEmployeeList()
-  }
+const getAssignmentsByDate = (date) => {
+  return assignmentList.value.filter(assignment => assignment.dutyDate === date)
 }
 
-// 获取值班表列表
+const hasAssignment = (date) => {
+  return assignmentList.value.some(assignment => assignment.dutyDate === date)
+}
+
 const fetchScheduleList = async () => {
   try {
     const response = await getScheduleList()
@@ -338,12 +472,11 @@ const fetchScheduleList = async () => {
   }
 }
 
-// 获取员工列表
 const fetchEmployeeList = async () => {
   try {
     const response = await getEmployeeList()
     if (response.code === 200) {
-      employeeList.value = response.data
+      allEmployeeList.value = response.data
     }
   } catch (error) {
     console.error('获取员工列表失败:', error)
@@ -351,7 +484,55 @@ const fetchEmployeeList = async () => {
   }
 }
 
-// 获取值班安排列表
+const fetchShiftConfigList = async () => {
+  try {
+    const response = await getShiftConfigList()
+    if (response.code === 200) {
+      shiftConfigList.value = response.data.filter(shift => shift.status === 1)
+    }
+  } catch (error) {
+    console.error('获取班次配置列表失败:', error)
+    ElMessage.error('获取班次配置列表失败')
+  }
+}
+
+const fetchScheduleModeList = async () => {
+  try {
+    const response = await getScheduleModeList()
+    if (response.code === 200) {
+      scheduleModeList.value = response.data.filter(mode => mode.status === 1)
+    }
+  } catch (error) {
+    console.error('获取排班模式列表失败:', error)
+    ElMessage.error('获取排班模式列表失败')
+  }
+}
+
+const fetchScheduleEmployees = async (scheduleId) => {
+  try {
+    const [employeeRes, leaderRes] = await Promise.all([
+      getScheduleEmployees(scheduleId),
+      getScheduleLeaders(scheduleId)
+    ])
+    if (employeeRes.code === 200) {
+      const employeeIds = employeeRes.data || []
+      scheduleEmployeeList.value = allEmployeeList.value.filter(emp => 
+        employeeIds.includes(emp.id)
+      )
+    }
+    if (leaderRes.code === 200) {
+      scheduleLeaderList.value = leaderRes.data || []
+    }
+  } catch (error) {
+    console.error('获取值班人员失败:', error)
+    ElMessage.error('获取值班人员失败')
+  }
+}
+
+const isLeader = computed(() => {
+  return scheduleLeaderList.value.includes(userStore.employeeId)
+})
+
 const fetchAssignmentList = async (scheduleId = null) => {
   loading.value = true
   try {
@@ -373,58 +554,49 @@ const fetchAssignmentList = async (scheduleId = null) => {
   }
 }
 
-// 搜索
-const handleSearch = () => {
-  currentPage.value = 1
+const handleScheduleChange = async (scheduleId) => {
+  if (scheduleId) {
+    await fetchScheduleEmployees(scheduleId)
+    await fetchAssignmentList(scheduleId)
+  } else {
+    scheduleEmployeeList.value = []
+    assignmentList.value = []
+  }
 }
 
-// 值班表选择变化
-const handleScheduleChange = (scheduleId) => {
-  fetchAssignmentList(scheduleId)
-  currentPage.value = 1
-}
-
-// 分页处理
-const handleSizeChange = (size) => {
-  pageSize.value = size
-  currentPage.value = 1
-}
-
-const handleCurrentChange = (page) => {
-  currentPage.value = page
-}
-
-// 打开添加对话框
-const openAddDialog = () => {
+const openAddDialog = (date) => {
   resetForm()
+  assignmentForm.scheduleId = selectedScheduleId.value
+  assignmentForm.dutyDate = date
   dialogTitle.value = '添加值班安排'
   dialogVisible.value = true
 }
 
-// 打开编辑对话框
 const openEditDialog = (assignment) => {
+  if (!isLeader.value) {
+    ElMessage.warning('只有值班长才能编辑值班安排')
+    return
+  }
   Object.assign(assignmentForm, assignment)
   dialogTitle.value = '编辑值班安排'
   dialogVisible.value = true
 }
 
-// 重置表单
 const resetForm = () => {
   if (assignmentFormRef.value) {
     assignmentFormRef.value.resetFields()
   }
   Object.assign(assignmentForm, {
     id: null,
-    scheduleId: selectedScheduleId.value || null,
+    scheduleId: selectedScheduleId.value,
     dutyDate: null,
-    dutyShift: 1,
+    dutyShift: null,
     employeeId: null,
     status: 1,
     remark: ''
   })
 }
 
-// 保存值班安排
 const handleSave = async () => {
   try {
     await assignmentFormRef.value.validate()
@@ -432,10 +604,8 @@ const handleSave = async () => {
     
     let response
     if (assignmentForm.id) {
-      // 编辑值班安排
       response = await updateAssignment(assignmentForm)
     } else {
-      // 添加值班安排
       response = await addAssignment(assignmentForm)
     }
     
@@ -454,35 +624,127 @@ const handleSave = async () => {
   }
 }
 
-// 删除值班安排
-const handleDelete = async (id) => {
+const openBatchDialog = () => {
+  Object.assign(batchForm, {
+    dateRange: null,
+    scheduleType: 1,
+    dutyShift: null,
+    employeeIds: [],
+    remark: '',
+    scheduleModeId: null,
+    groupSize: 1,
+    nightShiftCount: 1
+  })
+  batchDialogVisible.value = true
+}
+
+const handleBatchSave = async () => {
   try {
-    await ElMessageBox.confirm('确定要删除该值班安排吗？', '删除确认', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
+    await batchFormRef.value.validate()
+    batchDialogLoading.value = true
+    
+    const [startDate, endDate] = batchForm.dateRange
+    const dates = getDatesInRange(startDate, endDate)
+    const employeeIds = batchForm.employeeIds
+    
+    const assignments = []
+    dates.forEach((date, index) => {
+      if (batchForm.scheduleType === 1) {
+        const employeeIndex = index % employeeIds.length
+        assignments.push({
+          scheduleId: selectedScheduleId.value,
+          dutyDate: date,
+          dutyShift: batchForm.dutyShift,
+          employeeId: employeeIds[employeeIndex],
+          status: 1,
+          remark: batchForm.remark
+        })
+      } else {
+        employeeIds.forEach(employeeId => {
+          assignments.push({
+            scheduleId: selectedScheduleId.value,
+            dutyDate: date,
+            dutyShift: batchForm.dutyShift,
+            employeeId: employeeId,
+            status: 1,
+            remark: batchForm.remark
+          })
+        })
+      }
     })
     
-    const response = await deleteAssignment(id)
-    if (response.code === 200) {
-      ElMessage.success('删除值班安排成功')
-      fetchAssignmentList(selectedScheduleId.value)
-    } else {
-      ElMessage.error(response.message || '删除值班安排失败')
+    for (const assignment of assignments) {
+      await addAssignment(assignment)
     }
+    
+    ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
+    batchDialogVisible.value = false
+    fetchAssignmentList(selectedScheduleId.value)
   } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除值班安排失败:', error)
-      ElMessage.error('删除值班安排失败')
-    }
+    console.error('批量排班失败:', error)
+    ElMessage.error('批量排班失败')
+  } finally {
+    batchDialogLoading.value = false
   }
 }
 
-// 生命周期钩子
+const openClearDialog = () => {
+  Object.assign(clearForm, {
+    dateRange: null
+  })
+  clearDialogVisible.value = true
+}
+
+const handleClearSave = async () => {
+  try {
+    await clearFormRef.value.validate()
+    
+    await ElMessageBox.confirm(
+      `确定要清空 ${clearForm.dateRange[0]} 至 ${clearForm.dateRange[1]} 的所有排班吗？此操作不可恢复！`,
+      '确认清空',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    clearDialogLoading.value = true
+    const [startDate, endDate] = clearForm.dateRange
+    
+    await deleteBatchAssignments(selectedScheduleId.value, startDate, endDate)
+    
+    ElMessage.success('批量清空成功')
+    clearDialogVisible.value = false
+    fetchAssignmentList(selectedScheduleId.value)
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('批量清空失败:', error)
+      ElMessage.error('批量清空失败')
+    }
+  } finally {
+    clearDialogLoading.value = false
+  }
+}
+
+const getDatesInRange = (startDate, endDate) => {
+  const dates = []
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  
+  while (start <= end) {
+    dates.push(start.toISOString().split('T')[0])
+    start.setDate(start.getDate() + 1)
+  }
+  
+  return dates
+}
+
 onMounted(async () => {
   await fetchScheduleList()
   await fetchEmployeeList()
-  await fetchAssignmentList()
+  await fetchShiftConfigList()
+  await fetchScheduleModeList()
 })
 </script>
 
@@ -504,24 +766,74 @@ onMounted(async () => {
   color: #303133;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .content-card {
   margin-bottom: 10px;
 }
 
-.table-toolbar {
+.calendar-cell {
+  height: 100%;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+}
+
+.date-number {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #606266;
+}
+
+.duty-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.duty-item {
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
-  gap: 10px;
+  gap: 5px;
+  padding: 2px 0;
+  transition: background-color 0.2s;
 }
 
-.search-input {
-  width: 300px;
+.duty-item.clickable {
+  cursor: pointer;
 }
 
-.pagination-container {
+.duty-item.clickable:hover {
+  background-color: #f5f7fa;
+}
+
+.employee-name {
+  font-size: 12px;
+  color: #606266;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-btn {
+  margin-top: auto;
+  width: 100%;
   display: flex;
-  justify-content: flex-end;
-  margin-top: 10px;
+  justify-content: center;
+  align-items: center;
+  padding: 2px 0;
+}
+
+:deep(.el-calendar-table .el-calendar-day) {
+  height: 120px;
+}
+
+:deep(.el-calendar-table td.is-selected .el-calendar-day) {
+  background-color: #ecf5ff;
 }
 </style>

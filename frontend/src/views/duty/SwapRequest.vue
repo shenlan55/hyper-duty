@@ -116,10 +116,12 @@
           <el-col :span="12">
             <el-form-item label="调班班次" prop="swapShift">
               <el-select v-model="form.swapShift" placeholder="请选择班次" style="width: 100%">
-                <el-option label="早班" :value="1" />
-                <el-option label="中班" :value="2" />
-                <el-option label="晚班" :value="3" />
-                <el-option label="全天" :value="4" />
+                <el-option
+                  v-for="shiftConfig in shiftConfigList"
+                  :key="shiftConfig.id"
+                  :label="shiftConfig.shiftName"
+                  :value="shiftConfig.shiftType"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -179,6 +181,7 @@ import {
   confirmSwapRequest
 } from '../../api/duty/swapRequest'
 import { getEmployeeList } from '../../api/employee'
+import { getShiftConfigList } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 
 const loading = ref(false)
@@ -190,6 +193,7 @@ const dialogTitle = ref('申请调班')
 const formRef = ref()
 const requestList = ref([])
 const employeeList = ref([])
+const shiftConfigList = ref([])
 const currentSwapRequest = ref({})
 const currentEmployeeId = ref(1)
 
@@ -198,7 +202,7 @@ const form = reactive({
   originalEmployeeId: null,
   targetEmployeeId: null,
   swapDate: null,
-  swapShift: 1,
+  swapShift: null,
   reason: ''
 })
 
@@ -239,6 +243,10 @@ const approvalStatusColorMap = {
 }
 
 const getShiftName = (shift) => {
+  const shiftConfig = shiftConfigList.value.find(config => config.shiftType === shift)
+  if (shiftConfig) {
+    return shiftConfig.shiftName
+  }
   return shiftNames[shift] || '未知'
 }
 
@@ -272,6 +280,17 @@ const fetchEmployeeList = async () => {
     }
   } catch (error) {
     console.error('获取员工列表失败:', error)
+  }
+}
+
+const fetchShiftConfigList = async () => {
+  try {
+    const response = await getShiftConfigList()
+    if (response.code === 200) {
+      shiftConfigList.value = response.data.filter(config => config.status === 1)
+    }
+  } catch (error) {
+    console.error('获取班次配置列表失败:', error)
   }
 }
 
@@ -310,7 +329,7 @@ const resetForm = () => {
     originalEmployeeId: null,
     targetEmployeeId: null,
     swapDate: null,
-    swapShift: 1,
+    swapShift: null,
     reason: ''
   })
 }
@@ -391,6 +410,7 @@ const handleDelete = async (id) => {
 
 onMounted(async () => {
   await fetchEmployeeList()
+  await fetchShiftConfigList()
   await fetchMySwapRequests()
 })
 </script>

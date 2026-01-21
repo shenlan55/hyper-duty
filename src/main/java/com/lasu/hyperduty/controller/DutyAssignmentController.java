@@ -72,4 +72,16 @@ public class DutyAssignmentController {
         return ResponseResult.success();
     }
 
+    /**
+     * 批量删除值班安排
+     */
+    @DeleteMapping("/batch-delete")
+    public ResponseResult<Void> deleteBatchAssignments(
+            @RequestParam Long scheduleId,
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+        dutyAssignmentService.deleteByScheduleIdAndDateRange(scheduleId, startDate, endDate);
+        return ResponseResult.success();
+    }
+
 }
