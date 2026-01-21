@@ -51,17 +51,18 @@ public class OperationLogAspect {
     public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
         // 记录开始时间
         long startTime = System.currentTimeMillis();
-        
+
         // 获取请求信息
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         HttpServletRequest request = Objects.requireNonNull(attributes).getRequest();
-        
+
         // 获取用户信息
         Long operatorId = null; // 默认值为null，避免外键约束失败
         String operatorName = "未知用户";
-        
+
         // 从JWT中获取用户信息
         String token = request.getHeader("Authorization");
+        String requestUrl = request.getRequestURI();
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
             try {
@@ -77,32 +78,63 @@ public class OperationLogAspect {
             } catch (Exception e) {
                 // JWT解析失败，使用默认值
             }
+        } else if (requestUrl.equals("/api/auth/login")) {
+            // 对于登录操作，从请求参数中获取用户名
+            try {
+                // 获取登录请求的参数
+                String requestParams = getRequestParams(joinPoint, request);
+                // 简单解析JSON格式的请求参数
+                if (requestParams.contains("username")) {
+                    // 提取username的值
+                    int startIndex = requestParams.indexOf("username") + 9;
+                    int endIndex = requestParams.indexOf(",", startIndex);
+                    if (endIndex == -1) {
+                        endIndex = requestParams.indexOf("}", startIndex);
+                    }
+                    if (startIndex < endIndex) {
+                        String username = requestParams.substring(startIndex, endIndex).trim();
+                        // 移除引号
+                        username = username.replaceAll("\"", "");
+                        operatorName = username;
+                    }
+                }
+            } catch (Exception e) {
+                // 解析失败，使用默认值
+            }
         }
-        
+
         // 获取操作类型
         String requestMethod = request.getMethod();
         String operationType = getOperationType(requestMethod);
-        
-        // 获取操作模块
-        String requestUrl = request.getRequestURI();
+
+        // 已经获取了操作模块的URL
         String operationModule = getOperationModule(requestUrl);
-        
+
+        // 对登录和登出操作进行特殊处理
+        if (requestUrl.equals("/api/auth/login")) {
+            operationType = "登录";
+            operationModule = "认证管理";
+        } else if (requestUrl.equals("/api/auth/logout")) {
+            operationType = "登出";
+            operationModule = "认证管理";
+        }
+
         // 获取操作描述
         String operationDesc = getOperationDesc(joinPoint);
-        
+
         // 获取请求参数
         String requestParams = getRequestParams(joinPoint, request);
-        
+
         // 获取IP地址
         String ipAddress = getIpAddress(request);
-        
+
         // 获取用户代理
         String userAgent = request.getHeader("User-Agent");
-        
+
         Object result = null;
         int status = 1; // 默认成功
         String errorMsg = null;
-        
+
         try {
             // 执行目标方法
             result = joinPoint.proceed();
@@ -114,7 +146,7 @@ public class OperationLogAspect {
         } finally {
             // 计算执行时间
             int executionTime = (int) (System.currentTimeMillis() - startTime);
-            
+
             // 处理响应结果，限制长度避免超出数据库字段限制
             String responseResult = null;
             if (result != null) {
@@ -122,7 +154,7 @@ public class OperationLogAspect {
                 // 限制响应结果长度为1000个字符
                 responseResult = resultStr.length() > 1000 ? resultStr.substring(0, 1000) + "..." : resultStr;
             }
-            
+
             // 记录操作日志
             operationLogService.logOperation(
                     operatorId,
@@ -141,7 +173,7 @@ public class OperationLogAspect {
                     errorMsg
             );
         }
-        
+
         return result;
     }
 
