@@ -7,6 +7,27 @@ export function getPendingApprovals(approverId) {
   })
 }
 
+export function getApprovedApprovals(approverId) {
+  return request({
+    url: `/duty/leave-request/approved/${approverId}`,
+    method: 'get'
+  })
+}
+
+export function getPendingApprovalsByScheduleId(scheduleId) {
+  return request({
+    url: `/duty/leave-request/pending/schedule/${scheduleId}`,
+    method: 'get'
+  })
+}
+
+export function getApprovedApprovalsByScheduleId(scheduleId) {
+  return request({
+    url: `/duty/leave-request/approved/schedule/${scheduleId}`,
+    method: 'get'
+  })
+}
+
 export function approveLeaveRequest(requestId, approverId, approvalStatus, opinion) {
   return request({
     url: `/duty/leave-request/approve/${requestId}`,
