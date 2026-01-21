@@ -32,6 +32,9 @@ public class AuthController {
     @Autowired
     private SysUserService sysUserService;
 
+    @Autowired
+    private com.lasu.hyperduty.service.SysEmployeeService sysEmployeeService;
+
     @PostMapping("/login")
     public ResponseResult<Map<String, Object>> login(@Validated @RequestBody LoginDTO loginDTO) {
         // 进行认证
@@ -48,7 +51,18 @@ public class AuthController {
                 .one();
 
         // 生成JWT令牌
-        String token = jwtUtil.generateToken(loginDTO.getUsername());
+        String token;
+        if (user != null) {
+            // 获取员工信息
+            com.lasu.hyperduty.entity.SysEmployee employee = sysEmployeeService.getById(user.getEmployeeId());
+            if (employee != null) {
+                token = jwtUtil.generateToken(loginDTO.getUsername(), user.getEmployeeId(), employee.getEmployeeName());
+            } else {
+                token = jwtUtil.generateToken(loginDTO.getUsername());
+            }
+        } else {
+            token = jwtUtil.generateToken(loginDTO.getUsername());
+        }
 
         // 构建返回数据
         Map<String, Object> userInfo = new HashMap<>();

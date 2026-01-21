@@ -73,4 +73,22 @@ public class AutoScheduleController {
         );
         return ResponseResult.success(workHours);
     }
+
+    /**
+     * 根据排班模式生成排班
+     */
+    @PostMapping("/generate-by-mode")
+    public ResponseResult<List<DutyAssignment>> generateScheduleByMode(
+            @RequestBody Map<String, Object> params) {
+        Long scheduleId = Long.valueOf(params.get("scheduleId").toString());
+        LocalDate startDate = LocalDate.parse(params.get("startDate").toString());
+        LocalDate endDate = LocalDate.parse(params.get("endDate").toString());
+        Long modeId = Long.valueOf(params.get("modeId").toString());
+        Map<String, Object> configParams = (Map<String, Object>) params.get("configParams");
+        
+        List<DutyAssignment> assignments = autoScheduleService.generateScheduleByMode(
+                scheduleId, startDate, endDate, modeId, configParams
+        );
+        return ResponseResult.success(assignments);
+    }
 }

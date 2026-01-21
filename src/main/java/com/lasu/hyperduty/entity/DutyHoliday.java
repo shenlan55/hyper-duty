@@ -10,27 +10,23 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("duty_schedule")
-public class DutySchedule implements Serializable {
+@TableName("duty_holiday")
+public class DutyHoliday implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
-    private String scheduleName;
+    private String holidayName;
     
-    private String description;
+    private LocalDate holidayDate;
     
-    private LocalDate startDate;
+    private Integer isWorkday;
     
-    private LocalDate endDate;
+    private Integer holidayType;
     
-    private Long scheduleModeId;
-    
-    private Integer status;
-    
-    private Long createBy;
+    private String remark;
     
     private LocalDateTime createTime;
     

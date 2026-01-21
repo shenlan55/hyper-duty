@@ -3,13 +3,18 @@ package com.lasu.hyperduty.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.lasu.hyperduty.entity.DutyAssignment;
 import com.lasu.hyperduty.entity.DutySchedule;
+import com.lasu.hyperduty.entity.DutyScheduleMode;
 import com.lasu.hyperduty.entity.DutyScheduleRule;
 import com.lasu.hyperduty.entity.DutyShiftConfig;
 import com.lasu.hyperduty.entity.EmployeeAvailableTime;
 import com.lasu.hyperduty.entity.SysEmployee;
+import com.lasu.hyperduty.service.algorithm.ScheduleAlgorithm;
 import com.lasu.hyperduty.service.AutoScheduleService;
 import com.lasu.hyperduty.service.DutyAssignmentService;
+import com.lasu.hyperduty.service.DutyHolidayService;
+import com.lasu.hyperduty.service.DutyScheduleModeService;
 import com.lasu.hyperduty.service.DutyScheduleRuleService;
+import com.lasu.hyperduty.service.DutyScheduleService;
 import com.lasu.hyperduty.service.DutyShiftConfigService;
 import com.lasu.hyperduty.service.EmployeeAvailableTimeService;
 import com.lasu.hyperduty.service.SysEmployeeService;
@@ -39,6 +44,15 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
 
     @Autowired
     private SysEmployeeService sysEmployeeService;
+
+    @Autowired
+    private DutyScheduleService dutyScheduleService;
+
+    @Autowired
+    private DutyScheduleModeService dutyScheduleModeService;
+
+    @Autowired
+    private DutyHolidayService dutyHolidayService;
 
     @Override
     public List<DutyAssignment> generateAutoSchedule(Long scheduleId, LocalDate startDate, LocalDate endDate, Long ruleId) {
@@ -318,5 +332,48 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
         }
 
         return employeeWorkHours;
+    }
+
+    @Override
+    public List<DutyAssignment> generateScheduleByMode(Long scheduleId, LocalDate startDate, LocalDate endDate, Long modeId, Map<String, Object> configParams) {
+        List<DutyAssignment> assignments = new ArrayList<>();
+        
+        // 获取值班表信息
+        DutySchedule schedule = dutyScheduleService.getById(scheduleId);
+        if (schedule == null) {
+            return assignments;
+        }
+        
+        // 获取参与排班的员工列表
+        List<SysEmployee> employees = sysEmployeeService.listByIds(dutyScheduleService.getEmployeeIdsByScheduleId(scheduleId));
+        if (employees.isEmpty()) {
+            return assignments;
+        }
+        
+        // 获取排班模式和对应的算法实例
+        DutyScheduleMode mode = dutyScheduleModeService.getById(modeId);
+        if (mode == null) {
+            return assignments;
+        }
+        
+        ScheduleAlgorithm algorithm = dutyScheduleModeService.getAlgorithmInstanceByModeId(modeId);
+        if (algorithm == null) {
+            return assignments;
+        }
+        
+        // 合并默认配置和传入配置
+        Map<String, Object> combinedConfig = new HashMap<>();
+        Map<String, Object> defaultConfig = dutyScheduleModeService.getModeConfig(modeId);
+        if (defaultConfig != null) {
+            combinedConfig.putAll(defaultConfig);
+        }
+        if (configParams != null) {
+            combinedConfig.putAll(configParams);
+        }
+        
+        // 生成排班安排
+        assignments = algorithm.generateSchedule(schedule, employees, startDate, endDate, combinedConfig);
+        
+        return assignments;
     }
 }

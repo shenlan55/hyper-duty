@@ -144,7 +144,7 @@ const leftMenus = computed(() => {
   const menu = topMenus.value.find(m => m.id === activeTopMenu.value)
   
   // 首页菜单没有子菜单，显示首页本身
-  if (activeTopMenu.value === 'dashboard' || activeTopMenu.value === '1') {
+  if (activeTopMenu.value === 'dashboard') {
     return [{
       name: '首页',
       path: '/dashboard',
@@ -152,6 +152,7 @@ const leftMenus = computed(() => {
     }]
   }
   
+  // 返回菜单的子菜单，如果没有则返回空数组
   return menu?.children || []
 })
 
@@ -244,6 +245,7 @@ const fetchUserMenus = async () => {
           else if (childPath === '/menu') childPath = '/system/menu'
           else if (childPath === '/role') childPath = '/system/role'
           else if (childPath === '/dict') childPath = '/system/dict'
+          else if (childPath === '/operation-log') childPath = '/system/operation-log'
           
           // 更新路由名称映射
           routeNameMap.value[childPath] = childMenu.menuName
@@ -372,6 +374,16 @@ const fetchUserMenus = async () => {
             name: '角色管理',
             path: '/system/role',
             icon: 'Operation'
+          },
+          {
+            name: '字典管理',
+            path: '/system/dict',
+            icon: 'List'
+          },
+          {
+            name: '操作日志',
+            path: '/system/operation-log',
+            icon: 'Document'
           }
         ]
       },
@@ -409,6 +421,8 @@ const fetchUserMenus = async () => {
       '/system/user': '用户管理',
       '/system/menu': '菜单管理',
       '/system/role': '角色管理',
+      '/system/dict': '字典管理',
+      '/system/operation-log': '操作日志',
       '/duty': '值班管理',
       '/duty/schedule': '值班表管理',
       '/duty/assignment': '值班安排',

@@ -98,3 +98,18 @@ export function getEmployeeMonthlyWorkHours(scheduleId, startDate, endDate) {
     params: { scheduleId, startDate, endDate }
   })
 }
+
+export function getScheduleModeList() {
+  return request({
+    url: '/duty/schedule-mode/list',
+    method: 'get'
+  })
+}
+
+export function generateScheduleByMode(scheduleId, startDate, endDate, modeId, configParams) {
+  return request({
+    url: '/duty/auto-schedule/generate-by-mode',
+    method: 'post',
+    data: { scheduleId, startDate, endDate, modeId, configParams }
+  })
+}

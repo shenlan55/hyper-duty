@@ -6,31 +6,32 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("duty_schedule")
-public class DutySchedule implements Serializable {
+@TableName("duty_schedule_mode")
+public class DutyScheduleMode implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
-    private String scheduleName;
+    private String modeName;
+    
+    private String modeCode;
+    
+    private Integer modeType;
+    
+    private String algorithmClass;
+    
+    private String configJson;
     
     private String description;
     
-    private LocalDate startDate;
-    
-    private LocalDate endDate;
-    
-    private Long scheduleModeId;
-    
     private Integer status;
     
-    private Long createBy;
+    private Integer sort;
     
     private LocalDateTime createTime;
     

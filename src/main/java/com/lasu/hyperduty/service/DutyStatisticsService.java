@@ -15,4 +15,6 @@ public interface DutyStatisticsService extends IService<DutyStatistics> {
     List<Map<String, Object>> getShiftDistribution();
 
     List<Map<String, Object>> getMonthlyTrend();
+
+    List<Map<String, Object>> getEmployeeStatistics(Integer year, Integer month);
 }

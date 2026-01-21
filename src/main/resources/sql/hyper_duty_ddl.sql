@@ -155,6 +155,24 @@ CREATE TABLE IF NOT EXISTS sys_dict_data (
     FOREIGN KEY (dict_type_id) REFERENCES sys_dict_type(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字典数据表';
 
+-- 排班方式表
+CREATE TABLE IF NOT EXISTS duty_schedule_mode (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '排班方式ID',
+    mode_name VARCHAR(100) NOT NULL COMMENT '排班方式名称',
+    mode_code VARCHAR(50) NOT NULL UNIQUE COMMENT '排班方式编码',
+    mode_type TINYINT NOT NULL COMMENT '排班方式类型:1-轮班制,2-综合制,3-弹性制,4-自定义',
+    algorithm_class VARCHAR(200) COMMENT '算法实现类全路径',
+    config_json JSON COMMENT '配置参数JSON',
+    description VARCHAR(500) COMMENT '排班方式描述',
+    status TINYINT DEFAULT 1 COMMENT '状态:0-禁用,1-启用',
+    sort INT DEFAULT 0 COMMENT '排序',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_mode_code (mode_code),
+    INDEX idx_mode_type (mode_type),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='排班方式表';
+
 -- 值班表
 CREATE TABLE IF NOT EXISTS duty_schedule (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '值班表ID',
@@ -162,10 +180,12 @@ CREATE TABLE IF NOT EXISTS duty_schedule (
     description VARCHAR(200) COMMENT '描述',
     start_date DATE NOT NULL COMMENT '开始日期',
     end_date DATE NOT NULL COMMENT '结束日期',
+    schedule_mode_id BIGINT COMMENT '排班方式ID',
     status TINYINT DEFAULT 1 COMMENT '状态：0禁用，1启用',
     create_by BIGINT COMMENT '创建人ID',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    FOREIGN KEY (schedule_mode_id) REFERENCES duty_schedule_mode(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='值班表';
 
 -- 值班表人员关联表
@@ -279,6 +299,21 @@ CREATE TABLE IF NOT EXISTS employee_available_time (
     FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='人员可排班时段表';
 
+-- 节假日表
+CREATE TABLE IF NOT EXISTS duty_holiday (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '节假日ID',
+    holiday_name VARCHAR(50) NOT NULL COMMENT '节假日名称',
+    holiday_date DATE NOT NULL COMMENT '节假日日期',
+    is_workday TINYINT DEFAULT 0 COMMENT '是否调休上班:0-否,1-是',
+    holiday_type TINYINT DEFAULT 1 COMMENT '节假日类型:1-法定假日,2-调休,3-公司假日',
+    remark VARCHAR(200) COMMENT '备注',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_holiday_date (holiday_date),
+    INDEX idx_holiday_date (holiday_date),
+    INDEX idx_is_workday (is_workday)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='节假日表';
+
 -- 请假申请表
 CREATE TABLE IF NOT EXISTS leave_request (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '请假申请ID',
@@ -369,7 +404,7 @@ CREATE TABLE IF NOT EXISTS swap_request (
 -- 操作日志表
 CREATE TABLE IF NOT EXISTS operation_log (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '日志ID',
-    operator_id BIGINT NOT NULL COMMENT '操作人ID',
+    operator_id BIGINT DEFAULT NULL COMMENT '操作人ID',
     operator_name VARCHAR(50) COMMENT '操作人姓名',
     operation_type VARCHAR(50) NOT NULL COMMENT '操作类型',
     operation_module VARCHAR(50) NOT NULL COMMENT '操作模块',
@@ -388,7 +423,7 @@ CREATE TABLE IF NOT EXISTS operation_log (
     INDEX idx_operation_type (operation_type),
     INDEX idx_operation_module (operation_module),
     INDEX idx_create_time (create_time),
-    FOREIGN KEY (operator_id) REFERENCES sys_employee(id) ON DELETE CASCADE
+    FOREIGN KEY (operator_id) REFERENCES sys_employee(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
 
 -- 排班版本表

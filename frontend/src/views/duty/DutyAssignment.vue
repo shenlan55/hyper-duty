@@ -170,9 +170,53 @@
           <el-radio-group v-model="batchForm.scheduleType">
             <el-radio :value="1">轮换排班</el-radio>
             <el-radio :value="2">固定排班</el-radio>
+            <el-radio :value="3">排班模式</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="班次" prop="dutyShift">
+        <el-form-item label="排班模式" prop="scheduleModeId" v-if="batchForm.scheduleType === 3">
+          <el-select
+            v-model="batchForm.scheduleModeId"
+            placeholder="请选择排班模式"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="mode in scheduleModeList"
+              :key="mode.id"
+              :label="mode.modeName"
+              :value="mode.id"
+            >
+              <span>{{ mode.modeName }}</span>
+              <span style="float: right; color: #8492a6; font-size: 12px;">{{ mode.description }}</span>
+            </el-option>
+          </el-select>
+          <el-alert
+            v-if="scheduleModeList.length === 0"
+            type="warning"
+            message="暂无可用的排班模式，请联系管理员配置"
+            show-icon
+            :closable="false"
+            style="margin-top: 8px"
+          />
+        </el-form-item>
+        <el-form-item label="每组人数" prop="groupSize" v-if="batchForm.scheduleType === 3">
+          <el-input
+            v-model="batchForm.groupSize"
+            type="number"
+            placeholder="请输入每组人数"
+            style="width: 100%"
+            :min="1"
+          />
+        </el-form-item>
+        <el-form-item label="夜班人数" prop="nightShiftCount" v-if="batchForm.scheduleType === 3">
+          <el-input
+            v-model="batchForm.nightShiftCount"
+            type="number"
+            placeholder="请输入夜班人数（仅白班组内全员、夜班轮值模式需要）"
+            style="width: 100%"
+            :min="1"
+          />
+        </el-form-item>
+        <el-form-item label="班次" prop="dutyShift" v-if="batchForm.scheduleType !== 3">
           <el-select
             v-model="batchForm.dutyShift"
             placeholder="请选择班次"
@@ -276,7 +320,7 @@ import {
   deleteAssignment,
   deleteBatchAssignments
 } from '../../api/duty/assignment'
-import { getScheduleList, getScheduleEmployees, getScheduleLeaders } from '../../api/duty/schedule'
+import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleModeList } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
 import { getShiftConfigList } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
@@ -302,6 +346,7 @@ const scheduleEmployeeList = ref([])
 const scheduleLeaderList = ref([])
 const shiftConfigList = ref([])
 const assignmentList = ref([])
+const scheduleModeList = ref([])
 
 const assignmentForm = reactive({
   id: null,
@@ -318,7 +363,10 @@ const batchForm = reactive({
   scheduleType: 1,
   dutyShift: null,
   employeeIds: [],
-  remark: ''
+  remark: '',
+  scheduleModeId: null,
+  groupSize: 1,
+  nightShiftCount: 1
 })
 
 const clearDialogVisible = ref(false)
@@ -346,10 +394,24 @@ const batchRules = {
     { required: true, message: '请选择日期范围', trigger: 'blur' }
   ],
   dutyShift: [
-    { required: true, message: '请选择班次', trigger: 'blur' }
+    { required: true, message: '请选择班次', trigger: 'blur' },
+    { required: true, message: '请选择班次', trigger: 'change' }
   ],
   employeeIds: [
-    { required: true, message: '请选择值班人员', trigger: 'blur' }
+    { required: true, message: '请选择值班人员', trigger: 'blur' },
+    { required: true, message: '请选择值班人员', trigger: 'change' }
+  ],
+  scheduleModeId: [
+    { required: true, message: '请选择排班模式', trigger: 'blur' },
+    { required: true, message: '请选择排班模式', trigger: 'change' }
+  ],
+  groupSize: [
+    { required: true, message: '请输入每组人数', trigger: 'blur' },
+    { min: 1, message: '每组人数至少为1', trigger: 'blur' }
+  ],
+  nightShiftCount: [
+    { required: true, message: '请输入夜班人数', trigger: 'blur' },
+    { min: 1, message: '夜班人数至少为1', trigger: 'blur' }
   ]
 }
 
@@ -431,6 +493,18 @@ const fetchShiftConfigList = async () => {
   } catch (error) {
     console.error('获取班次配置列表失败:', error)
     ElMessage.error('获取班次配置列表失败')
+  }
+}
+
+const fetchScheduleModeList = async () => {
+  try {
+    const response = await getScheduleModeList()
+    if (response.code === 200) {
+      scheduleModeList.value = response.data.filter(mode => mode.status === 1)
+    }
+  } catch (error) {
+    console.error('获取排班模式列表失败:', error)
+    ElMessage.error('获取排班模式列表失败')
   }
 }
 
@@ -556,7 +630,10 @@ const openBatchDialog = () => {
     scheduleType: 1,
     dutyShift: null,
     employeeIds: [],
-    remark: ''
+    remark: '',
+    scheduleModeId: null,
+    groupSize: 1,
+    nightShiftCount: 1
   })
   batchDialogVisible.value = true
 }
@@ -667,6 +744,7 @@ onMounted(async () => {
   await fetchScheduleList()
   await fetchEmployeeList()
   await fetchShiftConfigList()
+  await fetchScheduleModeList()
 })
 </script>
 

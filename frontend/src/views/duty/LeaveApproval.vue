@@ -106,21 +106,21 @@
         </el-descriptions>
         <el-form-item label="审批结果" prop="approvalStatus">
           <el-radio-group v-model="approveForm.approvalStatus" @change="handleApprovalStatusChange">
-            <el-radio label="approved">通过</el-radio>
-            <el-radio label="rejected">拒绝</el-radio>
+            <el-radio value="approved">通过</el-radio>
+            <el-radio value="rejected">拒绝</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item v-if="approveForm.approvalStatus === 'approved'" label="排班处理" prop="scheduleAction">
           <el-radio-group v-model="approveForm.scheduleAction">
-            <el-radio label="check">检查排班</el-radio>
-            <el-radio label="auto">自动排班</el-radio>
-            <el-radio label="skip">跳过</el-radio>
+            <el-radio value="check">检查排班</el-radio>
+            <el-radio value="auto">自动排班</el-radio>
+            <el-radio value="skip">跳过</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item v-if="approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'auto'" label="排班方式" prop="scheduleType">
           <el-radio-group v-model="approveForm.scheduleType">
-            <el-radio label="rotate">轮换排班</el-radio>
-            <el-radio label="balance">均衡排班</el-radio>
+            <el-radio value="rotate">轮换排班</el-radio>
+            <el-radio value="balance">均衡排班</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item v-if="approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'auto'" label="排班日期范围" prop="scheduleDateRange">
@@ -214,7 +214,8 @@ import {
   getPendingApprovals,
   getPendingApprovalsByScheduleId,
   approveLeaveRequest,
-  confirmScheduleCompletion
+  confirmScheduleCompletion,
+  checkEmployeeSchedule
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
 import { getScheduleList } from '../../api/duty/schedule'
@@ -222,7 +223,7 @@ import {
   generateAutoSchedule,
   generateAutoScheduleByWorkHours,
   getEmployeeMonthlyWorkHours
-} from '../../api/duty/schedule'
+} from '../../api/duty/autoSchedule'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 

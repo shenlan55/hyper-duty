@@ -14,25 +14,33 @@
           <el-input v-model="searchForm.operatorName" placeholder="请输入操作人" clearable />
         </el-form-item>
         <el-form-item label="操作类型">
-          <el-select v-model="searchForm.operationType" placeholder="请选择操作类型" clearable>
+          <el-select v-model="searchForm.operationType" placeholder="请选择操作类型" clearable style="width: 150px;" popper-style="min-width: 150px;">
             <el-option label="全部" value="" />
-            <el-option label="登录" value="login" />
-            <el-option label="登出" value="logout" />
-            <el-option label="添加" value="add" />
-            <el-option label="修改" value="update" />
-            <el-option label="删除" value="delete" />
-            <el-option label="审批" value="approve" />
+            <el-option label="查询" value="查询" />
+            <el-option label="添加" value="添加" />
+            <el-option label="修改" value="修改" />
+            <el-option label="删除" value="删除" />
+            <el-option label="其他" value="其他" />
           </el-select>
         </el-form-item>
         <el-form-item label="操作模块">
-          <el-select v-model="searchForm.operationModule" placeholder="请选择操作模块" clearable>
+          <el-select v-model="searchForm.operationModule" placeholder="请选择操作模块" clearable style="width: 200px;" popper-style="min-width: 200px;">
             <el-option label="全部" value="" />
-            <el-option label="部门管理" value="dept" />
-            <el-option label="人员管理" value="employee" />
-            <el-option label="用户管理" value="user" />
-            <el-option label="角色管理" value="role" />
-            <el-option label="菜单管理" value="menu" />
-            <el-option label="值班管理" value="duty" />
+            <el-option label="部门管理" value="部门管理" />
+            <el-option label="人员管理" value="人员管理" />
+            <el-option label="用户管理" value="用户管理" />
+            <el-option label="角色管理" value="角色管理" />
+            <el-option label="菜单管理" value="菜单管理" />
+            <el-option label="值班表管理" value="值班表管理" />
+            <el-option label="值班安排" value="值班安排" />
+            <el-option label="值班记录" value="值班记录" />
+            <el-option label="班次配置" value="班次配置" />
+            <el-option label="请假申请" value="请假申请" />
+            <el-option label="调班管理" value="调班管理" />
+            <el-option label="自动排班" value="自动排班" />
+            <el-option label="排班统计" value="排班统计" />
+            <el-option label="排班模式" value="排班模式" />
+            <el-option label="操作日志" value="操作日志" />
           </el-select>
         </el-form-item>
         <el-form-item label="时间范围">
@@ -78,15 +86,21 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="操作时间" width="180" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作时间" width="180">
           <template #default="scope">
-            <el-button type="primary" size="small" @click="openViewDialog(scope.row)">
-              查看
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
-              删除
-            </el-button>
+            {{ formatDateTime(scope.row.createTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="180" fixed="right">
+          <template #default="scope">
+            <el-space>
+              <el-button type="primary" size="small" @click="openViewDialog(scope.row)">
+                查看
+              </el-button>
+              <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
+                删除
+              </el-button>
+            </el-space>
           </template>
         </el-table-column>
       </el-table>
@@ -158,10 +172,26 @@ const searchForm = reactive({
 const fetchLogList = async () => {
   loading.value = true
   try {
-    const response = await getOperationLogList()
+    // 构建搜索参数
+    const params = {
+      operatorName: searchForm.operatorName,
+      operationType: searchForm.operationType,
+      operationModule: searchForm.operationModule,
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    
+    // 添加时间范围参数
+    if (searchForm.dateRange && searchForm.dateRange.length === 2) {
+      params.startDate = searchForm.dateRange[0]
+      params.endDate = searchForm.dateRange[1]
+    }
+    
+    const response = await getOperationLogList(params)
     if (response.code === 200) {
-      logList.value = response.data
-      total.value = response.data.length
+      // 后端返回的是PageResult对象，包含data和total字段
+      logList.value = response.data.data
+      total.value = response.data.total
     }
   } catch (error) {
     console.error('获取操作日志列表失败:', error)
@@ -228,6 +258,19 @@ const handleDelete = async (id) => {
 
 const exportLogs = () => {
   ElMessage.success('日志导出功能待实现')
+}
+
+// 格式化日期时间
+const formatDateTime = (dateTime) => {
+  if (!dateTime) return ''
+  const date = new Date(dateTime)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
 onMounted(() => {
