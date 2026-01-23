@@ -320,9 +320,9 @@ import {
   deleteAssignment,
   deleteBatchAssignments
 } from '../../api/duty/assignment'
-import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleModeList } from '../../api/duty/schedule'
+import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleModeList, generateScheduleByMode } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
-import { getShiftConfigList } from '../../api/duty/shiftConfig'
+import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 
@@ -484,9 +484,11 @@ const fetchEmployeeList = async () => {
   }
 }
 
+const shiftApi = shiftConfigApi()
+
 const fetchShiftConfigList = async () => {
   try {
-    const response = await getShiftConfigList()
+    const response = await shiftApi.getShiftConfigList()
     if (response.code === 200) {
       shiftConfigList.value = response.data.filter(shift => shift.status === 1)
     }
@@ -644,40 +646,66 @@ const handleBatchSave = async () => {
     batchDialogLoading.value = true
     
     const [startDate, endDate] = batchForm.dateRange
-    const dates = getDatesInRange(startDate, endDate)
-    const employeeIds = batchForm.employeeIds
     
-    const assignments = []
-    dates.forEach((date, index) => {
-      if (batchForm.scheduleType === 1) {
-        const employeeIndex = index % employeeIds.length
-        assignments.push({
-          scheduleId: selectedScheduleId.value,
-          dutyDate: date,
-          dutyShift: batchForm.dutyShift,
-          employeeId: employeeIds[employeeIndex],
-          status: 1,
+    if (batchForm.scheduleType === 3) {
+      // 使用排班模式生成排班
+      const response = await generateScheduleByMode(
+        selectedScheduleId.value,
+        startDate,
+        endDate,
+        batchForm.scheduleModeId,
+        {
+          groupSize: batchForm.groupSize,
+          nightShiftCount: batchForm.nightShiftCount,
+          employeeIds: batchForm.employeeIds,
           remark: batchForm.remark
-        })
+        }
+      )
+      
+      if (response.code === 200) {
+        ElMessage.success(`批量排班成功，共添加 ${response.data} 条记录`)
       } else {
-        employeeIds.forEach(employeeId => {
+        ElMessage.error('批量排班失败: ' + (response.message || '未知错误'))
+        return
+      }
+    } else {
+      // 传统排班方式
+      const dates = getDatesInRange(startDate, endDate)
+      const employeeIds = batchForm.employeeIds
+      
+      const assignments = []
+      dates.forEach((date, index) => {
+        if (batchForm.scheduleType === 1) {
+          const employeeIndex = index % employeeIds.length
           assignments.push({
             scheduleId: selectedScheduleId.value,
             dutyDate: date,
             dutyShift: batchForm.dutyShift,
-            employeeId: employeeId,
+            employeeId: employeeIds[employeeIndex],
             status: 1,
             remark: batchForm.remark
           })
-        })
+        } else {
+          employeeIds.forEach(employeeId => {
+            assignments.push({
+              scheduleId: selectedScheduleId.value,
+              dutyDate: date,
+              dutyShift: batchForm.dutyShift,
+              employeeId: employeeId,
+              status: 1,
+              remark: batchForm.remark
+            })
+          })
+        }
+      })
+      
+      for (const assignment of assignments) {
+        await addAssignment(assignment)
       }
-    })
-    
-    for (const assignment of assignments) {
-      await addAssignment(assignment)
+      
+      ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
     }
     
-    ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
     batchDialogVisible.value = false
     fetchAssignmentList(selectedScheduleId.value)
   } catch (error) {

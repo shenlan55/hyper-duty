@@ -83,6 +83,12 @@ const routes = [
             meta: { title: '值班表管理' }
           },
           {
+            path: 'schedule-mode',
+            name: 'ScheduleMode',
+            component: () => import('../views/duty/ScheduleMode.vue'),
+            meta: { title: '排班模式管理' }
+          },
+          {
             path: 'assignment',
             name: 'DutyAssignment',
             component: () => import('../views/duty/DutyAssignment.vue'),

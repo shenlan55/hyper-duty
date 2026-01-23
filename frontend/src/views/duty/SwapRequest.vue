@@ -181,8 +181,10 @@ import {
   confirmSwapRequest
 } from '../../api/duty/swapRequest'
 import { getEmployeeList } from '../../api/employee'
-import { getShiftConfigList } from '../../api/duty/shiftConfig'
+import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
+
+const shiftApi = shiftConfigApi()
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -285,7 +287,7 @@ const fetchEmployeeList = async () => {
 
 const fetchShiftConfigList = async () => {
   try {
-    const response = await getShiftConfigList()
+    const response = await shiftApi.getShiftConfigList()
     if (response.code === 200) {
       shiftConfigList.value = response.data.filter(config => config.status === 1)
     }
