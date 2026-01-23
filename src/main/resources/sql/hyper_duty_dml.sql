@@ -137,6 +137,14 @@ UPDATE sys_menu SET parent_id = (SELECT id FROM sys_menu WHERE menu_name = '系�
                    sort = 7 
 WHERE menu_name = '操作日志';
 
+-- 插入定时任务菜单
+INSERT IGNORE INTO sys_menu (menu_name, parent_id, path, component, perm, type, icon, sort, status) VALUES
+('定时任务', (SELECT id FROM sys_menu WHERE menu_name = '系统管理' AND parent_id = 0), '/system/schedule-job', 'views/system/ScheduleJob.vue', 'sys:schedule:job:list', 2, 'Timer', 8, 1);
+
+-- 普通用户增加定时任务菜单权限
+INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES
+(2, (SELECT id FROM sys_menu WHERE menu_name = '定时任务'));
+
 -- ========================================
 -- DML 脚本执行完成
 -- ========================================

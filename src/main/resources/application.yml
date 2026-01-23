@@ -17,12 +17,15 @@ spring:
       test-while-idle: true
       test-on-borrow: false
       test-on-return: false
-    # 数据库初始化配置
+  # 数据库初始化配置
   sql:
     init:
-      schema-locations: classpath:sql/init.sql
-      mode: never
+      schema-locations: classpath:sql/hyper_duty_ddl.sql
+      mode: always
       encoding: utf-8
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
   jackson:
     time-zone: GMT+8
     date-format: yyyy-MM-dd HH:mm:ss
@@ -42,6 +45,11 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      table-prefix: 
+    banner: false
 
 logging:
   level:

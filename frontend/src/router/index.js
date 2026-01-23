@@ -67,6 +67,12 @@ const routes = [
             component: () => import('../views/duty/OperationLog.vue'),
             meta: { title: '操作日志' }
           },
+          {
+            path: 'schedule-job',
+            name: 'ScheduleJob',
+            component: () => import('../views/system/ScheduleJob.vue'),
+            meta: { title: '定时任务' }
+          },
 
         ]
       },

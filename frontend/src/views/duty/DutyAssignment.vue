@@ -32,8 +32,11 @@
     <el-card shadow="hover" class="content-card">
       <el-calendar v-model="currentDate">
         <template #date-cell="{ data }">
-          <div class="calendar-cell">
+          <div class="calendar-cell" :class="getCalendarCellClass(data.day)">
             <div class="date-number">{{ data.day.split('-').slice(2).join('-') }}</div>
+            <div v-if="isHoliday(data.day)" class="holiday-info">
+              {{ getHolidayName(data.day) }}
+            </div>
             <div class="duty-list">
               <div
                 v-for="assignment in getAssignmentsByDate(data.day)"
@@ -309,7 +312,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { Plus, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -323,6 +326,7 @@ import {
 import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleModeList, generateScheduleByMode } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
+import { holidayApi } from '../../api/duty/holiday'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 
@@ -456,6 +460,31 @@ const getAssignmentsByDate = (date) => {
   return assignmentList.value.filter(assignment => assignment.dutyDate === date)
 }
 
+const isHoliday = (date) => {
+  return !!holidayMap.value[date]
+}
+
+const getHolidayInfo = (date) => {
+  return holidayMap.value[date]
+}
+
+const getCalendarCellClass = (date) => {
+  const holidayInfo = getHolidayInfo(date)
+  if (holidayInfo) {
+    if (holidayInfo.isWorkday === 1) {
+      return 'workday-holiday'
+    } else {
+      return 'regular-holiday'
+    }
+  }
+  return ''
+}
+
+const getHolidayName = (date) => {
+  const holidayInfo = getHolidayInfo(date)
+  return holidayInfo ? holidayInfo.holidayName : ''
+}
+
 const hasAssignment = (date) => {
   return assignmentList.value.some(assignment => assignment.dutyDate === date)
 }
@@ -485,6 +514,10 @@ const fetchEmployeeList = async () => {
 }
 
 const shiftApi = shiftConfigApi()
+const holidayService = holidayApi()
+
+const holidaysList = ref([])
+const holidayMap = ref({})
 
 const fetchShiftConfigList = async () => {
   try {
@@ -495,6 +528,30 @@ const fetchShiftConfigList = async () => {
   } catch (error) {
     console.error('获取班次配置列表失败:', error)
     ElMessage.error('获取班次配置列表失败')
+  }
+}
+
+const fetchHolidaysList = async (startDate, endDate) => {
+  try {
+    console.log('开始获取节假日列表:', startDate, endDate)
+    const response = await holidayService.getHolidaysInRange(startDate, endDate)
+    console.log('节假日API响应:', response)
+    if (response.code === 200) {
+      holidaysList.value = response.data
+      console.log('获取到的节假日数据:', response.data)
+      // 构建节假日映射，方便快速查询
+      const map = {}
+      response.data.forEach(holiday => {
+        map[holiday.holidayDate] = holiday
+      })
+      holidayMap.value = map
+      console.log('构建的节假日映射:', map)
+    }
+  } catch (error) {
+    console.error('获取节假日列表失败:', error)
+    // 节假日获取失败不影响主功能，只在控制台报错
+    holidaysList.value = []
+    holidayMap.value = {}
   }
 }
 
@@ -565,6 +622,26 @@ const handleScheduleChange = async (scheduleId) => {
     assignmentList.value = []
   }
 }
+
+const getMonthRange = (date) => {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const startDate = new Date(year, month, 1)
+  const endDate = new Date(year, month + 1, 0)
+  return {
+    start: startDate.toISOString().split('T')[0],
+    end: endDate.toISOString().split('T')[0]
+  }
+}
+
+const updateHolidaysByMonth = async () => {
+  const { start, end } = getMonthRange(currentDate.value)
+  await fetchHolidaysList(start, end)
+}
+
+watch(currentDate, () => {
+  updateHolidaysByMonth()
+})
 
 const openAddDialog = (date) => {
   resetForm()
@@ -773,6 +850,7 @@ onMounted(async () => {
   await fetchEmployeeList()
   await fetchShiftConfigList()
   await fetchScheduleModeList()
+  await updateHolidaysByMonth()
 })
 </script>
 
@@ -863,5 +941,27 @@ onMounted(async () => {
 
 :deep(.el-calendar-table td.is-selected .el-calendar-day) {
   background-color: #ecf5ff;
+}
+
+/* 节假日样式 */
+.calendar-cell.regular-holiday {
+  background-color: #fef0f0;
+}
+
+.calendar-cell.workday-holiday {
+  background-color: #f0f9eb;
+}
+
+.holiday-info {
+  font-size: 10px;
+  color: #f56c6c;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-cell.workday-holiday .holiday-info {
+  color: #67c23a;
 }
 </style>

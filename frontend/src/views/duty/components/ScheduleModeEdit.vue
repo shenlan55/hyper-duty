@@ -77,76 +77,75 @@
             </el-button>
           </div>
 
-          <!-- 班次选择行 -->
-          <div class="config-row">
-            <span class="row-label">班次</span>
-            <div
-              v-for="(day, dayIndex) in daysConfig"
-              :key="`shift-${day.dayIndex}`"
-              class="day-column"
-            >
-              <div class="shift-container">
-                <div
-                  v-for="(shift, shiftIndex) in day.shifts"
-                  :key="`shift-${day.dayIndex}-${shiftIndex}`"
-                  class="shift-item"
+          <!-- 班组配置 -->
+          <div
+            v-for="(team, teamIndex) in teamsConfig"
+            :key="`team-${teamIndex}`"
+            class="team-row"
+          >
+            <div class="team-header">
+              <span class="team-label">班组 {{ teamIndex + 1 }}</span>
+              <el-button
+                v-if="teamIndex > 0"
+                type="danger"
+                size="small"
+                circle
+                @click="removeTeam(teamIndex)"
+              >
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </div>
+            
+            <!-- 班次选择 -->
+            <div class="team-shifts">
+              <div
+                v-for="(day, dayIndex) in daysConfig"
+                :key="`team-shift-${teamIndex}-${dayIndex}`"
+                class="day-column"
+              >
+                <el-select
+                  v-model="team.shifts[dayIndex].shiftId"
+                  placeholder="选择班次"
+                  class="shift-select"
+                  @change="handleShiftChange(teamIndex, dayIndex)"
                 >
-                  <el-select
-                    v-model="shift.shiftId"
-                    placeholder="选择班次"
-                    class="shift-select"
-                  >
-                    <el-option
-                      v-for="shiftConfig in enabledShifts"
-                      :key="shiftConfig.id"
-                      :label="shiftConfig.shiftName"
-                      :value="shiftConfig.id.toString()"
-                    />
-                  </el-select>
-                  <el-button
-                    v-if="shiftIndex > 0"
-                    type="danger"
-                    size="small"
-                    circle
-                    @click="removeShift(dayIndex, shiftIndex)"
-                  >
-                    <el-icon><Delete /></el-icon>
-                  </el-button>
-                </div>
-                <el-button
-                  type="primary"
-                  size="small"
-                  @click="addShift(dayIndex)"
-                >
-                  <el-icon><Plus /></el-icon> 添加班次
-                </el-button>
+                  <el-option
+                    v-for="shiftConfig in enabledShifts"
+                    :key="shiftConfig.id"
+                    :label="shiftConfig.shiftName"
+                    :value="shiftConfig.id.toString()"
+                  />
+                </el-select>
+              </div>
+            </div>
+            
+            <!-- 人数设置 -->
+            <div class="team-counts">
+              <div
+                v-for="(day, dayIndex) in daysConfig"
+                :key="`team-count-${teamIndex}-${dayIndex}`"
+                class="day-column"
+              >
+                <el-input-number
+                  v-model="team.shifts[dayIndex].count"
+                  :min="0"
+                  :max="99"
+                  class="count-input"
+                  @change="handleCountChange(teamIndex, dayIndex)"
+                />
               </div>
             </div>
           </div>
 
-          <!-- 人数设置行 -->
-          <div class="config-row">
-            <span class="row-label">人数</span>
-            <div
-              v-for="(day, dayIndex) in daysConfig"
-              :key="`count-${day.dayIndex}`"
-              class="day-column"
+          <!-- 添加班组按钮 -->
+          <div class="add-team-button">
+            <el-button
+              type="primary"
+              size="small"
+              @click="addTeam"
             >
-              <div class="count-container">
-                <div
-                  v-for="(shift, shiftIndex) in day.shifts"
-                  :key="`count-${day.dayIndex}-${shiftIndex}`"
-                  class="count-item"
-                >
-                  <el-input-number
-                    v-model="shift.count"
-                    :min="0"
-                    :max="99"
-                    class="count-input"
-                  />
-                </div>
-              </div>
-            </div>
+              <el-icon><Plus /></el-icon> 添加班组
+            </el-button>
           </div>
         </div>
       </el-form-item>
@@ -206,21 +205,26 @@ const daysConfig = ref([
   {
     dayIndex: 1,
     name: '第一天',
-    shifts: [
-      { shiftId: '', shiftName: '', count: 0 }
-    ]
+    shifts: []
   },
   {
     dayIndex: 2,
     name: '第二天',
-    shifts: [
-      { shiftId: '', shiftName: '', count: 0 }
-    ]
+    shifts: []
   },
   {
     dayIndex: 3,
     name: '第三天',
+    shifts: []
+  }
+])
+
+// 班组配置
+const teamsConfig = ref([
+  {
     shifts: [
+      { shiftId: '', shiftName: '', count: 0 },
+      { shiftId: '', shiftName: '', count: 0 },
       { shiftId: '', shiftName: '', count: 0 }
     ]
   }
@@ -263,12 +267,24 @@ const fetchModeDetail = async () => {
       if (data.configJson) {
         try {
           const config = JSON.parse(data.configJson)
+          
+          // 处理天数配置
           if (config.days && config.days.length > 0) {
-            // 为每个班次添加count字段的默认值（如果不存在）
-            const processedDays = config.days.map(day => {
-              const processedShifts = day.shifts.map(shift => {
+            daysConfig.value = config.days.map(day => ({
+              dayIndex: day.dayIndex,
+              name: day.name,
+              shifts: []
+            }))
+          }
+          
+          // 处理班组配置
+          if (config.teams && config.teams.length > 0) {
+            const processedTeams = config.teams.map(team => {
+              const processedShifts = team.shifts.map(shift => {
                 // 查找对应的班次配置，获取中文名称
-                const shiftConfig = enabledShifts.value.find(s => s.id === shift.shiftId.toString())
+                const shiftConfig = enabledShifts.value.find(s => {
+                  return s.id.toString() === shift.shiftId.toString()
+                })
                 return {
                   ...shift,
                   shiftId: shift.shiftId.toString(), // 确保shiftId为字符串类型
@@ -277,12 +293,23 @@ const fetchModeDetail = async () => {
                 }
               })
               return {
-                ...day,
                 shifts: processedShifts
               }
             })
-            daysConfig.value = processedDays
+            teamsConfig.value = processedTeams
+          } else {
+            // 如果没有班组配置，使用默认配置
+            teamsConfig.value = [{
+              shifts: daysConfig.value.map(() => ({
+                shiftId: '',
+                shiftName: '',
+                count: 0
+              }))
+            }]
           }
+          
+          // 确保班组配置与天数配置一致
+          updateTeamsConfig()
         } catch (error) {
           console.error('解析配置JSON失败', error)
         }
@@ -295,10 +322,12 @@ const fetchModeDetail = async () => {
 
 // 生成配置JSON
 const generateConfigJson = () => {
-  // 处理班次名称和确保数据类型正确
-  const processedDays = daysConfig.value.map(day => {
-    const processedShifts = day.shifts.map(shift => {
-      const shiftConfig = enabledShifts.value.find(s => s.id === shift.shiftId)
+  // 处理班组配置，确保数据类型正确
+  const processedTeams = teamsConfig.value.map(team => {
+    const processedShifts = team.shifts.map(shift => {
+      const shiftConfig = enabledShifts.value.find(s => {
+        return s.id.toString() === shift.shiftId.toString()
+      })
       return {
         ...shift,
         shiftId: shift.shiftId, // 保持shiftId为字符串类型
@@ -307,12 +336,11 @@ const generateConfigJson = () => {
       }
     })
     return {
-      ...day,
       shifts: processedShifts
     }
   })
 
-  return JSON.stringify({ days: processedDays })
+  return JSON.stringify({ teams: processedTeams, days: daysConfig.value })
 }
 
 // 添加天
@@ -321,10 +349,11 @@ const addDay = () => {
   daysConfig.value.push({
     dayIndex: newDayIndex,
     name: `第${newDayIndex}天`,
-    shifts: [
-      { shiftId: '', shiftName: '', count: 0 } // 确保count为数字类型，默认为0
-    ]
+    shifts: []
   })
+  
+  // 更新班组配置
+  updateTeamsConfig()
 }
 
 // 删除天
@@ -339,6 +368,9 @@ const removeDay = (index) => {
     day.dayIndex = i + 1
     day.name = `第${i + 1}天`
   })
+  
+  // 更新班组配置
+  updateTeamsConfig()
 }
 
 // 添加班次
@@ -350,13 +382,95 @@ const addShift = (dayIndex) => {
   })
 }
 
-// 删除班次
-const removeShift = (dayIndex, shiftIndex) => {
-  if (daysConfig.value[dayIndex].shifts.length <= 1) {
-    ElMessage.warning('每天至少保留一个班次')
+// 添加班组
+const addTeam = () => {
+  const newTeam = {
+    shifts: daysConfig.value.map(() => ({
+      shiftId: '',
+      shiftName: '',
+      count: 0
+    }))
+  }
+  teamsConfig.value.push(newTeam)
+}
+
+// 删除班组
+const removeTeam = (teamIndex) => {
+  if (teamsConfig.value.length <= 1) {
+    ElMessage.warning('至少保留一个班组')
     return
   }
-  daysConfig.value[dayIndex].shifts.splice(shiftIndex, 1)
+  teamsConfig.value.splice(teamIndex, 1)
+}
+
+// 处理班次变化
+const handleShiftChange = (teamIndex, dayIndex) => {
+  const team = teamsConfig.value[teamIndex]
+  const shift = team.shifts[dayIndex]
+  
+  // 查找对应的班次配置，获取中文名称
+  const shiftConfig = enabledShifts.value.find(s => {
+    return s.id.toString() === shift.shiftId.toString()
+  })
+  
+  if (shiftConfig) {
+    shift.shiftName = shiftConfig.shiftName
+    shift.shiftId = shiftConfig.id.toString()
+  }
+  
+  // 确保班次和人数的对应关系
+  validateTeamConfig(teamIndex)
+}
+
+// 处理人数变化
+const handleCountChange = (teamIndex, dayIndex) => {
+  const team = teamsConfig.value[teamIndex]
+  const shift = team.shifts[dayIndex]
+  
+  // 确保count为数字类型
+  if (shift.count === undefined || shift.count === null || isNaN(shift.count)) {
+    shift.count = 0
+  } else {
+    shift.count = Number(shift.count)
+  }
+  
+  // 确保班次和人数的对应关系
+  validateTeamConfig(teamIndex)
+}
+
+// 验证班组配置（确保班次和人数的对应关系）
+const validateTeamConfig = (teamIndex) => {
+  const team = teamsConfig.value[teamIndex]
+  
+  team.shifts.forEach((shift, dayIndex) => {
+    // 如果设置了人数但没有选择班次，自动清空人数
+    if (shift.count > 0 && !shift.shiftId) {
+      shift.count = 0
+    }
+    
+    // 如果选择了班次但没有设置人数，自动设置为1
+    if (shift.shiftId && shift.count === 0) {
+      shift.count = 1
+    }
+  })
+}
+
+// 更新班组配置（当天数变化时）
+const updateTeamsConfig = () => {
+  teamsConfig.value.forEach(team => {
+    const currentLength = team.shifts.length
+    const targetLength = daysConfig.value.length
+    
+    if (currentLength < targetLength) {
+      // 添加新的天数配置
+      for (let i = currentLength; i < targetLength; i++) {
+        team.shifts.push({ shiftId: '', shiftName: '', count: 0 })
+      }
+    } else if (currentLength > targetLength) {
+      // 删除多余的天数配置
+      team.shifts.splice(targetLength)
+    }
+  })
 }
 
 // 提交表单
@@ -502,6 +616,42 @@ onMounted(async () => {
 .count-input {
   width: 100px;
   min-width: 100px;
+}
+
+/* 班组配置样式 */
+.team-row {
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.team-label {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.team-shifts {
+  display: flex;
+  margin-bottom: 15px;
+}
+
+.team-counts {
+  display: flex;
+}
+
+.add-team-button {
+  margin-top: 10px;
+  text-align: center;
 }
 
 .form-actions {
