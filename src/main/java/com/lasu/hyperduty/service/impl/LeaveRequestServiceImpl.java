@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.DutyAssignment;
 import com.lasu.hyperduty.entity.LeaveRequest;
@@ -137,25 +138,16 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
 
     @Override
     public List<LeaveRequest> getPendingApprovals(Long approverId) {
-        List<com.lasu.hyperduty.entity.DutyScheduleEmployee> scheduleEmployees = dutyScheduleEmployeeService.lambdaQuery()
-                .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getEmployeeId, approverId)
-                .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getIsLeader, 1)
-                .list();
-
-        if (scheduleEmployees.isEmpty()) {
-            return new java.util.ArrayList<>();
+        // 直接查询所有待审批的记录，不限制值班表
+        QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("approval_status", "pending");
+        queryWrapper.orderByDesc("create_time");
+        List<LeaveRequest> result = baseMapper.selectList(queryWrapper);
+        System.out.println("Pending approvals count: " + result.size());
+        for (LeaveRequest request : result) {
+            System.out.println("Request ID: " + request.getId() + ", Status: " + request.getApprovalStatus());
         }
-
-        List<Long> scheduleIds = scheduleEmployees.stream()
-                .map(com.lasu.hyperduty.entity.DutyScheduleEmployee::getScheduleId)
-                .distinct()
-                .collect(java.util.stream.Collectors.toList());
-
-        return lambdaQuery()
-                .eq(LeaveRequest::getApprovalStatus, "pending")
-                .in(LeaveRequest::getScheduleId, scheduleIds)
-                .orderByDesc(LeaveRequest::getCreateTime)
-                .list();
+        return result;
     }
 
     @Override
@@ -172,6 +164,24 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
                 .eq(LeaveRequest::getScheduleId, scheduleId)
                 .eq(LeaveRequest::getApprovalStatus, "pending")
                 .orderByDesc(LeaveRequest::getCreateTime)
+                .list();
+    }
+
+    @Override
+    public List<LeaveRequest> getApprovedApprovals(Long approverId) {
+        // 直接查询所有已审批的记录，不限制值班表
+        QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("approval_status", "approved", "rejected");
+        queryWrapper.orderByDesc("update_time");
+        return baseMapper.selectList(queryWrapper);
+    }
+
+    @Override
+    public List<LeaveRequest> getApprovedApprovalsByScheduleId(Long scheduleId) {
+        return lambdaQuery()
+                .eq(LeaveRequest::getScheduleId, scheduleId)
+                .in(LeaveRequest::getApprovalStatus, "approved", "rejected")
+                .orderByDesc(LeaveRequest::getUpdateTime)
                 .list();
     }
 

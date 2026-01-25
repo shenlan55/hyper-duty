@@ -55,4 +55,10 @@ public class DutyShiftConfigController {
         }
         return ResponseResult.success();
     }
+
+    @GetMapping("/enabled")
+    public ResponseResult<List<DutyShiftConfig>> getEnabledShiftConfigs() {
+        List<DutyShiftConfig> list = dutyShiftConfigService.getEnabledShifts();
+        return ResponseResult.success(list);
+    }
 }

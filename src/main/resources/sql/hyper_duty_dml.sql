@@ -80,20 +80,22 @@ INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES
 -- 插入值班管理扩展菜单
 INSERT IGNORE INTO sys_menu (menu_name, parent_id, path, component, perm, type, icon, sort, status) VALUES
 ('班次配置', 8, '/duty/shift-config', 'views/duty/ShiftConfig.vue', 'duty:shift:list', 2, 'Clock', 4, 1),
-('请假申请', 8, '/duty/leave-request', 'views/duty/LeaveRequest.vue', 'duty:leave:list', 2, 'Document', 5, 1),
-('请假审批', 8, '/duty/leave-approval', 'views/duty/LeaveApproval.vue', 'duty:leave:approve', 2, 'CircleCheck', 6, 1),
-('调班管理', 8, '/duty/swap-request', 'views/duty/SwapRequest.vue', 'duty:swap:list', 2, 'Refresh', 7, 1),
-('排班统计', 8, '/duty/statistics', 'views/duty/Statistics.vue', 'duty:statistics:view', 2, 'DataAnalysis', 8, 1),
-('操作日志', 8, '/duty/operation-log', 'views/duty/OperationLog.vue', 'duty:log:list', 2, 'Document', 9, 1);
+('排班模式管理', 8, '/duty/schedule-mode', 'views/duty/ScheduleMode.vue', 'duty:schedule:mode:list', 2, 'Operation', 5, 1),
+('请假申请', 8, '/duty/leave-request', 'views/duty/LeaveRequest.vue', 'duty:leave:list', 2, 'Document', 6, 1),
+('请假审批', 8, '/duty/leave-approval', 'views/duty/LeaveApproval.vue', 'duty:leave:approve', 2, 'CircleCheck', 7, 1),
+('调班管理', 8, '/duty/swap-request', 'views/duty/SwapRequest.vue', 'duty:swap:list', 2, 'Refresh', 8, 1),
+('排班统计', 8, '/duty/statistics', 'views/duty/Statistics.vue', 'duty:statistics:view', 2, 'DataAnalysis', 9, 1),
+('操作日志', 8, '/duty/operation-log', 'views/duty/OperationLog.vue', 'duty:log:list', 2, 'Document', 10, 1);
 
 -- 普通用户增加值班管理菜单权限
 INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES
 (2, 14), -- 班次配置
-(2, 15), -- 请假申请
-(2, 16), -- 请假审批
-(2, 17), -- 调班管理
-(2, 18), -- 排班统计
-(2, 19); -- 操作日志
+(2, 15), -- 排班模式管理
+(2, 16), -- 请假申请
+(2, 17), -- 请假审批
+(2, 18), -- 调班管理
+(2, 19), -- 排班统计
+(2, 20); -- 操作日志
 
 -- 插入默认班次配置
 INSERT IGNORE INTO duty_shift_config (shift_name, shift_code, shift_type, start_time, end_time, duration_hours, break_hours, is_overtime_shift, status, sort) VALUES
@@ -134,6 +136,14 @@ UPDATE sys_menu SET parent_id = (SELECT id FROM sys_menu WHERE menu_name = '系�
                    perm = 'sys:log:list',
                    sort = 7 
 WHERE menu_name = '操作日志';
+
+-- 插入定时任务菜单
+INSERT IGNORE INTO sys_menu (menu_name, parent_id, path, component, perm, type, icon, sort, status) VALUES
+('定时任务', (SELECT id FROM sys_menu WHERE menu_name = '系统管理' AND parent_id = 0), '/system/schedule-job', 'views/system/ScheduleJob.vue', 'sys:schedule:job:list', 2, 'Timer', 8, 1);
+
+-- 普通用户增加定时任务菜单权限
+INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES
+(2, (SELECT id FROM sys_menu WHERE menu_name = '定时任务'));
 
 -- ========================================
 -- DML 脚本执行完成

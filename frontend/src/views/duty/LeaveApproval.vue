@@ -2,6 +2,10 @@
   <div class="leave-approval-container">
     <div class="page-header">
       <h2>请假审批</h2>
+      <el-tabs v-model="activeTab" @tab-click="handleTabClick" style="margin-bottom: 20px">
+        <el-tab-pane label="待审批" name="pending"></el-tab-pane>
+        <el-tab-pane label="已审批" name="approved"></el-tab-pane>
+      </el-tabs>
       <div class="header-actions">
         <el-select
           v-model="selectedScheduleId"
@@ -213,6 +217,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getPendingApprovals,
   getPendingApprovalsByScheduleId,
+  getApprovedApprovals,
+  getApprovedApprovalsByScheduleId,
   approveLeaveRequest,
   confirmScheduleCompletion,
   checkEmployeeSchedule
@@ -240,6 +246,7 @@ const scheduleList = ref([])
 const selectedScheduleId = ref('')
 const currentRequest = ref({})
 const currentApproverId = ref(1)
+const activeTab = ref('pending')
 
 const approveForm = reactive({
   requestId: null,
@@ -341,21 +348,34 @@ const fetchScheduleList = async () => {
   }
 }
 
-const fetchPendingApprovals = async () => {
+const fetchPendingApprovals = async (tabName = activeTab.value) => {
+  console.log('Fetching approvals, tabName:', tabName)
   loading.value = true
   try {
     let response
-    if (selectedScheduleId.value) {
-      response = await getPendingApprovalsByScheduleId(selectedScheduleId.value)
+    if (tabName === 'pending') {
+      console.log('Fetching pending approvals')
+      if (selectedScheduleId.value) {
+        response = await getPendingApprovalsByScheduleId(selectedScheduleId.value)
+      } else {
+        response = await getPendingApprovals(userStore.employeeId || 1)
+      }
     } else {
-      response = await getPendingApprovals(userStore.employeeId)
+      console.log('Fetching approved approvals')
+      if (selectedScheduleId.value) {
+        response = await getApprovedApprovalsByScheduleId(selectedScheduleId.value)
+      } else {
+        response = await getApprovedApprovals(userStore.employeeId || 1)
+      }
     }
+    console.log('Response received:', response)
     if (response.code === 200) {
       requestList.value = response.data
+      console.log('Request list updated:', requestList.value)
     }
   } catch (error) {
-    console.error('获取待审批列表失败:', error)
-    ElMessage.error('获取待审批列表失败')
+    console.error('获取审批列表失败:', error)
+    ElMessage.error('获取审批列表失败')
   } finally {
     loading.value = false
   }
@@ -367,6 +387,11 @@ const handleScheduleChange = () => {
 
 const refreshList = () => {
   fetchPendingApprovals()
+}
+
+const handleTabClick = (tab) => {
+  console.log('Tab clicked, tab name:', tab.props.name)
+  fetchPendingApprovals(tab.props.name)
 }
 
 const openApproveDialog = (row) => {
@@ -395,6 +420,18 @@ const handleApprove = async () => {
     }
     
     if (approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'auto') {
+      if (!selectedScheduleId.value) {
+        ElMessage.error('请先选择值班表')
+        approveLoading.value = false
+        return
+      }
+      
+      if (!approveForm.scheduleDateRange) {
+        ElMessage.error('请选择排班日期范围')
+        approveLoading.value = false
+        return
+      }
+      
       const [startDate, endDate] = approveForm.scheduleDateRange
       let response
       

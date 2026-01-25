@@ -213,10 +213,17 @@ CREATE TABLE IF NOT EXISTS duty_assignment (
     employee_id BIGINT NOT NULL COMMENT '值班人员ID',
     status TINYINT DEFAULT 1 COMMENT '状态：0取消，1正常',
     remark VARCHAR(200) COMMENT '备注',
+    shift_config_id BIGINT COMMENT '班次配置ID',
+    version_id BIGINT COMMENT '排班版本ID',
+    is_overtime TINYINT DEFAULT 0 COMMENT '是否加班:0-否,1-是',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_shift_config_id (shift_config_id),
+    INDEX idx_version_id (version_id),
     FOREIGN KEY (schedule_id) REFERENCES duty_schedule(id) ON DELETE CASCADE,
-    FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE
+    FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE,
+    FOREIGN KEY (shift_config_id) REFERENCES duty_shift_config(id) ON DELETE SET NULL,
+    FOREIGN KEY (version_id) REFERENCES schedule_version(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='值班安排表';
 
 -- 值班记录表
@@ -232,10 +239,14 @@ CREATE TABLE IF NOT EXISTS duty_record (
     overtime_hours DECIMAL(5,2) DEFAULT 0 COMMENT '加班时长',
     approval_status VARCHAR(20) DEFAULT 'pending' COMMENT '审批状态：pending待审批，approved已审批，rejected已拒绝',
     manager_remark VARCHAR(200) COMMENT '经理备注',
+    substitute_employee_id BIGINT COMMENT '替补人员ID',
+    substitute_type TINYINT DEFAULT 1 COMMENT '替补类型:1-自动匹配,2-手动选择',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_substitute_employee_id (substitute_employee_id),
     FOREIGN KEY (assignment_id) REFERENCES duty_assignment(id) ON DELETE CASCADE,
-    FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE
+    FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE,
+    FOREIGN KEY (substitute_employee_id) REFERENCES sys_employee(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='值班记录表';
 
 -- ========================================
@@ -447,28 +458,55 @@ CREATE TABLE IF NOT EXISTS schedule_version (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='排班版本表';
 
 -- ========================================
--- 第三部分：表结构扩展（ALTER TABLE）
+-- 第三部分：表结构扩展（已集成到建表语句中）
 -- ========================================
 
--- 值班安排表增加字段
-ALTER TABLE duty_assignment 
-ADD COLUMN shift_config_id BIGINT COMMENT '班次配置ID',
-ADD COLUMN version_id BIGINT COMMENT '排班版本ID',
-ADD COLUMN is_overtime TINYINT DEFAULT 0 COMMENT '是否加班:0-否,1-是',
-ADD INDEX idx_shift_config_id (shift_config_id),
-ADD INDEX idx_version_id (version_id),
-ADD CONSTRAINT fk_shift_config FOREIGN KEY (shift_config_id) REFERENCES duty_shift_config(id) ON DELETE SET NULL,
-ADD CONSTRAINT fk_version FOREIGN KEY (version_id) REFERENCES schedule_version(id) ON DELETE SET NULL;
+-- 所有表结构扩展已在创建表时集成，无需额外的 ALTER TABLE 语句
+-- ========================================
+-- 定时任务表
+-- ========================================
 
--- 值班记录表增加替补人员字段
-ALTER TABLE duty_record 
-ADD COLUMN substitute_employee_id BIGINT COMMENT '替补人员ID',
-ADD COLUMN substitute_type TINYINT DEFAULT 1 COMMENT '替补类型:1-自动匹配,2-手动选择',
-ADD INDEX idx_substitute_employee_id (substitute_employee_id),
-ADD CONSTRAINT fk_substitute_employee 
-FOREIGN KEY (substitute_employee_id) REFERENCES sys_employee(id) ON DELETE SET NULL;
+-- 定时任务表
+CREATE TABLE IF NOT EXISTS sys_schedule_job (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '任务ID',
+    job_name VARCHAR(100) NOT NULL COMMENT '任务名称',
+    job_group VARCHAR(50) NOT NULL COMMENT '任务分组',
+    job_code VARCHAR(100) NOT NULL UNIQUE COMMENT '任务编码',
+    cron_expression VARCHAR(100) NOT NULL COMMENT 'Cron表达式',
+    bean_name VARCHAR(200) COMMENT 'Bean名称',
+    method_name VARCHAR(100) COMMENT '方法名称',
+    params TEXT COMMENT '参数',
+    status TINYINT DEFAULT 1 COMMENT '状态:0-暂停,1-启用',
+    concurrent TINYINT DEFAULT 0 COMMENT '是否允许并发:0-不允许,1-允许',
+    description VARCHAR(500) COMMENT '任务描述',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_job_code (job_code),
+    INDEX idx_job_group (job_group),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='定时任务表';
+
+-- 定时任务日志表
+CREATE TABLE IF NOT EXISTS sys_schedule_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '日志ID',
+    job_id BIGINT NOT NULL COMMENT '任务ID',
+    job_name VARCHAR(100) NOT NULL COMMENT '任务名称',
+    job_group VARCHAR(50) NOT NULL COMMENT '任务分组',
+    job_code VARCHAR(100) NOT NULL COMMENT '任务编码',
+    params TEXT COMMENT '参数',
+    status TINYINT DEFAULT 0 COMMENT '执行状态:0-失败,1-成功',
+    error_msg TEXT COMMENT '错误信息',
+    execute_time BIGINT COMMENT '执行时间(毫秒)',
+    start_time DATETIME COMMENT '开始时间',
+    end_time DATETIME COMMENT '结束时间',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_job_id (job_id),
+    INDEX idx_job_code (job_code),
+    INDEX idx_status (status),
+    INDEX idx_create_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='定时任务日志表';
 
 -- ========================================
 -- DDL 脚本执行完成
 -- ========================================
-SELECT 'Hyper Duty DDL 脚本执行完成！共创建21个表' AS message;
+SELECT 'Hyper Duty DDL 脚本执行完成！共创建23个表' AS message;

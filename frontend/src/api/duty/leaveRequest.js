@@ -28,6 +28,20 @@ export function getPendingApprovalsByScheduleId(scheduleId) {
   })
 }
 
+export function getApprovedApprovals(approverId) {
+  return request({
+    url: `/duty/leave-request/approved/${approverId}`,
+    method: 'get'
+  })
+}
+
+export function getApprovedApprovalsByScheduleId(scheduleId) {
+  return request({
+    url: `/duty/leave-request/approved/schedule/${scheduleId}`,
+    method: 'get'
+  })
+}
+
 export function getLeaveRequestById(id) {
   return request({
     url: `/duty/leave-request/${id}`,
@@ -43,11 +57,11 @@ export function submitLeaveRequest(data) {
   })
 }
 
-export function approveLeaveRequest(requestId, approverId, approvalStatus, opinion) {
+export function approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, scheduleType, scheduleDateRange) {
   return request({
     url: `/duty/leave-request/approve/${requestId}`,
     method: 'put',
-    params: { approverId, approvalStatus, opinion }
+    params: { approverId, approvalStatus, opinion, scheduleAction, scheduleType, scheduleDateRange }
   })
 }
 

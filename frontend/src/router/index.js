@@ -67,6 +67,12 @@ const routes = [
             component: () => import('../views/duty/OperationLog.vue'),
             meta: { title: '操作日志' }
           },
+          {
+            path: 'schedule-job',
+            name: 'ScheduleJob',
+            component: () => import('../views/system/ScheduleJob.vue'),
+            meta: { title: '定时任务' }
+          },
 
         ]
       },
@@ -81,6 +87,12 @@ const routes = [
             name: 'DutySchedule',
             component: () => import('../views/duty/DutySchedule.vue'),
             meta: { title: '值班表管理' }
+          },
+          {
+            path: 'schedule-mode',
+            name: 'ScheduleMode',
+            component: () => import('../views/duty/ScheduleMode.vue'),
+            meta: { title: '排班模式管理' }
           },
           {
             path: 'assignment',

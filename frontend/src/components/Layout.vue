@@ -297,6 +297,11 @@ const fetchUserMenus = async () => {
             icon: 'DocumentCopy'
           },
           {
+            name: '排班模式管理',
+            path: '/duty/schedule-mode',
+            icon: 'Operation'
+          },
+          {
             name: '值班安排',
             path: '/duty/assignment',
             icon: 'Calendar'
@@ -305,6 +310,31 @@ const fetchUserMenus = async () => {
             name: '值班记录',
             path: '/duty/record',
             icon: 'Document'
+          },
+          {
+            name: '班次配置',
+            path: '/duty/shift-config',
+            icon: 'List'
+          },
+          {
+            name: '请假申请',
+            path: '/duty/leave-request',
+            icon: 'User'
+          },
+          {
+            name: '请假审批',
+            path: '/duty/leave-approval',
+            icon: 'Check'
+          },
+          {
+            name: '调班管理',
+            path: '/duty/swap-request',
+            icon: 'SwitchButton'
+          },
+          {
+            name: '排班统计',
+            path: '/duty/statistics',
+            icon: 'DataAnalysis'
           }
         ]
       }
@@ -312,8 +342,14 @@ const fetchUserMenus = async () => {
       // 更新路由名称映射
       routeNameMap.value['/duty'] = '值班管理'
       routeNameMap.value['/duty/schedule'] = '值班表管理'
+      routeNameMap.value['/duty/schedule-mode'] = '排班模式管理'
       routeNameMap.value['/duty/assignment'] = '值班安排'
       routeNameMap.value['/duty/record'] = '值班记录'
+      routeNameMap.value['/duty/shift-config'] = '班次配置'
+      routeNameMap.value['/duty/leave-request'] = '请假申请'
+      routeNameMap.value['/duty/leave-approval'] = '请假审批'
+      routeNameMap.value['/duty/swap-request'] = '调班管理'
+      routeNameMap.value['/duty/statistics'] = '排班统计'
       
       // 添加到菜单列表
       processedMenus.push(dutyMenu)
@@ -412,6 +448,11 @@ const fetchUserMenus = async () => {
             icon: 'DocumentCopy'
           },
           {
+            name: '排班模式管理',
+            path: '/duty/schedule-mode',
+            icon: 'Operation'
+          },
+          {
             name: '值班安排',
             path: '/duty/assignment',
             icon: 'Calendar'
@@ -420,6 +461,31 @@ const fetchUserMenus = async () => {
             name: '值班记录',
             path: '/duty/record',
             icon: 'Document'
+          },
+          {
+            name: '班次配置',
+            path: '/duty/shift-config',
+            icon: 'List'
+          },
+          {
+            name: '请假申请',
+            path: '/duty/leave-request',
+            icon: 'User'
+          },
+          {
+            name: '请假审批',
+            path: '/duty/leave-approval',
+            icon: 'Check'
+          },
+          {
+            name: '调班管理',
+            path: '/duty/swap-request',
+            icon: 'SwitchButton'
+          },
+          {
+            name: '排班统计',
+            path: '/duty/statistics',
+            icon: 'DataAnalysis'
           }
         ]
       }
@@ -438,8 +504,14 @@ const fetchUserMenus = async () => {
       '/system/operation-log': '操作日志',
       '/duty': '值班管理',
       '/duty/schedule': '值班表管理',
+      '/duty/schedule-mode': '排班模式管理',
       '/duty/assignment': '值班安排',
-      '/duty/record': '值班记录'
+      '/duty/record': '值班记录',
+      '/duty/shift-config': '班次配置',
+      '/duty/leave-request': '请假申请',
+      '/duty/leave-approval': '请假审批',
+      '/duty/swap-request': '调班管理',
+      '/duty/statistics': '排班统计'
     }
   } finally {
     loading.value = false

@@ -35,9 +35,21 @@ public class LeaveRequestController {
         return ResponseResult.success(list);
     }
 
+    @GetMapping("/approved/{approverId}")
+    public ResponseResult<List<LeaveRequest>> getApprovedApprovals(@PathVariable Long approverId) {
+        List<LeaveRequest> list = leaveRequestService.getApprovedApprovals(approverId);
+        return ResponseResult.success(list);
+    }
+
     @GetMapping("/pending/schedule/{scheduleId}")
     public ResponseResult<List<LeaveRequest>> getPendingApprovalsByScheduleId(@PathVariable Long scheduleId) {
         List<LeaveRequest> list = leaveRequestService.getPendingApprovalsByScheduleId(scheduleId);
+        return ResponseResult.success(list);
+    }
+
+    @GetMapping("/approved/schedule/{scheduleId}")
+    public ResponseResult<List<LeaveRequest>> getApprovedApprovalsByScheduleId(@PathVariable Long scheduleId) {
+        List<LeaveRequest> list = leaveRequestService.getApprovedApprovalsByScheduleId(scheduleId);
         return ResponseResult.success(list);
     }
 

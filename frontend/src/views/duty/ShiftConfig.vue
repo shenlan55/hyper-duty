@@ -216,13 +216,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  getShiftConfigList,
-  addShiftConfig,
-  updateShiftConfig,
-  deleteShiftConfig,
-  updateShiftConfigStatus
-} from '../../api/duty/shiftConfig'
+import { shiftConfigApi } from '../../api/duty/shiftConfig'
+
+const shiftApi = shiftConfigApi()
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -296,7 +292,7 @@ const getShiftTypeColor = (type) => {
 const fetchShiftConfigList = async () => {
   loading.value = true
   try {
-    const response = await getShiftConfigList()
+    const response = await shiftApi.getShiftConfigList()
     if (response.code === 200) {
       shiftConfigList.value = response.data
     }
@@ -352,9 +348,9 @@ const handleSave = async () => {
     
     let response
     if (form.id) {
-      response = await updateShiftConfig(formData)
+      response = await shiftApi.updateShiftConfig(formData)
     } else {
-      response = await addShiftConfig(formData)
+      response = await shiftApi.addShiftConfig(formData)
     }
     
     if (response.code === 200) {
@@ -375,7 +371,7 @@ const handleSave = async () => {
 const toggleStatus = async (row) => {
   try {
     const newStatus = row.status === 1 ? 0 : 1
-    const response = await updateShiftConfigStatus(row.id, newStatus)
+    const response = await shiftApi.updateShiftConfigStatus(row.id, newStatus)
     if (response.code === 200) {
       ElMessage.success('状态更新成功')
       fetchShiftConfigList()
@@ -396,7 +392,7 @@ const handleDelete = async (id) => {
       type: 'warning'
     })
     
-    const response = await deleteShiftConfig(id)
+    const response = await shiftApi.deleteShiftConfig(id)
     if (response.code === 200) {
       ElMessage.success('删除班次配置成功')
       fetchShiftConfigList()

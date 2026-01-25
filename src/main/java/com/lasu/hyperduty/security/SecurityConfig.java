@@ -53,6 +53,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/login", "/auth/logout").permitAll()
                         .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/druid/**").permitAll()
+                        .requestMatchers("/duty/holiday/**").permitAll()
                         .anyRequest().authenticated()
                 );
 
