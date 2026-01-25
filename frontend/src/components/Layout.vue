@@ -80,21 +80,26 @@
         </div>
         <!-- 标签页 -->
         <div class="tab-container">
-          <el-tabs 
-            v-model:active-tab="activeTab" 
-            type="card" 
-            @tab-remove="handleTabRemove"
-            @tab-change="handleTabChange"
-          >
-            <el-tab-pane 
-              v-for="tab in tabs" 
-              :key="tab.path" 
-              :label="tab.name" 
-              :name="tab.path"
-              closable
+          <div class="tabs-wrapper">
+            <el-tabs 
+              v-model:active-tab="activeTab" 
+              type="card" 
+              @tab-remove="handleTabRemove"
+              @tab-change="handleTabChange"
             >
-            </el-tab-pane>
-          </el-tabs>
+              <el-tab-pane 
+                v-for="tab in tabs" 
+                :key="tab.path" 
+                :label="tab.name" 
+                :name="tab.path"
+                closable
+              >
+              </el-tab-pane>
+            </el-tabs>
+            <div class="refresh-btn" @click="handleRefresh">
+              <el-icon><Refresh /></el-icon>
+            </div>
+          </div>
         </div>
         <!-- 内容区域 -->
         <el-main class="content">
@@ -598,6 +603,17 @@ const handleTopMenuChange = (index) => {
   }
 }
 
+// 处理刷新操作
+const handleRefresh = () => {
+  // 刷新当前标签页对应的内容
+  // 通过重新设置 activeTab 来触发 router-view 的重新渲染
+  const currentPath = activeTab.value
+  activeTab.value = ''
+  setTimeout(() => {
+    activeTab.value = currentPath
+  }, 0)
+}
+
 // 退出登录
 const handleLogout = async () => {
   try {
@@ -715,9 +731,38 @@ onMounted(async () => {
   height: 40px;
 }
 
+.tabs-wrapper {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 10px;
+}
+
+.tabs-wrapper :deep(.el-tabs) {
+  flex: 1;
+}
+
+.refresh-btn {
+  margin-left: 10px;
+  padding: 0 10px;
+  height: 32px;
+  line-height: 32px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.refresh-btn:hover {
+  background-color: #f5f7fa;
+  color: #1890ff;
+}
+
 .tab-container :deep(.el-tabs__header) {
   margin: 0;
-  padding: 0 10px;
+  padding: 0;
   border-bottom: none;
   height: 40px;
   line-height: 40px;

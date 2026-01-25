@@ -213,7 +213,13 @@
       width="400px"
     >
       <el-form :model="cleanLogForm" label-width="120px">
-        <el-form-item label="清理天数">
+        <el-form-item label="清理方式">
+          <el-radio-group v-model="cleanLogForm.cleanType" @change="handleCleanTypeChange">
+            <el-radio :value="1">清理指定天数之前的日志</el-radio>
+            <el-radio :value="2">清理所有日志</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="清理天数" v-if="cleanLogForm.cleanType === 1">
           <el-input-number
             v-model="cleanLogForm.days"
             :min="1"
@@ -223,8 +229,11 @@
           />
         </el-form-item>
         <el-form-item>
-          <span class="text-warning">
+          <span class="text-warning" v-if="cleanLogForm.cleanType === 1">
             提示：将清理{{ cleanLogForm.days }}天之前的任务执行日志
+          </span>
+          <span class="text-warning" v-else>
+            提示：将清理所有任务执行日志，此操作不可恢复！
           </span>
         </el-form-item>
       </el-form>
@@ -281,8 +290,17 @@ const jobForm = reactive({
 // 清理日志表单
 const cleanLogDialogVisible = ref(false)
 const cleanLogForm = reactive({
+  cleanType: 1, // 1: 清理指定天数之前的日志, 2: 清理所有日志
   days: 30
 })
+
+// 处理清理方式变化
+const handleCleanTypeChange = () => {
+  if (cleanLogForm.cleanType === 2) {
+    // 清理所有日志时，将 days 设为 0
+    cleanLogForm.days = 0
+  }
+}
 
 // 表单验证规则
 const rules = {
@@ -491,9 +509,15 @@ const openCleanLogDialog = () => {
 // 清理日志
 const handleCleanLogs = async () => {
   try {
-    const response = await scheduleApi.cleanLogs(cleanLogForm.days)
+    let days = cleanLogForm.days
+    if (cleanLogForm.cleanType === 2) {
+      // 清理所有日志时，传递 0 给后端
+      days = 0
+    }
+    
+    const response = await scheduleApi.cleanLogs(days)
     if (response.code === 200) {
-      ElMessage.success('清理日志成功')
+      ElMessage.success(`清理日志成功，共清理 ${response.data} 条记录`)
       cleanLogDialogVisible.value = false
       fetchLogList()
     } else {

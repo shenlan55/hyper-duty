@@ -25,10 +25,28 @@ public class SysScheduleLogServiceImpl extends ServiceImpl<SysScheduleLogMapper,
 
     @Override
     @Transactional
-    public boolean cleanLogs(int days) {
+    public int cleanLogs(int days) {
         QueryWrapper<SysScheduleLog> queryWrapper = new QueryWrapper<>();
-        queryWrapper.lt("start_time", LocalDateTime.now().minusDays(days));
-        return this.remove(queryWrapper);
+        
+        if (days > 0) {
+            // 清理指定天数之前的日志
+            LocalDateTime threshold = LocalDateTime.now().minusDays(days);
+            // 同时考虑 start_time 和 create_time，确保能清理到所有指定天数之前的日志
+            queryWrapper.and(wrapper -> wrapper
+                .lt("start_time", threshold)
+                .or()
+                .lt("create_time", threshold)
+            );
+        } else {
+            // 清理所有日志
+            // 空条件，表示查询所有记录
+        }
+        
+        // 先统计要删除的记录数
+        long count = this.count(queryWrapper);
+        // 然后执行删除操作
+        this.remove(queryWrapper);
+        return (int) count;
     }
 
 }
