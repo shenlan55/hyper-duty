@@ -39,7 +39,7 @@
             {{ formatDateTime(scope.row.createTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="350" fixed="right">
           <template #default="scope">
             <el-button size="small" @click="openEditDialog(scope.row)">
               编辑
@@ -168,23 +168,23 @@
             v-model="jobForm.params"
             type="textarea"
             placeholder="请输入参数"
-            rows="3"
+            :rows="3"
           />
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="jobForm.status">
-                <el-radio label="1">启用</el-radio>
-                <el-radio label="0">暂停</el-radio>
+                <el-radio :value="'1'">启用</el-radio>
+                <el-radio :value="'0'">暂停</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="允许并发" prop="concurrent">
               <el-radio-group v-model="jobForm.concurrent">
-                <el-radio label="1">允许</el-radio>
-                <el-radio label="0">禁止</el-radio>
+                <el-radio :value="'1'">允许</el-radio>
+                <el-radio :value="'0'">禁止</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
@@ -194,7 +194,7 @@
             v-model="jobForm.description"
             type="textarea"
             placeholder="请输入任务描述"
-            rows="3"
+            :rows="3"
           />
         </el-form-item>
       </el-form>
@@ -361,7 +361,32 @@ const openAddDialog = () => {
 // 打开编辑对话框
 const openEditDialog = (job) => {
   dialogTitle.value = '编辑任务'
-  Object.assign(jobForm, job)
+  // 先清空表单
+  Object.assign(jobForm, {
+    id: null,
+    jobName: '',
+    jobGroup: '',
+    jobCode: '',
+    cronExpression: '',
+    beanName: '',
+    methodName: '',
+    params: '',
+    status: '1',
+    concurrent: '0',
+    description: ''
+  })
+  // 再赋值并转换类型
+  jobForm.id = job.id
+  jobForm.jobName = job.jobName
+  jobForm.jobGroup = job.jobGroup
+  jobForm.jobCode = job.jobCode
+  jobForm.cronExpression = job.cronExpression
+  jobForm.beanName = job.beanName
+  jobForm.methodName = job.methodName
+  jobForm.params = job.params
+  jobForm.status = job.status.toString()
+  jobForm.concurrent = job.concurrent.toString()
+  jobForm.description = job.description
   dialogVisible.value = true
 }
 
@@ -369,11 +394,17 @@ const openEditDialog = (job) => {
 const handleSaveJob = async () => {
   try {
     await jobFormRef.value.validate()
+    // 创建提交数据的副本并转换类型
+    const submitData = {
+      ...jobForm,
+      status: parseInt(jobForm.status),
+      concurrent: parseInt(jobForm.concurrent)
+    }
     let response
     if (jobForm.id) {
-      response = await scheduleApi.updateJob(jobForm)
+      response = await scheduleApi.updateJob(submitData)
     } else {
-      response = await scheduleApi.addJob(jobForm)
+      response = await scheduleApi.addJob(submitData)
     }
     if (response.code === 200) {
       ElMessage.success(jobForm.id ? '更新任务成功' : '新增任务成功')
@@ -450,6 +481,11 @@ const handleDeleteJob = async (jobId) => {
       ElMessage.error('删除任务失败')
     }
   }
+}
+
+// 打开清理日志对话框
+const openCleanLogDialog = () => {
+  cleanLogDialogVisible.value = true
 }
 
 // 清理日志

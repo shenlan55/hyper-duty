@@ -327,6 +327,7 @@ import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleM
 import { getEmployeeList } from '../../api/employee'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { holidayApi } from '../../api/duty/holiday'
+import dayjs from 'dayjs'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 
@@ -626,11 +627,12 @@ const handleScheduleChange = async (scheduleId) => {
 const getMonthRange = (date) => {
   const year = date.getFullYear()
   const month = date.getMonth()
-  const startDate = new Date(year, month, 1)
-  const endDate = new Date(year, month + 1, 0)
+  // 使用 dayjs 处理日期，避免时区问题
+  const startDate = dayjs(date).startOf('month')
+  const endDate = dayjs(date).endOf('month')
   return {
-    start: startDate.toISOString().split('T')[0],
-    end: endDate.toISOString().split('T')[0]
+    start: startDate.format('YYYY-MM-DD'),
+    end: endDate.format('YYYY-MM-DD')
   }
 }
 
@@ -834,12 +836,12 @@ const handleClearSave = async () => {
 
 const getDatesInRange = (startDate, endDate) => {
   const dates = []
-  const start = new Date(startDate)
-  const end = new Date(endDate)
+  let current = dayjs(startDate)
+  const end = dayjs(endDate)
   
-  while (start <= end) {
-    dates.push(start.toISOString().split('T')[0])
-    start.setDate(start.getDate() + 1)
+  while (current.isBefore(end) || current.isSame(end, 'day')) {
+    dates.push(current.format('YYYY-MM-DD'))
+    current = current.add(1, 'day')
   }
   
   return dates

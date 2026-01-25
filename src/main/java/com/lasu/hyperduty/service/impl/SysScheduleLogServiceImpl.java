@@ -27,7 +27,7 @@ public class SysScheduleLogServiceImpl extends ServiceImpl<SysScheduleLogMapper,
     @Transactional
     public boolean cleanLogs(int days) {
         QueryWrapper<SysScheduleLog> queryWrapper = new QueryWrapper<>();
-        queryWrapper.lt("create_time", LocalDateTime.now().minusDays(days));
+        queryWrapper.lt("start_time", LocalDateTime.now().minusDays(days));
         return this.remove(queryWrapper);
     }
 

@@ -28,9 +28,8 @@ public class HolidayUtil {
         List<DutyHoliday> holidays = new ArrayList<>();
         
         try {
-            // 这里使用国务院办公厅发布的节假日安排API
-            // 实际项目中可能需要替换为真实的API接口
-            String url = "https://api.example.com/holidays?year=" + year;
+            // 使用真实的节假日API接口
+            String url = "https://timor.tech/api/holiday/year/" + year;
             
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
@@ -41,80 +40,51 @@ public class HolidayUtil {
             
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> result = response.getBody();
-                // 解析API返回的数据，转换为DutyHoliday对象
-                // 这里需要根据实际API返回格式进行调整
-                // 示例代码，实际实现需要根据真实API进行修改
+                
+                // 解析API返回的数据
+                Integer code = (Integer) result.get("code");
+                if (code != null && code == 0) {
+                    Map<String, Object> holidayData = (Map<String, Object>) result.get("holiday");
+                    if (holidayData != null) {
+                        // 遍历所有节假日数据
+                        for (Map.Entry<String, Object> entry : holidayData.entrySet()) {
+                            String dateKey = entry.getKey(); // 格式：MM-DD
+                            Map<String, Object> holidayInfo = (Map<String, Object>) entry.getValue();
+                            
+                            // 构建完整日期字符串：YYYY-MM-DD
+                            String dateStr = year + "-" + dateKey;
+                            Boolean isHoliday = (Boolean) holidayInfo.get("holiday");
+                            String name = (String) holidayInfo.get("name");
+                            
+                            // 创建节假日对象
+                            DutyHoliday holiday = new DutyHoliday();
+                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                            LocalDate date = LocalDate.parse(dateStr, formatter);
+                            
+                            holiday.setHolidayName(name);
+                            holiday.setHolidayDate(date);
+                            holiday.setIsWorkday(isHoliday ? 0 : 1); // 0-节假日，1-工作日（调休）
+                            holiday.setHolidayType(isHoliday ? 1 : 2); // 1-法定节假日，2-调休
+                            holiday.setRemark(name);
+                            holiday.setCreateTime(java.time.LocalDateTime.now());
+                            holiday.setUpdateTime(java.time.LocalDateTime.now());
+                            
+                            holidays.add(holiday);
+                        }
+                    }
+                }
+            } else {
+                // API调用成功但无数据，返回空列表
+                System.err.println("API调用成功但无数据返回");
+                return holidays;
             }
         } catch (Exception e) {
-            // 当API调用失败时，使用默认节假日数据
-            holidays.addAll(getDefaultHolidays(year));
+            // 当API调用失败时，直接返回空列表
+            // 不要使用默认数据，获取失败就是空
+            System.err.println("获取节假日信息失败: " + e.getMessage());
         }
         
         return holidays;
-    }
-    
-    /**
-     * 获取默认节假日数据
-     * 当API调用失败时使用
-     * @param year 年份
-     * @return 节假日列表
-     */
-    private static List<DutyHoliday> getDefaultHolidays(int year) {
-        List<DutyHoliday> holidays = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        
-        // 元旦
-        holidays.add(createHoliday(year + "-01-01", "元旦", 0, 1));
-        
-        // 春节
-        holidays.add(createHoliday(year + "-02-10", "春节", 0, 1));
-        holidays.add(createHoliday(year + "-02-11", "春节", 0, 1));
-        holidays.add(createHoliday(year + "-02-12", "春节", 0, 1));
-        holidays.add(createHoliday(year + "-02-13", "春节", 0, 1));
-        holidays.add(createHoliday(year + "-02-14", "春节", 0, 1));
-        
-        // 清明节
-        holidays.add(createHoliday(year + "-04-04", "清明节", 0, 1));
-        
-        // 劳动节
-        holidays.add(createHoliday(year + "-05-01", "劳动节", 0, 1));
-        
-        // 端午节
-        holidays.add(createHoliday(year + "-06-10", "端午节", 0, 1));
-        
-        // 中秋节
-        holidays.add(createHoliday(year + "-09-17", "中秋节", 0, 1));
-        
-        // 国庆节
-        holidays.add(createHoliday(year + "-10-01", "国庆节", 0, 1));
-        holidays.add(createHoliday(year + "-10-02", "国庆节", 0, 1));
-        holidays.add(createHoliday(year + "-10-03", "国庆节", 0, 1));
-        
-        return holidays;
-    }
-    
-    /**
-     * 创建节假日对象
-     * @param dateStr 日期字符串
-     * @param name 节假日名称
-     * @param isWorkday 是否工作日（0-否，1-是）
-     * @param holidayType 节假日类型（1-法定节假日，2-调休）
-     * @return 节假日对象
-     */
-    private static DutyHoliday createHoliday(String dateStr, String name, int isWorkday, int holidayType) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        LocalDate date = LocalDate.parse(dateStr, formatter);
-        
-        DutyHoliday holiday = new DutyHoliday();
-        holiday.setHolidayName(name);
-        holiday.setHolidayDate(date);
-        holiday.setIsWorkday(isWorkday);
-        holiday.setHolidayType(holidayType);
-        holiday.setRemark(name);
-        holiday.setCreateTime(java.time.LocalDateTime.now());
-        holiday.setUpdateTime(java.time.LocalDateTime.now());
-        
-        return holiday;
     }
     
     /**
