@@ -311,7 +311,11 @@ const openAddDialog = () => {
 }
 
 const openEditDialog = (row) => {
-  Object.assign(form, row)
+  // 先深拷贝对象
+  const formData = JSON.parse(JSON.stringify(row))
+  // 将isCrossDay从数字类型转换为布尔类型
+  formData.isCrossDay = formData.isCrossDay === 1
+  Object.assign(form, formData)
   dialogTitle.value = '编辑班次'
   dialogVisible.value = true
 }
