@@ -201,24 +201,6 @@
             style="margin-top: 8px"
           />
         </el-form-item>
-        <el-form-item label="每组人数" prop="groupSize" v-if="batchForm.scheduleType === 3">
-          <el-input
-            v-model="batchForm.groupSize"
-            type="number"
-            placeholder="请输入每组人数"
-            style="width: 100%"
-            :min="1"
-          />
-        </el-form-item>
-        <el-form-item label="夜班人数" prop="nightShiftCount" v-if="batchForm.scheduleType === 3">
-          <el-input
-            v-model="batchForm.nightShiftCount"
-            type="number"
-            placeholder="请输入夜班人数（仅白班组内全员、夜班轮值模式需要）"
-            style="width: 100%"
-            :min="1"
-          />
-        </el-form-item>
         <el-form-item label="班次" prop="dutyShift" v-if="batchForm.scheduleType !== 3">
           <el-select
             v-model="batchForm.dutyShift"
@@ -369,9 +351,7 @@ const batchForm = reactive({
   dutyShift: null,
   employeeIds: [],
   remark: '',
-  scheduleModeId: null,
-  groupSize: 1,
-  nightShiftCount: 1
+  scheduleModeId: null
 })
 
 const clearDialogVisible = ref(false)
@@ -409,14 +389,6 @@ const batchRules = {
   scheduleModeId: [
     { required: true, message: '请选择排班模式', trigger: 'blur' },
     { required: true, message: '请选择排班模式', trigger: 'change' }
-  ],
-  groupSize: [
-    { required: true, message: '请输入每组人数', trigger: 'blur' },
-    { min: 1, message: '每组人数至少为1', trigger: 'blur' }
-  ],
-  nightShiftCount: [
-    { required: true, message: '请输入夜班人数', trigger: 'blur' },
-    { min: 1, message: '夜班人数至少为1', trigger: 'blur' }
   ]
 }
 
@@ -712,9 +684,7 @@ const openBatchDialog = () => {
     dutyShift: null,
     employeeIds: [],
     remark: '',
-    scheduleModeId: null,
-    groupSize: 1,
-    nightShiftCount: 1
+    scheduleModeId: null
   })
   batchDialogVisible.value = true
 }
@@ -734,15 +704,20 @@ const handleBatchSave = async () => {
         endDate,
         batchForm.scheduleModeId,
         {
-          groupSize: batchForm.groupSize,
-          nightShiftCount: batchForm.nightShiftCount,
           employeeIds: batchForm.employeeIds,
           remark: batchForm.remark
         }
       )
       
       if (response.code === 200) {
-        ElMessage.success(`批量排班成功，共添加 ${response.data} 条记录`)
+        // 保存生成的排班数据到数据库
+        const assignments = response.data
+        for (const assignment of assignments) {
+          // 添加remark字段
+          assignment.remark = batchForm.remark
+          await addAssignment(assignment)
+        }
+        ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
       } else {
         ElMessage.error('批量排班失败: ' + (response.message || '未知错误'))
         return
@@ -786,7 +761,8 @@ const handleBatchSave = async () => {
     }
     
     batchDialogVisible.value = false
-    fetchAssignmentList(selectedScheduleId.value)
+    // 刷新排班数据
+    await fetchAssignmentList(selectedScheduleId.value)
   } catch (error) {
     console.error('批量排班失败:', error)
     ElMessage.error('批量排班失败')

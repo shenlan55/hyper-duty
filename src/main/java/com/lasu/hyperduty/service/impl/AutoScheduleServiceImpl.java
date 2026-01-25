@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.math.BigDecimal;
 import java.util.*;
@@ -334,6 +335,15 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
         return employeeWorkHours;
     }
 
+    /**
+     * 根据排班模式生成排班
+     * @param scheduleId 值班表ID
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @param modeId 排班模式ID
+     * @param configParams 配置参数
+     * @return 生成的值班安排列表
+     */
     @Override
     public List<DutyAssignment> generateScheduleByMode(Long scheduleId, LocalDate startDate, LocalDate endDate, Long modeId, Map<String, Object> configParams) {
         List<DutyAssignment> assignments = new ArrayList<>();
@@ -345,35 +355,194 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
         }
         
         // 获取参与排班的员工列表
-        List<SysEmployee> employees = sysEmployeeService.listByIds(dutyScheduleService.getEmployeeIdsByScheduleId(scheduleId));
+        List<SysEmployee> employees;
+        // 优先使用前端传入的员工列表
+        if (configParams != null && configParams.containsKey("employeeIds")) {
+            List<Long> employeeIds = (List<Long>) configParams.get("employeeIds");
+            if (employeeIds != null && !employeeIds.isEmpty()) {
+                employees = sysEmployeeService.listByIds(employeeIds);
+            } else {
+                // 如果前端没有传入员工列表，使用值班表中的所有员工
+                employees = sysEmployeeService.listByIds(dutyScheduleService.getEmployeeIdsByScheduleId(scheduleId));
+            }
+        } else {
+            // 如果前端没有传入员工列表，使用值班表中的所有员工
+            employees = sysEmployeeService.listByIds(dutyScheduleService.getEmployeeIdsByScheduleId(scheduleId));
+        }
         if (employees.isEmpty()) {
             return assignments;
         }
         
-        // 获取排班模式和对应的算法实例
+        // 获取排班模式和配置
         DutyScheduleMode mode = dutyScheduleModeService.getById(modeId);
         if (mode == null) {
             return assignments;
         }
         
-        ScheduleAlgorithm algorithm = dutyScheduleModeService.getAlgorithmInstanceByModeId(modeId);
-        if (algorithm == null) {
+        // 获取排班模式配置
+        Map<String, Object> modeConfig = dutyScheduleModeService.getModeConfig(modeId);
+        if (modeConfig == null) {
+            System.err.println("排班模式配置为空，modeId: " + modeId);
             return assignments;
         }
+        System.out.println("排班模式配置: " + modeConfig);
         
         // 合并默认配置和传入配置
         Map<String, Object> combinedConfig = new HashMap<>();
-        Map<String, Object> defaultConfig = dutyScheduleModeService.getModeConfig(modeId);
-        if (defaultConfig != null) {
-            combinedConfig.putAll(defaultConfig);
-        }
+        combinedConfig.putAll(modeConfig);
         if (configParams != null) {
             combinedConfig.putAll(configParams);
         }
         
+        // 解析前端配置格式
+        List<Map<String, Object>> groupsConfig = new ArrayList<>();
+        Integer cycleDays = 7; // 默认周期天数
+        
+        // 处理前端传递的teams配置
+        if (combinedConfig.containsKey("teams")) {
+            List<Map<String, Object>> teams = (List<Map<String, Object>>) combinedConfig.get("teams");
+            if (!teams.isEmpty()) {
+                // 转换teams配置为groups配置
+                for (Map<String, Object> team : teams) {
+                    List<Map<String, Object>> shifts = (List<Map<String, Object>>) team.getOrDefault("shifts", new ArrayList<>());
+                    Map<String, Object> groupConfig = new HashMap<>();
+                    List<Map<String, Object>> dayConfigs = new ArrayList<>();
+                    
+                    // 为每天创建配置
+                    for (int i = 0; i < shifts.size(); i++) {
+                        Map<String, Object> shift = shifts.get(i);
+                        Map<String, Object> dayConfig = new HashMap<>();
+                        
+                        // 解析班次ID和人数
+                        String shiftId = (String) shift.getOrDefault("shiftId", "");
+                        Integer count = (Integer) shift.getOrDefault("count", 0);
+                        
+                        if (!shiftId.isEmpty() && count > 0) {
+                            dayConfig.put("shiftType", shiftId);
+                            dayConfig.put("employeeCount", count);
+                        }
+                        
+                        dayConfigs.add(dayConfig);
+                    }
+                    
+                    groupConfig.put("days", dayConfigs);
+                    groupsConfig.add(groupConfig);
+                }
+                
+                // 设置周期天数为班次配置的天数
+                if (!groupsConfig.isEmpty()) {
+                    Map<String, Object> firstGroup = groupsConfig.get(0);
+                    List<Map<String, Object>> firstGroupDays = (List<Map<String, Object>>) firstGroup.getOrDefault("days", new ArrayList<>());
+                    cycleDays = firstGroupDays.size();
+                }
+            }
+        } else if (combinedConfig.containsKey("groups")) {
+            // 兼容旧格式
+            groupsConfig = (List<Map<String, Object>>) combinedConfig.getOrDefault("groups", new ArrayList<>());
+            cycleDays = (Integer) combinedConfig.getOrDefault("cycleDays", 7);
+        }
+        
+        System.out.println("转换后的组数: " + groupsConfig.size());
+        System.out.println("周期天数: " + cycleDays);
+        
+        if (groupsConfig.isEmpty()) {
+            System.err.println("各组配置为空");
+            return assignments;
+        }
+        
+        // 计算员工分组
+        List<List<SysEmployee>> employeeGroups = groupEmployees(employees, groupsConfig.size());
+        
         // 生成排班安排
-        assignments = algorithm.generateSchedule(schedule, employees, startDate, endDate, combinedConfig);
+        LocalDate currentDate = startDate;
+        while (!currentDate.isAfter(endDate)) {
+            // 计算当前是周期的第几天（从0开始）
+            int dayOfCycle = (int) ChronoUnit.DAYS.between(startDate, currentDate) % cycleDays;
+            if (dayOfCycle < 0) {
+                dayOfCycle += cycleDays;
+            }
+            
+            // 为每个组生成排班
+            for (int groupIndex = 0; groupIndex < groupsConfig.size(); groupIndex++) {
+                Map<String, Object> groupConfig = groupsConfig.get(groupIndex);
+                List<SysEmployee> groupEmployees = employeeGroups.get(groupIndex);
+                
+                // 获取当天该组的班次配置
+                List<Map<String, Object>> dayConfigs = (List<Map<String, Object>>) groupConfig.getOrDefault("days", new ArrayList<>());
+                if (dayConfigs.size() <= dayOfCycle) {
+                    continue; // 该组当天没有配置，轮空
+                }
+                
+                Map<String, Object> dayConfig = dayConfigs.get(dayOfCycle);
+                Object shiftTypeObj = dayConfig.getOrDefault("shiftType", "");
+                String shiftType = shiftTypeObj != null ? shiftTypeObj.toString() : "";
+                Integer employeeCount = (Integer) dayConfig.getOrDefault("employeeCount", 0);
+                
+                // 如果没有设置班次或人数为0，轮空
+                if (shiftType.isEmpty() || employeeCount <= 0) {
+                    continue;
+                }
+                
+                // 为该组当天生成排班
+                for (int i = 0; i < employeeCount && i < groupEmployees.size(); i++) {
+                    SysEmployee employee = groupEmployees.get(i);
+                    
+                    DutyAssignment assignment = new DutyAssignment();
+                    assignment.setScheduleId(scheduleId);
+                    assignment.setDutyDate(currentDate);
+                    assignment.setDutyShift(Integer.parseInt(shiftType)); // 直接使用班次ID作为dutyShift
+                    assignment.setEmployeeId(employee.getId());
+                    assignment.setStatus(1);
+                    assignment.setCreateTime(LocalDateTime.now());
+                    assignment.setUpdateTime(LocalDateTime.now());
+                    
+                    assignments.add(assignment);
+                }
+            }
+            
+            currentDate = currentDate.plusDays(1);
+        }
         
         return assignments;
+    }
+    
+    /**
+     * 将员工分组
+     * @param employees 员工列表
+     * @param groupCount 组数
+     * @return 分组后的员工列表
+     */
+    private List<List<SysEmployee>> groupEmployees(List<SysEmployee> employees, int groupCount) {
+        List<List<SysEmployee>> groups = new ArrayList<>();
+        
+        // 初始化分组
+        for (int i = 0; i < groupCount; i++) {
+            groups.add(new ArrayList<>());
+        }
+        
+        // 分配员工到各组
+        for (int i = 0; i < employees.size(); i++) {
+            int groupIndex = i % groupCount;
+            groups.get(groupIndex).add(employees.get(i));
+        }
+        
+        return groups;
+    }
+    
+    /**
+     * 获取班次类型代码
+     * @param shiftType 班次类型名称
+     * @return 班次类型代码
+     */
+    private Integer getShiftTypeCode(String shiftType) {
+        // 根据班次类型名称获取对应的代码
+        Map<String, Integer> shiftTypeMap = new HashMap<>();
+        shiftTypeMap.put("白班", 1);
+        shiftTypeMap.put("夜班", 2);
+        shiftTypeMap.put("值班", 3);
+        shiftTypeMap.put("休息", 4);
+        shiftTypeMap.put("选择班次", 0);
+        
+        return shiftTypeMap.getOrDefault(shiftType, 0);
     }
 }
