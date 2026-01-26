@@ -23,14 +23,22 @@ import java.util.stream.Collectors;
 @Service
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements SysUserService {
 
-    @Autowired
-    private SysUserMapper sysUserMapper;
-
-    @Autowired
-    private SysEmployeeService sysEmployeeService;
-
-    @Autowired
+    private final SysUserMapper sysUserMapper;
+    private final SysEmployeeService sysEmployeeService;
     private PasswordEncoder passwordEncoder;
+
+    // 使用构造函数注入，只注入非循环依赖的Bean
+    @Autowired
+    public SysUserServiceImpl(SysUserMapper sysUserMapper, SysEmployeeService sysEmployeeService) {
+        this.sysUserMapper = sysUserMapper;
+        this.sysEmployeeService = sysEmployeeService;
+    }
+
+    // 使用方法注入来注入PasswordEncoder，打破循环依赖
+    @Autowired
+    public void setPasswordEncoder(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
     public SysUser getByUsername(String username) {

@@ -211,288 +211,238 @@ const routeNameMap = ref({
 const fetchUserMenus = async () => {
   loading.value = true
   try {
-    // 直接使用默认菜单数据，不调用后端API
-    // 这样可以确保菜单显示出来，不受后端API问题的影响
+    console.log('开始获取用户菜单...')
+    // 调用后端API获取用户的实际菜单权限
+    const response = await getUserMenus()
     
-    // 更新菜单列表
-    topMenus.value = [
-      {
-        id: 'dashboard',
-        name: '首页',
-        path: '/dashboard',
-        icon: 'HomeFilled',
-        children: [{
-          name: '首页',
-          path: '/dashboard',
-          icon: 'HomeFilled'
-        }]
-      },
-      {
-        id: 'system',
-        name: '系统管理',
-        path: '/system',
-        icon: 'Setting',
-        children: [
-          {
-            name: '部门管理',
-            path: '/system/dept',
-            icon: 'OfficeBuilding'
-          },
-          {
-            name: '人员管理',
-            path: '/system/employee',
-            icon: 'UserFilled'
-          },
-          {
-            name: '用户管理',
-            path: '/system/user',
-            icon: 'User'
-          },
-          {
-            name: '菜单管理',
-            path: '/system/menu',
-            icon: 'Menu'
-          },
-          {
-            name: '角色管理',
-            path: '/system/role',
-            icon: 'Operation'
-          },
-          {
-            name: '字典管理',
-            path: '/system/dict',
-            icon: 'List'
-          },
-          {
-            name: '操作日志',
-            path: '/system/operation-log',
-            icon: 'Document'
-          },
-          {
-            name: '定时任务',
-            path: '/system/schedule-job',
-            icon: 'Clock'
+    console.log('获取用户菜单响应：', response)
+    
+    if (response && response.code === 200) {
+      // 从后端API响应中获取菜单数据
+      const backendMenus = response.data
+      
+      console.log('后端返回的菜单数据：', backendMenus)
+      
+      if (backendMenus && Array.isArray(backendMenus) && backendMenus.length > 0) {
+        // 转换后端菜单数据为前端需要的格式
+        topMenus.value = backendMenus.map(menu => {
+          // 转换子菜单，为子菜单的路径添加父菜单的路径前缀
+          const children = menu.children && Array.isArray(menu.children) ? menu.children.map(child => {
+            // 为子菜单的路径添加父菜单的路径前缀
+            let childPath = child.path || '';
+            
+            // 特殊处理系统管理菜单的子菜单
+            if (menu.menuName === '系统管理' && childPath && !childPath.startsWith('/system')) {
+              childPath = `/system${childPath.startsWith('/') ? '' : '/'}${childPath}`;
+            }
+            
+            // 特殊处理值班管理菜单的子菜单
+            if (menu.menuName === '值班管理' && childPath && !childPath.startsWith('/duty')) {
+              childPath = `/duty${childPath.startsWith('/') ? '' : '/'}${childPath}`;
+            }
+            
+            return {
+              name: child.menuName || '未命名菜单',
+              path: childPath,
+              icon: child.icon || 'Menu'
+            };
+          }) : []
+          
+          return {
+            id: menu.id ? menu.id.toString() : Date.now().toString(),
+            name: menu.menuName || '未命名菜单',
+            path: menu.path || '',
+            icon: menu.icon || 'Menu',
+            children
           }
-        ]
-      },
-      {
-        id: 'duty',
-        name: '值班管理',
-        path: '/duty',
-        icon: 'Calendar',
-        children: [
-          {
-            name: '值班表管理',
-            path: '/duty/schedule',
-            icon: 'DocumentCopy'
-          },
-          {
-            name: '排班模式管理',
-            path: '/duty/schedule-mode',
-            icon: 'Operation'
-          },
-          {
-            name: '值班安排',
-            path: '/duty/assignment',
-            icon: 'Calendar'
-          },
-          {
-            name: '值班记录',
-            path: '/duty/record',
-            icon: 'Document'
-          },
-          {
-            name: '班次配置',
-            path: '/duty/shift-config',
-            icon: 'List'
-          },
-          {
-            name: '请假申请',
-            path: '/duty/leave-request',
-            icon: 'User'
-          },
-          {
-            name: '请假审批',
-            path: '/duty/leave-approval',
-            icon: 'Check'
-          },
-          {
-            name: '调班管理',
-            path: '/duty/swap-request',
-            icon: 'SwitchButton'
-          },
-          {
-            name: '排班统计',
-            path: '/duty/statistics',
-            icon: 'DataAnalysis'
+        })
+        
+        // 更新路由名称映射
+        const newRouteNameMap = { '/dashboard': '首页' }
+        topMenus.value.forEach(menu => {
+          if (menu.path) {
+            newRouteNameMap[menu.path] = menu.name
           }
-        ]
+          if (menu.children) {
+            menu.children.forEach(child => {
+              if (child.path) {
+                newRouteNameMap[child.path] = child.name
+              }
+            })
+          }
+        })
+        routeNameMap.value = newRouteNameMap
+        
+        console.log('转换后的菜单数据：', topMenus.value)
+        console.log('更新后的路由名称映射：', routeNameMap.value)
+        
+        // 始终设置首页为默认激活
+        activeTopMenu.value = 'dashboard'
+      } else {
+        // 后端返回的菜单数据为空或格式不正确，使用默认菜单数据
+        console.warn('后端返回的菜单数据为空或格式不正确，使用默认菜单数据')
+        useDefaultMenus()
       }
-    ]
-    
-    // 更新路由名称映射
-    routeNameMap.value = {
-      '/dashboard': '首页',
-      '/system': '系统管理',
-      '/system/dept': '部门管理',
-      '/system/employee': '人员管理',
-      '/system/user': '用户管理',
-      '/system/menu': '菜单管理',
-      '/system/role': '角色管理',
-      '/system/dict': '字典管理',
-      '/system/operation-log': '操作日志',
-      '/system/schedule-job': '定时任务',
-      '/duty': '值班管理',
-      '/duty/schedule': '值班表管理',
-      '/duty/schedule-mode': '排班模式管理',
-      '/duty/assignment': '值班安排',
-      '/duty/record': '值班记录',
-      '/duty/shift-config': '班次配置',
-      '/duty/leave-request': '请假申请',
-      '/duty/leave-approval': '请假审批',
-      '/duty/swap-request': '调班管理',
-      '/duty/statistics': '排班统计'
+    } else {
+      // API调用失败时，使用默认菜单数据作为 fallback
+      console.warn('获取用户菜单失败，使用默认菜单数据', response)
+      useDefaultMenus()
     }
-    
-    // 始终设置首页为默认激活
-    activeTopMenu.value = 'dashboard'
   } catch (error) {
     console.error('获取菜单失败：', error)
-    ElMessage.error('获取菜单失败：' + error.message)
+    ElMessage.error('获取菜单失败：' + (error.message || '未知错误'))
     
-    // 获取菜单失败时，添加默认的值班管理菜单
-    topMenus.value = [
-      {
-        id: 'dashboard',
-        name: '首页',
-        path: '/dashboard',
-        icon: 'House',
-        children: []
-      },
-      {
-        id: 'system',
-        name: '系统管理',
-        path: '/system',
-        icon: 'Setting',
-        children: [
-          {
-            name: '部门管理',
-            path: '/system/dept',
-            icon: 'OfficeBuilding'
-          },
-          {
-            name: '人员管理',
-            path: '/system/employee',
-            icon: 'UserFilled'
-          },
-          {
-            name: '用户管理',
-            path: '/system/user',
-            icon: 'User'
-          },
-          {
-            name: '菜单管理',
-            path: '/system/menu',
-            icon: 'Menu'
-          },
-          {
-            name: '角色管理',
-            path: '/system/role',
-            icon: 'Operation'
-          },
-          {
-            name: '字典管理',
-            path: '/system/dict',
-            icon: 'List'
-          },
-          {
-            name: '操作日志',
-            path: '/system/operation-log',
-            icon: 'Document'
-          }
-        ]
-      },
-      {
-        id: 'duty',
-        name: '值班管理',
-        path: '/duty',
-        icon: 'Calendar',
-        children: [
-          {
-            name: '值班表管理',
-            path: '/duty/schedule',
-            icon: 'DocumentCopy'
-          },
-          {
-            name: '排班模式管理',
-            path: '/duty/schedule-mode',
-            icon: 'Operation'
-          },
-          {
-            name: '值班安排',
-            path: '/duty/assignment',
-            icon: 'Calendar'
-          },
-          {
-            name: '值班记录',
-            path: '/duty/record',
-            icon: 'Document'
-          },
-          {
-            name: '班次配置',
-            path: '/duty/shift-config',
-            icon: 'List'
-          },
-          {
-            name: '请假申请',
-            path: '/duty/leave-request',
-            icon: 'User'
-          },
-          {
-            name: '请假审批',
-            path: '/duty/leave-approval',
-            icon: 'Check'
-          },
-          {
-            name: '调班管理',
-            path: '/duty/swap-request',
-            icon: 'SwitchButton'
-          },
-          {
-            name: '排班统计',
-            path: '/duty/statistics',
-            icon: 'DataAnalysis'
-          }
-        ]
-      }
-    ]
-    
-    // 更新路由名称映射
-    routeNameMap.value = {
-      '/dashboard': '首页',
-      '/system': '系统管理',
-      '/system/dept': '部门管理',
-      '/system/employee': '人员管理',
-      '/system/user': '用户管理',
-      '/system/menu': '菜单管理',
-      '/system/role': '角色管理',
-      '/system/dict': '字典管理',
-      '/system/operation-log': '操作日志',
-      '/system/schedule-job': '定时任务',
-      '/duty': '值班管理',
-      '/duty/schedule': '值班表管理',
-      '/duty/schedule-mode': '排班模式管理',
-      '/duty/assignment': '值班安排',
-      '/duty/record': '值班记录',
-      '/duty/shift-config': '班次配置',
-      '/duty/leave-request': '请假申请',
-      '/duty/leave-approval': '请假审批',
-      '/duty/swap-request': '调班管理',
-      '/duty/statistics': '排班统计'
-    }
+    // 获取菜单失败时，使用默认菜单数据
+    useDefaultMenus()
   } finally {
     loading.value = false
   }
+}
+
+// 使用默认菜单数据作为 fallback
+const useDefaultMenus = () => {
+  // 更新菜单列表
+  topMenus.value = [
+    {
+      id: 'dashboard',
+      name: '首页',
+      path: '/dashboard',
+      icon: 'HomeFilled',
+      children: [{
+        name: '首页',
+        path: '/dashboard',
+        icon: 'HomeFilled'
+      }]
+    },
+    {
+      id: 'system',
+      name: '系统管理',
+      path: '/system',
+      icon: 'Setting',
+      children: [
+        {
+          name: '部门管理',
+          path: '/system/dept',
+          icon: 'OfficeBuilding'
+        },
+        {
+          name: '人员管理',
+          path: '/system/employee',
+          icon: 'UserFilled'
+        },
+        {
+          name: '用户管理',
+          path: '/system/user',
+          icon: 'User'
+        },
+        {
+          name: '菜单管理',
+          path: '/system/menu',
+          icon: 'Menu'
+        },
+        {
+          name: '角色管理',
+          path: '/system/role',
+          icon: 'Operation'
+        },
+        {
+          name: '字典管理',
+          path: '/system/dict',
+          icon: 'List'
+        },
+        {
+          name: '操作日志',
+          path: '/system/operation-log',
+          icon: 'Document'
+        },
+        {
+          name: '定时任务',
+          path: '/system/schedule-job',
+          icon: 'Clock'
+        }
+      ]
+    },
+    {
+      id: 'duty',
+      name: '值班管理',
+      path: '/duty',
+      icon: 'Calendar',
+      children: [
+        {
+          name: '值班表管理',
+          path: '/duty/schedule',
+          icon: 'DocumentCopy'
+        },
+        {
+          name: '排班模式管理',
+          path: '/duty/schedule-mode',
+          icon: 'Operation'
+        },
+        {
+          name: '值班安排',
+          path: '/duty/assignment',
+          icon: 'Calendar'
+        },
+        {
+          name: '值班记录',
+          path: '/duty/record',
+          icon: 'Document'
+        },
+        {
+          name: '班次配置',
+          path: '/duty/shift-config',
+          icon: 'List'
+        },
+        {
+          name: '请假申请',
+          path: '/duty/leave-request',
+          icon: 'User'
+        },
+        {
+          name: '请假审批',
+          path: '/duty/leave-approval',
+          icon: 'Check'
+        },
+        {
+          name: '调班管理',
+          path: '/duty/swap-request',
+          icon: 'SwitchButton'
+        },
+        {
+          name: '排班统计',
+          path: '/duty/statistics',
+          icon: 'DataAnalysis'
+        }
+      ]
+    }
+  ]
+  
+  // 更新路由名称映射
+  routeNameMap.value = {
+    '/dashboard': '首页',
+    '/system': '系统管理',
+    '/system/dept': '部门管理',
+    '/system/employee': '人员管理',
+    '/system/user': '用户管理',
+    '/system/menu': '菜单管理',
+    '/system/role': '角色管理',
+    '/system/dict': '字典管理',
+    '/system/operation-log': '操作日志',
+    '/system/schedule-job': '定时任务',
+    '/duty': '值班管理',
+    '/duty/schedule': '值班表管理',
+    '/duty/schedule-mode': '排班模式管理',
+    '/duty/assignment': '值班安排',
+    '/duty/record': '值班记录',
+    '/duty/shift-config': '班次配置',
+    '/duty/leave-request': '请假申请',
+    '/duty/leave-approval': '请假审批',
+    '/duty/swap-request': '调班管理',
+    '/duty/statistics': '排班统计'
+  }
+  
+  // 始终设置首页为默认激活
+  activeTopMenu.value = 'dashboard'
 }
 
 // 添加标签页

@@ -20,10 +20,10 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private JwtUtil jwtUtil;
-    private SysUserService sysUserService;
+    private final JwtUtil jwtUtil;
+    private final SysUserService sysUserService;
 
-    // 使用构造函数注入，避免循环依赖
+    // 使用构造函数注入
     @Autowired
     public JwtAuthenticationFilter(JwtUtil jwtUtil, SysUserService sysUserService) {
         this.jwtUtil = jwtUtil;
@@ -38,22 +38,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String requestPath = request.getServletPath();
         
         // 对于不需要认证的路径，直接放行
-        if (requestPath.startsWith("/duty/shift-config/") || 
-            requestPath.startsWith("/auth/login") || 
+        if (requestPath.startsWith("/auth/login") || 
             requestPath.startsWith("/auth/logout") ||
             requestPath.startsWith("/doc.html") ||
             requestPath.startsWith("/swagger-ui/") ||
             requestPath.startsWith("/v3/api-docs/") ||
             requestPath.startsWith("/druid/") ||
-            requestPath.startsWith("/duty/holiday/") ||
-            requestPath.startsWith("/menu/") ||
-            requestPath.startsWith("/user/") ||
-            requestPath.startsWith("/dept/") ||
-            requestPath.startsWith("/role/") ||
-            requestPath.startsWith("/dict/") ||
-            requestPath.startsWith("/employee/") ||
-            requestPath.startsWith("/log/") ||
-            requestPath.startsWith("/dashboard")) {
+            requestPath.startsWith("/static/")) {
             filterChain.doFilter(request, response);
             return;
         }

@@ -20,17 +20,21 @@ import java.util.Collections;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    // 使用构造函数注入
+    @Autowired
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
+    
+
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http, PasswordEncoder passwordEncoder, SysUserService sysUserService) throws Exception {
+    public AuthenticationManager authenticationManager(HttpSecurity http, SysUserService sysUserService) throws Exception {
         AuthenticationManagerBuilder authenticationManagerBuilder = 
                 http.getSharedObject(AuthenticationManagerBuilder.class);
-        authenticationManagerBuilder.userDetailsService(sysUserService)
-                .passwordEncoder(passwordEncoder);
+        authenticationManagerBuilder.userDetailsService(sysUserService);
         return authenticationManagerBuilder.build();
     }
 
@@ -52,13 +56,13 @@ public class SecurityConfig {
                 }))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/auth/logout").permitAll()
-                        .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/druid/**").permitAll()
-                        .requestMatchers("/duty/holiday/**").permitAll()
-                        .requestMatchers("/duty/shift-config/**").permitAll()
-                        .anyRequest().permitAll()
-                );
+                    .requestMatchers("/auth/login", "/auth/logout").permitAll()
+                    .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                    .requestMatchers("/druid/**").permitAll()
+                    .requestMatchers("/static/**").permitAll()
+                    .anyRequest().authenticated())
+                // 添加JWT认证过滤器
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
