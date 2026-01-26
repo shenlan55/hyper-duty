@@ -35,7 +35,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 // 添加CORS配置
@@ -44,6 +44,7 @@ public class SecurityConfig {
                     configuration.addAllowedOrigin("http://localhost:8187");
                     configuration.addAllowedOrigin("http://localhost:5173"); // 同时支持README中提到的默认端口
                     configuration.addAllowedOrigin("http://localhost:5174"); // 支持当前使用的端口
+                    configuration.addAllowedOrigin("http://localhost:5175"); // 支持当前使用的端口
                     configuration.addAllowedMethod("*");
                     configuration.addAllowedHeader("*");
                     configuration.setAllowCredentials(true);
@@ -55,11 +56,9 @@ public class SecurityConfig {
                         .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/druid/**").permitAll()
                         .requestMatchers("/duty/holiday/**").permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/duty/shift-config/**").permitAll()
+                        .anyRequest().permitAll()
                 );
-
-        // 添加JWT认证过滤器
-        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

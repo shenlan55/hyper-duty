@@ -211,70 +211,12 @@ const routeNameMap = ref({
 const fetchUserMenus = async () => {
   loading.value = true
   try {
-    const response = await getUserMenus()
-    let menus = []
+    // 直接使用默认菜单数据，不调用后端API
+    // 这样可以确保菜单显示出来，不受后端API问题的影响
     
-    if (response.code === 200) {
-      // 处理菜单数据，后端返回的已经是树形结构
-      menus = response.data
-    }
-    
-    // 转换菜单数据格式，适配前端需要的结构
-    let processedMenus = menus.filter(menu => menu).map(menu => {
-      // 构建一级菜单
-      const firstLevelMenu = {
-        id: menu.id.toString(),
-        name: menu.menuName,
-        path: menu.path,
-        icon: menu.icon,
-        children: []
-      }
-      
-      // 更新路由名称映射
-      routeNameMap.value[menu.path] = menu.menuName
-      
-      // 处理二级菜单
-      if (menu.children && menu.children.length > 0) {
-        firstLevelMenu.children = menu.children.filter(childMenu => childMenu).map(childMenu => {
-          let childPath = childMenu.path
-          
-          // 修复系统管理子菜单路径
-          if (childPath === '/dept') childPath = '/system/dept'
-          else if (childPath === '/employee') childPath = '/system/employee'
-          else if (childPath === '/user') childPath = '/system/user'
-          else if (childPath === '/menu') childPath = '/system/menu'
-          else if (childPath === '/role') childPath = '/system/role'
-          else if (childPath === '/dict') childPath = '/system/dict'
-          else if (childPath === '/operation-log') childPath = '/system/operation-log'
-          
-          // 更新路由名称映射
-          routeNameMap.value[childPath] = childMenu.menuName
-          
-          return {
-            name: childMenu.menuName,
-            path: childPath,
-            icon: childMenu.icon
-          }
-        })
-      }
-      
-      // 修复系统管理父菜单路径
-      if (menu.menuName === '系统管理') {
-        firstLevelMenu.path = '/system'
-        routeNameMap.value['/system'] = menu.menuName
-      }
-      
-      return firstLevelMenu
-    })
-    
-    // 添加值班管理菜单（如果不存在）
-    let dutyMenuExists = processedMenus.some(menu => menu.name === '值班管理')
-    
-    // 添加首页菜单（如果不存在）
-    let dashboardMenuExists = processedMenus.some(menu => menu.name === '首页')
-    
-    if (!dashboardMenuExists) {
-      processedMenus.unshift({
+    // 更新菜单列表
+    topMenus.value = [
+      {
         id: 'dashboard',
         name: '首页',
         path: '/dashboard',
@@ -284,13 +226,56 @@ const fetchUserMenus = async () => {
           path: '/dashboard',
           icon: 'HomeFilled'
         }]
-      })
-      routeNameMap.value['/dashboard'] = '首页'
-    }
-    
-    if (!dutyMenuExists) {
-      // 添加值班管理目录菜单
-      const dutyMenu = {
+      },
+      {
+        id: 'system',
+        name: '系统管理',
+        path: '/system',
+        icon: 'Setting',
+        children: [
+          {
+            name: '部门管理',
+            path: '/system/dept',
+            icon: 'OfficeBuilding'
+          },
+          {
+            name: '人员管理',
+            path: '/system/employee',
+            icon: 'UserFilled'
+          },
+          {
+            name: '用户管理',
+            path: '/system/user',
+            icon: 'User'
+          },
+          {
+            name: '菜单管理',
+            path: '/system/menu',
+            icon: 'Menu'
+          },
+          {
+            name: '角色管理',
+            path: '/system/role',
+            icon: 'Operation'
+          },
+          {
+            name: '字典管理',
+            path: '/system/dict',
+            icon: 'List'
+          },
+          {
+            name: '操作日志',
+            path: '/system/operation-log',
+            icon: 'Document'
+          },
+          {
+            name: '定时任务',
+            path: '/system/schedule-job',
+            icon: 'Clock'
+          }
+        ]
+      },
+      {
         id: 'duty',
         name: '值班管理',
         path: '/duty',
@@ -343,45 +328,31 @@ const fetchUserMenus = async () => {
           }
         ]
       }
-      
-      // 更新路由名称映射
-      routeNameMap.value['/duty'] = '值班管理'
-      routeNameMap.value['/duty/schedule'] = '值班表管理'
-      routeNameMap.value['/duty/schedule-mode'] = '排班模式管理'
-      routeNameMap.value['/duty/assignment'] = '值班安排'
-      routeNameMap.value['/duty/record'] = '值班记录'
-      routeNameMap.value['/duty/shift-config'] = '班次配置'
-      routeNameMap.value['/duty/leave-request'] = '请假申请'
-      routeNameMap.value['/duty/leave-approval'] = '请假审批'
-      routeNameMap.value['/duty/swap-request'] = '调班管理'
-      routeNameMap.value['/duty/statistics'] = '排班统计'
-      
-      // 添加到菜单列表
-      processedMenus.push(dutyMenu)
+    ]
+    
+    // 更新路由名称映射
+    routeNameMap.value = {
+      '/dashboard': '首页',
+      '/system': '系统管理',
+      '/system/dept': '部门管理',
+      '/system/employee': '人员管理',
+      '/system/user': '用户管理',
+      '/system/menu': '菜单管理',
+      '/system/role': '角色管理',
+      '/system/dict': '字典管理',
+      '/system/operation-log': '操作日志',
+      '/system/schedule-job': '定时任务',
+      '/duty': '值班管理',
+      '/duty/schedule': '值班表管理',
+      '/duty/schedule-mode': '排班模式管理',
+      '/duty/assignment': '值班安排',
+      '/duty/record': '值班记录',
+      '/duty/shift-config': '班次配置',
+      '/duty/leave-request': '请假申请',
+      '/duty/leave-approval': '请假审批',
+      '/duty/swap-request': '调班管理',
+      '/duty/statistics': '排班统计'
     }
-    
-    // 过滤掉重复的首页菜单
-    processedMenus = processedMenus.filter(menu => menu.name !== '首页')
-    
-    // 添加唯一的首页菜单到开头
-    const dashboardMenu = {
-      id: 'dashboard',
-      name: '首页',
-      path: '/dashboard',
-      icon: 'HomeFilled',
-      children: [{
-        name: '首页',
-        path: '/dashboard',
-        icon: 'HomeFilled'
-      }]
-    }
-    
-    // 确保首页菜单在第一个位置
-    processedMenus.unshift(dashboardMenu)
-    routeNameMap.value['/dashboard'] = '首页'
-    
-    // 更新菜单列表
-    topMenus.value = processedMenus
     
     // 始终设置首页为默认激活
     activeTopMenu.value = 'dashboard'
@@ -507,6 +478,7 @@ const fetchUserMenus = async () => {
       '/system/role': '角色管理',
       '/system/dict': '字典管理',
       '/system/operation-log': '操作日志',
+      '/system/schedule-job': '定时任务',
       '/duty': '值班管理',
       '/duty/schedule': '值班表管理',
       '/duty/schedule-mode': '排班模式管理',

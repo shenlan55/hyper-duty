@@ -94,14 +94,32 @@ public class SysMenuController {
     @GetMapping("/user")
     public ResponseResult<List<SysMenu>> getMenusByUserId() {
         // 从SecurityContext中获取当前用户
-        org.springframework.security.core.userdetails.User userDetails = 
-                (org.springframework.security.core.userdetails.User) org.springframework.security.core.context.SecurityContextHolder.getContext()
+        Object principal = org.springframework.security.core.context.SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
         
-        // 从数据库中根据用户名查询用户ID
-        com.lasu.hyperduty.entity.SysUser sysUser = sysUserService.getByUsername(userDetails.getUsername());
-        Long userId = sysUser.getId();
+        String username = null;
         
+        // 处理不同类型的principal
+        if (principal instanceof org.springframework.security.core.userdetails.User) {
+            // 如果是UserDetails对象
+            org.springframework.security.core.userdetails.User userDetails = 
+                    (org.springframework.security.core.userdetails.User) principal;
+            username = userDetails.getUsername();
+        } else if (principal instanceof String) {
+            // 如果是String对象
+            username = (String) principal;
+        } else {
+            // 其他类型，返回错误
+            return ResponseResult.error("无法获取当前用户信息");
+        }
+        
+        // 从数据库中根据用户名查询用户ID
+        com.lasu.hyperduty.entity.SysUser sysUser = sysUserService.getByUsername(username);
+        if (sysUser == null) {
+            return ResponseResult.error("用户不存在");
+        }
+        
+        Long userId = sysUser.getId();
         List<SysMenu> menus = sysMenuService.getMenusByUserId(userId);
         return ResponseResult.success(menus);
     }

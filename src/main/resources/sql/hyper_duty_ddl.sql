@@ -507,6 +507,24 @@ CREATE TABLE IF NOT EXISTS sys_schedule_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='定时任务日志表';
 
 -- ========================================
+-- 班次互斥关系表
+-- ========================================
+
+-- 班次互斥关系表
+CREATE TABLE IF NOT EXISTS duty_shift_mutex (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+    shift_config_id BIGINT NOT NULL COMMENT '班次配置ID',
+    mutex_shift_config_id BIGINT NOT NULL COMMENT '互斥班次配置ID',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_shift_mutex (shift_config_id, mutex_shift_config_id),
+    INDEX idx_shift_config_id (shift_config_id),
+    INDEX idx_mutex_shift_config_id (mutex_shift_config_id),
+    FOREIGN KEY (shift_config_id) REFERENCES duty_shift_config(id) ON DELETE CASCADE,
+    FOREIGN KEY (mutex_shift_config_id) REFERENCES duty_shift_config(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='班次互斥关系表';
+
+-- ========================================
 -- DDL 脚本执行完成
 -- ========================================
-SELECT 'Hyper Duty DDL 脚本执行完成！共创建23个表' AS message;
+SELECT 'Hyper Duty DDL 脚本执行完成！共创建24个表' AS message;

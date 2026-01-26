@@ -98,6 +98,25 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="班次" prop="shiftConfigId">
+              <el-select v-model="form.shiftConfigId" placeholder="请选择班次" style="width: 100%" @change="handleShiftChange">
+                <el-option
+                  v-for="shift in shiftConfigList"
+                  :key="shift.id"
+                  :label="shift.shiftName"
+                  :value="shift.id"
+                >
+                  <span>{{ shift.shiftName }}</span>
+                  <span style="float: right; color: #8492a6; font-size: 12px">
+                    {{ shift.startTime }} - {{ shift.endTime }} ({{ shift.durationHours }}小时)
+                  </span>
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="24">
             <el-form-item label="请假时长(小时)" prop="totalHours">
               <el-input-number
                 v-model="form.totalHours"
@@ -106,7 +125,9 @@
                 :step="0.5"
                 placeholder="请输入请假时长"
                 style="width: 100%"
+                :disabled="true"
               />
+              <div class="el-form-item__help">请假时长由所选班次的时长决定</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -271,6 +292,7 @@ import {
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
 import { getScheduleList } from '../../api/duty/schedule'
+import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 
@@ -287,12 +309,15 @@ const employeeList = ref([])
 const scheduleList = ref([])
 const currentRequest = ref({})
 const fileList = ref([])
+const shiftConfigList = ref([])
+const shiftApi = shiftConfigApi()
 
 const form = reactive({
   id: null,
   employeeId: null,
   scheduleId: null,
   leaveType: 1,
+  shiftConfigId: null,
   startDate: null,
   endDate: null,
   startTime: null,
@@ -401,6 +426,17 @@ const fetchScheduleList = async () => {
   }
 }
 
+const fetchEnabledShifts = async () => {
+  try {
+    const response = await shiftApi.getEnabledShifts()
+    if (response.code === 200) {
+      shiftConfigList.value = response.data
+    }
+  } catch (error) {
+    console.error('获取班次配置列表失败:', error)
+  }
+}
+
 const fetchMyLeaveRequests = async () => {
   loading.value = true
   try {
@@ -459,6 +495,7 @@ const resetForm = () => {
     employeeId: userStore.employeeId,
     scheduleId: null,
     leaveType: 1,
+    shiftConfigId: null,
     startDate: null,
     endDate: null,
     startTime: null,
@@ -531,9 +568,19 @@ const handleExceed = (files) => {
   ElMessage.warning(`当前限制选择 3 个文件，本次选择了 ${files.length} 个文件`)
 }
 
+const handleShiftChange = (shiftConfigId) => {
+  // 根据选中的班次ID，找到对应的班次配置
+  const selectedShift = shiftConfigList.value.find(shift => shift.id === shiftConfigId)
+  if (selectedShift) {
+    // 更新请假时长为所选班次的时长
+    form.totalHours = selectedShift.durationHours
+  }
+}
+
 onMounted(async () => {
   await fetchEmployeeList()
   await fetchScheduleList()
+  await fetchEnabledShifts()
   await fetchMyLeaveRequests()
 })
 </script>
