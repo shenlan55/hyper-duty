@@ -32,7 +32,7 @@
     <el-card shadow="hover" class="content-card">
       <el-calendar v-model="currentDate">
         <template #date-cell="{ data }">
-          <div class="calendar-cell" :class="getCalendarCellClass(data.day)">
+          <div class="calendar-cell" :class="getCalendarCellClass(data.day)" @click="handleCellClick(data.day)" style="cursor: pointer;">
             <div class="date-number">{{ data.day.split('-').slice(2).join('-') }}</div>
             <div v-if="isHoliday(data.day)" class="holiday-info">
               {{ getHolidayName(data.day) }}
@@ -43,7 +43,7 @@
                 :key="assignment.id"
                 class="duty-item"
                 :class="{ 'clickable': isLeader }"
-                @click="isLeader ? openEditDialog(assignment) : null"
+                @click.stop="isLeader ? openEditDialog(assignment) : null"
               >
                 <el-tag :type="getShiftTypeColor(assignment.dutyShift)" size="small">
                   {{ getShiftName(assignment.dutyShift) }}
@@ -56,7 +56,7 @@
               type="primary"
               size="small"
               text
-              @click="openAddDialog(data.day)"
+              @click.stop="openAddDialog(data.day)"
               class="add-btn"
             >
               <el-icon><Plus /></el-icon>
@@ -290,6 +290,57 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 当天值班人员详情弹窗 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      :title="detailDialogTitle"
+      width="600px"
+    >
+      <div v-if="selectedDateAssignments.length > 0">
+        <el-tabs type="border-card">
+          <el-tab-pane label="值班详情">
+            <el-table :data="selectedDateAssignments" border stripe>
+              <el-table-column prop="shiftName" label="班次" width="120">
+                <template #default="scope">
+                  <el-tag :type="getShiftTypeColor(scope.row.dutyShift)" size="small">
+                    {{ scope.row.shiftName }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="employeeName" label="值班人员" width="150" />
+              <el-table-column prop="status" label="状态" width="100">
+                <template #default="scope">
+                  <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'" size="small">
+                    {{ scope.row.status === 1 ? '有效' : '无效' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="remark" label="备注" />
+            </el-table>
+          </el-tab-pane>
+          <el-tab-pane label="统计信息">
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="日期">{{ selectedDetailDate }}</el-descriptions-item>
+              <el-descriptions-item label="总值班人数">{{ selectedDateAssignments.length }}</el-descriptions-item>
+              <el-descriptions-item label="有效值班">{{ selectedDateAssignments.filter(item => item.status === 1).length }}</el-descriptions-item>
+              <el-descriptions-item label="无效值班">{{ selectedDateAssignments.filter(item => item.status === 0).length }}</el-descriptions-item>
+              <el-descriptions-item label="节假日" :span="2">
+                {{ isHoliday(selectedDetailDate) ? getHolidayName(selectedDetailDate) : '非节假日' }}
+              </el-descriptions-item>
+            </el-descriptions>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
+      <div v-else class="no-assignment">
+        <el-empty description="当天无值班安排" />
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -361,6 +412,12 @@ const clearFormRef = ref()
 const clearForm = reactive({
   dateRange: null
 })
+
+// 当天值班人员详情弹窗相关
+const detailDialogVisible = ref(false)
+const detailDialogTitle = ref('')
+const selectedDetailDate = ref('')
+const selectedDateAssignments = ref([])
 
 const assignmentRules = {
   dutyDate: [
@@ -456,6 +513,22 @@ const getCalendarCellClass = (date) => {
 const getHolidayName = (date) => {
   const holidayInfo = getHolidayInfo(date)
   return holidayInfo ? holidayInfo.holidayName : ''
+}
+
+// 处理日历单元格点击事件，显示当天值班人员详情
+const handleCellClick = (date) => {
+  selectedDetailDate.value = date
+  detailDialogTitle.value = `${date} 值班人员详情`
+  
+  // 获取当天的值班安排并格式化数据
+  const assignments = getAssignmentsByDate(date)
+  selectedDateAssignments.value = assignments.map(assignment => ({
+    ...assignment,
+    shiftName: getShiftName(assignment.dutyShift),
+    employeeName: getEmployeeName(assignment.employeeId)
+  }))
+  
+  detailDialogVisible.value = true
 }
 
 const hasAssignment = (date) => {
@@ -877,6 +950,32 @@ onMounted(async () => {
 .duty-list {
   flex: 1;
   overflow-y: auto;
+}
+
+/* 美化duty-list的滚动条样式 */
+:deep(.duty-list) {
+  scrollbar-width: thin;
+  scrollbar-color: #e1e1e1 #f9f9f9;
+}
+
+:deep(.duty-list::-webkit-scrollbar) {
+  width: 4px;
+  height: 4px;
+}
+
+:deep(.duty-list::-webkit-scrollbar-track) {
+  background: #f9f9f9;
+  border-radius: 2px;
+}
+
+:deep(.duty-list::-webkit-scrollbar-thumb) {
+  background: #e1e1e1;
+  border-radius: 2px;
+  transition: background 0.3s ease;
+}
+
+:deep(.duty-list::-webkit-scrollbar-thumb:hover) {
+  background: #d1d1d1;
 }
 
 .duty-item {
