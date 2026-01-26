@@ -8,12 +8,33 @@
             m.*
         FROM
             sys_menu m
-        LEFT JOIN sys_role_menu rm ON m.id = rm.menu_id
-        LEFT JOIN sys_user_role ur ON rm.role_id = ur.role_id AND ur.user_id = #{userId}
         WHERE
             m.status = 1
             AND m.type IN (1, 2)
-            AND (ur.user_id = #{userId} OR m.path = '/dashboard')
+            AND (
+                m.path = '/dashboard' OR
+                EXISTS (
+                    SELECT 1
+                    FROM sys_role_menu rm
+                    LEFT JOIN sys_user_role ur ON rm.role_id = ur.role_id
+                    WHERE rm.menu_id = m.id AND ur.user_id = #{userId}
+                ) OR
+                EXISTS (
+                    SELECT 1
+                    FROM sys_menu child_menu
+                    LEFT JOIN sys_role_menu rm ON child_menu.id = rm.menu_id
+                    LEFT JOIN sys_user_role ur ON rm.role_id = ur.role_id
+                    WHERE child_menu.parent_id = m.id AND ur.user_id = #{userId}
+                ) OR
+                EXISTS (
+                    SELECT 1
+                    FROM sys_menu child_menu
+                    LEFT JOIN sys_menu grandchild_menu ON child_menu.id = grandchild_menu.parent_id
+                    LEFT JOIN sys_role_menu rm ON grandchild_menu.id = rm.menu_id
+                    LEFT JOIN sys_user_role ur ON rm.role_id = ur.role_id
+                    WHERE child_menu.parent_id = m.id AND ur.user_id = #{userId}
+                )
+            )
         ORDER BY
             m.sort ASC
     </select>
