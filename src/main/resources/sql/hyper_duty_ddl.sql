@@ -336,6 +336,8 @@ CREATE TABLE IF NOT EXISTS leave_request (
     end_date DATE NOT NULL COMMENT '结束日期',
     start_time TIME COMMENT '开始时间',
     end_time TIME COMMENT '结束时间',
+    shift_config_id BIGINT COMMENT '班次配置ID',
+    shift_config_ids VARCHAR(500) COMMENT '班次配置ID列表，多个用逗号分隔',
     total_hours DECIMAL(6,2) COMMENT '请假总时长(小时)',
     reason VARCHAR(500) NOT NULL COMMENT '请假原因',
     attachment_url VARCHAR(500) COMMENT '附件URL',
@@ -361,7 +363,8 @@ CREATE TABLE IF NOT EXISTS leave_request (
     FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE,
     FOREIGN KEY (schedule_id) REFERENCES duty_schedule(id) ON DELETE SET NULL,
     FOREIGN KEY (current_approver_id) REFERENCES sys_employee(id) ON DELETE SET NULL,
-    FOREIGN KEY (substitute_employee_id) REFERENCES sys_employee(id) ON DELETE SET NULL
+    FOREIGN KEY (substitute_employee_id) REFERENCES sys_employee(id) ON DELETE SET NULL,
+    FOREIGN KEY (shift_config_id) REFERENCES duty_shift_config(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='请假申请表';
 
 -- 审批记录表

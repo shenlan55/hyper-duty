@@ -46,12 +46,13 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         leaveRequest.setUpdateTime(LocalDateTime.now());
         
         if (leaveRequest.getScheduleId() != null) {
-            com.lasu.hyperduty.entity.DutyScheduleEmployee leader = dutyScheduleEmployeeService.lambdaQuery()
+            List<com.lasu.hyperduty.entity.DutyScheduleEmployee> leaders = dutyScheduleEmployeeService.lambdaQuery()
                     .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getScheduleId, leaveRequest.getScheduleId())
                     .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getIsLeader, 1)
-                    .one();
-            if (leader != null) {
-                leaveRequest.setCurrentApproverId(leader.getEmployeeId());
+                    .list();
+            if (!leaders.isEmpty()) {
+                // 如果有多个值班长，选择第一个作为审批人
+                leaveRequest.setCurrentApproverId(leaders.get(0).getEmployeeId());
             }
         }
         
@@ -63,6 +64,11 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     public boolean approveLeaveRequest(Long requestId, Long approverId, String approvalStatus, String opinion, String scheduleAction, String scheduleType, String scheduleDateRange) {
         LeaveRequest request = getById(requestId);
         if (request == null) {
+            return false;
+        }
+
+        // 检查请假申请是否处于待审批状态，如果不是，则表示已经被审批过了
+        if (!"pending".equals(request.getApprovalStatus())) {
             return false;
         }
 
@@ -199,5 +205,41 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         request.setUpdateTime(LocalDateTime.now());
 
         return updateById(request);
+    }
+
+    @Override
+    public Map<Long, List<String>> getEmployeeLeaveInfo(List<Long> employeeIds, String startDate, String endDate) {
+        Map<Long, List<String>> leaveInfo = new java.util.HashMap<>();
+        
+        if (employeeIds == null || employeeIds.isEmpty()) {
+            return leaveInfo;
+        }
+        
+        // 查询员工在指定日期范围内的请假记录
+        QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("employee_id", employeeIds);
+        queryWrapper.ge("start_date", startDate);
+        queryWrapper.le("end_date", endDate);
+        queryWrapper.in("approval_status", "approved", "pending"); // 只考虑已通过和待审批的请假
+        
+        List<LeaveRequest> leaveRequests = this.list(queryWrapper);
+        
+        // 处理请假记录，提取请假日期
+        for (LeaveRequest request : leaveRequests) {
+            Long employeeId = request.getEmployeeId();
+            java.time.LocalDate start = java.time.LocalDate.parse(request.getStartDate().toString());
+            java.time.LocalDate end = java.time.LocalDate.parse(request.getEndDate().toString());
+            
+            List<String> leaveDates = leaveInfo.computeIfAbsent(employeeId, k -> new java.util.ArrayList<>());
+            
+            // 遍历请假期间的所有日期
+            java.time.LocalDate current = start;
+            while (!current.isAfter(end)) {
+                leaveDates.add(current.toString());
+                current = current.plusDays(1);
+            }
+        }
+        
+        return leaveInfo;
     }
 }

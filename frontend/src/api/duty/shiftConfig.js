@@ -89,6 +89,23 @@ export function shiftConfigApi() {
         url: '/duty/shift-config/enabled',
         method: 'get'
       })
+    },
+
+    /**
+     * 检查两个班次是否互斥
+     * @param {number} shiftConfigId1 班次配置ID1
+     * @param {number} shiftConfigId2 班次配置ID2
+     * @returns {Promise}
+     */
+    checkIfMutex(shiftConfigId1, shiftConfigId2) {
+      return request({
+        url: '/duty/shift-config/check-mutex',
+        method: 'get',
+        params: {
+          shiftConfigId1,
+          shiftConfigId2
+        }
+      })
     }
   }
 }

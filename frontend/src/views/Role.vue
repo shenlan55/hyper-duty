@@ -344,7 +344,8 @@ const remoteUserSearch = (query) => {
     userLoading.value = true
     getUserList().then(response => {
       if (response.code === 200) {
-        userList.value = response.data
+        // 过滤掉禁用的用户（status为0）
+        userList.value = response.data.filter(user => user.status === 1)
       } else {
         ElMessage.error('获取用户列表失败：' + response.message)
       }
@@ -368,7 +369,8 @@ const handleUserBind = async (row) => {
       userLoading.value = true
       const userResponse = await getUserList()
       if (userResponse.code === 200) {
-        userList.value = userResponse.data
+        // 过滤掉禁用的用户（status为0）
+        userList.value = userResponse.data.filter(user => user.status === 1)
       } else {
         ElMessage.error('获取用户列表失败：' + userResponse.message)
       }

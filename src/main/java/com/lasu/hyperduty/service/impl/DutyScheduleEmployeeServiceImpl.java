@@ -34,6 +34,22 @@ public class DutyScheduleEmployeeServiceImpl extends ServiceImpl<DutyScheduleEmp
     }
 
     @Override
+    public List<Map<String, Object>> getScheduleEmployeesWithLeaderInfo(Long scheduleId) {
+        LambdaQueryWrapper<DutyScheduleEmployee> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(DutyScheduleEmployee::getScheduleId, scheduleId);
+        List<DutyScheduleEmployee> employees = list(wrapper);
+        
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (DutyScheduleEmployee employee : employees) {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("employeeId", employee.getEmployeeId());
+            map.put("isLeader", employee.getIsLeader());
+            result.add(map);
+        }
+        return result;
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean saveBatch(Long scheduleId, List<Long> employeeIds) {
         if (employeeIds == null || employeeIds.isEmpty()) {

@@ -4,12 +4,15 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.lasu.hyperduty.entity.DutySchedule;
 
 import java.util.List;
+import java.util.Map;
 
 public interface DutyScheduleService extends IService<DutySchedule> {
 
     List<Long> getEmployeeIdsByScheduleId(Long scheduleId);
 
     List<Long> getLeaderIdsByScheduleId(Long scheduleId);
+
+    List<Map<String, Object>> getScheduleEmployeesWithLeaderInfo(Long scheduleId);
 
     boolean updateEmployees(Long scheduleId, List<Long> employeeIds);
 

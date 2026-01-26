@@ -176,6 +176,13 @@
             <el-radio :value="3">排班模式</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="日期类型" prop="dateType">
+          <el-checkbox-group v-model="batchForm.dateType">
+            <el-checkbox label="workday">工作日（包括调休）</el-checkbox>
+            <el-checkbox label="weekend">休息日（周末）</el-checkbox>
+            <el-checkbox label="holiday">节假日</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
         <el-form-item label="排班模式" prop="scheduleModeId" v-if="batchForm.scheduleType === 3">
           <el-select
             v-model="batchForm.scheduleModeId"
@@ -360,6 +367,7 @@ import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleM
 import { getEmployeeList } from '../../api/employee'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { holidayApi } from '../../api/duty/holiday'
+import { getEmployeeLeaveInfo as getEmployeeLeaveInfoAPI } from '../../api/duty/leaveRequest'
 import dayjs from 'dayjs'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
@@ -402,7 +410,8 @@ const batchForm = reactive({
   dutyShift: null,
   employeeIds: [],
   remark: '',
-  scheduleModeId: null
+  scheduleModeId: null,
+  dateType: ['workday'] // 默认选择工作日
 })
 
 const clearDialogVisible = ref(false)
@@ -434,6 +443,10 @@ const assignmentRules = {
 const batchRules = {
   dateRange: [
     { required: true, message: '请选择日期范围', trigger: 'blur' }
+  ],
+  dateType: [
+    { required: true, message: '请至少选择一种日期类型', trigger: 'blur' },
+    { required: true, message: '请至少选择一种日期类型', trigger: 'change' }
   ],
   dutyShift: [
     { required: true, message: '请选择班次', trigger: 'blur' },
@@ -757,9 +770,96 @@ const openBatchDialog = () => {
     dutyShift: null,
     employeeIds: [],
     remark: '',
-    scheduleModeId: null
+    scheduleModeId: null,
+    dateType: ['workday'] // 默认选择工作日
   })
   batchDialogVisible.value = true
+}
+
+// 获取符合条件的日期列表
+const getFilteredDates = async (startDate, endDate, dateTypes) => {
+  try {
+    // 获取日期范围内的所有日期
+    const allDates = getDatesInRange(startDate, endDate)
+    // 获取日期范围内的节假日信息
+    await fetchHolidaysList(startDate, endDate)
+    
+    const filteredDates = []
+    for (const date of allDates) {
+      const dateObj = dayjs(date)
+      const dayOfWeek = dateObj.day()
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      const holidayInfo = holidayMap.value[date]
+      const isHoliday = holidayInfo && holidayInfo.isWorkday === 0
+      const isWorkdayHoliday = holidayInfo && holidayInfo.isWorkday === 1
+      
+      // 判断日期是否符合选择的日期类型
+      let shouldInclude = false
+      
+      if (dateTypes.includes('workday')) {
+        // 工作日包括调休和非周末非节假日
+        if (isWorkdayHoliday || (!isWeekend && !isHoliday)) {
+          shouldInclude = true
+        }
+      }
+      
+      if (dateTypes.includes('weekend')) {
+        // 休息日包括周末且不是调休
+        if (isWeekend && !isWorkdayHoliday) {
+          shouldInclude = true
+        }
+      }
+      
+      if (dateTypes.includes('holiday')) {
+        // 节假日包括法定节假日且不是调休
+        if (isHoliday) {
+          shouldInclude = true
+        }
+      }
+      
+      if (shouldInclude) {
+        filteredDates.push(date)
+      }
+    }
+    
+    return filteredDates
+  } catch (error) {
+    console.error('筛选日期失败:', error)
+    return getDatesInRange(startDate, endDate) // 失败时返回所有日期
+  }
+}
+
+// 获取员工在指定日期范围内的请假信息
+const fetchEmployeeLeaveInfo = async (employeeIds, startDate, endDate) => {
+  try {
+    if (!employeeIds || employeeIds.length === 0) {
+      return {}
+    }
+    
+    // 调用后端API获取请假信息
+    const response = await getEmployeeLeaveInfoAPI(employeeIds, startDate, endDate)
+    
+    if (response.code === 200) {
+      const leaveInfo = {}
+      // 处理返回的请假信息，转换为Set格式
+      Object.keys(response.data).forEach(employeeId => {
+        const dates = response.data[employeeId]
+        leaveInfo[employeeId] = new Set(dates)
+      })
+      return leaveInfo
+    }
+    
+    return {}
+  } catch (error) {
+    console.error('获取请假信息失败:', error)
+    return {}
+  }
+}
+
+// 检查员工在指定日期是否请假
+const isEmployeeOnLeave = (employeeId, date, leaveInfo) => {
+  const employeeLeaves = leaveInfo[employeeId]
+  return employeeLeaves && employeeLeaves.has(date)
 }
 
 const handleBatchSave = async () => {
@@ -768,6 +868,28 @@ const handleBatchSave = async () => {
     batchDialogLoading.value = true
     
     const [startDate, endDate] = batchForm.dateRange
+    // 获取符合条件的日期列表
+    const filteredDates = await getFilteredDates(startDate, endDate, batchForm.dateType)
+    
+    if (filteredDates.length === 0) {
+      ElMessage.warning('所选日期范围内没有符合条件的日期')
+      batchDialogLoading.value = false
+      return
+    }
+    
+    // 获取员工请假信息
+    const leaveInfo = await fetchEmployeeLeaveInfo(batchForm.employeeIds, startDate, endDate)
+    // 过滤出没有请假的员工
+    const availableEmployees = batchForm.employeeIds.filter(employeeId => {
+      // 检查员工在任何筛选出的日期是否请假
+      return !filteredDates.some(date => isEmployeeOnLeave(employeeId, date, leaveInfo))
+    })
+    
+    if (availableEmployees.length === 0) {
+      ElMessage.warning('所选员工在所选日期范围内都有请假')
+      batchDialogLoading.value = false
+      return
+    }
     
     if (batchForm.scheduleType === 3) {
       // 使用排班模式生成排班
@@ -777,8 +899,9 @@ const handleBatchSave = async () => {
         endDate,
         batchForm.scheduleModeId,
         {
-          employeeIds: batchForm.employeeIds,
-          remark: batchForm.remark
+          employeeIds: availableEmployees,
+          remark: batchForm.remark,
+          dateType: batchForm.dateType
         }
       )
       
@@ -797,11 +920,10 @@ const handleBatchSave = async () => {
       }
     } else {
       // 传统排班方式
-      const dates = getDatesInRange(startDate, endDate)
-      const employeeIds = batchForm.employeeIds
+      const employeeIds = availableEmployees
       
       const assignments = []
-      dates.forEach((date, index) => {
+      filteredDates.forEach((date, index) => {
         if (batchForm.scheduleType === 1) {
           const employeeIndex = index % employeeIds.length
           assignments.push({

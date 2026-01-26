@@ -94,3 +94,11 @@ export function confirmScheduleCompletion(requestId, approverId) {
     params: { approverId }
   })
 }
+
+export function getEmployeeLeaveInfo(employeeIds, startDate, endDate) {
+  return request({
+    url: '/duty/leave-request/employee-leave-info',
+    method: 'post',
+    params: { employeeIds: employeeIds.join(','), startDate, endDate }
+  })
+}

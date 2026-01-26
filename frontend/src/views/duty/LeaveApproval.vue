@@ -106,6 +106,7 @@
           </el-descriptions-item>
           <el-descriptions-item label="请假时长">{{ currentRequest.totalHours }}小时</el-descriptions-item>
           <el-descriptions-item label="请假时间">{{ currentRequest.startDate }} - {{ currentRequest.endDate }}</el-descriptions-item>
+          <el-descriptions-item v-if="currentRequest.shiftConfigIds" label="请假班次">{{ getShiftNames(currentRequest.shiftConfigIds) }}</el-descriptions-item>
           <el-descriptions-item label="请假原因" :span="2">{{ currentRequest.reason }}</el-descriptions-item>
         </el-descriptions>
         <el-form-item label="审批结果" prop="approvalStatus">
@@ -191,6 +192,9 @@
         <el-descriptions-item label="请假时长">{{ currentRequest.totalHours }}小时</el-descriptions-item>
         <el-descriptions-item label="开始时间">{{ currentRequest.startDate }} {{ currentRequest.startTime || '' }}</el-descriptions-item>
         <el-descriptions-item label="结束时间">{{ currentRequest.endDate }} {{ currentRequest.endTime || '' }}</el-descriptions-item>
+        <el-descriptions-item v-if="currentRequest.shiftConfigIds" label="请假班次" :span="2">
+          {{ getShiftNames(currentRequest.shiftConfigIds) }}
+        </el-descriptions-item>
         <el-descriptions-item label="审批状态">
           <el-tag :type="getApprovalStatusColor(currentRequest.approvalStatus)">
             {{ getApprovalStatusName(currentRequest.approvalStatus) }}
@@ -230,6 +234,7 @@ import {
   generateAutoScheduleByWorkHours,
   getEmployeeMonthlyWorkHours
 } from '../../api/duty/autoSchedule'
+import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 
@@ -247,6 +252,8 @@ const selectedScheduleId = ref('')
 const currentRequest = ref({})
 const currentApproverId = ref(1)
 const activeTab = ref('pending')
+const shiftConfigList = ref([])
+const shiftApi = shiftConfigApi()
 
 const approveForm = reactive({
   requestId: null,
@@ -324,6 +331,22 @@ const getEmployeeName = (employeeId) => {
   return employee ? employee.employeeName : '未知'
 }
 
+const getShiftNames = (shiftConfigIds) => {
+  if (!shiftConfigIds) return '未知'
+  
+  const shiftIds = typeof shiftConfigIds === 'string' ? shiftConfigIds.split(',') : shiftConfigIds
+  const shiftNames = []
+  
+  shiftIds.forEach(shiftId => {
+    const shift = shiftConfigList.value.find(s => s.id === Number(shiftId))
+    if (shift) {
+      shiftNames.push(shift.shiftName)
+    }
+  })
+  
+  return shiftNames.length > 0 ? shiftNames.join('、') : '未知'
+}
+
 const fetchEmployeeList = async () => {
   try {
     const response = await getEmployeeList()
@@ -345,6 +368,17 @@ const fetchScheduleList = async () => {
   } catch (error) {
     console.error('获取值班表列表失败:', error)
     ElMessage.error('获取值班表列表失败')
+  }
+}
+
+const fetchEnabledShifts = async () => {
+  try {
+    const response = await shiftApi.getEnabledShifts()
+    if (response.code === 200) {
+      shiftConfigList.value = response.data
+    }
+  } catch (error) {
+    console.error('获取班次配置列表失败:', error)
   }
 }
 
@@ -535,6 +569,7 @@ const handleConfirmSchedule = async () => {
 onMounted(async () => {
   await fetchEmployeeList()
   await fetchScheduleList()
+  await fetchEnabledShifts()
   await fetchPendingApprovals()
 })
 </script>

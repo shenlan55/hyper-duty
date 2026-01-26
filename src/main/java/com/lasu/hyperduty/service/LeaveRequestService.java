@@ -29,4 +29,13 @@ public interface LeaveRequestService extends IService<LeaveRequest> {
     Map<String, Object> checkEmployeeSchedule(Long employeeId, String startDate, String endDate);
 
     boolean confirmScheduleCompletion(Long requestId, Long approverId);
+
+    /**
+     * 批量查询员工请假信息
+     * @param employeeIds 员工ID列表
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @return 员工请假信息映射，键为员工ID，值为请假日期集合
+     */
+    Map<Long, List<String>> getEmployeeLeaveInfo(List<Long> employeeIds, String startDate, String endDate);
 }

@@ -97,14 +97,15 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="班次" prop="shiftConfigId">
-              <el-select v-model="form.shiftConfigId" placeholder="请选择班次" style="width: 100%" @change="handleShiftChange">
+          <el-col :span="24">
+            <el-form-item label="班次" prop="shiftConfigIds">
+              <el-select v-model="form.shiftConfigIds" multiple placeholder="请选择班次" style="width: 100%" @change="handleShiftChange">
                 <el-option
                   v-for="shift in shiftConfigList"
                   :key="shift.id"
                   :label="shift.shiftName"
                   :value="shift.id"
+                  :disabled="isShiftDisabled(shift.id)"
                 >
                   <span>{{ shift.shiftName }}</span>
                   <span style="float: right; color: #8492a6; font-size: 12px">
@@ -112,6 +113,7 @@
                   </span>
                 </el-option>
               </el-select>
+              <div class="el-form-item__help">可选择多个班次，请假时长为所选班次时长之和</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -234,11 +236,21 @@
             {{ getApprovalStatusName(currentRequest.approvalStatus) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item v-if="currentRequest.currentApproverId" label="当前审批人">
-          {{ getEmployeeName(currentRequest.currentApproverId) }}
+        <el-descriptions-item v-if="currentRequest.scheduleId" label="当前审批人">
+          <span v-if="scheduleLeaders.length > 0">
+            <span v-for="(leader, index) in scheduleLeaders" :key="leader.employeeId">
+              {{ getEmployeeName(leader.employeeId) }}{{ index < scheduleLeaders.length - 1 ? '、' : '' }}
+            </span>
+          </span>
+          <span v-else>
+            {{ currentRequest.currentApproverId ? getEmployeeName(currentRequest.currentApproverId) : '未知' }}
+          </span>
         </el-descriptions-item>
         <el-descriptions-item label="请假原因" :span="2">{{ currentRequest.reason }}</el-descriptions-item>
         <el-descriptions-item label="申请时间" :span="2">{{ formatDateTime(currentRequest.createTime) }}</el-descriptions-item>
+        <el-descriptions-item v-if="currentRequest.shiftConfigIds" label="请假班次" :span="2">
+          {{ getShiftNames(currentRequest.shiftConfigIds) }}
+        </el-descriptions-item>
         <el-descriptions-item v-if="currentRequest.substituteEmployeeId" label="替补人员">
           {{ getEmployeeName(currentRequest.substituteEmployeeId) }}
         </el-descriptions-item>
@@ -281,7 +293,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -291,7 +303,7 @@ import {
   getApprovalRecords
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
-import { getScheduleList } from '../../api/duty/schedule'
+import { getScheduleList, getScheduleEmployeesWithLeaderInfo } from '../../api/duty/schedule'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
@@ -311,6 +323,8 @@ const currentRequest = ref({})
 const fileList = ref([])
 const shiftConfigList = ref([])
 const shiftApi = shiftConfigApi()
+const scheduleLeaders = ref([])
+const disabledShiftIds = ref(new Set())
 
 const form = reactive({
   id: null,
@@ -318,6 +332,7 @@ const form = reactive({
   scheduleId: null,
   leaveType: 1,
   shiftConfigId: null,
+  shiftConfigIds: [],
   startDate: null,
   endDate: null,
   startTime: null,
@@ -404,6 +419,27 @@ const getApproverName = (approverId) => {
   return employee ? employee.employeeName : '未知'
 }
 
+const getShiftNames = (shiftConfigIds) => {
+  if (!shiftConfigIds) return '未知'
+  
+  const shiftIds = typeof shiftConfigIds === 'string' ? shiftConfigIds.split(',') : shiftConfigIds
+  const shiftNames = []
+  
+  shiftIds.forEach(shiftId => {
+    const shift = shiftConfigList.value.find(s => s.id === Number(shiftId))
+    if (shift) {
+      shiftNames.push(shift.shiftName)
+    }
+  })
+  
+  return shiftNames.length > 0 ? shiftNames.join('、') : '未知'
+}
+
+const isShiftDisabled = (shiftId) => {
+  // 检查该班次是否被禁用，但已选择的班次应该始终可用（以便用户可以取消选择）
+  return disabledShiftIds.value.has(shiftId) && !form.shiftConfigIds.includes(shiftId)
+}
+
 const fetchEmployeeList = async () => {
   try {
     const response = await getEmployeeList()
@@ -458,8 +494,24 @@ const openAddDialog = () => {
   dialogVisible.value = true
 }
 
+const fetchScheduleLeaders = async (scheduleId) => {
+  try {
+    const response = await getScheduleEmployeesWithLeaderInfo(scheduleId)
+    if (response.code === 200) {
+      // 过滤出值班长
+      scheduleLeaders.value = response.data.filter(employee => employee.isLeader === 1)
+    }
+  } catch (error) {
+    console.error('获取值班长列表失败:', error)
+  }
+}
+
 const openViewDialog = async (row) => {
   currentRequest.value = row
+  
+  if (row.scheduleId) {
+    await fetchScheduleLeaders(row.scheduleId)
+  }
   
   if (row.approvalStatus === 'rejected' || row.approvalStatus === 'approved') {
     await fetchApprovalRecords(row.id)
@@ -496,15 +548,18 @@ const resetForm = () => {
     scheduleId: null,
     leaveType: 1,
     shiftConfigId: null,
+    shiftConfigIds: [],
     startDate: null,
     endDate: null,
     startTime: null,
     endTime: null,
-    totalHours: 8,
+    totalHours: 0,
     reason: '',
     attachmentUrl: ''
   })
   fileList.value = []
+  // 重置禁用班次状态
+  disabledShiftIds.value.clear()
 }
 
 const handleSave = async () => {
@@ -512,7 +567,15 @@ const handleSave = async () => {
     await formRef.value.validate()
     dialogLoading.value = true
     
-    const response = await submitLeaveRequest(form)
+    // 处理shiftConfigIds字段，将数组转换为逗号分隔的字符串
+    const formData = { ...form }
+    if (Array.isArray(formData.shiftConfigIds) && formData.shiftConfigIds.length > 0) {
+      formData.shiftConfigIds = formData.shiftConfigIds.join(',')
+      // 设置第一个班次为默认班次，保持兼容性
+      formData.shiftConfigId = formData.shiftConfigIds.split(',')[0]
+    }
+    
+    const response = await submitLeaveRequest(formData)
     
     if (response.code === 200) {
       ElMessage.success('请假申请提交成功')
@@ -568,13 +631,121 @@ const handleExceed = (files) => {
   ElMessage.warning(`当前限制选择 3 个文件，本次选择了 ${files.length} 个文件`)
 }
 
-const handleShiftChange = (shiftConfigId) => {
-  // 根据选中的班次ID，找到对应的班次配置
-  const selectedShift = shiftConfigList.value.find(shift => shift.id === shiftConfigId)
-  if (selectedShift) {
-    // 更新请假时长为所选班次的时长
-    form.totalHours = selectedShift.durationHours
+const updateDisabledShifts = async (selectedShiftIds) => {
+  // 清空之前的禁用班次
+  disabledShiftIds.value.clear()
+  
+  // 如果没有选择任何班次，则不需要禁用任何班次
+  if (!selectedShiftIds || selectedShiftIds.length === 0) {
+    return
   }
+  
+  // 检查所有班次是否与已选择的班次互斥
+  for (const shift of shiftConfigList.value) {
+    // 如果班次已经被选择，则不禁用（以便用户可以取消选择）
+    if (selectedShiftIds.includes(shift.id)) {
+      continue
+    }
+    
+    // 检查该班次是否与已选择的任何班次互斥
+    for (const selectedShiftId of selectedShiftIds) {
+      try {
+        const response = await shiftApi.checkIfMutex(shift.id, selectedShiftId)
+        if (response.code === 200 && response.data) {
+          // 如果互斥，则禁用该班次
+          disabledShiftIds.value.add(shift.id)
+          break
+        }
+      } catch (error) {
+        console.error('检查班次互斥失败:', error)
+      }
+    }
+  }
+}
+
+const handleShiftChange = async (newShiftConfigIds) => {
+  // 保存当前选择状态，用于恢复
+  const originalShiftConfigIds = [...form.shiftConfigIds]
+  
+  // 检查互斥班次
+  if (Array.isArray(newShiftConfigIds) && newShiftConfigIds.length > 1) {
+    // 标记是否存在互斥班次
+    let hasMutex = false
+    
+    // 检查所有两两组合是否互斥
+    for (let i = 0; i < newShiftConfigIds.length; i++) {
+      for (let j = i + 1; j < newShiftConfigIds.length; j++) {
+        try {
+          const response = await shiftApi.checkIfMutex(newShiftConfigIds[i], newShiftConfigIds[j])
+          if (response.code === 200 && response.data) {
+            // 找到互斥班次，获取班次名称
+            const shift1 = shiftConfigList.value.find(shift => shift.id === newShiftConfigIds[i])
+            const shift2 = shiftConfigList.value.find(shift => shift.id === newShiftConfigIds[j])
+            const shiftName1 = shift1 ? shift1.shiftName : '班次1'
+            const shiftName2 = shift2 ? shift2.shiftName : '班次2'
+            
+            ElMessage.error(`${shiftName1} 和 ${shiftName2} 是互斥班次，不能同时选择`)
+            hasMutex = true
+            break
+          }
+        } catch (error) {
+          console.error('检查班次互斥失败:', error)
+        }
+      }
+      if (hasMutex) break
+    }
+    
+    // 如果存在互斥班次，恢复到之前的选择状态
+    if (hasMutex) {
+      // 立即恢复到原始选择状态
+      form.shiftConfigIds = [...originalShiftConfigIds]
+      
+      // 重新计算总时长
+      let totalHours = 0
+      if (Array.isArray(originalShiftConfigIds) && originalShiftConfigIds.length > 0) {
+        originalShiftConfigIds.forEach(shiftId => {
+          const selectedShift = shiftConfigList.value.find(shift => shift.id === shiftId)
+          if (selectedShift) {
+            totalHours += selectedShift.durationHours
+          }
+        })
+      } else {
+        totalHours = 0
+      }
+      form.totalHours = totalHours
+      
+      // 更新禁用的班次
+      await updateDisabledShifts(originalShiftConfigIds)
+      
+      // 使用setTimeout确保DOM更新
+      setTimeout(() => {
+        form.shiftConfigIds = [...originalShiftConfigIds]
+        updateDisabledShifts(originalShiftConfigIds)
+      }, 0)
+      
+      return
+    }
+  }
+  
+  // 更新选择状态
+  form.shiftConfigIds = [...newShiftConfigIds]
+  
+  // 计算所选班次的总时长
+  let totalHours = 0
+  if (Array.isArray(newShiftConfigIds) && newShiftConfigIds.length > 0) {
+    newShiftConfigIds.forEach(shiftId => {
+      const selectedShift = shiftConfigList.value.find(shift => shift.id === shiftId)
+      if (selectedShift) {
+        totalHours += selectedShift.durationHours
+      }
+    })
+  } else {
+    totalHours = 0
+  }
+  form.totalHours = totalHours
+  
+  // 更新禁用的班次
+  await updateDisabledShifts(newShiftConfigIds)
 }
 
 onMounted(async () => {

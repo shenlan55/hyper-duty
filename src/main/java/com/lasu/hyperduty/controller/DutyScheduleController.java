@@ -35,6 +35,12 @@ public class DutyScheduleController {
         return ResponseResult.success(employeeIds);
     }
 
+    @GetMapping("/{id}/employees-with-leader-info")
+    public ResponseResult<List<Map<String, Object>>> getScheduleEmployeesWithLeaderInfo(@PathVariable Long id) {
+        List<Map<String, Object>> employees = dutyScheduleService.getScheduleEmployeesWithLeaderInfo(id);
+        return ResponseResult.success(employees);
+    }
+
     @GetMapping("/{id}/leaders")
     public ResponseResult<List<Long>> getScheduleLeaders(@PathVariable Long id) {
         List<Long> leaderIds = dutyScheduleService.getLeaderIdsByScheduleId(id);

@@ -21,6 +21,13 @@ export function getScheduleEmployees(id) {
   })
 }
 
+export function getScheduleEmployeesWithLeaderInfo(id) {
+  return request({
+    url: `/duty/schedule/${id}/employees-with-leader-info`,
+    method: 'get'
+  })
+}
+
 export function getScheduleLeaders(id) {
   return request({
     url: `/duty/schedule/${id}/leaders`,
