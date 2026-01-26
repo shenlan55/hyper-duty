@@ -19,6 +19,12 @@ public interface DutyScheduleModeService extends IService<DutyScheduleMode> {
     List<DutyScheduleMode> getEnabledModes();
 
     /**
+     * 获取所有排班模式（包括禁用的），按排序字段升序排列
+     * @return 所有排班模式列表
+     */
+    List<DutyScheduleMode> getAllModesWithSort();
+
+    /**
      * 根据模式编码获取排班模式
      * @param modeCode 模式编码
      * @return 排班模式

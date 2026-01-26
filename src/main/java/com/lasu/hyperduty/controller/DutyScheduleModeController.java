@@ -34,7 +34,7 @@ public class DutyScheduleModeController {
      */
     @GetMapping("/all")
     public ResponseResult<List<DutyScheduleMode>> getAllModes() {
-        List<DutyScheduleMode> modeList = dutyScheduleModeService.list();
+        List<DutyScheduleMode> modeList = dutyScheduleModeService.getAllModesWithSort();
         return ResponseResult.success(modeList);
     }
 
