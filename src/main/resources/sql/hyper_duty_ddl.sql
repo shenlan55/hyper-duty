@@ -528,6 +528,13 @@ CREATE TABLE IF NOT EXISTS duty_shift_mutex (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='班次互斥关系表';
 
 -- ========================================
+-- 表结构修改语句
+-- ========================================
+
+-- 修改 operation_log 表的 error_msg 列类型为 TEXT，解决数据截断问题
+ALTER TABLE operation_log MODIFY COLUMN error_msg TEXT COMMENT '错误信息';
+
+-- ========================================
 -- DDL 脚本执行完成
 -- ========================================
 SELECT 'Hyper Duty DDL 脚本执行完成！共创建24个表' AS message;

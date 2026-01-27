@@ -208,8 +208,8 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public Map<Long, List<String>> getEmployeeLeaveInfo(List<Long> employeeIds, String startDate, String endDate) {
-        Map<Long, List<String>> leaveInfo = new java.util.HashMap<>();
+    public Map<Long, Map<String, Map<String, List<Long>>>> getEmployeeLeaveInfo(List<Long> employeeIds, String startDate, String endDate) {
+        Map<Long, Map<String, Map<String, List<Long>>>> leaveInfo = new java.util.HashMap<>();
         
         if (employeeIds == null || employeeIds.isEmpty()) {
             return leaveInfo;
@@ -224,18 +224,47 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         
         List<LeaveRequest> leaveRequests = this.list(queryWrapper);
         
-        // 处理请假记录，提取请假日期
+        // 处理请假记录，提取请假日期、值班表ID和班次配置ID列表
         for (LeaveRequest request : leaveRequests) {
             Long employeeId = request.getEmployeeId();
+            Long scheduleId = request.getScheduleId();
+            String shiftConfigIdsStr = request.getShiftConfigIds();
+            
+            // 解析班次配置ID列表
+            List<Long> shiftConfigIds = new java.util.ArrayList<>();
+            if (shiftConfigIdsStr != null && !shiftConfigIdsStr.isEmpty()) {
+                String[] ids = shiftConfigIdsStr.split(",");
+                for (String idStr : ids) {
+                    try {
+                        shiftConfigIds.add(Long.parseLong(idStr.trim()));
+                    } catch (NumberFormatException e) {
+                        // 忽略格式错误的ID
+                        System.err.println("班次配置ID格式错误: " + idStr);
+                    }
+                }
+            }
+            
+            // 如果没有班次配置ID，尝试使用单个班次配置ID
+            if (shiftConfigIds.isEmpty() && request.getShiftConfigId() != null) {
+                shiftConfigIds.add(request.getShiftConfigId());
+            }
+            
             java.time.LocalDate start = java.time.LocalDate.parse(request.getStartDate().toString());
             java.time.LocalDate end = java.time.LocalDate.parse(request.getEndDate().toString());
-            
-            List<String> leaveDates = leaveInfo.computeIfAbsent(employeeId, k -> new java.util.ArrayList<>());
             
             // 遍历请假期间的所有日期
             java.time.LocalDate current = start;
             while (!current.isAfter(end)) {
-                leaveDates.add(current.toString());
+                String dateStr = current.toString();
+                
+                // 初始化嵌套映射结构
+                Map<String, Map<String, List<Long>>> employeeLeaveMap = leaveInfo.computeIfAbsent(employeeId, k -> new java.util.HashMap<>());
+                Map<String, List<Long>> dateLeaveMap = employeeLeaveMap.computeIfAbsent(dateStr, k -> new java.util.HashMap<>());
+                
+                // 存储值班表ID和班次配置ID列表
+                String scheduleIdStr = scheduleId != null ? scheduleId.toString() : "null";
+                dateLeaveMap.put(scheduleIdStr, shiftConfigIds);
+                
                 current = current.plusDays(1);
             }
         }

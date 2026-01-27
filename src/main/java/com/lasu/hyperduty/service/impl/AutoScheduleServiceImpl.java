@@ -453,6 +453,48 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
         // 计算员工分组
         List<List<SysEmployee>> employeeGroups = groupEmployees(employees, groupsConfig.size());
         
+        // 获取员工请假信息
+        Map<Long, Map<LocalDate, Map<Long, List<Long>>>> leaveInfo = new HashMap<>();
+        if (configParams != null && configParams.containsKey("leaveInfo")) {
+            Map<String, Map<String, Map<String, List<Long>>>> rawLeaveInfo = (Map<String, Map<String, Map<String, List<Long>>>>) configParams.get("leaveInfo");
+            for (Map.Entry<String, Map<String, Map<String, List<Long>>>> entry : rawLeaveInfo.entrySet()) {
+                try {
+                    Long employeeId = Long.parseLong(entry.getKey());
+                    Map<LocalDate, Map<Long, List<Long>>> employeeLeaveMap = new HashMap<>();
+                    
+                    Map<String, Map<String, List<Long>>> dateLeaveMap = entry.getValue();
+                    for (Map.Entry<String, Map<String, List<Long>>> dateEntry : dateLeaveMap.entrySet()) {
+                        try {
+                            LocalDate date = LocalDate.parse(dateEntry.getKey());
+                            Map<Long, List<Long>> scheduleLeaveMap = new HashMap<>();
+                            
+                            Map<String, List<Long>> scheduleLeaveRawMap = dateEntry.getValue();
+                            for (Map.Entry<String, List<Long>> scheduleEntry : scheduleLeaveRawMap.entrySet()) {
+                                try {
+                                    Long currentScheduleId = Long.parseLong(scheduleEntry.getKey());
+                                    List<Long> shiftConfigIds = scheduleEntry.getValue();
+                                    scheduleLeaveMap.put(currentScheduleId, shiftConfigIds);
+                                } catch (Exception e) {
+                                    // 值班表ID格式错误，跳过
+                                    System.err.println("值班表ID格式错误: " + scheduleEntry.getKey());
+                                }
+                            }
+                            
+                            employeeLeaveMap.put(date, scheduleLeaveMap);
+                        } catch (Exception e) {
+                            // 日期格式错误，跳过
+                            System.err.println("日期格式错误: " + dateEntry.getKey());
+                        }
+                    }
+                    
+                    leaveInfo.put(employeeId, employeeLeaveMap);
+                } catch (Exception e) {
+                    // 员工ID格式错误，跳过
+                    System.err.println("员工ID格式错误: " + entry.getKey());
+                }
+            }
+        }
+        
         // 生成排班安排
         LocalDate currentDate = startDate;
         while (!currentDate.isAfter(endDate)) {
@@ -483,9 +525,46 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                     continue;
                 }
                 
+                // 过滤出当天没有请假的员工
+                List<SysEmployee> dayAvailableEmployees = new ArrayList<>();
+                for (SysEmployee employee : groupEmployees) {
+                    // 检查员工是否在当天、当前值班表、当前班次请假
+                    boolean isOnLeave = false;
+                    Map<LocalDate, Map<Long, List<Long>>> employeeLeaveMap = leaveInfo.get(employee.getId());
+                    if (employeeLeaveMap != null) {
+                        Map<Long, List<Long>> scheduleLeaveMap = employeeLeaveMap.get(currentDate);
+                        if (scheduleLeaveMap != null) {
+                            // 检查当前值班表的请假记录
+                            List<Long> shiftConfigIds = scheduleLeaveMap.get(scheduleId);
+                            if (shiftConfigIds != null) {
+                                // 检查当前班次是否在请假的班次列表中
+                                try {
+                                    Long dutyShift = Long.parseLong(shiftType);
+                                    if (shiftConfigIds.contains(dutyShift)) {
+                                        isOnLeave = true;
+                                    }
+                                } catch (NumberFormatException e) {
+                                    // 班次ID格式错误，跳过
+                                    System.err.println("班次ID格式错误: " + shiftType);
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (!isOnLeave) {
+                        dayAvailableEmployees.add(employee);
+                    }
+                }
+                
+                if (dayAvailableEmployees.isEmpty()) {
+                    // 当天该组没有可用员工，跳过
+                    System.out.println("日期 " + currentDate + " 第 " + (groupIndex + 1) + " 组没有可用员工，跳过排班");
+                    continue;
+                }
+                
                 // 为该组当天生成排班
-                for (int i = 0; i < employeeCount && i < groupEmployees.size(); i++) {
-                    SysEmployee employee = groupEmployees.get(i);
+                for (int i = 0; i < employeeCount && i < dayAvailableEmployees.size(); i++) {
+                    SysEmployee employee = dayAvailableEmployees.get(i);
                     
                     DutyAssignment assignment = new DutyAssignment();
                     assignment.setScheduleId(scheduleId);

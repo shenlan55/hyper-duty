@@ -35,7 +35,7 @@ public interface LeaveRequestService extends IService<LeaveRequest> {
      * @param employeeIds 员工ID列表
      * @param startDate 开始日期
      * @param endDate 结束日期
-     * @return 员工请假信息映射，键为员工ID，值为请假日期集合
+     * @return 员工请假信息映射，结构为：员工ID -> 日期 -> 值班表ID -> 班次配置ID列表
      */
-    Map<Long, List<String>> getEmployeeLeaveInfo(List<Long> employeeIds, String startDate, String endDate);
+    Map<Long, Map<String, Map<String, List<Long>>>> getEmployeeLeaveInfo(List<Long> employeeIds, String startDate, String endDate);
 }

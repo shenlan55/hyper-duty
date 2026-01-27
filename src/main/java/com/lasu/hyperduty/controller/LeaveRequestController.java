@@ -107,11 +107,11 @@ public class LeaveRequestController {
      * 批量查询员工请假信息
      */
     @PostMapping("/employee-leave-info")
-    public ResponseResult<Map<Long, List<String>>> getEmployeeLeaveInfo(
+    public ResponseResult<Map<Long, Map<String, Map<String, List<Long>>>>> getEmployeeLeaveInfo(
             @RequestParam("startDate") String startDate,
             @RequestParam("endDate") String endDate,
             @RequestParam("employeeIds") List<Long> employeeIds) {
-        Map<Long, List<String>> leaveInfo = leaveRequestService.getEmployeeLeaveInfo(employeeIds, startDate, endDate);
+        Map<Long, Map<String, Map<String, List<Long>>>> leaveInfo = leaveRequestService.getEmployeeLeaveInfo(employeeIds, startDate, endDate);
         return ResponseResult.success(leaveInfo);
     }
 }

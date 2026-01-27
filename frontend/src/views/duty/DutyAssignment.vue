@@ -840,13 +840,8 @@ const fetchEmployeeLeaveInfo = async (employeeIds, startDate, endDate) => {
     const response = await getEmployeeLeaveInfoAPI(employeeIds, startDate, endDate)
     
     if (response.code === 200) {
-      const leaveInfo = {}
-      // 处理返回的请假信息，转换为Set格式
-      Object.keys(response.data).forEach(employeeId => {
-        const dates = response.data[employeeId]
-        leaveInfo[employeeId] = new Set(dates)
-      })
-      return leaveInfo
+      // 直接返回处理后的请假信息，不需要转换格式
+      return response.data
     }
     
     return {}
@@ -856,10 +851,27 @@ const fetchEmployeeLeaveInfo = async (employeeIds, startDate, endDate) => {
   }
 }
 
-// 检查员工在指定日期是否请假
-const isEmployeeOnLeave = (employeeId, date, leaveInfo) => {
+// 检查员工在指定日期、值班表和班次是否请假
+const isEmployeeOnLeave = (employeeId, date, scheduleId, dutyShift, leaveInfo) => {
   const employeeLeaves = leaveInfo[employeeId]
-  return employeeLeaves && employeeLeaves.has(date)
+  if (!employeeLeaves) {
+    return false
+  }
+  
+  const dateLeaves = employeeLeaves[date]
+  if (!dateLeaves) {
+    return false
+  }
+  
+  // 检查当前值班表的请假记录
+  const scheduleIdStr = scheduleId.toString()
+  const scheduleLeaves = dateLeaves[scheduleIdStr]
+  if (!scheduleLeaves) {
+    return false
+  }
+  
+  // 检查当前班次是否在请假的班次列表中
+  return scheduleLeaves.includes(dutyShift)
 }
 
 const handleBatchSave = async () => {
@@ -879,81 +891,89 @@ const handleBatchSave = async () => {
     
     // 获取员工请假信息
     const leaveInfo = await fetchEmployeeLeaveInfo(batchForm.employeeIds, startDate, endDate)
-    // 过滤出没有请假的员工
-    const availableEmployees = batchForm.employeeIds.filter(employeeId => {
-      // 检查员工在任何筛选出的日期是否请假
-      return !filteredDates.some(date => isEmployeeOnLeave(employeeId, date, leaveInfo))
-    })
-    
-    if (availableEmployees.length === 0) {
-      ElMessage.warning('所选员工在所选日期范围内都有请假')
-      batchDialogLoading.value = false
-      return
-    }
     
     if (batchForm.scheduleType === 3) {
-      // 使用排班模式生成排班
-      const response = await generateScheduleByMode(
-        selectedScheduleId.value,
-        startDate,
-        endDate,
-        batchForm.scheduleModeId,
-        {
-          employeeIds: availableEmployees,
-          remark: batchForm.remark,
-          dateType: batchForm.dateType
-        }
-      )
-      
-      if (response.code === 200) {
-        // 保存生成的排班数据到数据库
-        const assignments = response.data
-        for (const assignment of assignments) {
-          // 添加remark字段
-          assignment.remark = batchForm.remark
-          await addAssignment(assignment)
-        }
-        ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
-      } else {
-        ElMessage.error('批量排班失败: ' + (response.message || '未知错误'))
-        return
-      }
-    } else {
-      // 传统排班方式
-      const employeeIds = availableEmployees
-      
-      const assignments = []
-      filteredDates.forEach((date, index) => {
-        if (batchForm.scheduleType === 1) {
-          const employeeIndex = index % employeeIds.length
-          assignments.push({
-            scheduleId: selectedScheduleId.value,
-            dutyDate: date,
-            dutyShift: batchForm.dutyShift,
-            employeeId: employeeIds[employeeIndex],
-            status: 1,
-            remark: batchForm.remark
-          })
+          // 使用排班模式生成排班
+          const response = await generateScheduleByMode(
+            selectedScheduleId.value,
+            startDate,
+            endDate,
+            batchForm.scheduleModeId,
+            {
+              employeeIds: batchForm.employeeIds,
+              remark: batchForm.remark,
+              dateType: batchForm.dateType,
+              leaveInfo: leaveInfo,
+              scheduleId: selectedScheduleId.value
+            }
+          )
+          
+          if (response.code === 200) {
+            // 保存生成的排班数据到数据库
+            const assignments = response.data
+            for (const assignment of assignments) {
+              // 添加remark字段
+              assignment.remark = batchForm.remark
+              await addAssignment(assignment)
+            }
+            ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
+          } else {
+            ElMessage.error('批量排班失败: ' + (response.message || '未知错误'))
+            return
+          }
         } else {
-          employeeIds.forEach(employeeId => {
-            assignments.push({
-              scheduleId: selectedScheduleId.value,
-              dutyDate: date,
-              dutyShift: batchForm.dutyShift,
-              employeeId: employeeId,
-              status: 1,
-              remark: batchForm.remark
+          // 传统排班方式
+          const assignments = []
+          filteredDates.forEach((date, index) => {
+            // 过滤出当天没有请假的员工
+            const dayAvailableEmployees = batchForm.employeeIds.filter(employeeId => {
+              return !isEmployeeOnLeave(employeeId, date, selectedScheduleId.value, batchForm.dutyShift, leaveInfo)
             })
+            
+            if (dayAvailableEmployees.length === 0) {
+              // 当天没有可用员工，跳过
+              console.log(`日期 ${date} 没有可用员工，跳过排班`)
+              return
+            }
+            
+            if (batchForm.scheduleType === 1) {
+              // 轮换排班模式
+              const employeeIndex = index % dayAvailableEmployees.length
+              assignments.push({
+                scheduleId: selectedScheduleId.value,
+                dutyDate: date,
+                dutyShift: batchForm.dutyShift,
+                employeeId: dayAvailableEmployees[employeeIndex],
+                status: 1,
+                remark: batchForm.remark
+              })
+            } else {
+              // 固定排班模式
+              dayAvailableEmployees.forEach(employeeId => {
+                assignments.push({
+                  scheduleId: selectedScheduleId.value,
+                  dutyDate: date,
+                  dutyShift: batchForm.dutyShift,
+                  employeeId: employeeId,
+                  status: 1,
+                  remark: batchForm.remark
+                })
+              })
+            }
           })
+          
+          if (assignments.length === 0) {
+            ElMessage.warning('所选日期范围内没有可用员工进行排班')
+            batchDialogLoading.value = false
+            return
+          }
+          
+          for (const assignment of assignments) {
+            await addAssignment(assignment)
+          }
+          
+          ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
         }
-      })
-      
-      for (const assignment of assignments) {
-        await addAssignment(assignment)
-      }
-      
-      ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
-    }
     
     batchDialogVisible.value = false
     // 刷新排班数据

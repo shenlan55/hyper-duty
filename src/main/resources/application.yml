@@ -23,9 +23,6 @@ spring:
       schema-locations: classpath:sql/hyper_duty_ddl.sql
       mode: always
       encoding: utf-8
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
   jackson:
     time-zone: GMT+8
     date-format: yyyy-MM-dd HH:mm:ss
