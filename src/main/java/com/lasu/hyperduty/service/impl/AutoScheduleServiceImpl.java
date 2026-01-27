@@ -17,6 +17,7 @@ import com.lasu.hyperduty.service.DutyScheduleRuleService;
 import com.lasu.hyperduty.service.DutyScheduleService;
 import com.lasu.hyperduty.service.DutyShiftConfigService;
 import com.lasu.hyperduty.service.EmployeeAvailableTimeService;
+import com.lasu.hyperduty.service.LeaveRequestService;
 import com.lasu.hyperduty.service.SysEmployeeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -54,6 +55,9 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
 
     @Autowired
     private DutyHolidayService dutyHolidayService;
+
+    @Autowired
+    private LeaveRequestService leaveRequestService;
 
     @Override
     public List<DutyAssignment> generateAutoSchedule(Long scheduleId, LocalDate startDate, LocalDate endDate, Long ruleId) {
@@ -154,8 +158,42 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                 .eq(SysEmployee::getStatus, 1)
                 .list();
 
+        // 获取所有员工ID列表
+        List<Long> employeeIds = allEmployees.stream()
+                .map(SysEmployee::getId)
+                .collect(Collectors.toList());
+
+        // 获取员工请假信息
+        Map<Long, Map<String, Map<String, List<Long>>>> leaveInfo = leaveRequestService.getEmployeeLeaveInfo(
+                employeeIds,
+                dutyDate.toString(),
+                dutyDate.toString()
+        );
+
         return allEmployees.stream()
                 .filter(emp -> !assignedEmployeeIds.contains(emp.getId()))
+                .filter(emp -> {
+                    // 检查员工是否在当天请假
+                    Map<String, Map<String, List<Long>>> empLeaveInfo = leaveInfo.get(emp.getId());
+                    if (empLeaveInfo == null) {
+                        return true;
+                    }
+                    
+                    Map<String, List<Long>> dateLeaveInfo = empLeaveInfo.get(dutyDate.toString());
+                    if (dateLeaveInfo == null) {
+                        return true;
+                    }
+                    
+                    // 检查是否在任何值班表中请假
+                    for (Map.Entry<String, List<Long>> entry : dateLeaveInfo.entrySet()) {
+                        List<Long> shiftIds = entry.getValue();
+                        if (shiftIds != null && shiftIds.contains(Long.valueOf(dutyShift))) {
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                })
                 .sorted((e1, e2) -> {
                     int workload1 = employeeWorkload.getOrDefault(e1.getId(), 0);
                     int workload2 = employeeWorkload.getOrDefault(e2.getId(), 0);
@@ -177,12 +215,45 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
 
         int dayOfWeek = dutyDate.getDayOfWeek().getValue();
 
+        // 获取员工请假信息
+        List<Long> employeeIds = employees.stream()
+                .map(SysEmployee::getId)
+                .collect(Collectors.toList());
+
+        Map<Long, Map<String, Map<String, List<Long>>>> leaveInfo = leaveRequestService.getEmployeeLeaveInfo(
+                employeeIds,
+                dutyDate.toString(),
+                dutyDate.toString()
+        );
+
         return employees.stream()
                 .filter(emp -> !checkConflict(emp.getId(), dutyDate, shiftConfig.getShiftType()))
                 .filter(emp -> isEmployeeAvailable(emp.getId(), dayOfWeek, dutyDate, shiftConfig))
                 .filter(emp -> !isOverloaded(emp.getId(), employeeWorkHours, rule))
                 .filter(emp -> !isOverShiftLimit(emp.getId(), employeeShiftCount, rule))
                 .filter(emp -> !isOverMonthlyHours(emp.getId(), employeeWorkHours, rule))
+                .filter(emp -> {
+                    // 检查员工是否在当天请假
+                    Map<String, Map<String, List<Long>>> empLeaveInfo = leaveInfo.get(emp.getId());
+                    if (empLeaveInfo == null) {
+                        return true;
+                    }
+                    
+                    Map<String, List<Long>> dateLeaveInfo = empLeaveInfo.get(dutyDate.toString());
+                    if (dateLeaveInfo == null) {
+                        return true;
+                    }
+                    
+                    // 检查是否在任何值班表中请假
+                    for (Map.Entry<String, List<Long>> entry : dateLeaveInfo.entrySet()) {
+                        List<Long> shiftIds = entry.getValue();
+                        if (shiftIds != null && shiftIds.contains(Long.valueOf(shiftConfig.getShiftType()))) {
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -456,42 +527,78 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
         // 获取员工请假信息
         Map<Long, Map<LocalDate, Map<Long, List<Long>>>> leaveInfo = new HashMap<>();
         if (configParams != null && configParams.containsKey("leaveInfo")) {
-            Map<String, Map<String, Map<String, List<Long>>>> rawLeaveInfo = (Map<String, Map<String, Map<String, List<Long>>>>) configParams.get("leaveInfo");
-            for (Map.Entry<String, Map<String, Map<String, List<Long>>>> entry : rawLeaveInfo.entrySet()) {
-                try {
-                    Long employeeId = Long.parseLong(entry.getKey());
-                    Map<LocalDate, Map<Long, List<Long>>> employeeLeaveMap = new HashMap<>();
-                    
-                    Map<String, Map<String, List<Long>>> dateLeaveMap = entry.getValue();
-                    for (Map.Entry<String, Map<String, List<Long>>> dateEntry : dateLeaveMap.entrySet()) {
+            try {
+                Object leaveInfoObj = configParams.get("leaveInfo");
+                if (leaveInfoObj instanceof Map) {
+                    Map<?, ?> rawLeaveInfo = (Map<?, ?>) leaveInfoObj;
+                    for (Map.Entry<?, ?> entry : rawLeaveInfo.entrySet()) {
                         try {
-                            LocalDate date = LocalDate.parse(dateEntry.getKey());
-                            Map<Long, List<Long>> scheduleLeaveMap = new HashMap<>();
+                            String employeeIdStr = entry.getKey().toString();
+                            Long employeeId = Long.parseLong(employeeIdStr);
+                            Map<LocalDate, Map<Long, List<Long>>> employeeLeaveMap = new HashMap<>();
                             
-                            Map<String, List<Long>> scheduleLeaveRawMap = dateEntry.getValue();
-                            for (Map.Entry<String, List<Long>> scheduleEntry : scheduleLeaveRawMap.entrySet()) {
-                                try {
-                                    Long currentScheduleId = Long.parseLong(scheduleEntry.getKey());
-                                    List<Long> shiftConfigIds = scheduleEntry.getValue();
-                                    scheduleLeaveMap.put(currentScheduleId, shiftConfigIds);
-                                } catch (Exception e) {
-                                    // 值班表ID格式错误，跳过
-                                    System.err.println("值班表ID格式错误: " + scheduleEntry.getKey());
+                            Object dateLeaveMapObj = entry.getValue();
+                            if (dateLeaveMapObj instanceof Map) {
+                                Map<?, ?> dateLeaveMap = (Map<?, ?>) dateLeaveMapObj;
+                                for (Map.Entry<?, ?> dateEntry : dateLeaveMap.entrySet()) {
+                                    try {
+                                        String dateStr = dateEntry.getKey().toString();
+                                        LocalDate date = LocalDate.parse(dateStr);
+                                        Map<Long, List<Long>> scheduleLeaveMap = new HashMap<>();
+                                        
+                                        Object scheduleLeaveRawMapObj = dateEntry.getValue();
+                                        if (scheduleLeaveRawMapObj instanceof Map) {
+                                            Map<?, ?> scheduleLeaveRawMap = (Map<?, ?>) scheduleLeaveRawMapObj;
+                                            for (Map.Entry<?, ?> scheduleEntry : scheduleLeaveRawMap.entrySet()) {
+                                                try {
+                                                    String scheduleIdStr = scheduleEntry.getKey().toString();
+                                                    Long currentScheduleId = Long.parseLong(scheduleIdStr);
+                                                    
+                                                    Object shiftConfigIdsObj = scheduleEntry.getValue();
+                                                    if (shiftConfigIdsObj instanceof List) {
+                                                        List<?> shiftConfigIdsList = (List<?>) shiftConfigIdsObj;
+                                                        List<Long> shiftConfigIds = new ArrayList<>();
+                                                        for (Object shiftIdObj : shiftConfigIdsList) {
+                                                            try {
+                                                                if (shiftIdObj instanceof Number) {
+                                                                    shiftConfigIds.add(((Number) shiftIdObj).longValue());
+                                                                } else if (shiftIdObj instanceof String) {
+                                                                    shiftConfigIds.add(Long.parseLong((String) shiftIdObj));
+                                                                }
+                                                            } catch (Exception e) {
+                                                                // 班次ID格式错误，跳过
+                                                                System.err.println("班次ID格式错误: " + shiftIdObj);
+                                                            }
+                                                        }
+                                                        scheduleLeaveMap.put(currentScheduleId, shiftConfigIds);
+                                                    }
+                                                } catch (Exception e) {
+                                                    // 值班表ID格式错误，跳过
+                                                    System.err.println("值班表ID格式错误: " + scheduleEntry.getKey());
+                                                }
+                                            }
+                                        }
+                                        
+                                        employeeLeaveMap.put(date, scheduleLeaveMap);
+                                    } catch (Exception e) {
+                                        // 日期格式错误，跳过
+                                        System.err.println("日期格式错误: " + dateEntry.getKey());
+                                    }
                                 }
                             }
                             
-                            employeeLeaveMap.put(date, scheduleLeaveMap);
+                            leaveInfo.put(employeeId, employeeLeaveMap);
                         } catch (Exception e) {
-                            // 日期格式错误，跳过
-                            System.err.println("日期格式错误: " + dateEntry.getKey());
+                            // 员工ID格式错误，跳过
+                            System.err.println("员工ID格式错误: " + entry.getKey());
                         }
                     }
-                    
-                    leaveInfo.put(employeeId, employeeLeaveMap);
-                } catch (Exception e) {
-                    // 员工ID格式错误，跳过
-                    System.err.println("员工ID格式错误: " + entry.getKey());
                 }
+            } catch (Exception e) {
+                // 请假信息处理失败，记录错误但继续排班
+                System.err.println("处理请假信息失败: " + e.getMessage());
+                e.printStackTrace();
+                // 继续使用空的leaveInfo，确保排班过程不被中断
             }
         }
         
@@ -563,6 +670,9 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                 }
                 
                 // 为该组当天生成排班
+                // 维护一个轮换索引，确保顺次排班
+                // 这里使用一个简单的实现，每次从可用员工列表中按顺序选择
+                // 实际项目中可以考虑使用更复杂的轮换算法
                 for (int i = 0; i < employeeCount && i < dayAvailableEmployees.size(); i++) {
                     SysEmployee employee = dayAvailableEmployees.get(i);
                     

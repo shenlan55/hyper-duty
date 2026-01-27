@@ -70,6 +70,10 @@
       v-model="dialogVisible"
       :title="dialogTitle"
       width="600px"
+      @close="async () => {
+        // 恢复原始的排班员工列表
+        await fetchScheduleEmployees(selectedScheduleId.value)
+      }"
     >
       <el-form
         ref="assignmentFormRef"
@@ -92,6 +96,7 @@
             v-model="assignmentForm.dutyShift"
             placeholder="请选择班次"
             style="width: 100%"
+            @change="handleShiftChange"
           >
             <el-option
               v-for="shift in shiftConfigList"
@@ -641,9 +646,11 @@ const fetchScheduleEmployees = async (scheduleId) => {
     if (leaderRes.code === 200) {
       scheduleLeaderList.value = leaderRes.data || []
     }
+    return scheduleEmployeeList.value
   } catch (error) {
     console.error('获取值班人员失败:', error)
     ElMessage.error('获取值班人员失败')
+    return []
   }
 }
 
@@ -708,6 +715,10 @@ const openAddDialog = (date) => {
   assignmentForm.scheduleId = selectedScheduleId.value
   assignmentForm.dutyDate = date
   dialogTitle.value = '添加值班安排'
+  
+  // 先恢复原始的排班员工列表
+  fetchScheduleEmployees(selectedScheduleId.value)
+  
   dialogVisible.value = true
 }
 
@@ -736,6 +747,35 @@ const resetForm = () => {
   })
 }
 
+// 监听班次变化，重新过滤可用员工
+const handleShiftChange = async () => {
+  if (!assignmentForm.dutyDate || !assignmentForm.dutyShift) return
+  
+  // 获取原始的排班员工列表
+  const originalEmployees = await fetchScheduleEmployees(selectedScheduleId.value)
+  
+  // 获取当天请假的员工列表
+  const leaveInfo = await fetchEmployeeLeaveInfo(
+    scheduleEmployeeList.value.map(emp => emp.id),
+    assignmentForm.dutyDate,
+    assignmentForm.dutyDate
+  )
+  
+  // 过滤出当天在该班次没有请假的员工
+  const availableEmployees = scheduleEmployeeList.value.filter(emp => {
+    return !isEmployeeOnLeave(
+      emp.id,
+      assignmentForm.dutyDate,
+      selectedScheduleId.value,
+      assignmentForm.dutyShift,
+      leaveInfo
+    )
+  })
+  
+  // 更新排班员工列表为可用员工
+  scheduleEmployeeList.value = availableEmployees
+}
+
 const handleSave = async () => {
   try {
     await assignmentFormRef.value.validate()
@@ -751,6 +791,8 @@ const handleSave = async () => {
     if (response.code === 200) {
       ElMessage.success(assignmentForm.id ? '编辑值班安排成功' : '添加值班安排成功')
       dialogVisible.value = false
+      // 恢复原始的排班员工列表
+      await fetchScheduleEmployees(selectedScheduleId.value)
       fetchAssignmentList(selectedScheduleId.value)
     } else {
       ElMessage.error(response.message || (assignmentForm.id ? '编辑值班安排失败' : '添加值班安排失败'))
