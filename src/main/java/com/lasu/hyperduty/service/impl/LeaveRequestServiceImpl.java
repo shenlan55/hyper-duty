@@ -147,9 +147,15 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
 
     @Override
     public List<LeaveRequest> getPendingApprovals(Long approverId) {
-        // 直接查询所有待审批的记录，不限制值班表
+        // 查询当前审批人负责审批的请假申请，或者是发起人自己的请假申请
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("approval_status", "pending");
+        // 添加条件：当前审批人是请假申请的审批人，或者当前审批人是请假申请的发起人
+        queryWrapper.and(wrapper -> wrapper
+                .eq("current_approver_id", approverId)
+                .or()
+                .eq("employee_id", approverId)
+        );
         queryWrapper.orderByDesc("create_time");
         List<LeaveRequest> result = baseMapper.selectList(queryWrapper);
         System.out.println("Pending approvals count: " + result.size());
@@ -178,9 +184,15 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
 
     @Override
     public List<LeaveRequest> getApprovedApprovals(Long approverId) {
-        // 直接查询所有已审批的记录，不限制值班表
+        // 查询当前审批人负责审批的请假申请，或者是发起人自己的请假申请
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
         queryWrapper.in("approval_status", "approved", "rejected");
+        // 添加条件：当前审批人是请假申请的审批人，或者当前审批人是请假申请的发起人
+        queryWrapper.and(wrapper -> wrapper
+                .eq("current_approver_id", approverId)
+                .or()
+                .eq("employee_id", approverId)
+        );
         queryWrapper.orderByDesc("update_time");
         return baseMapper.selectList(queryWrapper);
     }
@@ -316,6 +328,12 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         
         // 基础条件：审批状态为待审批
         queryWrapper.eq("approval_status", "pending");
+        // 添加条件：当前审批人是请假申请的审批人，或者当前审批人是请假申请的发起人
+        queryWrapper.and(wrapper -> wrapper
+                .eq("current_approver_id", approverId)
+                .or()
+                .eq("employee_id", approverId)
+        );
         
         // 可选条件：值班表ID
         if (scheduleId != null) {
@@ -350,6 +368,12 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         
         // 基础条件：审批状态为已审批或已拒绝
         queryWrapper.in("approval_status", "approved", "rejected");
+        // 添加条件：当前审批人是请假申请的审批人，或者当前审批人是请假申请的发起人
+        queryWrapper.and(wrapper -> wrapper
+                .eq("current_approver_id", approverId)
+                .or()
+                .eq("employee_id", approverId)
+        );
         
         // 可选条件：值班表ID
         if (scheduleId != null) {
