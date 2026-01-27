@@ -945,6 +945,7 @@ const handleBatchSave = async () => {
               employeeIds: batchForm.employeeIds,
               remark: batchForm.remark,
               dateType: batchForm.dateType,
+              filteredDates: filteredDates,
               leaveInfo: leaveInfo,
               scheduleId: selectedScheduleId.value
             }
@@ -966,6 +967,8 @@ const handleBatchSave = async () => {
         } else {
           // 传统排班方式
           const assignments = []
+          let rotationIndex = 0 // 维护全局的轮换索引
+          
           filteredDates.forEach((date, index) => {
             // 过滤出当天没有请假的员工
             const dayAvailableEmployees = batchForm.employeeIds.filter(employeeId => {
@@ -980,15 +983,43 @@ const handleBatchSave = async () => {
             
             if (batchForm.scheduleType === 1) {
               // 轮换排班模式
-              const employeeIndex = index % dayAvailableEmployees.length
-              assignments.push({
-                scheduleId: selectedScheduleId.value,
-                dutyDate: date,
-                dutyShift: batchForm.dutyShift,
-                employeeId: dayAvailableEmployees[employeeIndex],
-                status: 1,
-                remark: batchForm.remark
-              })
+              // 首先按已排工时最少排序，然后按照原始轮换顺序选择
+              // 计算每个可用员工的已排工时
+              const employeeWorkHours = {};
+              assignments.forEach(assignment => {
+                if (!employeeWorkHours[assignment.employeeId]) {
+                  employeeWorkHours[assignment.employeeId] = 0;
+                }
+                employeeWorkHours[assignment.employeeId]++;
+              });
+              
+              // 对当天可用员工按工时排序，工时相同的保持原始顺序
+              const sortedAvailableEmployees = [...dayAvailableEmployees].sort((a, b) => {
+                const hoursA = employeeWorkHours[a] || 0;
+                const hoursB = employeeWorkHours[b] || 0;
+                
+                // 首先按工时排序
+                if (hoursA !== hoursB) {
+                  return hoursA - hoursB;
+                }
+                
+                // 工时相同的，按原始员工列表的顺序排序
+                return batchForm.employeeIds.indexOf(a) - batchForm.employeeIds.indexOf(b);
+              });
+              
+              // 选择工时最少的员工
+              if (sortedAvailableEmployees.length > 0) {
+                const selectedEmployeeId = sortedAvailableEmployees[0];
+                
+                assignments.push({
+                  scheduleId: selectedScheduleId.value,
+                  dutyDate: date,
+                  dutyShift: batchForm.dutyShift,
+                  employeeId: selectedEmployeeId,
+                  status: 1,
+                  remark: batchForm.remark
+                });
+              }
             } else {
               // 固定排班模式
               dayAvailableEmployees.forEach(employeeId => {

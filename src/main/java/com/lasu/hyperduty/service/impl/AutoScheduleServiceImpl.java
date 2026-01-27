@@ -603,10 +603,54 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
         }
         
         // 生成排班安排
-        LocalDate currentDate = startDate;
-        while (!currentDate.isAfter(endDate)) {
+        List<LocalDate> scheduledDates = new ArrayList<>();
+        
+        // 优先使用前端传递的过滤后的日期列表
+        if (configParams != null && configParams.containsKey("filteredDates")) {
+            try {
+                List<?> filteredDatesObj = (List<?>) configParams.get("filteredDates");
+                for (Object dateObj : filteredDatesObj) {
+                    try {
+                        if (dateObj instanceof String) {
+                            String dateStr = (String) dateObj;
+                            LocalDate date = LocalDate.parse(dateStr);
+                            scheduledDates.add(date);
+                        }
+                    } catch (Exception e) {
+                        // 日期格式错误，跳过
+                        System.err.println("日期格式错误: " + dateObj);
+                    }
+                }
+            } catch (Exception e) {
+                // 处理过滤日期失败，使用原始日期范围
+                System.err.println("处理过滤日期失败: " + e.getMessage());
+                scheduledDates.clear();
+            }
+        }
+        
+        // 如果没有过滤后的日期列表，使用原始日期范围
+        if (scheduledDates.isEmpty()) {
+            LocalDate currentDate = startDate;
+            while (!currentDate.isAfter(endDate)) {
+                scheduledDates.add(currentDate);
+                currentDate = currentDate.plusDays(1);
+            }
+        }
+        
+        System.out.println("排班日期数量: " + scheduledDates.size());
+        
+        // 为每个组维护一个轮换索引，确保顺次排班
+        Map<Integer, Integer> groupRotationIndices = new HashMap<>();
+        for (int i = 0; i < groupsConfig.size(); i++) {
+            groupRotationIndices.put(i, 0);
+        }
+        
+        // 为每个过滤后的日期生成排班
+        for (int dateIndex = 0; dateIndex < scheduledDates.size(); dateIndex++) {
+            LocalDate currentDate = scheduledDates.get(dateIndex);
+            
             // 计算当前是周期的第几天（从0开始）
-            int dayOfCycle = (int) ChronoUnit.DAYS.between(startDate, currentDate) % cycleDays;
+            int dayOfCycle = dateIndex % cycleDays;
             if (dayOfCycle < 0) {
                 dayOfCycle += cycleDays;
             }
@@ -670,11 +714,13 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                 }
                 
                 // 为该组当天生成排班
-                // 维护一个轮换索引，确保顺次排班
-                // 这里使用一个简单的实现，每次从可用员工列表中按顺序选择
-                // 实际项目中可以考虑使用更复杂的轮换算法
+                // 使用组级别的轮换索引，确保顺次排班
+                int rotationIndex = groupRotationIndices.getOrDefault(groupIndex, 0);
+                
                 for (int i = 0; i < employeeCount && i < dayAvailableEmployees.size(); i++) {
-                    SysEmployee employee = dayAvailableEmployees.get(i);
+                    // 计算当前应该选择的员工索引，确保轮换顺序的连续性
+                    int employeeIndex = (rotationIndex + i) % dayAvailableEmployees.size();
+                    SysEmployee employee = dayAvailableEmployees.get(employeeIndex);
                     
                     DutyAssignment assignment = new DutyAssignment();
                     assignment.setScheduleId(scheduleId);
@@ -687,9 +733,11 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                     
                     assignments.add(assignment);
                 }
+                
+                // 更新组级别的轮换索引
+                rotationIndex += employeeCount;
+                groupRotationIndices.put(groupIndex, rotationIndex);
             }
-            
-            currentDate = currentDate.plusDays(1);
         }
         
         return assignments;
