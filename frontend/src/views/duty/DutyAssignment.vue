@@ -846,8 +846,8 @@ const getFilteredDates = async (startDate, endDate, dateTypes) => {
       }
       
       if (dateTypes.includes('weekend')) {
-        // 休息日包括周末且不是调休
-        if (isWeekend && !isWorkdayHoliday) {
+        // 休息日包括周末且不是调休且不是节假日
+        if (isWeekend && !isWorkdayHoliday && !isHoliday) {
           shouldInclude = true
         }
       }
