@@ -75,6 +75,17 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
             return false;
         }
 
+        // 权限控制：只有值班长才能审批请假申请
+        // 1. 检查当前审批人是否是请假申请的审批人（值班长）
+        if (!approverId.equals(request.getCurrentApproverId())) {
+            return false;
+        }
+
+        // 2. 检查当前审批人是否是请假申请的发起人（申请人不能审批自己的请假）
+        if (approverId.equals(request.getEmployeeId())) {
+            return false;
+        }
+
         if ("approved".equals(approvalStatus) && "check".equals(scheduleAction)) {
             Map<String, Object> scheduleCheck = checkEmployeeSchedule(request.getEmployeeId(), request.getStartDate().toString(), request.getEndDate().toString());
             if ((Boolean) scheduleCheck.get("hasSchedule")) {
@@ -147,15 +158,11 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
 
     @Override
     public List<LeaveRequest> getPendingApprovals(Long approverId) {
-        // 查询当前审批人负责审批的请假申请，或者是发起人自己的请假申请
+        // 查询当前审批人负责审批的请假申请（只有值班长才能审批）
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("approval_status", "pending");
-        // 添加条件：当前审批人是请假申请的审批人，或者当前审批人是请假申请的发起人
-        queryWrapper.and(wrapper -> wrapper
-                .eq("current_approver_id", approverId)
-                .or()
-                .eq("employee_id", approverId)
-        );
+        // 添加条件：当前审批人是请假申请的审批人（值班长）
+        queryWrapper.eq("current_approver_id", approverId);
         queryWrapper.orderByDesc("create_time");
         List<LeaveRequest> result = baseMapper.selectList(queryWrapper);
         System.out.println("Pending approvals count: " + result.size());
@@ -328,12 +335,8 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         
         // 基础条件：审批状态为待审批
         queryWrapper.eq("approval_status", "pending");
-        // 添加条件：当前审批人是请假申请的审批人，或者当前审批人是请假申请的发起人
-        queryWrapper.and(wrapper -> wrapper
-                .eq("current_approver_id", approverId)
-                .or()
-                .eq("employee_id", approverId)
-        );
+        // 添加条件：当前审批人是请假申请的审批人（值班长）
+        queryWrapper.eq("current_approver_id", approverId);
         
         // 可选条件：值班表ID
         if (scheduleId != null) {
