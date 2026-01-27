@@ -1,5 +1,8 @@
 package com.lasu.hyperduty.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.SwapRequest;
 import com.lasu.hyperduty.mapper.SwapRequestMapper;
@@ -91,5 +94,32 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
                         .eq(SwapRequest::getTargetEmployeeId, employeeId))
                 .orderByDesc(SwapRequest::getCreateTime)
                 .list();
+    }
+
+    @Override
+    public IPage<SwapRequest> getMySwapRequestsPage(Long employeeId, Integer page, Integer size, String approvalStatus, String startDate, String endDate) {
+        IPage<SwapRequest> pageInfo = new Page<>(page, size);
+        return lambdaQuery()
+                .and(wrapper -> wrapper
+                        .eq(SwapRequest::getOriginalEmployeeId, employeeId)
+                        .or()
+                        .eq(SwapRequest::getTargetEmployeeId, employeeId))
+                .eq(approvalStatus != null && !approvalStatus.isEmpty(), SwapRequest::getApprovalStatus, approvalStatus)
+                .ge(startDate != null && !startDate.isEmpty(), SwapRequest::getCreateTime, startDate)
+                .le(endDate != null && !endDate.isEmpty(), SwapRequest::getCreateTime, endDate)
+                .orderByDesc(SwapRequest::getCreateTime)
+                .page(pageInfo);
+    }
+
+    @Override
+    public IPage<SwapRequest> getPendingApprovalsPage(Long approverId, Integer page, Integer size, String startDate, String endDate) {
+        IPage<SwapRequest> pageInfo = new Page<>(page, size);
+        return lambdaQuery()
+                .eq(SwapRequest::getApprovalStatus, "pending")
+                .eq(SwapRequest::getCurrentApproverId, approverId)
+                .ge(startDate != null && !startDate.isEmpty(), SwapRequest::getCreateTime, startDate)
+                .le(endDate != null && !endDate.isEmpty(), SwapRequest::getCreateTime, endDate)
+                .orderByDesc(SwapRequest::getCreateTime)
+                .page(pageInfo);
     }
 }

@@ -9,6 +9,44 @@
     </div>
 
     <el-card shadow="hover" class="content-card">
+      <div class="filter-container">
+        <el-form :inline="true" :model="filterForm" class="demo-form-inline">
+          <el-form-item label="请假类型">
+            <el-select v-model="filterForm.leaveType" placeholder="请选择请假类型" clearable style="width: 150px;">
+              <el-option label="事假" :value="1" />
+              <el-option label="病假" :value="2" />
+              <el-option label="年假" :value="3" />
+              <el-option label="调休" :value="4" />
+              <el-option label="其他" :value="5" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="审批状态">
+            <el-select v-model="filterForm.approvalStatus" placeholder="请选择审批状态" clearable style="width: 150px;">
+              <el-option label="待审批" value="pending" />
+              <el-option label="已通过" value="approved" />
+              <el-option label="已拒绝" value="rejected" />
+              <el-option label="已取消" value="cancelled" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="请假时间">
+            <el-date-picker
+              v-model="filterForm.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              style="width: 240px"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button @click="resetFilter">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
       <el-table
         v-loading="loading"
         :data="requestList"
@@ -62,6 +100,18 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.size"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pagination.total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
 
     <el-dialog
@@ -298,6 +348,7 @@ import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getMyLeaveRequests,
+  getMyLeaveRequestsPage,
   submitLeaveRequest,
   deleteLeaveRequest,
   getApprovalRecords
@@ -325,6 +376,20 @@ const shiftConfigList = ref([])
 const shiftApi = shiftConfigApi()
 const scheduleLeaders = ref([])
 const disabledShiftIds = ref(new Set())
+
+// 分页相关
+const pagination = reactive({
+  page: 1,
+  size: 10,
+  total: 0
+})
+
+// 筛选条件
+const filterForm = reactive({
+  leaveType: null,
+  approvalStatus: '',
+  dateRange: null
+})
 
 const form = reactive({
   id: null,
@@ -476,9 +541,19 @@ const fetchEnabledShifts = async () => {
 const fetchMyLeaveRequests = async () => {
   loading.value = true
   try {
-    const response = await getMyLeaveRequests(userStore.employeeId)
+    const [startDate, endDate] = filterForm.dateRange || [null, null]
+    const response = await getMyLeaveRequestsPage(
+      userStore.employeeId,
+      pagination.page,
+      pagination.size,
+      filterForm.leaveType,
+      filterForm.approvalStatus || null,
+      startDate,
+      endDate
+    )
     if (response.code === 200) {
-      requestList.value = response.data
+      requestList.value = response.data.records
+      pagination.total = response.data.total
     }
   } catch (error) {
     console.error('获取请假申请列表失败:', error)
@@ -486,6 +561,33 @@ const fetchMyLeaveRequests = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 分页大小变化处理
+const handleSizeChange = (size) => {
+  pagination.size = size
+  fetchMyLeaveRequests()
+}
+
+// 页码变化处理
+const handleCurrentChange = (current) => {
+  pagination.page = current
+  fetchMyLeaveRequests()
+}
+
+// 搜索处理
+const handleSearch = () => {
+  pagination.page = 1 // 重置页码
+  fetchMyLeaveRequests()
+}
+
+// 重置筛选条件
+const resetFilter = () => {
+  filterForm.leaveType = null
+  filterForm.approvalStatus = ''
+  filterForm.dateRange = null
+  pagination.page = 1
+  fetchMyLeaveRequests()
 }
 
 const openAddDialog = () => {
@@ -776,6 +878,19 @@ onMounted(async () => {
 
 .content-card {
   margin-bottom: 10px;
+}
+
+.filter-container {
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .approval-records {

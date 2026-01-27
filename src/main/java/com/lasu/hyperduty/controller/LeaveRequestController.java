@@ -104,6 +104,58 @@ public class LeaveRequestController {
     }
 
     /**
+     * 分页获取我的请假申请
+     */
+    @GetMapping("/my/page/{employeeId}")
+    public ResponseResult<com.baomidou.mybatisplus.core.metadata.IPage<LeaveRequest>> getMyLeaveRequestsPage(
+            @PathVariable Long employeeId,
+            @RequestParam Integer page,
+            @RequestParam Integer size,
+            @RequestParam(required = false) Integer leaveType,
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        com.baomidou.mybatisplus.core.metadata.IPage<LeaveRequest> result = leaveRequestService.getMyLeaveRequestsPage(
+                employeeId, page, size, leaveType, approvalStatus, startDate, endDate);
+        return ResponseResult.success(result);
+    }
+
+    /**
+     * 分页获取待审批请假申请
+     */
+    @GetMapping("/pending/page/{approverId}")
+    public ResponseResult<com.baomidou.mybatisplus.core.metadata.IPage<LeaveRequest>> getPendingApprovalsPage(
+            @PathVariable Long approverId,
+            @RequestParam Integer page,
+            @RequestParam Integer size,
+            @RequestParam(required = false) Long scheduleId,
+            @RequestParam(required = false) Integer leaveType,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        com.baomidou.mybatisplus.core.metadata.IPage<LeaveRequest> result = leaveRequestService.getPendingApprovalsPage(
+                approverId, page, size, scheduleId, leaveType, startDate, endDate);
+        return ResponseResult.success(result);
+    }
+
+    /**
+     * 分页获取已审批请假申请
+     */
+    @GetMapping("/approved/page/{approverId}")
+    public ResponseResult<com.baomidou.mybatisplus.core.metadata.IPage<LeaveRequest>> getApprovedApprovalsPage(
+            @PathVariable Long approverId,
+            @RequestParam Integer page,
+            @RequestParam Integer size,
+            @RequestParam(required = false) Long scheduleId,
+            @RequestParam(required = false) Integer leaveType,
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        com.baomidou.mybatisplus.core.metadata.IPage<LeaveRequest> result = leaveRequestService.getApprovedApprovalsPage(
+                approverId, page, size, scheduleId, leaveType, approvalStatus, startDate, endDate);
+        return ResponseResult.success(result);
+    }
+
+    /**
      * 批量查询员工请假信息
      */
     @PostMapping("/employee-leave-info")
