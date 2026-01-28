@@ -1044,34 +1044,45 @@ const handleBatchSave = async () => {
             
             if (batchForm.scheduleType === 1) {
               // 轮换排班模式
-              // 首先按已排工时最少排序，然后按照原始轮换顺序选择
-              // 计算每个可用员工的已排工时
-              const employeeWorkHours = {};
-              assignments.forEach(assignment => {
-                if (!employeeWorkHours[assignment.employeeId]) {
-                  employeeWorkHours[assignment.employeeId] = 0;
-                }
-                employeeWorkHours[assignment.employeeId]++;
-              });
+              // 保持原始轮换顺序，同时处理请假和顶岗人员的情况
+              let selectedEmployeeId = null;
               
-              // 对当天可用员工按工时排序，工时相同的保持原始顺序
-              const sortedAvailableEmployees = [...dayAvailableEmployees].sort((a, b) => {
-                const hoursA = employeeWorkHours[a] || 0;
-                const hoursB = employeeWorkHours[b] || 0;
+              // 按原始员工列表的顺序查找合适的员工
+              for (let i = 0; i < batchForm.employeeIds.length; i++) {
+                // 计算当前轮换位置
+                const currentIndex = (rotationIndex + i) % batchForm.employeeIds.length;
+                const currentEmployeeId = batchForm.employeeIds[currentIndex];
                 
-                // 首先按工时排序
-                if (hoursA !== hoursB) {
-                  return hoursA - hoursB;
+                // 检查当前员工是否请假
+                const isCurrentEmployeeOnLeave = isEmployeeOnLeave(
+                  currentEmployeeId, 
+                  date, 
+                  selectedScheduleId.value, 
+                  batchForm.dutyShift, 
+                  leaveInfo
+                );
+                
+                if (!isCurrentEmployeeOnLeave) {
+                  // 当前员工未请假，可以直接使用
+                  selectedEmployeeId = currentEmployeeId;
+                  rotationIndex = (currentIndex + 1) % batchForm.employeeIds.length;
+                  break;
+                } else {
+                  // 当前员工请假，检查是否有顶岗人员
+                  const substituteKey = `${currentEmployeeId}_${date}_${batchForm.dutyShift}`;
+                  const substituteEmployeeId = substituteInfo.get(substituteKey);
+                  
+                  if (substituteEmployeeId) {
+                    // 有顶岗人员，使用顶岗人员
+                    selectedEmployeeId = substituteEmployeeId;
+                    rotationIndex = (currentIndex + 1) % batchForm.employeeIds.length;
+                    break;
+                  }
                 }
-                
-                // 工时相同的，按原始员工列表的顺序排序
-                return batchForm.employeeIds.indexOf(a) - batchForm.employeeIds.indexOf(b);
-              });
+              }
               
-              // 选择工时最少的员工
-              if (sortedAvailableEmployees.length > 0) {
-                const selectedEmployeeId = sortedAvailableEmployees[0];
-                
+              // 如果找到了合适的员工，进行排班
+              if (selectedEmployeeId) {
                 assignments.push({
                   scheduleId: selectedScheduleId.value,
                   dutyDate: date,
