@@ -127,6 +127,8 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
                         // 已排班，替换为顶岗人员
                         for (DutyAssignment assignment : existingAssignments) {
                             assignment.setEmployeeId(substituteEmployeeId);
+                            // 确保顶岗人显示为有效
+                            assignment.setStatus(1);
                             dutyAssignmentService.updateById(assignment);
                         }
                     } else {

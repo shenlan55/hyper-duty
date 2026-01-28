@@ -163,45 +163,34 @@
             <el-radio value="rejected">拒绝</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item v-if="approveForm.approvalStatus === 'approved'" label="排班处理" prop="scheduleAction">
-          <el-radio-group v-model="approveForm.scheduleAction">
-            <el-radio value="check">检查排班</el-radio>
-            <el-radio value="substitute">选择顶岗人员</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'substitute'" label="顶岗人员选择">
-          <div v-if="substituteData.length === 0" class="text-center py-4">
-            <el-button type="primary" @click="generateSubstituteSchedule">生成顶岗排班表</el-button>
+        <el-form-item v-if="approveForm.approvalStatus === 'approved'" label="排班处理">
+          <el-button type="primary" @click="checkSchedule">检查排班状态</el-button>
+          <div v-if="scheduleChecked" style="margin-top: 10px">
+            <el-tag :type="scheduleStatus.type">{{ scheduleStatus.text }}</el-tag>
+            <div v-if="substituteData.length === 0" class="text-center py-4">
+              <el-button type="primary" @click="generateSubstituteSchedule">生成顶岗排班表</el-button>
+            </div>
+            <div v-else>
+              <el-button type="primary" size="small" @click="selectAllSubstitutes">一键选择</el-button>
+              <el-table :data="substituteData" style="width: 100%; margin-top: 10px">
+                <el-table-column prop="date" label="日期" width="120" />
+                <el-table-column prop="shiftName" label="班次" width="120" />
+                <el-table-column prop="originalEmployee" label="原值班人" width="120" />
+                <el-table-column label="顶岗人员" width="200">
+                  <template #default="scope">
+                    <el-select v-model="scope.row.substituteEmployeeId" placeholder="选择顶岗人员" style="width: 100%">
+                      <el-option
+                        v-for="employee in availableSubstitutes"
+                        :key="employee.id"
+                        :label="employee.employeeName"
+                        :value="employee.id"
+                      />
+                    </el-select>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
           </div>
-          <div v-else>
-            <el-button type="primary" size="small" @click="selectAllSubstitutes">一键选择</el-button>
-            <el-table :data="substituteData" style="width: 100%; margin-top: 10px">
-              <el-table-column prop="date" label="日期" width="120" />
-              <el-table-column prop="shiftName" label="班次" width="120" />
-              <el-table-column prop="originalEmployee" label="原值班人" width="120" />
-              <el-table-column label="顶岗人员" width="200">
-                <template #default="scope">
-                  <el-select v-model="scope.row.substituteEmployeeId" placeholder="选择顶岗人员" style="width: 100%">
-                    <el-option
-                      v-for="employee in availableSubstitutes"
-                      :key="employee.id"
-                      :label="employee.employeeName"
-                      :value="employee.id"
-                    />
-                  </el-select>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </el-form-item>
-        <el-form-item v-if="approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'check'" label="排班状态">
-          <el-tag :type="scheduleStatus.type">{{ scheduleStatus.text }}</el-tag>
-          <el-button v-if="scheduleStatus.type === 'success'" type="primary" size="small" @click="handleConfirmSchedule">
-            确认排班完成
-          </el-button>
-          <el-button v-if="scheduleStatus.type === 'warning'" type="primary" size="small" @click="goToSchedule">
-            去排班
-          </el-button>
         </el-form-item>
         <el-form-item v-if="approveForm.approvalStatus === 'rejected'" label="拒绝原因" prop="rejectReason">
           <el-input
@@ -352,6 +341,7 @@ const approveForm = reactive({
 
 const substituteData = ref([])
 const availableSubstitutes = ref([])
+const scheduleChecked = ref(false)
 
 const approveRules = {
   approvalStatus: [
@@ -563,6 +553,11 @@ const openApproveDialog = (row) => {
   approveForm.approvalStatus = 'approved'
   approveForm.rejectReason = ''
   approveForm.approvalOpinion = ''
+  // 重置检查状态和顶岗数据
+  scheduleChecked.value = false
+  substituteData.value = []
+  scheduleStatus.type = 'info'
+  scheduleStatus.text = '未检查'
   approveDialogVisible.value = true
 }
 
@@ -579,12 +574,14 @@ const handleApprove = async () => {
     await approveFormRef.value.validate()
     approveLoading.value = true
     
-    if (approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'check') {
-      await checkSchedule()
-      return
-    }
-    
-    if (approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'substitute') {
+    if (approveForm.approvalStatus === 'approved') {
+      // 验证是否已经检查了排班状态
+      if (!scheduleChecked.value) {
+        ElMessage.warning('请先检查排班状态')
+        approveLoading.value = false
+        return
+      }
+      
       // 验证是否所有顶岗人员都已选择
       const hasEmptySubstitute = substituteData.value.some(item => !item.substituteEmployeeId)
       if (hasEmptySubstitute) {
@@ -599,7 +596,7 @@ const handleApprove = async () => {
       approveForm.approverId,
       approveForm.approvalStatus,
       approveForm.approvalStatus === 'rejected' ? approveForm.rejectReason : approveForm.approvalOpinion,
-      approveForm.scheduleAction,
+      'substitute', // 固定使用substitute作为排班处理方式
       substituteData.value // 传递顶岗人员数据
     )
     
@@ -619,11 +616,9 @@ const handleApprove = async () => {
 }
 
 const handleApprovalStatusChange = (status) => {
-  if (status === 'rejected') {
-    approveForm.scheduleAction = 'check'
-  } else {
-    approveForm.scheduleAction = 'check'
-  }
+  // 重置检查状态
+  scheduleChecked.value = false
+  substituteData.value = []
 }
 
 const generateSubstituteSchedule = async () => {
@@ -705,13 +700,17 @@ const checkSchedule = async () => {
     if (response.code === 200) {
       if (response.data.hasSchedule) {
         scheduleStatus.type = 'warning'
-        scheduleStatus.text = '已有排班，建议选择顶岗人员'
-        ElMessage.warning('申请人请假期间已有排班，建议选择顶岗人员')
+        scheduleStatus.text = '已有排班，请选择顶岗人员'
+        ElMessage.warning('申请人请假期间已有排班，请选择顶岗人员')
       } else {
         scheduleStatus.type = 'info'
         scheduleStatus.text = '无排班，需要选择顶岗人员'
         ElMessage.info('申请人请假期间无排班，需要选择顶岗人员')
       }
+      // 设置检查状态为已检查
+      scheduleChecked.value = true
+      // 生成顶岗排班表
+      await generateSubstituteSchedule()
     }
   } catch (error) {
     console.error('检查排班失败:', error)
