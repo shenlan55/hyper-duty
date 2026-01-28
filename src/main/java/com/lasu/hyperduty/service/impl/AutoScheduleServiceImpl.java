@@ -18,6 +18,7 @@ import com.lasu.hyperduty.service.DutyScheduleService;
 import com.lasu.hyperduty.service.DutyShiftConfigService;
 import com.lasu.hyperduty.service.EmployeeAvailableTimeService;
 import com.lasu.hyperduty.service.LeaveRequestService;
+import com.lasu.hyperduty.service.LeaveSubstituteService;
 import com.lasu.hyperduty.service.SysEmployeeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -58,6 +59,9 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
 
     @Autowired
     private LeaveRequestService leaveRequestService;
+    
+    @Autowired
+    private LeaveSubstituteService leaveSubstituteService;
 
     @Override
     public List<DutyAssignment> generateAutoSchedule(Long scheduleId, LocalDate startDate, LocalDate endDate, Long ruleId) {
@@ -676,8 +680,11 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                     continue;
                 }
                 
-                // 过滤出当天没有请假的员工
+                // 过滤出当天没有请假的员工，或有请假但有顶岗人员的情况
                 List<SysEmployee> dayAvailableEmployees = new ArrayList<>();
+                // 记录需要替换的员工和对应的顶岗人员
+                Map<Long, Long> substituteMap = new HashMap<>();
+                
                 for (SysEmployee employee : groupEmployees) {
                     // 检查员工是否在当天、当前值班表、当前班次请假
                     boolean isOnLeave = false;
@@ -693,6 +700,12 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                                     Long dutyShift = Long.parseLong(shiftType);
                                     if (shiftConfigIds.contains(dutyShift)) {
                                         isOnLeave = true;
+                                        // 检查是否有顶岗人员
+                                        // 注意：这里使用dutyShift作为shiftConfigId查询，因为前端传递的是班次配置ID
+                                        Long substituteEmployeeId = findSubstituteEmployee(employee.getId(), currentDate, dutyShift);
+                                        if (substituteEmployeeId != null) {
+                                            substituteMap.put(employee.getId(), substituteEmployeeId);
+                                        }
                                     }
                                 } catch (NumberFormatException e) {
                                     // 班次ID格式错误，跳过
@@ -707,6 +720,39 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                     }
                 }
                 
+                // 添加顶岗人员到可用员工列表
+                for (Map.Entry<Long, Long> entry : substituteMap.entrySet()) {
+                    Long originalEmployeeId = entry.getKey();
+                    Long substituteEmployeeId = entry.getValue();
+                    // 查找顶岗人员的员工信息
+                    SysEmployee substituteEmployee = sysEmployeeService.getById(substituteEmployeeId);
+                    if (substituteEmployee != null && substituteEmployee.getStatus() == 1) {
+                        // 检查顶岗人员当天是否也请假
+                        boolean substituteOnLeave = false;
+                        Map<LocalDate, Map<Long, List<Long>>> substituteLeaveMap = leaveInfo.get(substituteEmployeeId);
+                        if (substituteLeaveMap != null) {
+                            Map<Long, List<Long>> scheduleLeaveMap = substituteLeaveMap.get(currentDate);
+                            if (scheduleLeaveMap != null) {
+                                List<Long> shiftConfigIds = scheduleLeaveMap.get(scheduleId);
+                                if (shiftConfigIds != null) {
+                                    try {
+                                        Long dutyShift = Long.parseLong(shiftType);
+                                        if (shiftConfigIds.contains(dutyShift)) {
+                                            substituteOnLeave = true;
+                                        }
+                                    } catch (NumberFormatException e) {
+                                        // 班次ID格式错误，跳过
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (!substituteOnLeave) {
+                            dayAvailableEmployees.add(substituteEmployee);
+                        }
+                    }
+                }
+                
                 if (dayAvailableEmployees.isEmpty()) {
                     // 当天该组没有可用员工，跳过
                     System.out.println("日期 " + currentDate + " 第 " + (groupIndex + 1) + " 组没有可用员工，跳过排班");
@@ -714,24 +760,65 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                 }
                 
                 // 为该组当天生成排班
+                // 优先使用顶岗人员替换请假人员
+                List<SysEmployee> assignedEmployees = new ArrayList<>();
+                
+                // 首先处理顶岗人员替换
+                for (Map.Entry<Long, Long> entry : substituteMap.entrySet()) {
+                    Long originalEmployeeId = entry.getKey();
+                    Long substituteEmployeeId = entry.getValue();
+                    
+                    // 查找顶岗人员的员工信息
+                    SysEmployee substituteEmployee = sysEmployeeService.getById(substituteEmployeeId);
+                    if (substituteEmployee != null && substituteEmployee.getStatus() == 1) {
+                        // 检查顶岗人员是否已经被分配
+                        if (!assignedEmployees.contains(substituteEmployee)) {
+                            // 创建顶岗人员的排班记录
+                            DutyAssignment assignment = new DutyAssignment();
+                            assignment.setScheduleId(scheduleId);
+                            assignment.setDutyDate(currentDate);
+                            assignment.setDutyShift(Integer.parseInt(shiftType)); // 直接使用班次ID作为dutyShift
+                            assignment.setEmployeeId(substituteEmployee.getId());
+                            assignment.setStatus(1);
+                            assignment.setCreateTime(LocalDateTime.now());
+                            assignment.setUpdateTime(LocalDateTime.now());
+                            
+                            assignments.add(assignment);
+                            assignedEmployees.add(substituteEmployee);
+                            
+                            // 如果已经满足人数要求，直接退出
+                            if (assignedEmployees.size() >= employeeCount) {
+                                break;
+                            }
+                        }
+                    }
+                }
+                
                 // 使用组级别的轮换索引，确保顺次排班
                 int rotationIndex = groupRotationIndices.getOrDefault(groupIndex, 0);
                 
-                for (int i = 0; i < employeeCount && i < dayAvailableEmployees.size(); i++) {
-                    // 计算当前应该选择的员工索引，确保轮换顺序的连续性
-                    int employeeIndex = (rotationIndex + i) % dayAvailableEmployees.size();
-                    SysEmployee employee = dayAvailableEmployees.get(employeeIndex);
-                    
-                    DutyAssignment assignment = new DutyAssignment();
-                    assignment.setScheduleId(scheduleId);
-                    assignment.setDutyDate(currentDate);
-                    assignment.setDutyShift(Integer.parseInt(shiftType)); // 直接使用班次ID作为dutyShift
-                    assignment.setEmployeeId(employee.getId());
-                    assignment.setStatus(1);
-                    assignment.setCreateTime(LocalDateTime.now());
-                    assignment.setUpdateTime(LocalDateTime.now());
-                    
-                    assignments.add(assignment);
+                // 如果还需要更多员工，使用轮班顺序选择
+                if (assignedEmployees.size() < employeeCount) {
+                    for (int i = 0; i < dayAvailableEmployees.size() && assignedEmployees.size() < employeeCount; i++) {
+                        // 计算当前应该选择的员工索引，确保轮换顺序的连续性
+                        int employeeIndex = (rotationIndex + i) % dayAvailableEmployees.size();
+                        SysEmployee employee = dayAvailableEmployees.get(employeeIndex);
+                        
+                        // 跳过已经分配的员工
+                        if (!assignedEmployees.contains(employee)) {
+                            DutyAssignment assignment = new DutyAssignment();
+                            assignment.setScheduleId(scheduleId);
+                            assignment.setDutyDate(currentDate);
+                            assignment.setDutyShift(Integer.parseInt(shiftType)); // 直接使用班次ID作为dutyShift
+                            assignment.setEmployeeId(employee.getId());
+                            assignment.setStatus(1);
+                            assignment.setCreateTime(LocalDateTime.now());
+                            assignment.setUpdateTime(LocalDateTime.now());
+                            
+                            assignments.add(assignment);
+                            assignedEmployees.add(employee);
+                        }
+                    }
                 }
                 
                 // 更新组级别的轮换索引
@@ -781,5 +868,32 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
         shiftTypeMap.put("选择班次", 0);
         
         return shiftTypeMap.getOrDefault(shiftType, 0);
+    }
+    
+    /**
+     * 查找请假员工的顶岗人员
+     * @param originalEmployeeId 原始员工ID
+     * @param dutyDate 值班日期
+     * @param shiftConfigId 班次配置ID
+     * @return 顶岗人员ID，如果没有则返回null
+     */
+    private Long findSubstituteEmployee(Long originalEmployeeId, LocalDate dutyDate, Long shiftConfigId) {
+        try {
+            // 查询请假顶岗信息
+            List<com.lasu.hyperduty.entity.LeaveSubstitute> substitutes = leaveSubstituteService.lambdaQuery()
+                    .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getOriginalEmployeeId, originalEmployeeId)
+                    .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getDutyDate, dutyDate)
+                    .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getShiftConfigId, shiftConfigId)
+                    .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getStatus, 1)
+                    .list();
+            
+            if (!substitutes.isEmpty()) {
+                return substitutes.get(0).getSubstituteEmployeeId();
+            }
+        } catch (Exception e) {
+            // 查找顶岗人员失败，记录错误但继续排班
+            System.err.println("查找顶岗人员失败: " + e.getMessage());
+        }
+        return null;
     }
 }

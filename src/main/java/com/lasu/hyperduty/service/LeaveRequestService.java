@@ -13,7 +13,7 @@ public interface LeaveRequestService extends IService<LeaveRequest> {
 
     LeaveRequest submitLeaveRequest(LeaveRequest leaveRequest);
 
-    boolean approveLeaveRequest(Long requestId, Long approverId, String approvalStatus, String opinion, String scheduleAction, String scheduleType, String scheduleDateRange);
+    boolean approveLeaveRequest(Long requestId, Long approverId, String approvalStatus, String opinion, String scheduleAction, List<Map<String, Object>> substituteData);
 
     List<LeaveRequest> getPendingApprovals(Long approverId);
 
@@ -79,4 +79,14 @@ public interface LeaveRequestService extends IService<LeaveRequest> {
      * @return 分页结果
      */
     IPage<LeaveRequest> getApprovedApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String approvalStatus, String startDate, String endDate);
+
+    /**
+     * 获取可用的顶岗人员
+     * @param scheduleId 值班表ID
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @param leaveEmployeeId 请假员工ID
+     * @return 可用的顶岗人员列表
+     */
+    List<com.lasu.hyperduty.entity.SysEmployee> getAvailableSubstitutes(Long scheduleId, String startDate, String endDate, Long leaveEmployeeId);
 }

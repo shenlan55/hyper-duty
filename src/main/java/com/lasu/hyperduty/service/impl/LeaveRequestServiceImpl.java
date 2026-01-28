@@ -10,6 +10,8 @@ import com.lasu.hyperduty.mapper.LeaveRequestMapper;
 import com.lasu.hyperduty.service.DutyAssignmentService;
 import com.lasu.hyperduty.service.DutyScheduleEmployeeService;
 import com.lasu.hyperduty.service.LeaveRequestService;
+import com.lasu.hyperduty.service.LeaveSubstituteService;
+import com.lasu.hyperduty.service.SysEmployeeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +33,12 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
 
     @Autowired
     private DutyScheduleEmployeeService dutyScheduleEmployeeService;
+
+    @Autowired
+    private SysEmployeeService sysEmployeeService;
+
+    @Autowired
+    private LeaveSubstituteService leaveSubstituteService;
 
     @Override
     public String generateRequestNo() {
@@ -64,7 +72,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public boolean approveLeaveRequest(Long requestId, Long approverId, String approvalStatus, String opinion, String scheduleAction, String scheduleType, String scheduleDateRange) {
+    public boolean approveLeaveRequest(Long requestId, Long approverId, String approvalStatus, String opinion, String scheduleAction, List<Map<String, Object>> substituteData) {
         LeaveRequest request = getById(requestId);
         if (request == null) {
             return false;
@@ -87,10 +95,8 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         }
 
         if ("approved".equals(approvalStatus) && "check".equals(scheduleAction)) {
+            // 只检查排班状态，不阻止审批
             Map<String, Object> scheduleCheck = checkEmployeeSchedule(request.getEmployeeId(), request.getStartDate().toString(), request.getEndDate().toString());
-            if ((Boolean) scheduleCheck.get("hasSchedule")) {
-                return false;
-            }
         }
 
         request.setApprovalStatus(approvalStatus);
@@ -101,7 +107,38 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
             request.setRejectReason(opinion);
         }
 
-        if ("approved".equals(approvalStatus) && "auto".equals(scheduleAction)) {
+        if ("approved".equals(approvalStatus) && "substitute".equals(scheduleAction)) {
+            // 处理顶岗人员排班
+            if (substituteData != null && !substituteData.isEmpty()) {
+                for (Map<String, Object> data : substituteData) {
+                    String date = (String) data.get("date");
+                    Long shiftId = ((Number) data.get("shiftId")).longValue();
+                    Long substituteEmployeeId = ((Number) data.get("substituteEmployeeId")).longValue();
+                    
+                    // 检查是否已有排班
+                    List<DutyAssignment> existingAssignments = dutyAssignmentService.lambdaQuery()
+                            .eq(DutyAssignment::getScheduleId, request.getScheduleId())
+                            .eq(DutyAssignment::getEmployeeId, request.getEmployeeId())
+                            .eq(DutyAssignment::getDutyDate, LocalDate.parse(date))
+                            .eq(DutyAssignment::getShiftConfigId, shiftId)
+                            .list();
+                    
+                    if (!existingAssignments.isEmpty()) {
+                        // 已排班，替换为顶岗人员
+                        for (DutyAssignment assignment : existingAssignments) {
+                            assignment.setEmployeeId(substituteEmployeeId);
+                            dutyAssignmentService.updateById(assignment);
+                        }
+                    } else {
+                        // 未排班，不创建新的排班记录
+                        // 根据用户要求：没有安排排班时，不存在替换的情况，顶岗人就不用加到值班安排
+                    }
+                }
+                
+                // 保存顶岗信息到数据库
+                leaveSubstituteService.saveSubstitutes(requestId, request.getEmployeeId(), substituteData);
+            }
+            
             request.setScheduleCompleted(1);
             request.setScheduleCompletedTime(LocalDateTime.now());
             request.setScheduleCompletedBy(approverId);
@@ -407,5 +444,37 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         queryWrapper.orderByDesc("update_time");
         
         return this.page(iPage, queryWrapper);
+    }
+
+    @Override
+    public List<com.lasu.hyperduty.entity.SysEmployee> getAvailableSubstitutes(Long scheduleId, String startDate, String endDate, Long leaveEmployeeId) {
+        // 获取值班表中的所有员工
+        List<com.lasu.hyperduty.entity.DutyScheduleEmployee> scheduleEmployees = dutyScheduleEmployeeService.lambdaQuery()
+                .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getScheduleId, scheduleId)
+                .list();
+        
+        // 提取员工ID列表
+        List<Long> employeeIds = scheduleEmployees.stream()
+                .map(com.lasu.hyperduty.entity.DutyScheduleEmployee::getEmployeeId)
+                .collect(java.util.stream.Collectors.toList());
+        
+        // 排除请假的员工
+        if (employeeIds.contains(leaveEmployeeId)) {
+            employeeIds.remove(leaveEmployeeId);
+        }
+        
+        // 获取请假期间也请假的员工
+        Map<Long, Map<String, Map<String, List<Long>>>> leaveInfo = getEmployeeLeaveInfo(employeeIds, startDate, endDate);
+        List<Long> leaveDuringEmployees = leaveInfo.keySet().stream().collect(java.util.stream.Collectors.toList());
+        
+        // 排除请假期间也请假的员工
+        employeeIds.removeAll(leaveDuringEmployees);
+        
+        // 根据员工ID列表查询员工信息
+        if (employeeIds.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        
+        return sysEmployeeService.listByIds(employeeIds);
     }
 }

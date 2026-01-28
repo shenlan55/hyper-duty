@@ -2,7 +2,9 @@ package com.lasu.hyperduty.controller;
 
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.LeaveRequest;
+import com.lasu.hyperduty.entity.LeaveSubstitute;
 import com.lasu.hyperduty.service.LeaveRequestService;
+import com.lasu.hyperduty.service.LeaveSubstituteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +18,9 @@ public class LeaveRequestController {
 
     @Autowired
     private LeaveRequestService leaveRequestService;
+
+    @Autowired
+    private LeaveSubstituteService leaveSubstituteService;
 
     @GetMapping("/list")
     public ResponseResult<List<LeaveRequest>> getAllLeaveRequests() {
@@ -72,8 +77,9 @@ public class LeaveRequestController {
                                                  @RequestParam(required = false) String opinion,
                                                  @RequestParam(required = false) String scheduleAction,
                                                  @RequestParam(required = false) String scheduleType,
-                                                 @RequestParam(required = false) String scheduleDateRange) {
-        boolean success = leaveRequestService.approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, scheduleType, scheduleDateRange);
+                                                 @RequestParam(required = false) String scheduleDateRange,
+                                                 @RequestBody(required = false) List<Map<String, Object>> substituteData) {
+        boolean success = leaveRequestService.approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, substituteData);
         return success ? ResponseResult.success() : ResponseResult.error("审批失败");
     }
 
@@ -165,5 +171,44 @@ public class LeaveRequestController {
             @RequestParam("employeeIds") List<Long> employeeIds) {
         Map<Long, Map<String, Map<String, List<Long>>>> leaveInfo = leaveRequestService.getEmployeeLeaveInfo(employeeIds, startDate, endDate);
         return ResponseResult.success(leaveInfo);
+    }
+
+    /**
+     * 获取可用的顶岗人员
+     */
+    @GetMapping("/available-substitutes")
+    public ResponseResult<List<com.lasu.hyperduty.entity.SysEmployee>> getAvailableSubstitutes(
+            @RequestParam Long scheduleId,
+            @RequestParam String startDate,
+            @RequestParam String endDate,
+            @RequestParam Long leaveEmployeeId) {
+        List<com.lasu.hyperduty.entity.SysEmployee> availableSubstitutes = leaveRequestService.getAvailableSubstitutes(scheduleId, startDate, endDate, leaveEmployeeId);
+        return ResponseResult.success(availableSubstitutes);
+    }
+
+    /**
+     * 获取请假顶岗信息
+     */
+    @GetMapping("/substitutes/{leaveRequestId}")
+    public ResponseResult<List<LeaveSubstitute>> getLeaveSubstitutes(@PathVariable Long leaveRequestId) {
+        List<LeaveSubstitute> substitutes = leaveSubstituteService.getByLeaveRequestId(leaveRequestId);
+        return ResponseResult.success(substitutes);
+    }
+
+    /**
+     * 根据员工ID和日期范围获取顶岗信息
+     */
+    @GetMapping("/substitutes-by-employees")
+    public ResponseResult<List<LeaveSubstitute>> getSubstitutesByEmployees(
+            @RequestParam List<Long> employeeIds,
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+        List<LeaveSubstitute> substitutes = leaveSubstituteService.lambdaQuery()
+                .in(LeaveSubstitute::getOriginalEmployeeId, employeeIds)
+                .ge(LeaveSubstitute::getDutyDate, java.time.LocalDate.parse(startDate))
+                .le(LeaveSubstitute::getDutyDate, java.time.LocalDate.parse(endDate))
+                .eq(LeaveSubstitute::getStatus, 1)
+                .list();
+        return ResponseResult.success(substitutes);
     }
 }

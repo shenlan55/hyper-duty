@@ -372,7 +372,7 @@ import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleM
 import { getEmployeeList } from '../../api/employee'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { holidayApi } from '../../api/duty/holiday'
-import { getEmployeeLeaveInfo as getEmployeeLeaveInfoAPI } from '../../api/duty/leaveRequest'
+import { getEmployeeLeaveInfo as getEmployeeLeaveInfoAPI, getSubstitutesByEmployees } from '../../api/duty/leaveRequest'
 import dayjs from 'dayjs'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
@@ -916,6 +916,34 @@ const isEmployeeOnLeave = (employeeId, date, scheduleId, dutyShift, leaveInfo) =
   return scheduleLeaves.includes(dutyShift)
 }
 
+// 获取所有请假人员的顶岗信息
+const fetchAllSubstituteInfo = async (employeeIds, startDate, endDate) => {
+  try {
+    if (!employeeIds || employeeIds.length === 0) {
+      return new Map()
+    }
+    
+    // 调用后端API获取顶岗信息
+    const response = await getSubstitutesByEmployees(employeeIds, startDate, endDate)
+    
+    if (response.code === 200) {
+      const substitutes = response.data
+      const substituteMap = new Map()
+      
+      // 构建顶岗信息映射，键格式为：employeeId_date_dutyShift
+      substitutes.forEach(substitute => {
+        const key = `${substitute.originalEmployeeId}_${substitute.dutyDate}_${substitute.shiftConfigId}`
+        substituteMap.set(key, substitute.substituteEmployeeId)
+      })
+      
+      return substituteMap
+    }
+  } catch (error) {
+    console.error('获取顶岗信息失败:', error)
+  }
+  return new Map()
+}
+
 const handleBatchSave = async () => {
   try {
     await batchFormRef.value.validate()
@@ -969,16 +997,49 @@ const handleBatchSave = async () => {
           const assignments = []
           let rotationIndex = 0 // 维护全局的轮换索引
           
-          filteredDates.forEach((date, index) => {
-            // 过滤出当天没有请假的员工
-            const dayAvailableEmployees = batchForm.employeeIds.filter(employeeId => {
-              return !isEmployeeOnLeave(employeeId, date, selectedScheduleId.value, batchForm.dutyShift, leaveInfo)
-            })
+          // 首先获取所有请假人员的顶岗信息
+          const substituteInfo = await fetchAllSubstituteInfo(batchForm.employeeIds, startDate, endDate)
+          
+          for (const date of filteredDates) {
+            // 首先处理请假人员的顶岗替换
+            let substituteMap = new Map()
+            
+            // 检查每个员工是否请假，如果请假且有顶岗人员，则记录顶岗关系
+            for (const employeeId of batchForm.employeeIds) {
+              if (isEmployeeOnLeave(employeeId, date, selectedScheduleId.value, batchForm.dutyShift, leaveInfo)) {
+                // 查找该员工在当天该班次的顶岗人员
+                const substituteKey = `${employeeId}_${date}_${batchForm.dutyShift}`
+                const substituteEmployeeId = substituteInfo.get(substituteKey)
+                if (substituteEmployeeId) {
+                  substituteMap.set(employeeId, substituteEmployeeId)
+                }
+              }
+            }
+            
+            // 过滤出当天没有请假的员工，加上顶岗人员
+            const dayAvailableEmployees = []
+            const usedSubstitutes = new Set()
+            
+            // 首先添加顶岗人员
+            for (const [originalEmployeeId, substituteEmployeeId] of substituteMap.entries()) {
+              if (!usedSubstitutes.has(substituteEmployeeId)) {
+                dayAvailableEmployees.push(substituteEmployeeId)
+                usedSubstitutes.add(substituteEmployeeId)
+              }
+            }
+            
+            // 然后添加其他没有请假的员工
+            for (const employeeId of batchForm.employeeIds) {
+              if (!isEmployeeOnLeave(employeeId, date, selectedScheduleId.value, batchForm.dutyShift, leaveInfo) && 
+                  !usedSubstitutes.has(employeeId)) {
+                dayAvailableEmployees.push(employeeId)
+              }
+            }
             
             if (dayAvailableEmployees.length === 0) {
               // 当天没有可用员工，跳过
               console.log(`日期 ${date} 没有可用员工，跳过排班`)
-              return
+              continue
             }
             
             if (batchForm.scheduleType === 1) {
@@ -1033,7 +1094,7 @@ const handleBatchSave = async () => {
                 })
               })
             }
-          })
+          }
           
           if (assignments.length === 0) {
             ElMessage.warning('所选日期范围内没有可用员工进行排班')
