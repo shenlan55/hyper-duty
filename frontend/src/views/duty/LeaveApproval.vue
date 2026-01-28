@@ -147,6 +147,7 @@
         <el-descriptions :column="1" border>
           <el-descriptions-item label="申请编号">{{ currentRequest.requestNo }}</el-descriptions-item>
           <el-descriptions-item label="申请人">{{ getEmployeeName(currentRequest.employeeId) }}</el-descriptions-item>
+          <el-descriptions-item label="值班表">{{ getScheduleName(currentRequest.scheduleId) }}</el-descriptions-item>
           <el-descriptions-item label="请假类型">
             <el-tag :type="getLeaveTypeColor(currentRequest.leaveType)">
               {{ getLeaveTypeName(currentRequest.leaveType) }}
@@ -422,6 +423,13 @@ const getShiftNames = (shiftConfigIds) => {
   })
   
   return shiftNames.length > 0 ? shiftNames.join('、') : '未知'
+}
+
+const getScheduleName = (scheduleId) => {
+  if (!scheduleId) return '未知'
+  
+  const schedule = scheduleList.value.find(s => s.id === scheduleId)
+  return schedule ? schedule.scheduleName : '未知'
 }
 
 const fetchEmployeeList = async () => {
