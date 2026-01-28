@@ -20,6 +20,16 @@
               <el-option label="已取消" value="cancelled" />
             </el-select>
           </el-form-item>
+          <el-form-item label="值班表">
+            <el-select v-model="filterForm.scheduleId" placeholder="请选择值班表" style="width: 200px;">
+              <el-option
+                v-for="schedule in scheduleList"
+                :key="schedule.id"
+                :label="schedule.scheduleName"
+                :value="schedule.id"
+              />
+            </el-select>
+          </el-form-item>
           <el-form-item label="开始日期">
             <el-date-picker
               v-model="filterForm.startDate"
@@ -49,6 +59,7 @@
         row-key="id"
       >
         <el-table-column prop="requestNo" label="申请编号" width="180" />
+        <el-table-column prop="scheduleName" label="值班表" width="150" show-overflow-tooltip />
         <el-table-column prop="originalEmployeeName" label="原值班人员" width="120" />
         <el-table-column prop="targetEmployeeName" label="目标值班人员" width="120" />
         <el-table-column label="调班信息" width="250">
@@ -106,7 +117,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="700px"
+      width="800px"
     >
       <el-form
         ref="formRef"
@@ -114,69 +125,158 @@
         :rules="rules"
         label-position="top"
       >
-        <el-form-item label="原值班人员" prop="originalEmployeeId">
+        <el-form-item label="值班表" prop="scheduleId">
           <el-select
-            v-model="form.originalEmployeeId"
-            placeholder="请选择原值班人员"
+            v-model="form.scheduleId"
+            placeholder="请选择值班表"
             style="width: 100%"
-            filterable
-            :filter-method="filterEmployee"
+            @change="handleScheduleChange"
           >
             <el-option
-              v-for="employee in employeeList"
-              :key="employee.id"
-              :label="employee.employeeName"
-              :value="employee.id"
+              v-for="schedule in scheduleList"
+              :key="schedule.id"
+              :label="schedule.scheduleName"
+              :value="schedule.id"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="目标值班人员" prop="targetEmployeeId">
-          <el-select
-            v-model="form.targetEmployeeId"
-            placeholder="请选择目标值班人员"
-            style="width: 100%"
-            filterable
-            :filter-method="filterEmployee"
-          >
-            <el-option
-              v-for="employee in employeeList"
-              :key="employee.id"
-              :label="employee.employeeName"
-              :value="employee.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="调班日期" prop="swapDate">
-              <el-date-picker
-                v-model="form.swapDate"
-                type="date"
-                placeholder="选择调班日期"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="调班班次" prop="swapShift">
-              <el-select v-model="form.swapShift" placeholder="请选择班次" style="width: 100%">
-                <el-option
-                  v-for="shiftConfig in shiftConfigList"
-                  :key="shiftConfig.id"
-                  :label="shiftConfig.shiftName"
-                  :value="shiftConfig.shiftType"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
+        
         <el-form-item label="调班原因" prop="reason">
           <el-input
             v-model="form.reason"
             placeholder="请输入调班原因"
             type="textarea"
-            :rows="4"
+            :rows="3"
           />
+        </el-form-item>
+        
+        <el-form-item label="调班详情" prop="swapDetails">
+          <div v-for="(detail, index) in form.swapDetails" :key="index" class="swap-detail-item">
+            <el-divider :content-position="'left'">调班组合 {{ index + 1 }}</el-divider>
+            <!-- 原值班人员信息 -->
+            <div class="swap-person-row">
+              <h4 class="person-title">原值班人员</h4>
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-form-item :prop="`swapDetails.${index}.originalEmployeeId`" :rules="[{ required: true, message: '请选择原值班人员', trigger: 'blur' }]">
+                    <template #label>
+                      <span class="detail-label">值班人员</span>
+                    </template>
+                    <el-select
+                      v-model="detail.originalEmployeeId"
+                      placeholder="请选择原值班人员"
+                      style="width: 100%"
+                      :disabled="!isLeader"
+                      filterable
+                    >
+                      <el-option
+                        v-for="employee in availableEmployeeList"
+                        :key="employee.id"
+                        :label="employee.employeeName"
+                        :value="employee.id"
+                      />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item :prop="`swapDetails.${index}.originalSwapDate`" :rules="[{ required: true, message: '请选择调班日期', trigger: 'blur' }]">
+                    <template #label>
+                      <span class="detail-label">调班日期</span>
+                    </template>
+                    <el-date-picker
+                      v-model="detail.originalSwapDate"
+                      type="date"
+                      placeholder="选择日期"
+                      style="width: 100%"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item :prop="`swapDetails.${index}.originalSwapShift`" :rules="[{ required: true, message: '请选择调班班次', trigger: 'blur' }]">
+                    <template #label>
+                      <span class="detail-label">调班班次</span>
+                    </template>
+                    <el-select v-model="detail.originalSwapShift" placeholder="请选择班次" style="width: 100%">
+                      <el-option
+                        v-for="shiftConfig in shiftConfigList"
+                        :key="shiftConfig.id"
+                        :label="shiftConfig.shiftName"
+                        :value="shiftConfig.shiftType"
+                      />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </div>
+            
+            <!-- 目标值班人员信息 -->
+            <div class="swap-person-row">
+              <h4 class="person-title">目标值班人员</h4>
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-form-item :prop="`swapDetails.${index}.targetEmployeeId`" :rules="[{ required: true, message: '请选择目标值班人员', trigger: 'blur' }]">
+                    <template #label>
+                      <span class="detail-label">值班人员</span>
+                    </template>
+                    <el-select
+                      v-model="detail.targetEmployeeId"
+                      placeholder="请选择目标值班人员"
+                      style="width: 100%"
+                      filterable
+                    >
+                      <el-option
+                        v-for="employee in availableEmployeeList"
+                        :key="employee.id"
+                        :label="employee.employeeName"
+                        :value="employee.id"
+                      />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item :prop="`swapDetails.${index}.targetSwapDate`" :rules="[{ required: true, message: '请选择调班日期', trigger: 'blur' }]">
+                    <template #label>
+                      <span class="detail-label">调班日期</span>
+                    </template>
+                    <el-date-picker
+                      v-model="detail.targetSwapDate"
+                      type="date"
+                      placeholder="选择日期"
+                      style="width: 100%"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item :prop="`swapDetails.${index}.targetSwapShift`" :rules="[{ required: true, message: '请选择调班班次', trigger: 'blur' }]">
+                    <template #label>
+                      <span class="detail-label">调班班次</span>
+                    </template>
+                    <el-select v-model="detail.targetSwapShift" placeholder="请选择班次" style="width: 100%">
+                      <el-option
+                        v-for="shiftConfig in shiftConfigList"
+                        :key="shiftConfig.id"
+                        :label="shiftConfig.shiftName"
+                        :value="shiftConfig.shiftType"
+                      />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </div>
+            <el-button 
+              v-if="form.swapDetails.length > 1"
+              type="danger" 
+              size="small" 
+              @click="removeSwapDetail(index)"
+              style="margin-top: 10px;"
+            >
+              删除调班组合
+            </el-button>
+          </div>
+          
+          <el-button type="primary" size="small" @click="addSwapDetail" style="margin-top: 10px;">
+            添加调班组合
+          </el-button>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -196,9 +296,10 @@
     >
       <el-descriptions :column="1" border>
         <el-descriptions-item label="申请编号">{{ currentSwapRequest.requestNo }}</el-descriptions-item>
+        <el-descriptions-item label="值班表">{{ getScheduleName(currentSwapRequest.scheduleId) }}</el-descriptions-item>
         <el-descriptions-item label="原值班人员">{{ getEmployeeName(currentSwapRequest.originalEmployeeId) }}</el-descriptions-item>
         <el-descriptions-item label="目标值班人员">{{ getEmployeeName(currentSwapRequest.targetEmployeeId) }}</el-descriptions-item>
-        <el-descriptions-item label="调班日期">{{ currentSwapRequest.swapDate }}</el-descriptions-item>
+        <el-descriptions-item label="调班日期">{{ formatDate(currentSwapRequest.swapDate) }}</el-descriptions-item>
         <el-descriptions-item label="调班班次">{{ getShiftName(currentSwapRequest.swapShift) }}</el-descriptions-item>
         <el-descriptions-item label="调班原因">{{ currentSwapRequest.reason }}</el-descriptions-item>
       </el-descriptions>
@@ -215,7 +316,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -226,8 +327,10 @@ import {
   getMySwapRequestsPage
 } from '../../api/duty/swapRequest'
 import { getEmployeeList } from '../../api/employee'
+import { getScheduleList, getScheduleEmployees } from '../../api/duty/schedule'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
+import { getUserInfo } from '../../utils/auth'
 
 const shiftApi = shiftConfigApi()
 
@@ -241,20 +344,38 @@ const formRef = ref()
 const requestList = ref([])
 const employeeList = ref([])
 const shiftConfigList = ref([])
+const scheduleList = ref([])
+const availableEmployeeList = ref([])
 const currentSwapRequest = ref({})
 const currentEmployeeId = ref(1)
+const isLeader = ref(false)
+
+// 获取当前用户信息
+const userInfo = getUserInfo()
+if (userInfo) {
+  currentEmployeeId.value = userInfo.employeeId
+  isLeader.value = userInfo.roles.includes('值班长')
+}
 
 const form = reactive({
   id: null,
-  originalEmployeeId: null,
-  targetEmployeeId: null,
-  swapDate: null,
-  swapShift: null,
-  reason: ''
+  scheduleId: null,
+  reason: '',
+  swapDetails: [
+    {
+      originalEmployeeId: null,
+      originalSwapDate: null,
+      originalSwapShift: null,
+      targetEmployeeId: null,
+      targetSwapDate: null,
+      targetSwapShift: null
+    }
+  ]
 })
 
 const filterForm = reactive({
   approvalStatus: '',
+  scheduleId: null,
   startDate: null,
   endDate: null
 })
@@ -267,17 +388,11 @@ const pagination = reactive({
 const total = ref(0)
 
 const rules = {
-  originalEmployeeId: [
-    { required: true, message: '请选择原值班人员', trigger: 'blur' }
+  scheduleId: [
+    { required: true, message: '请选择值班表', trigger: 'blur' }
   ],
-  targetEmployeeId: [
-    { required: true, message: '请选择目标值班人员', trigger: 'blur' }
-  ],
-  swapDate: [
-    { required: true, message: '请选择调班日期', trigger: 'blur' }
-  ],
-  swapShift: [
-    { required: true, message: '请选择调班班次', trigger: 'blur' }
+  reason: [
+    { required: true, message: '请输入调班原因', trigger: 'blur' }
   ]
 }
 
@@ -323,20 +438,25 @@ const getEmployeeName = (employeeId) => {
   return employee ? employee.employeeName : '未知'
 }
 
+const getScheduleName = (scheduleId) => {
+  const schedule = scheduleList.value.find(s => s.id === scheduleId)
+  return schedule ? schedule.scheduleName : '未知'
+}
+
 const filterEmployee = (query) => {
   if (query) {
-    return employeeList.value.filter(employee => 
+    return availableEmployeeList.value.filter(employee => 
       employee.employeeName.toLowerCase().includes(query.toLowerCase())
     )
   }
-  return employeeList.value
+  return availableEmployeeList.value
 }
 
 const fetchEmployeeList = async () => {
   try {
     const response = await getEmployeeList()
     if (response.code === 200) {
-      employeeList.value = response.data
+      employeeList.value = response.data.filter(emp => emp.status === 1)
     }
   } catch (error) {
     console.error('获取员工列表失败:', error)
@@ -354,6 +474,36 @@ const fetchShiftConfigList = async () => {
   }
 }
 
+const fetchScheduleList = async () => {
+  try {
+    const response = await getScheduleList()
+    if (response.code === 200) {
+      scheduleList.value = response.data.filter(schedule => schedule.status === 1)
+    }
+  } catch (error) {
+    console.error('获取值班表列表失败:', error)
+  }
+}
+
+const fetchAvailableEmployees = async (scheduleId) => {
+  try {
+    if (scheduleId) {
+      const response = await getScheduleEmployees(scheduleId)
+      if (response.code === 200) {
+        const employeeIds = response.data
+        // 根据员工ID列表，从employeeList中获取对应的员工对象
+        availableEmployeeList.value = employeeList.value.filter(emp => 
+          employeeIds.includes(emp.id)
+        )
+      }
+    } else {
+      availableEmployeeList.value = []
+    }
+  } catch (error) {
+    console.error('获取值班表人员失败:', error)
+  }
+}
+
 const fetchMySwapRequests = async () => {
   loading.value = true
   try {
@@ -362,6 +512,7 @@ const fetchMySwapRequests = async () => {
       pagination.currentPage,
       pagination.pageSize,
       filterForm.approvalStatus,
+      filterForm.scheduleId,
       filterForm.startDate,
       filterForm.endDate
     )
@@ -384,6 +535,7 @@ const handleFilter = () => {
 
 const resetFilter = () => {
   filterForm.approvalStatus = ''
+  filterForm.scheduleId = null
   filterForm.startDate = null
   filterForm.endDate = null
   pagination.currentPage = 1
@@ -398,6 +550,16 @@ const handleSizeChange = (size) => {
 const handleCurrentChange = (current) => {
   pagination.currentPage = current
   fetchMySwapRequests()
+}
+
+const handleScheduleChange = async (scheduleId) => {
+  await fetchAvailableEmployees(scheduleId)
+  // 非值班长只能选择自己
+  if (!isLeader.value) {
+    form.swapDetails.forEach(detail => {
+      detail.originalEmployeeId = currentEmployeeId.value
+    })
+  }
 }
 
 const openAddDialog = () => {
@@ -417,36 +579,104 @@ const resetForm = () => {
   }
   Object.assign(form, {
     id: null,
-    originalEmployeeId: null,
-    targetEmployeeId: null,
-    swapDate: null,
-    swapShift: null,
-    reason: ''
+    scheduleId: null,
+    reason: '',
+    swapDetails: [
+      {
+        originalEmployeeId: isLeader.value ? null : currentEmployeeId.value,
+        originalSwapDate: null,
+        originalSwapShift: null,
+        targetEmployeeId: null,
+        targetSwapDate: null,
+        targetSwapShift: null
+      }
+    ]
   })
+  availableEmployeeList.value = []
+}
+
+const addSwapDetail = () => {
+  form.swapDetails.push({
+    originalEmployeeId: isLeader.value ? null : currentEmployeeId.value,
+    originalSwapDate: null,
+    originalSwapShift: null,
+    targetEmployeeId: null,
+    targetSwapDate: null,
+    targetSwapShift: null
+  })
+}
+
+const removeSwapDetail = (index) => {
+  if (form.swapDetails.length > 1) {
+    form.swapDetails.splice(index, 1)
+  }
 }
 
 const handleSave = async () => {
   try {
+    // 先验证基本字段
     await formRef.value.validate()
-    dialogLoading.value = true
     
-    let response
-    if (form.id) {
-      response = await submitSwapRequest(form)
-    } else {
-      response = await submitSwapRequest(form)
+    // 手动验证调班详情
+    for (let i = 0; i < form.swapDetails.length; i++) {
+      const detail = form.swapDetails[i]
+      if (!detail.originalEmployeeId) {
+        ElMessage.error(`调班组合 ${i + 1}：请选择原值班人员`)
+        return
+      }
+      if (!detail.originalSwapDate) {
+        ElMessage.error(`调班组合 ${i + 1}：请选择原值班日期`)
+        return
+      }
+      if (!detail.originalSwapShift) {
+        ElMessage.error(`调班组合 ${i + 1}：请选择原值班班次`)
+        return
+      }
+      if (!detail.targetEmployeeId) {
+        ElMessage.error(`调班组合 ${i + 1}：请选择目标值班人员`)
+        return
+      }
+      if (!detail.targetSwapDate) {
+        ElMessage.error(`调班组合 ${i + 1}：请选择目标值班日期`)
+        return
+      }
+      if (!detail.targetSwapShift) {
+        ElMessage.error(`调班组合 ${i + 1}：请选择目标值班班次`)
+        return
+      }
     }
     
-    if (response.code === 200) {
+    dialogLoading.value = true
+    
+    // 构建调班申请数据
+    const swapRequests = form.swapDetails.map(detail => ({
+      scheduleId: form.scheduleId,
+      originalEmployeeId: detail.originalEmployeeId,
+      targetEmployeeId: detail.targetEmployeeId,
+      swapDate: detail.originalSwapDate,
+      swapShift: detail.originalSwapShift,
+      reason: form.reason
+    }))
+    
+    // 提交多个调班申请
+    let allSuccess = true
+    for (const swapRequest of swapRequests) {
+      const response = await submitSwapRequest(swapRequest)
+      if (response.code !== 200) {
+        allSuccess = false
+        ElMessage.error(response.message || '调班申请提交失败')
+        break
+      }
+    }
+    
+    if (allSuccess) {
       ElMessage.success('调班申请提交成功')
       dialogVisible.value = false
       fetchMySwapRequests()
-    } else {
-      ElMessage.error(response.message || '调班申请提交失败')
     }
   } catch (error) {
     console.error('提交调班申请失败:', error)
-    ElMessage.error('提交调班申请失败')
+    // 不显示通用错误，因为表单验证错误会单独处理
   } finally {
     dialogLoading.value = false
   }
@@ -458,7 +688,8 @@ const handleConfirm = async () => {
     
     const response = await confirmSwapRequest(
       currentSwapRequest.value.id,
-      currentEmployeeId.value
+      currentEmployeeId.value,
+      'approved'
     )
     
     if (response.code === 200) {
@@ -502,6 +733,7 @@ const handleDelete = async (id) => {
 onMounted(async () => {
   await fetchEmployeeList()
   await fetchShiftConfigList()
+  await fetchScheduleList()
   await fetchMySwapRequests()
 })
 </script>
@@ -526,5 +758,52 @@ onMounted(async () => {
 
 .content-card {
   margin-bottom: 10px;
+}
+
+.swap-detail-item {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.detail-label {
+  font-weight: 500;
+  color: #303133;
+}
+
+.person-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 10px;
+}
+
+.swap-person-row {
+  margin-bottom: 20px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.el-divider {
+  margin: 10px 0;
+}
+
+.el-form-item {
+  margin-bottom: 15px;
+}
+
+@media (max-width: 768px) {
+  .swap-detail-item {
+    padding: 10px;
+  }
+  
+  .el-col {
+    margin-bottom: 10px;
+  }
 }
 </style>

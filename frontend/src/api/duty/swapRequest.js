@@ -15,11 +15,11 @@ export function submitSwapRequest(data) {
   })
 }
 
-export function confirmSwapRequest(requestId, employeeId) {
+export function confirmSwapRequest(requestId, employeeId, confirmStatus) {
   return request({
     url: `/duty/swap-request/confirm/${requestId}`,
     method: 'put',
-    params: { employeeId }
+    params: { employeeId, confirmStatus }
   })
 }
 
@@ -30,7 +30,7 @@ export function deleteSwapRequest(id) {
   })
 }
 
-export function getMySwapRequestsPage(employeeId, page, size, approvalStatus, startDate, endDate) {
+export function getMySwapRequestsPage(employeeId, page, size, approvalStatus, scheduleId, startDate, endDate) {
   return request({
     url: `/duty/swap-request/my/page/${employeeId}`,
     method: 'get',
@@ -38,6 +38,7 @@ export function getMySwapRequestsPage(employeeId, page, size, approvalStatus, st
       page,
       size,
       approvalStatus,
+      scheduleId,
       startDate,
       endDate
     }

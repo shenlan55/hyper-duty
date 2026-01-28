@@ -392,6 +392,7 @@ CREATE TABLE IF NOT EXISTS swap_request (
     target_employee_id BIGINT NOT NULL COMMENT '目标值班人员ID',
     original_assignment_id BIGINT NOT NULL COMMENT '原值班安排ID',
     target_assignment_id BIGINT COMMENT '目标值班安排ID',
+    schedule_id BIGINT NOT NULL COMMENT '值班表ID',
     swap_date DATE NOT NULL COMMENT '调班日期',
     swap_shift INT NOT NULL COMMENT '调班班次',
     reason VARCHAR(500) COMMENT '调班原因',
@@ -409,10 +410,12 @@ CREATE TABLE IF NOT EXISTS swap_request (
     INDEX idx_target_employee (target_employee_id),
     INDEX idx_approval_status (approval_status),
     INDEX idx_swap_date (swap_date),
+    INDEX idx_schedule_id (schedule_id),
     FOREIGN KEY (original_employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE,
     FOREIGN KEY (target_employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE,
     FOREIGN KEY (original_assignment_id) REFERENCES duty_assignment(id) ON DELETE CASCADE,
-    FOREIGN KEY (target_assignment_id) REFERENCES duty_assignment(id) ON DELETE CASCADE
+    FOREIGN KEY (target_assignment_id) REFERENCES duty_assignment(id) ON DELETE CASCADE,
+    FOREIGN KEY (schedule_id) REFERENCES duty_schedule(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='调班记录表';
 
 -- 操作日志表
