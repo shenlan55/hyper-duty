@@ -281,7 +281,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         queryWrapper.in("employee_id", employeeIds);
         queryWrapper.ge("start_date", startDate);
         queryWrapper.le("end_date", endDate);
-        queryWrapper.in("approval_status", "approved", "pending"); // 只考虑已通过和待审批的请假
+        queryWrapper.eq("approval_status", "approved"); // 只考虑已通过的请假，待审批状态的请假不影响排班
         
         List<LeaveRequest> leaveRequests = this.list(queryWrapper);
         
