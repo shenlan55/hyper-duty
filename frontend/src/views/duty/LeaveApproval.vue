@@ -703,7 +703,7 @@ const selectAllSubstitutes = () => {
 
 const checkSchedule = async () => {
   try {
-    const response = await checkEmployeeSchedule(currentRequest.value.employeeId, currentRequest.value.startDate, currentRequest.value.endDate)
+    const response = await checkEmployeeSchedule(currentRequest.value.employeeId, currentRequest.value.startDate, currentRequest.value.endDate, currentRequest.value.scheduleId)
     
     if (response.code === 200) {
       if (response.data.hasSchedule) {

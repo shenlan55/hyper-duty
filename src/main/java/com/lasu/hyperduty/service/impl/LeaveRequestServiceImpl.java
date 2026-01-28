@@ -96,7 +96,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
 
         if ("approved".equals(approvalStatus) && "check".equals(scheduleAction)) {
             // 只检查排班状态，不阻止审批
-            Map<String, Object> scheduleCheck = checkEmployeeSchedule(request.getEmployeeId(), request.getStartDate().toString(), request.getEndDate().toString());
+            Map<String, Object> scheduleCheck = checkEmployeeSchedule(request.getEmployeeId(), request.getStartDate().toString(), request.getEndDate().toString(), request.getScheduleId());
         }
 
         request.setApprovalStatus(approvalStatus);
@@ -120,7 +120,11 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
                             .eq(DutyAssignment::getScheduleId, request.getScheduleId())
                             .eq(DutyAssignment::getEmployeeId, request.getEmployeeId())
                             .eq(DutyAssignment::getDutyDate, LocalDate.parse(date))
-                            .eq(DutyAssignment::getShiftConfigId, shiftId)
+                            .and(wrapper -> wrapper
+                                    .eq(DutyAssignment::getShiftConfigId, shiftId)
+                                    .or()
+                                    .eq(DutyAssignment::getDutyShift, shiftId.intValue())
+                            )
                             .list();
                     
                     if (!existingAssignments.isEmpty()) {
@@ -172,15 +176,21 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public Map<String, Object> checkEmployeeSchedule(Long employeeId, String startDate, String endDate) {
+    public Map<String, Object> checkEmployeeSchedule(Long employeeId, String startDate, String endDate, Long scheduleId) {
         java.time.LocalDate start = java.time.LocalDate.parse(startDate);
         java.time.LocalDate end = java.time.LocalDate.parse(endDate);
 
-        List<com.lasu.hyperduty.entity.DutyAssignment> assignments = dutyAssignmentService.lambdaQuery()
-                .eq(com.lasu.hyperduty.entity.DutyAssignment::getEmployeeId, employeeId)
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lasu.hyperduty.entity.DutyAssignment> queryWrapper = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        queryWrapper.eq(com.lasu.hyperduty.entity.DutyAssignment::getEmployeeId, employeeId)
                 .ge(com.lasu.hyperduty.entity.DutyAssignment::getDutyDate, start)
-                .le(com.lasu.hyperduty.entity.DutyAssignment::getDutyDate, end)
-                .list();
+                .le(com.lasu.hyperduty.entity.DutyAssignment::getDutyDate, end);
+
+        // 如果提供了scheduleId，只查询该值班表的排班
+        if (scheduleId != null) {
+            queryWrapper.eq(com.lasu.hyperduty.entity.DutyAssignment::getScheduleId, scheduleId);
+        }
+
+        List<com.lasu.hyperduty.entity.DutyAssignment> assignments = dutyAssignmentService.list(queryWrapper);
 
         Map<String, Object> result = new java.util.HashMap<>();
         result.put("hasSchedule", !assignments.isEmpty());

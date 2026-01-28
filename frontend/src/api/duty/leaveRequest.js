@@ -88,11 +88,11 @@ export function getApprovalRecords(requestId) {
   })
 }
 
-export function checkEmployeeSchedule(employeeId, startDate, endDate) {
+export function checkEmployeeSchedule(employeeId, startDate, endDate, scheduleId) {
   return request({
     url: '/duty/leave-request/check-schedule',
     method: 'get',
-    params: { employeeId, startDate, endDate }
+    params: { employeeId, startDate, endDate, scheduleId }
   })
 }
 

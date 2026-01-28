@@ -27,7 +27,7 @@ public interface LeaveRequestService extends IService<LeaveRequest> {
 
     List<Object> getApprovalRecords(Long requestId);
 
-    Map<String, Object> checkEmployeeSchedule(Long employeeId, String startDate, String endDate);
+    Map<String, Object> checkEmployeeSchedule(Long employeeId, String startDate, String endDate, Long scheduleId);
 
     boolean confirmScheduleCompletion(Long requestId, Long approverId);
 

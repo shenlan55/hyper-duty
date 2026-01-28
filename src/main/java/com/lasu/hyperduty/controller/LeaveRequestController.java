@@ -76,8 +76,6 @@ public class LeaveRequestController {
                                                  @RequestParam String approvalStatus,
                                                  @RequestParam(required = false) String opinion,
                                                  @RequestParam(required = false) String scheduleAction,
-                                                 @RequestParam(required = false) String scheduleType,
-                                                 @RequestParam(required = false) String scheduleDateRange,
                                                  @RequestBody(required = false) List<Map<String, Object>> substituteData) {
         boolean success = leaveRequestService.approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, substituteData);
         return success ? ResponseResult.success() : ResponseResult.error("审批失败");
@@ -92,8 +90,9 @@ public class LeaveRequestController {
     @GetMapping("/check-schedule")
     public ResponseResult<Map<String, Object>> checkEmployeeSchedule(@RequestParam Long employeeId,
                                                                      @RequestParam String startDate,
-                                                                     @RequestParam String endDate) {
-        Map<String, Object> result = leaveRequestService.checkEmployeeSchedule(employeeId, startDate, endDate);
+                                                                     @RequestParam String endDate,
+                                                                     @RequestParam(required = false) Long scheduleId) {
+        Map<String, Object> result = leaveRequestService.checkEmployeeSchedule(employeeId, startDate, endDate, scheduleId);
         return ResponseResult.success(result);
     }
 
