@@ -1,6 +1,8 @@
 package com.lasu.hyperduty.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.DutyAssignment;
 import com.lasu.hyperduty.entity.LeaveRequest;
@@ -8,9 +10,12 @@ import com.lasu.hyperduty.mapper.LeaveRequestMapper;
 import com.lasu.hyperduty.service.DutyAssignmentService;
 import com.lasu.hyperduty.service.DutyScheduleEmployeeService;
 import com.lasu.hyperduty.service.LeaveRequestService;
+import com.lasu.hyperduty.service.LeaveSubstituteService;
+import com.lasu.hyperduty.service.SysEmployeeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -29,6 +34,12 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     @Autowired
     private DutyScheduleEmployeeService dutyScheduleEmployeeService;
 
+    @Autowired
+    private SysEmployeeService sysEmployeeService;
+
+    @Autowired
+    private LeaveSubstituteService leaveSubstituteService;
+
     @Override
     public String generateRequestNo() {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
@@ -46,12 +57,13 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         leaveRequest.setUpdateTime(LocalDateTime.now());
         
         if (leaveRequest.getScheduleId() != null) {
-            com.lasu.hyperduty.entity.DutyScheduleEmployee leader = dutyScheduleEmployeeService.lambdaQuery()
+            List<com.lasu.hyperduty.entity.DutyScheduleEmployee> leaders = dutyScheduleEmployeeService.lambdaQuery()
                     .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getScheduleId, leaveRequest.getScheduleId())
                     .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getIsLeader, 1)
-                    .one();
-            if (leader != null) {
-                leaveRequest.setCurrentApproverId(leader.getEmployeeId());
+                    .list();
+            if (!leaders.isEmpty()) {
+                // 如果有多个值班长，选择第一个作为审批人
+                leaveRequest.setCurrentApproverId(leaders.get(0).getEmployeeId());
             }
         }
         
@@ -60,17 +72,31 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public boolean approveLeaveRequest(Long requestId, Long approverId, String approvalStatus, String opinion, String scheduleAction, String scheduleType, String scheduleDateRange) {
+    public boolean approveLeaveRequest(Long requestId, Long approverId, String approvalStatus, String opinion, String scheduleAction, List<Map<String, Object>> substituteData) {
         LeaveRequest request = getById(requestId);
         if (request == null) {
             return false;
         }
 
+        // 检查请假申请是否处于待审批状态，如果不是，则表示已经被审批过了
+        if (!"pending".equals(request.getApprovalStatus())) {
+            return false;
+        }
+
+        // 权限控制：只有值班长才能审批请假申请
+        // 1. 检查当前审批人是否是请假申请的审批人（值班长）
+        if (!approverId.equals(request.getCurrentApproverId())) {
+            return false;
+        }
+
+        // 2. 检查当前审批人是否是请假申请的发起人（申请人不能审批自己的请假）
+        if (approverId.equals(request.getEmployeeId())) {
+            return false;
+        }
+
         if ("approved".equals(approvalStatus) && "check".equals(scheduleAction)) {
-            Map<String, Object> scheduleCheck = checkEmployeeSchedule(request.getEmployeeId(), request.getStartDate().toString(), request.getEndDate().toString());
-            if ((Boolean) scheduleCheck.get("hasSchedule")) {
-                return false;
-            }
+            // 只检查排班状态，不阻止审批
+            Map<String, Object> scheduleCheck = checkEmployeeSchedule(request.getEmployeeId(), request.getStartDate().toString(), request.getEndDate().toString(), request.getScheduleId());
         }
 
         request.setApprovalStatus(approvalStatus);
@@ -81,7 +107,44 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
             request.setRejectReason(opinion);
         }
 
-        if ("approved".equals(approvalStatus) && "auto".equals(scheduleAction)) {
+        if ("approved".equals(approvalStatus) && "substitute".equals(scheduleAction)) {
+            // 处理顶岗人员排班
+            if (substituteData != null && !substituteData.isEmpty()) {
+                for (Map<String, Object> data : substituteData) {
+                    String date = (String) data.get("date");
+                    Long shiftId = ((Number) data.get("shiftId")).longValue();
+                    Long substituteEmployeeId = ((Number) data.get("substituteEmployeeId")).longValue();
+                    
+                    // 检查是否已有排班
+                    List<DutyAssignment> existingAssignments = dutyAssignmentService.lambdaQuery()
+                            .eq(DutyAssignment::getScheduleId, request.getScheduleId())
+                            .eq(DutyAssignment::getEmployeeId, request.getEmployeeId())
+                            .eq(DutyAssignment::getDutyDate, LocalDate.parse(date))
+                            .and(wrapper -> wrapper
+                                    .eq(DutyAssignment::getShiftConfigId, shiftId)
+                                    .or()
+                                    .eq(DutyAssignment::getDutyShift, shiftId.intValue())
+                            )
+                            .list();
+                    
+                    if (!existingAssignments.isEmpty()) {
+                        // 已排班，替换为顶岗人员
+                        for (DutyAssignment assignment : existingAssignments) {
+                            assignment.setEmployeeId(substituteEmployeeId);
+                            // 确保顶岗人显示为有效
+                            assignment.setStatus(1);
+                            dutyAssignmentService.updateById(assignment);
+                        }
+                    } else {
+                        // 未排班，不创建新的排班记录
+                        // 根据用户要求：没有安排排班时，不存在替换的情况，顶岗人就不用加到值班安排
+                    }
+                }
+                
+                // 保存顶岗信息到数据库
+                leaveSubstituteService.saveSubstitutes(requestId, request.getEmployeeId(), substituteData);
+            }
+            
             request.setScheduleCompleted(1);
             request.setScheduleCompletedTime(LocalDateTime.now());
             request.setScheduleCompletedBy(approverId);
@@ -113,15 +176,21 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public Map<String, Object> checkEmployeeSchedule(Long employeeId, String startDate, String endDate) {
+    public Map<String, Object> checkEmployeeSchedule(Long employeeId, String startDate, String endDate, Long scheduleId) {
         java.time.LocalDate start = java.time.LocalDate.parse(startDate);
         java.time.LocalDate end = java.time.LocalDate.parse(endDate);
 
-        List<com.lasu.hyperduty.entity.DutyAssignment> assignments = dutyAssignmentService.lambdaQuery()
-                .eq(com.lasu.hyperduty.entity.DutyAssignment::getEmployeeId, employeeId)
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lasu.hyperduty.entity.DutyAssignment> queryWrapper = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        queryWrapper.eq(com.lasu.hyperduty.entity.DutyAssignment::getEmployeeId, employeeId)
                 .ge(com.lasu.hyperduty.entity.DutyAssignment::getDutyDate, start)
-                .le(com.lasu.hyperduty.entity.DutyAssignment::getDutyDate, end)
-                .list();
+                .le(com.lasu.hyperduty.entity.DutyAssignment::getDutyDate, end);
+
+        // 如果提供了scheduleId，只查询该值班表的排班
+        if (scheduleId != null) {
+            queryWrapper.eq(com.lasu.hyperduty.entity.DutyAssignment::getScheduleId, scheduleId);
+        }
+
+        List<com.lasu.hyperduty.entity.DutyAssignment> assignments = dutyAssignmentService.list(queryWrapper);
 
         Map<String, Object> result = new java.util.HashMap<>();
         result.put("hasSchedule", !assignments.isEmpty());
@@ -138,9 +207,11 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
 
     @Override
     public List<LeaveRequest> getPendingApprovals(Long approverId) {
-        // 直接查询所有待审批的记录，不限制值班表
+        // 查询当前审批人负责审批的请假申请（只有值班长才能审批）
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("approval_status", "pending");
+        // 添加条件：当前审批人是请假申请的审批人（值班长）
+        queryWrapper.eq("current_approver_id", approverId);
         queryWrapper.orderByDesc("create_time");
         List<LeaveRequest> result = baseMapper.selectList(queryWrapper);
         System.out.println("Pending approvals count: " + result.size());
@@ -169,9 +240,15 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
 
     @Override
     public List<LeaveRequest> getApprovedApprovals(Long approverId) {
-        // 直接查询所有已审批的记录，不限制值班表
+        // 查询当前审批人负责审批的请假申请，或者是发起人自己的请假申请
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
         queryWrapper.in("approval_status", "approved", "rejected");
+        // 添加条件：当前审批人是请假申请的审批人，或者当前审批人是请假申请的发起人
+        queryWrapper.and(wrapper -> wrapper
+                .eq("current_approver_id", approverId)
+                .or()
+                .eq("employee_id", approverId)
+        );
         queryWrapper.orderByDesc("update_time");
         return baseMapper.selectList(queryWrapper);
     }
@@ -199,5 +276,217 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         request.setUpdateTime(LocalDateTime.now());
 
         return updateById(request);
+    }
+
+    @Override
+    public Map<Long, Map<String, Map<String, List<Long>>>> getEmployeeLeaveInfo(List<Long> employeeIds, String startDate, String endDate) {
+        Map<Long, Map<String, Map<String, List<Long>>>> leaveInfo = new java.util.HashMap<>();
+        
+        if (employeeIds == null || employeeIds.isEmpty()) {
+            return leaveInfo;
+        }
+        
+        // 查询员工在指定日期范围内的请假记录
+        QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("employee_id", employeeIds);
+        queryWrapper.ge("start_date", startDate);
+        queryWrapper.le("end_date", endDate);
+        queryWrapper.eq("approval_status", "approved"); // 只考虑已通过的请假，待审批状态的请假不影响排班
+        
+        List<LeaveRequest> leaveRequests = this.list(queryWrapper);
+        
+        // 处理请假记录，提取请假日期、值班表ID和班次配置ID列表
+        for (LeaveRequest request : leaveRequests) {
+            Long employeeId = request.getEmployeeId();
+            Long scheduleId = request.getScheduleId();
+            String shiftConfigIdsStr = request.getShiftConfigIds();
+            
+            // 解析班次配置ID列表
+            List<Long> shiftConfigIds = new java.util.ArrayList<>();
+            if (shiftConfigIdsStr != null && !shiftConfigIdsStr.isEmpty()) {
+                String[] ids = shiftConfigIdsStr.split(",");
+                for (String idStr : ids) {
+                    try {
+                        shiftConfigIds.add(Long.parseLong(idStr.trim()));
+                    } catch (NumberFormatException e) {
+                        // 忽略格式错误的ID
+                        System.err.println("班次配置ID格式错误: " + idStr);
+                    }
+                }
+            }
+            
+            // 如果没有班次配置ID，尝试使用单个班次配置ID
+            if (shiftConfigIds.isEmpty() && request.getShiftConfigId() != null) {
+                shiftConfigIds.add(request.getShiftConfigId());
+            }
+            
+            java.time.LocalDate start = java.time.LocalDate.parse(request.getStartDate().toString());
+            java.time.LocalDate end = java.time.LocalDate.parse(request.getEndDate().toString());
+            
+            // 遍历请假期间的所有日期
+            java.time.LocalDate current = start;
+            while (!current.isAfter(end)) {
+                String dateStr = current.toString();
+                
+                // 初始化嵌套映射结构
+                Map<String, Map<String, List<Long>>> employeeLeaveMap = leaveInfo.computeIfAbsent(employeeId, k -> new java.util.HashMap<>());
+                Map<String, List<Long>> dateLeaveMap = employeeLeaveMap.computeIfAbsent(dateStr, k -> new java.util.HashMap<>());
+                
+                // 存储值班表ID和班次配置ID列表
+                String scheduleIdStr = scheduleId != null ? scheduleId.toString() : "null";
+                dateLeaveMap.put(scheduleIdStr, shiftConfigIds);
+                
+                current = current.plusDays(1);
+            }
+        }
+        
+        return leaveInfo;
+    }
+
+    @Override
+    public IPage<LeaveRequest> getMyLeaveRequestsPage(Long employeeId, Integer page, Integer size, Integer leaveType, String approvalStatus, String startDate, String endDate) {
+        IPage<LeaveRequest> iPage = new Page<>(page, size);
+        QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
+        
+        // 基础条件：员工ID
+        queryWrapper.eq("employee_id", employeeId);
+        
+        // 可选条件：请假类型
+        if (leaveType != null) {
+            queryWrapper.eq("leave_type", leaveType);
+        }
+        
+        // 可选条件：审批状态
+        if (approvalStatus != null && !approvalStatus.isEmpty()) {
+            queryWrapper.eq("approval_status", approvalStatus);
+        }
+        
+        // 可选条件：开始日期
+        if (startDate != null && !startDate.isEmpty()) {
+            queryWrapper.ge("start_date", startDate);
+        }
+        
+        // 可选条件：结束日期
+        if (endDate != null && !endDate.isEmpty()) {
+            queryWrapper.le("end_date", endDate);
+        }
+        
+        // 排序：创建时间倒序
+        queryWrapper.orderByDesc("create_time");
+        
+        return this.page(iPage, queryWrapper);
+    }
+
+    @Override
+    public IPage<LeaveRequest> getPendingApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String startDate, String endDate) {
+        IPage<LeaveRequest> iPage = new Page<>(page, size);
+        QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
+        
+        // 基础条件：审批状态为待审批
+        queryWrapper.eq("approval_status", "pending");
+        // 添加条件：当前审批人是请假申请的审批人（值班长）
+        queryWrapper.eq("current_approver_id", approverId);
+        
+        // 可选条件：值班表ID
+        if (scheduleId != null) {
+            queryWrapper.eq("schedule_id", scheduleId);
+        }
+        
+        // 可选条件：请假类型
+        if (leaveType != null) {
+            queryWrapper.eq("leave_type", leaveType);
+        }
+        
+        // 可选条件：开始日期
+        if (startDate != null && !startDate.isEmpty()) {
+            queryWrapper.ge("start_date", startDate);
+        }
+        
+        // 可选条件：结束日期
+        if (endDate != null && !endDate.isEmpty()) {
+            queryWrapper.le("end_date", endDate);
+        }
+        
+        // 排序：创建时间倒序
+        queryWrapper.orderByDesc("create_time");
+        
+        return this.page(iPage, queryWrapper);
+    }
+
+    @Override
+    public IPage<LeaveRequest> getApprovedApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String approvalStatus, String startDate, String endDate) {
+        IPage<LeaveRequest> iPage = new Page<>(page, size);
+        QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
+        
+        // 基础条件：审批状态为已审批或已拒绝
+        queryWrapper.in("approval_status", "approved", "rejected");
+        // 添加条件：当前审批人是请假申请的审批人，或者当前审批人是请假申请的发起人
+        queryWrapper.and(wrapper -> wrapper
+                .eq("current_approver_id", approverId)
+                .or()
+                .eq("employee_id", approverId)
+        );
+        
+        // 可选条件：值班表ID
+        if (scheduleId != null) {
+            queryWrapper.eq("schedule_id", scheduleId);
+        }
+        
+        // 可选条件：请假类型
+        if (leaveType != null) {
+            queryWrapper.eq("leave_type", leaveType);
+        }
+        
+        // 可选条件：审批状态
+        if (approvalStatus != null && !approvalStatus.isEmpty()) {
+            queryWrapper.eq("approval_status", approvalStatus);
+        }
+        
+        // 可选条件：开始日期
+        if (startDate != null && !startDate.isEmpty()) {
+            queryWrapper.ge("start_date", startDate);
+        }
+        
+        // 可选条件：结束日期
+        if (endDate != null && !endDate.isEmpty()) {
+            queryWrapper.le("end_date", endDate);
+        }
+        
+        // 排序：更新时间倒序
+        queryWrapper.orderByDesc("update_time");
+        
+        return this.page(iPage, queryWrapper);
+    }
+
+    @Override
+    public List<com.lasu.hyperduty.entity.SysEmployee> getAvailableSubstitutes(Long scheduleId, String startDate, String endDate, Long leaveEmployeeId) {
+        // 获取值班表中的所有员工
+        List<com.lasu.hyperduty.entity.DutyScheduleEmployee> scheduleEmployees = dutyScheduleEmployeeService.lambdaQuery()
+                .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getScheduleId, scheduleId)
+                .list();
+        
+        // 提取员工ID列表
+        List<Long> employeeIds = scheduleEmployees.stream()
+                .map(com.lasu.hyperduty.entity.DutyScheduleEmployee::getEmployeeId)
+                .collect(java.util.stream.Collectors.toList());
+        
+        // 排除请假的员工
+        if (employeeIds.contains(leaveEmployeeId)) {
+            employeeIds.remove(leaveEmployeeId);
+        }
+        
+        // 获取请假期间也请假的员工
+        Map<Long, Map<String, Map<String, List<Long>>>> leaveInfo = getEmployeeLeaveInfo(employeeIds, startDate, endDate);
+        List<Long> leaveDuringEmployees = leaveInfo.keySet().stream().collect(java.util.stream.Collectors.toList());
+        
+        // 排除请假期间也请假的员工
+        employeeIds.removeAll(leaveDuringEmployees);
+        
+        // 根据员工ID列表查询员工信息
+        if (employeeIds.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        
+        return sysEmployeeService.listByIds(employeeIds);
     }
 }

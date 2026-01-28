@@ -32,7 +32,7 @@
     <el-card shadow="hover" class="content-card">
       <el-calendar v-model="currentDate">
         <template #date-cell="{ data }">
-          <div class="calendar-cell" :class="getCalendarCellClass(data.day)">
+          <div class="calendar-cell" :class="getCalendarCellClass(data.day)" @click="handleCellClick(data.day)" style="cursor: pointer;">
             <div class="date-number">{{ data.day.split('-').slice(2).join('-') }}</div>
             <div v-if="isHoliday(data.day)" class="holiday-info">
               {{ getHolidayName(data.day) }}
@@ -43,7 +43,7 @@
                 :key="assignment.id"
                 class="duty-item"
                 :class="{ 'clickable': isLeader }"
-                @click="isLeader ? openEditDialog(assignment) : null"
+                @click.stop="isLeader ? openEditDialog(assignment) : null"
               >
                 <el-tag :type="getShiftTypeColor(assignment.dutyShift)" size="small">
                   {{ getShiftName(assignment.dutyShift) }}
@@ -56,7 +56,7 @@
               type="primary"
               size="small"
               text
-              @click="openAddDialog(data.day)"
+              @click.stop="openAddDialog(data.day)"
               class="add-btn"
             >
               <el-icon><Plus /></el-icon>
@@ -70,6 +70,10 @@
       v-model="dialogVisible"
       :title="dialogTitle"
       width="600px"
+      @close="async () => {
+        // 恢复原始的排班员工列表
+        await fetchScheduleEmployees(selectedScheduleId.value)
+      }"
     >
       <el-form
         ref="assignmentFormRef"
@@ -92,6 +96,7 @@
             v-model="assignmentForm.dutyShift"
             placeholder="请选择班次"
             style="width: 100%"
+            @change="handleShiftChange"
           >
             <el-option
               v-for="shift in shiftConfigList"
@@ -176,6 +181,13 @@
             <el-radio :value="3">排班模式</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="日期类型" prop="dateType">
+          <el-checkbox-group v-model="batchForm.dateType">
+            <el-checkbox label="workday">工作日（包括调休）</el-checkbox>
+            <el-checkbox label="weekend">休息日（周末）</el-checkbox>
+            <el-checkbox label="holiday">节假日</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
         <el-form-item label="排班模式" prop="scheduleModeId" v-if="batchForm.scheduleType === 3">
           <el-select
             v-model="batchForm.scheduleModeId"
@@ -199,24 +211,6 @@
             show-icon
             :closable="false"
             style="margin-top: 8px"
-          />
-        </el-form-item>
-        <el-form-item label="每组人数" prop="groupSize" v-if="batchForm.scheduleType === 3">
-          <el-input
-            v-model="batchForm.groupSize"
-            type="number"
-            placeholder="请输入每组人数"
-            style="width: 100%"
-            :min="1"
-          />
-        </el-form-item>
-        <el-form-item label="夜班人数" prop="nightShiftCount" v-if="batchForm.scheduleType === 3">
-          <el-input
-            v-model="batchForm.nightShiftCount"
-            type="number"
-            placeholder="请输入夜班人数（仅白班组内全员、夜班轮值模式需要）"
-            style="width: 100%"
-            :min="1"
           />
         </el-form-item>
         <el-form-item label="班次" prop="dutyShift" v-if="batchForm.scheduleType !== 3">
@@ -308,6 +302,57 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 当天值班人员详情弹窗 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      :title="detailDialogTitle"
+      width="600px"
+    >
+      <div v-if="selectedDateAssignments.length > 0">
+        <el-tabs type="border-card">
+          <el-tab-pane label="值班详情">
+            <el-table :data="selectedDateAssignments" border stripe>
+              <el-table-column prop="shiftName" label="班次" width="120">
+                <template #default="scope">
+                  <el-tag :type="getShiftTypeColor(scope.row.dutyShift)" size="small">
+                    {{ scope.row.shiftName }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="employeeName" label="值班人员" width="150" />
+              <el-table-column prop="status" label="状态" width="100">
+                <template #default="scope">
+                  <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'" size="small">
+                    {{ scope.row.status === 1 ? '有效' : '无效' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="remark" label="备注" />
+            </el-table>
+          </el-tab-pane>
+          <el-tab-pane label="统计信息">
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="日期">{{ selectedDetailDate }}</el-descriptions-item>
+              <el-descriptions-item label="总值班人数">{{ selectedDateAssignments.length }}</el-descriptions-item>
+              <el-descriptions-item label="有效值班">{{ selectedDateAssignments.filter(item => item.status === 1).length }}</el-descriptions-item>
+              <el-descriptions-item label="无效值班">{{ selectedDateAssignments.filter(item => item.status === 0).length }}</el-descriptions-item>
+              <el-descriptions-item label="节假日" :span="2">
+                {{ isHoliday(selectedDetailDate) ? getHolidayName(selectedDetailDate) : '非节假日' }}
+              </el-descriptions-item>
+            </el-descriptions>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
+      <div v-else class="no-assignment">
+        <el-empty description="当天无值班安排" />
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -327,6 +372,7 @@ import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleM
 import { getEmployeeList } from '../../api/employee'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { holidayApi } from '../../api/duty/holiday'
+import { getEmployeeLeaveInfo as getEmployeeLeaveInfoAPI, getSubstitutesByEmployees } from '../../api/duty/leaveRequest'
 import dayjs from 'dayjs'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
@@ -370,8 +416,7 @@ const batchForm = reactive({
   employeeIds: [],
   remark: '',
   scheduleModeId: null,
-  groupSize: 1,
-  nightShiftCount: 1
+  dateType: ['workday'] // 默认选择工作日
 })
 
 const clearDialogVisible = ref(false)
@@ -381,6 +426,12 @@ const clearFormRef = ref()
 const clearForm = reactive({
   dateRange: null
 })
+
+// 当天值班人员详情弹窗相关
+const detailDialogVisible = ref(false)
+const detailDialogTitle = ref('')
+const selectedDetailDate = ref('')
+const selectedDateAssignments = ref([])
 
 const assignmentRules = {
   dutyDate: [
@@ -398,6 +449,10 @@ const batchRules = {
   dateRange: [
     { required: true, message: '请选择日期范围', trigger: 'blur' }
   ],
+  dateType: [
+    { required: true, message: '请至少选择一种日期类型', trigger: 'blur' },
+    { required: true, message: '请至少选择一种日期类型', trigger: 'change' }
+  ],
   dutyShift: [
     { required: true, message: '请选择班次', trigger: 'blur' },
     { required: true, message: '请选择班次', trigger: 'change' }
@@ -409,14 +464,6 @@ const batchRules = {
   scheduleModeId: [
     { required: true, message: '请选择排班模式', trigger: 'blur' },
     { required: true, message: '请选择排班模式', trigger: 'change' }
-  ],
-  groupSize: [
-    { required: true, message: '请输入每组人数', trigger: 'blur' },
-    { min: 1, message: '每组人数至少为1', trigger: 'blur' }
-  ],
-  nightShiftCount: [
-    { required: true, message: '请输入夜班人数', trigger: 'blur' },
-    { min: 1, message: '夜班人数至少为1', trigger: 'blur' }
   ]
 }
 
@@ -484,6 +531,22 @@ const getCalendarCellClass = (date) => {
 const getHolidayName = (date) => {
   const holidayInfo = getHolidayInfo(date)
   return holidayInfo ? holidayInfo.holidayName : ''
+}
+
+// 处理日历单元格点击事件，显示当天值班人员详情
+const handleCellClick = (date) => {
+  selectedDetailDate.value = date
+  detailDialogTitle.value = `${date} 值班人员详情`
+  
+  // 获取当天的值班安排并格式化数据
+  const assignments = getAssignmentsByDate(date)
+  selectedDateAssignments.value = assignments.map(assignment => ({
+    ...assignment,
+    shiftName: getShiftName(assignment.dutyShift),
+    employeeName: getEmployeeName(assignment.employeeId)
+  }))
+  
+  detailDialogVisible.value = true
 }
 
 const hasAssignment = (date) => {
@@ -583,9 +646,11 @@ const fetchScheduleEmployees = async (scheduleId) => {
     if (leaderRes.code === 200) {
       scheduleLeaderList.value = leaderRes.data || []
     }
+    return scheduleEmployeeList.value
   } catch (error) {
     console.error('获取值班人员失败:', error)
     ElMessage.error('获取值班人员失败')
+    return []
   }
 }
 
@@ -650,6 +715,10 @@ const openAddDialog = (date) => {
   assignmentForm.scheduleId = selectedScheduleId.value
   assignmentForm.dutyDate = date
   dialogTitle.value = '添加值班安排'
+  
+  // 先恢复原始的排班员工列表
+  fetchScheduleEmployees(selectedScheduleId.value)
+  
   dialogVisible.value = true
 }
 
@@ -678,6 +747,35 @@ const resetForm = () => {
   })
 }
 
+// 监听班次变化，重新过滤可用员工
+const handleShiftChange = async () => {
+  if (!assignmentForm.dutyDate || !assignmentForm.dutyShift) return
+  
+  // 获取原始的排班员工列表
+  const originalEmployees = await fetchScheduleEmployees(selectedScheduleId.value)
+  
+  // 获取当天请假的员工列表
+  const leaveInfo = await fetchEmployeeLeaveInfo(
+    scheduleEmployeeList.value.map(emp => emp.id),
+    assignmentForm.dutyDate,
+    assignmentForm.dutyDate
+  )
+  
+  // 过滤出当天在该班次没有请假的员工
+  const availableEmployees = scheduleEmployeeList.value.filter(emp => {
+    return !isEmployeeOnLeave(
+      emp.id,
+      assignmentForm.dutyDate,
+      selectedScheduleId.value,
+      assignmentForm.dutyShift,
+      leaveInfo
+    )
+  })
+  
+  // 更新排班员工列表为可用员工
+  scheduleEmployeeList.value = availableEmployees
+}
+
 const handleSave = async () => {
   try {
     await assignmentFormRef.value.validate()
@@ -693,6 +791,8 @@ const handleSave = async () => {
     if (response.code === 200) {
       ElMessage.success(assignmentForm.id ? '编辑值班安排成功' : '添加值班安排成功')
       dialogVisible.value = false
+      // 恢复原始的排班员工列表
+      await fetchScheduleEmployees(selectedScheduleId.value)
       fetchAssignmentList(selectedScheduleId.value)
     } else {
       ElMessage.error(response.message || (assignmentForm.id ? '编辑值班安排失败' : '添加值班安排失败'))
@@ -713,10 +813,135 @@ const openBatchDialog = () => {
     employeeIds: [],
     remark: '',
     scheduleModeId: null,
-    groupSize: 1,
-    nightShiftCount: 1
+    dateType: ['workday'] // 默认选择工作日
   })
   batchDialogVisible.value = true
+}
+
+// 获取符合条件的日期列表
+const getFilteredDates = async (startDate, endDate, dateTypes) => {
+  try {
+    // 获取日期范围内的所有日期
+    const allDates = getDatesInRange(startDate, endDate)
+    // 获取日期范围内的节假日信息
+    await fetchHolidaysList(startDate, endDate)
+    
+    const filteredDates = []
+    for (const date of allDates) {
+      const dateObj = dayjs(date)
+      const dayOfWeek = dateObj.day()
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      const holidayInfo = holidayMap.value[date]
+      const isHoliday = holidayInfo && holidayInfo.isWorkday === 0
+      const isWorkdayHoliday = holidayInfo && holidayInfo.isWorkday === 1
+      
+      // 判断日期是否符合选择的日期类型
+      let shouldInclude = false
+      
+      if (dateTypes.includes('workday')) {
+        // 工作日包括调休和非周末非节假日
+        if (isWorkdayHoliday || (!isWeekend && !isHoliday)) {
+          shouldInclude = true
+        }
+      }
+      
+      if (dateTypes.includes('weekend')) {
+        // 休息日包括周末且不是调休且不是节假日
+        if (isWeekend && !isWorkdayHoliday && !isHoliday) {
+          shouldInclude = true
+        }
+      }
+      
+      if (dateTypes.includes('holiday')) {
+        // 节假日包括法定节假日且不是调休
+        if (isHoliday) {
+          shouldInclude = true
+        }
+      }
+      
+      if (shouldInclude) {
+        filteredDates.push(date)
+      }
+    }
+    
+    return filteredDates
+  } catch (error) {
+    console.error('筛选日期失败:', error)
+    return getDatesInRange(startDate, endDate) // 失败时返回所有日期
+  }
+}
+
+// 获取员工在指定日期范围内的请假信息
+const fetchEmployeeLeaveInfo = async (employeeIds, startDate, endDate) => {
+  try {
+    if (!employeeIds || employeeIds.length === 0) {
+      return {}
+    }
+    
+    // 调用后端API获取请假信息
+    const response = await getEmployeeLeaveInfoAPI(employeeIds, startDate, endDate)
+    
+    if (response.code === 200) {
+      // 直接返回处理后的请假信息，不需要转换格式
+      return response.data
+    }
+    
+    return {}
+  } catch (error) {
+    console.error('获取请假信息失败:', error)
+    return {}
+  }
+}
+
+// 检查员工在指定日期、值班表和班次是否请假
+const isEmployeeOnLeave = (employeeId, date, scheduleId, dutyShift, leaveInfo) => {
+  const employeeLeaves = leaveInfo[employeeId]
+  if (!employeeLeaves) {
+    return false
+  }
+  
+  const dateLeaves = employeeLeaves[date]
+  if (!dateLeaves) {
+    return false
+  }
+  
+  // 检查当前值班表的请假记录
+  const scheduleIdStr = scheduleId.toString()
+  const scheduleLeaves = dateLeaves[scheduleIdStr]
+  if (!scheduleLeaves) {
+    return false
+  }
+  
+  // 检查当前班次是否在请假的班次列表中
+  return scheduleLeaves.includes(dutyShift)
+}
+
+// 获取所有请假人员的顶岗信息
+const fetchAllSubstituteInfo = async (employeeIds, startDate, endDate) => {
+  try {
+    if (!employeeIds || employeeIds.length === 0) {
+      return new Map()
+    }
+    
+    // 调用后端API获取顶岗信息
+    const response = await getSubstitutesByEmployees(employeeIds, startDate, endDate)
+    
+    if (response.code === 200) {
+      const substitutes = response.data
+      const substituteMap = new Map()
+      
+      // 构建顶岗信息映射，键格式为：employeeId_date_dutyShift
+      substitutes.forEach(substitute => {
+        const key = `${substitute.originalEmployeeId}_${substitute.dutyDate}_${substitute.shiftConfigId}`
+        substituteMap.set(key, substitute.substituteEmployeeId)
+      })
+      
+      return substituteMap
+    }
+  } catch (error) {
+    console.error('获取顶岗信息失败:', error)
+  }
+  return new Map()
 }
 
 const handleBatchSave = async () => {
@@ -725,68 +950,179 @@ const handleBatchSave = async () => {
     batchDialogLoading.value = true
     
     const [startDate, endDate] = batchForm.dateRange
+    // 获取符合条件的日期列表
+    const filteredDates = await getFilteredDates(startDate, endDate, batchForm.dateType)
     
-    if (batchForm.scheduleType === 3) {
-      // 使用排班模式生成排班
-      const response = await generateScheduleByMode(
-        selectedScheduleId.value,
-        startDate,
-        endDate,
-        batchForm.scheduleModeId,
-        {
-          groupSize: batchForm.groupSize,
-          nightShiftCount: batchForm.nightShiftCount,
-          employeeIds: batchForm.employeeIds,
-          remark: batchForm.remark
-        }
-      )
-      
-      if (response.code === 200) {
-        ElMessage.success(`批量排班成功，共添加 ${response.data} 条记录`)
-      } else {
-        ElMessage.error('批量排班失败: ' + (response.message || '未知错误'))
-        return
-      }
-    } else {
-      // 传统排班方式
-      const dates = getDatesInRange(startDate, endDate)
-      const employeeIds = batchForm.employeeIds
-      
-      const assignments = []
-      dates.forEach((date, index) => {
-        if (batchForm.scheduleType === 1) {
-          const employeeIndex = index % employeeIds.length
-          assignments.push({
-            scheduleId: selectedScheduleId.value,
-            dutyDate: date,
-            dutyShift: batchForm.dutyShift,
-            employeeId: employeeIds[employeeIndex],
-            status: 1,
-            remark: batchForm.remark
-          })
-        } else {
-          employeeIds.forEach(employeeId => {
-            assignments.push({
-              scheduleId: selectedScheduleId.value,
-              dutyDate: date,
-              dutyShift: batchForm.dutyShift,
-              employeeId: employeeId,
-              status: 1,
-              remark: batchForm.remark
-            })
-          })
-        }
-      })
-      
-      for (const assignment of assignments) {
-        await addAssignment(assignment)
-      }
-      
-      ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
+    if (filteredDates.length === 0) {
+      ElMessage.warning('所选日期范围内没有符合条件的日期')
+      batchDialogLoading.value = false
+      return
     }
     
+    // 获取员工请假信息
+    const leaveInfo = await fetchEmployeeLeaveInfo(batchForm.employeeIds, startDate, endDate)
+    
+    if (batchForm.scheduleType === 3) {
+          // 使用排班模式生成排班
+          const response = await generateScheduleByMode(
+            selectedScheduleId.value,
+            startDate,
+            endDate,
+            batchForm.scheduleModeId,
+            {
+              employeeIds: batchForm.employeeIds,
+              remark: batchForm.remark,
+              dateType: batchForm.dateType,
+              filteredDates: filteredDates,
+              leaveInfo: leaveInfo,
+              scheduleId: selectedScheduleId.value
+            }
+          )
+          
+          if (response.code === 200) {
+            // 保存生成的排班数据到数据库
+            const assignments = response.data
+            for (const assignment of assignments) {
+              // 添加remark字段
+              assignment.remark = batchForm.remark
+              await addAssignment(assignment)
+            }
+            ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
+          } else {
+            ElMessage.error('批量排班失败: ' + (response.message || '未知错误'))
+            return
+          }
+        } else {
+          // 传统排班方式
+          const assignments = []
+          let rotationIndex = 0 // 维护全局的轮换索引
+          
+          // 首先获取所有请假人员的顶岗信息
+          const substituteInfo = await fetchAllSubstituteInfo(batchForm.employeeIds, startDate, endDate)
+          
+          for (const date of filteredDates) {
+            // 首先处理请假人员的顶岗替换
+            let substituteMap = new Map()
+            
+            // 检查每个员工是否请假，如果请假且有顶岗人员，则记录顶岗关系
+            for (const employeeId of batchForm.employeeIds) {
+              if (isEmployeeOnLeave(employeeId, date, selectedScheduleId.value, batchForm.dutyShift, leaveInfo)) {
+                // 查找该员工在当天该班次的顶岗人员
+                const substituteKey = `${employeeId}_${date}_${batchForm.dutyShift}`
+                const substituteEmployeeId = substituteInfo.get(substituteKey)
+                if (substituteEmployeeId) {
+                  substituteMap.set(employeeId, substituteEmployeeId)
+                }
+              }
+            }
+            
+            // 过滤出当天没有请假的员工，加上顶岗人员
+            const dayAvailableEmployees = []
+            const usedSubstitutes = new Set()
+            
+            // 首先添加顶岗人员
+            for (const [originalEmployeeId, substituteEmployeeId] of substituteMap.entries()) {
+              if (!usedSubstitutes.has(substituteEmployeeId)) {
+                dayAvailableEmployees.push(substituteEmployeeId)
+                usedSubstitutes.add(substituteEmployeeId)
+              }
+            }
+            
+            // 然后添加其他没有请假的员工
+            for (const employeeId of batchForm.employeeIds) {
+              if (!isEmployeeOnLeave(employeeId, date, selectedScheduleId.value, batchForm.dutyShift, leaveInfo) && 
+                  !usedSubstitutes.has(employeeId)) {
+                dayAvailableEmployees.push(employeeId)
+              }
+            }
+            
+            if (dayAvailableEmployees.length === 0) {
+              // 当天没有可用员工，跳过
+              console.log(`日期 ${date} 没有可用员工，跳过排班`)
+              continue
+            }
+            
+            if (batchForm.scheduleType === 1) {
+              // 轮换排班模式
+              // 保持原始轮换顺序，同时处理请假和顶岗人员的情况
+              let selectedEmployeeId = null;
+              
+              // 按原始员工列表的顺序查找合适的员工
+              for (let i = 0; i < batchForm.employeeIds.length; i++) {
+                // 计算当前轮换位置
+                const currentIndex = (rotationIndex + i) % batchForm.employeeIds.length;
+                const currentEmployeeId = batchForm.employeeIds[currentIndex];
+                
+                // 检查当前员工是否请假
+                const isCurrentEmployeeOnLeave = isEmployeeOnLeave(
+                  currentEmployeeId, 
+                  date, 
+                  selectedScheduleId.value, 
+                  batchForm.dutyShift, 
+                  leaveInfo
+                );
+                
+                if (!isCurrentEmployeeOnLeave) {
+                  // 当前员工未请假，可以直接使用
+                  selectedEmployeeId = currentEmployeeId;
+                  rotationIndex = (currentIndex + 1) % batchForm.employeeIds.length;
+                  break;
+                } else {
+                  // 当前员工请假，检查是否有顶岗人员
+                  const substituteKey = `${currentEmployeeId}_${date}_${batchForm.dutyShift}`;
+                  const substituteEmployeeId = substituteInfo.get(substituteKey);
+                  
+                  if (substituteEmployeeId) {
+                    // 有顶岗人员，使用顶岗人员
+                    selectedEmployeeId = substituteEmployeeId;
+                    rotationIndex = (currentIndex + 1) % batchForm.employeeIds.length;
+                    break;
+                  }
+                }
+              }
+              
+              // 如果找到了合适的员工，进行排班
+              if (selectedEmployeeId) {
+                assignments.push({
+                  scheduleId: selectedScheduleId.value,
+                  dutyDate: date,
+                  dutyShift: batchForm.dutyShift,
+                  employeeId: selectedEmployeeId,
+                  status: 1,
+                  remark: batchForm.remark
+                });
+              }
+            } else {
+              // 固定排班模式
+              dayAvailableEmployees.forEach(employeeId => {
+                assignments.push({
+                  scheduleId: selectedScheduleId.value,
+                  dutyDate: date,
+                  dutyShift: batchForm.dutyShift,
+                  employeeId: employeeId,
+                  status: 1,
+                  remark: batchForm.remark
+                })
+              })
+            }
+          }
+          
+          if (assignments.length === 0) {
+            ElMessage.warning('所选日期范围内没有可用员工进行排班')
+            batchDialogLoading.value = false
+            return
+          }
+          
+          for (const assignment of assignments) {
+            await addAssignment(assignment)
+          }
+          
+          ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
+        }
+    
     batchDialogVisible.value = false
-    fetchAssignmentList(selectedScheduleId.value)
+    // 刷新排班数据
+    await fetchAssignmentList(selectedScheduleId.value)
   } catch (error) {
     console.error('批量排班失败:', error)
     ElMessage.error('批量排班失败')
@@ -901,6 +1237,32 @@ onMounted(async () => {
 .duty-list {
   flex: 1;
   overflow-y: auto;
+}
+
+/* 美化duty-list的滚动条样式 */
+:deep(.duty-list) {
+  scrollbar-width: thin;
+  scrollbar-color: #e1e1e1 #f9f9f9;
+}
+
+:deep(.duty-list::-webkit-scrollbar) {
+  width: 4px;
+  height: 4px;
+}
+
+:deep(.duty-list::-webkit-scrollbar-track) {
+  background: #f9f9f9;
+  border-radius: 2px;
+}
+
+:deep(.duty-list::-webkit-scrollbar-thumb) {
+  background: #e1e1e1;
+  border-radius: 2px;
+  transition: background 0.3s ease;
+}
+
+:deep(.duty-list::-webkit-scrollbar-thumb:hover) {
+  background: #d1d1d1;
 }
 
 .duty-item {

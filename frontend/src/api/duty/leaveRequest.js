@@ -57,11 +57,20 @@ export function submitLeaveRequest(data) {
   })
 }
 
-export function approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, scheduleType, scheduleDateRange) {
+export function approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, substituteData) {
   return request({
     url: `/duty/leave-request/approve/${requestId}`,
     method: 'put',
-    params: { approverId, approvalStatus, opinion, scheduleAction, scheduleType, scheduleDateRange }
+    params: { approverId, approvalStatus, opinion, scheduleAction },
+    data: substituteData
+  })
+}
+
+export function getAvailableSubstitutes(scheduleId, startDate, endDate, leaveEmployeeId) {
+  return request({
+    url: '/duty/leave-request/available-substitutes',
+    method: 'get',
+    params: { scheduleId, startDate, endDate, leaveEmployeeId }
   })
 }
 
@@ -79,11 +88,11 @@ export function getApprovalRecords(requestId) {
   })
 }
 
-export function checkEmployeeSchedule(employeeId, startDate, endDate) {
+export function checkEmployeeSchedule(employeeId, startDate, endDate, scheduleId) {
   return request({
     url: '/duty/leave-request/check-schedule',
     method: 'get',
-    params: { employeeId, startDate, endDate }
+    params: { employeeId, startDate, endDate, scheduleId }
   })
 }
 
@@ -92,5 +101,67 @@ export function confirmScheduleCompletion(requestId, approverId) {
     url: `/duty/leave-request/confirm-schedule/${requestId}`,
     method: 'put',
     params: { approverId }
+  })
+}
+
+export function getEmployeeLeaveInfo(employeeIds, startDate, endDate) {
+  return request({
+    url: '/duty/leave-request/employee-leave-info',
+    method: 'post',
+    params: { employeeIds: employeeIds.join(','), startDate, endDate }
+  })
+}
+
+/**
+ * 分页获取我的请假申请
+ */
+export function getMyLeaveRequestsPage(employeeId, page, size, leaveType, approvalStatus, startDate, endDate) {
+  return request({
+    url: `/duty/leave-request/my/page/${employeeId}`,
+    method: 'get',
+    params: { page, size, leaveType, approvalStatus, startDate, endDate }
+  })
+}
+
+/**
+ * 分页获取待审批请假申请
+ */
+export function getPendingApprovalsPage(approverId, page, size, scheduleId, leaveType, startDate, endDate) {
+  return request({
+    url: `/duty/leave-request/pending/page/${approverId}`,
+    method: 'get',
+    params: { page, size, scheduleId, leaveType, startDate, endDate }
+  })
+}
+
+/**
+ * 分页获取已审批请假申请
+ */
+export function getApprovedApprovalsPage(approverId, page, size, scheduleId, leaveType, approvalStatus, startDate, endDate) {
+  return request({
+    url: `/duty/leave-request/approved/page/${approverId}`,
+    method: 'get',
+    params: { page, size, scheduleId, leaveType, approvalStatus, startDate, endDate }
+  })
+}
+
+/**
+ * 获取请假顶岗信息
+ */
+export function getLeaveSubstitutes(leaveRequestId) {
+  return request({
+    url: `/duty/leave-request/substitutes/${leaveRequestId}`,
+    method: 'get'
+  })
+}
+
+/**
+ * 根据员工ID和日期范围获取顶岗信息
+ */
+export function getSubstitutesByEmployees(employeeIds, startDate, endDate) {
+  return request({
+    url: '/duty/leave-request/substitutes-by-employees',
+    method: 'get',
+    params: { employeeIds: employeeIds.join(','), startDate, endDate }
   })
 }

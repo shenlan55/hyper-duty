@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class DutyScheduleEmployeeServiceImpl extends ServiceImpl<DutyScheduleEmployeeMapper, DutyScheduleEmployee> implements DutyScheduleEmployeeService {
@@ -31,6 +33,22 @@ public class DutyScheduleEmployeeServiceImpl extends ServiceImpl<DutyScheduleEmp
                .eq(DutyScheduleEmployee::getIsLeader, 1);
         List<DutyScheduleEmployee> leaders = list(wrapper);
         return leaders.stream().map(DutyScheduleEmployee::getEmployeeId).toList();
+    }
+
+    @Override
+    public List<Map<String, Object>> getScheduleEmployeesWithLeaderInfo(Long scheduleId) {
+        LambdaQueryWrapper<DutyScheduleEmployee> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(DutyScheduleEmployee::getScheduleId, scheduleId);
+        List<DutyScheduleEmployee> employees = list(wrapper);
+        
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (DutyScheduleEmployee employee : employees) {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("employeeId", employee.getEmployeeId());
+            map.put("isLeader", employee.getIsLeader());
+            result.add(map);
+        }
+        return result;
     }
 
     @Override

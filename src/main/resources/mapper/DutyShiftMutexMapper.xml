@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lasu.hyperduty.mapper.DutyShiftMutexMapper">
+
+    <!-- 根据班次配置ID获取互斥班次配置ID列表 -->
+    <select id="selectMutexShiftIdsByShiftConfigId" parameterType="java.lang.Long" resultType="java.lang.Long">
+        SELECT mutex_shift_config_id FROM duty_shift_mutex WHERE shift_config_id = #{shiftConfigId}
+    </select>
+
+    <!-- 根据班次配置ID删除所有互斥关系 -->
+    <delete id="deleteByShiftConfigId" parameterType="java.lang.Long">
+        DELETE FROM duty_shift_mutex WHERE shift_config_id = #{shiftConfigId}
+    </delete>
+
+</mapper>

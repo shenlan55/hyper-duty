@@ -339,21 +339,21 @@ const handleMenuAuthSubmit = async () => {
 }
 
 // 远程搜索用户
-const remoteUserSearch = async (query) => {
+const remoteUserSearch = (query) => {
   if (userList.value.length === 0) {
-    try {
-      userLoading.value = true
-      const response = await getUserList()
+    userLoading.value = true
+    getUserList().then(response => {
       if (response.code === 200) {
-        userList.value = response.data
+        // 过滤掉禁用的用户（status为0）
+        userList.value = response.data.filter(user => user.status === 1)
       } else {
         ElMessage.error('获取用户列表失败：' + response.message)
       }
-    } catch (error) {
+    }).catch(error => {
       ElMessage.error('获取用户列表失败：' + error.message)
-    } finally {
+    }).finally(() => {
       userLoading.value = false
-    }
+    })
   }
 }
 
@@ -362,6 +362,24 @@ const handleUserBind = async (row) => {
   currentRoleId.value = row.id
   userBindVisible.value = true
   selectedUserIds.value = []
+  
+  // 获取所有用户信息
+  if (userList.value.length === 0) {
+    try {
+      userLoading.value = true
+      const userResponse = await getUserList()
+      if (userResponse.code === 200) {
+        // 过滤掉禁用的用户（status为0）
+        userList.value = userResponse.data.filter(user => user.status === 1)
+      } else {
+        ElMessage.error('获取用户列表失败：' + userResponse.message)
+      }
+    } catch (error) {
+      ElMessage.error('获取用户列表失败：' + error.message)
+    } finally {
+      userLoading.value = false
+    }
+  }
   
   // 获取角色已有用户
   try {

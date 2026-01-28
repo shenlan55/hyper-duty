@@ -9,6 +9,39 @@
     </div>
 
     <el-card shadow="hover" class="content-card">
+      <div class="filter-form">
+        <el-form :inline="true" :model="filterForm" class="mb-4">
+          <el-form-item label="审批状态">
+            <el-select v-model="filterForm.approvalStatus" placeholder="请选择审批状态" style="width: 150px;">
+              <el-option label="全部" value="" />
+              <el-option label="待审批" value="pending" />
+              <el-option label="已通过" value="approved" />
+              <el-option label="已拒绝" value="rejected" />
+              <el-option label="已取消" value="cancelled" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="开始日期">
+            <el-date-picker
+              v-model="filterForm.startDate"
+              type="date"
+              placeholder="选择开始日期"
+              style="width: 180px;"
+            />
+          </el-form-item>
+          <el-form-item label="结束日期">
+            <el-date-picker
+              v-model="filterForm.endDate"
+              type="date"
+              placeholder="选择结束日期"
+              style="width: 180px;"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleFilter">查询</el-button>
+            <el-button @click="resetFilter">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
       <el-table
         v-loading="loading"
         :data="requestList"
@@ -57,6 +90,17 @@
           </template>
         </el-table-column>
       </el-table>
+      <div class="pagination-container" v-if="total > 0">
+        <el-pagination
+          v-model:current-page="pagination.currentPage"
+          v-model:page-size="pagination.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
 
     <el-dialog
@@ -178,7 +222,8 @@ import {
   getMySwapRequests,
   submitSwapRequest,
   deleteSwapRequest,
-  confirmSwapRequest
+  confirmSwapRequest,
+  getMySwapRequestsPage
 } from '../../api/duty/swapRequest'
 import { getEmployeeList } from '../../api/employee'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
@@ -207,6 +252,19 @@ const form = reactive({
   swapShift: null,
   reason: ''
 })
+
+const filterForm = reactive({
+  approvalStatus: '',
+  startDate: null,
+  endDate: null
+})
+
+const pagination = reactive({
+  currentPage: 1,
+  pageSize: 10
+})
+
+const total = ref(0)
 
 const rules = {
   originalEmployeeId: [
@@ -299,9 +357,17 @@ const fetchShiftConfigList = async () => {
 const fetchMySwapRequests = async () => {
   loading.value = true
   try {
-    const response = await getMySwapRequests(currentEmployeeId.value)
+    const response = await getMySwapRequestsPage(
+      currentEmployeeId.value,
+      pagination.currentPage,
+      pagination.pageSize,
+      filterForm.approvalStatus,
+      filterForm.startDate,
+      filterForm.endDate
+    )
     if (response.code === 200) {
-      requestList.value = response.data
+      requestList.value = response.data.records
+      total.value = response.data.total
     }
   } catch (error) {
     console.error('获取调班申请列表失败:', error)
@@ -309,6 +375,29 @@ const fetchMySwapRequests = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleFilter = () => {
+  pagination.currentPage = 1
+  fetchMySwapRequests()
+}
+
+const resetFilter = () => {
+  filterForm.approvalStatus = ''
+  filterForm.startDate = null
+  filterForm.endDate = null
+  pagination.currentPage = 1
+  fetchMySwapRequests()
+}
+
+const handleSizeChange = (size) => {
+  pagination.pageSize = size
+  fetchMySwapRequests()
+}
+
+const handleCurrentChange = (current) => {
+  pagination.currentPage = current
+  fetchMySwapRequests()
 }
 
 const openAddDialog = () => {

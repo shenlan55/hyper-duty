@@ -130,12 +130,12 @@ public class SysScheduleJobController {
     /**
      * 清理定时任务日志
      * @param days 天数
-     * @return 清理结果
+     * @return 删除的记录数
      */
     @PostMapping("/log/clean")
-    public ResponseResult<Boolean> cleanLogs(@RequestParam int days) {
-        boolean result = scheduleLogService.cleanLogs(days);
-        return ResponseResult.success(result);
+    public ResponseResult<Integer> cleanLogs(@RequestParam int days) {
+        int count = scheduleLogService.cleanLogs(days);
+        return ResponseResult.success(count);
     }
 
 }

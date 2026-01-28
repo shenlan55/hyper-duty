@@ -35,6 +35,10 @@ public class LeaveRequest implements Serializable {
 
     private String endTime;
 
+    private Long shiftConfigId;
+
+    private String shiftConfigIds;
+
     private BigDecimal totalHours;
 
     private String reason;

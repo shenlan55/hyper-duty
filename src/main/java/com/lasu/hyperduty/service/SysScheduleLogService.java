@@ -18,8 +18,8 @@ public interface SysScheduleLogService extends IService<SysScheduleLog> {
     /**
      * 清理指定时间之前的日志
      * @param days 天数
-     * @return 清理结果
+     * @return 删除的记录数
      */
-    boolean cleanLogs(int days);
+    int cleanLogs(int days);
 
 }

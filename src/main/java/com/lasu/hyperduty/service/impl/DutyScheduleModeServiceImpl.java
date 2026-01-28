@@ -40,6 +40,13 @@ public class DutyScheduleModeServiceImpl extends ServiceImpl<DutyScheduleModeMap
     }
 
     @Override
+    public List<DutyScheduleMode> getAllModesWithSort() {
+        QueryWrapper<DutyScheduleMode> queryWrapper = new QueryWrapper<>();
+        queryWrapper.orderByAsc("sort");
+        return this.list(queryWrapper);
+    }
+
+    @Override
     public DutyScheduleMode getByCode(String modeCode) {
         QueryWrapper<DutyScheduleMode> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("mode_code", modeCode);

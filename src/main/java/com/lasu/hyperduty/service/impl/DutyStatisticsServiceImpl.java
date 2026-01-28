@@ -156,25 +156,36 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
         // 获取所有排班数据
         List<DutyAssignment> assignments = dutyAssignmentService.list();
 
-        // 按班次类型统计数量
-        Map<Integer, Long> shiftCount = assignments.stream()
-                .collect(Collectors.groupingBy(DutyAssignment::getDutyShift, Collectors.counting()));
+        // 按班次ID统计数量，优先使用shiftConfigId，其次使用dutyShift
+        Map<Long, Long> shiftCount = new HashMap<>();
+        
+        for (DutyAssignment assignment : assignments) {
+            if (assignment.getShiftConfigId() != null) {
+                // 使用shiftConfigId作为统计键
+                shiftCount.put(assignment.getShiftConfigId(), shiftCount.getOrDefault(assignment.getShiftConfigId(), 0L) + 1);
+            } else if (assignment.getDutyShift() != null) {
+                // 使用dutyShift作为统计键
+                shiftCount.put(assignment.getDutyShift().longValue(), shiftCount.getOrDefault(assignment.getDutyShift().longValue(), 0L) + 1);
+            }
+        }
 
         // 构建班次名称映射，只使用启用状态的班次配置
         List<Map<String, Object>> distribution = new ArrayList<>();
         
-        // 获取所有启用状态的班次配置
+        // 获取所有班次配置
         List<DutyShiftConfig> shiftConfigs = dutyShiftConfigService.list();
-        // 过滤出启用状态的班次（status = 1）
+        // 过滤出启用状态的班次（status = 1 或 status = null）
         List<DutyShiftConfig> enabledShiftConfigs = shiftConfigs.stream()
-                .filter(config -> config.getStatus() != null && config.getStatus() == 1)
+                .filter(config -> config.getStatus() == null || config.getStatus() == 1)
                 .collect(Collectors.toList());
 
         // 构建班次分布结果
         for (DutyShiftConfig shiftConfig : enabledShiftConfigs) {
             Map<String, Object> item = new HashMap<>();
             item.put("shiftName", shiftConfig.getShiftName());
-            item.put("count", shiftCount.getOrDefault(shiftConfig.getShiftType(), 0L).longValue());
+            // 统计该班次的总数量，包括通过shiftConfigId和dutyShift存储的情况
+            long count = shiftCount.getOrDefault(shiftConfig.getId(), 0L);
+            item.put("count", count);
             distribution.add(item);
         }
 

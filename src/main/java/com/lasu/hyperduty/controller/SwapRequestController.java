@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.SwapRequest;
 import com.lasu.hyperduty.service.SwapRequestService;
@@ -32,6 +33,29 @@ public class SwapRequestController {
     public ResponseResult<List<SwapRequest>> getPendingApprovals(@PathVariable Long approverId) {
         List<SwapRequest> list = swapRequestService.getPendingApprovals(approverId);
         return ResponseResult.success(list);
+    }
+
+    @GetMapping("/my/page/{employeeId}")
+    public ResponseResult<IPage<SwapRequest>> getMySwapRequestsPage(
+            @PathVariable Long employeeId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        IPage<SwapRequest> pageInfo = swapRequestService.getMySwapRequestsPage(employeeId, page, size, approvalStatus, startDate, endDate);
+        return ResponseResult.success(pageInfo);
+    }
+
+    @GetMapping("/pending/page/{approverId}")
+    public ResponseResult<IPage<SwapRequest>> getPendingApprovalsPage(
+            @PathVariable Long approverId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        IPage<SwapRequest> pageInfo = swapRequestService.getPendingApprovalsPage(approverId, page, size, startDate, endDate);
+        return ResponseResult.success(pageInfo);
     }
 
     @GetMapping("/{id}")

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, DutySchedule> implements DutyScheduleService {
@@ -27,6 +28,11 @@ public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, Dut
     @Override
     public List<Long> getLeaderIdsByScheduleId(Long scheduleId) {
         return scheduleEmployeeService.getLeaderIdsByScheduleId(scheduleId);
+    }
+
+    @Override
+    public List<Map<String, Object>> getScheduleEmployeesWithLeaderInfo(Long scheduleId) {
+        return scheduleEmployeeService.getScheduleEmployeesWithLeaderInfo(scheduleId);
     }
 
     @Override

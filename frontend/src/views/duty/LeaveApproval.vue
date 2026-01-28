@@ -30,6 +30,42 @@
     </div>
 
     <el-card shadow="hover" class="content-card">
+      <div class="filter-container">
+        <el-form :inline="true" :model="filterForm" class="demo-form-inline">
+          <el-form-item label="请假类型">
+            <el-select v-model="filterForm.leaveType" placeholder="请选择请假类型" clearable style="width: 150px;">
+              <el-option label="事假" :value="1" />
+              <el-option label="病假" :value="2" />
+              <el-option label="年假" :value="3" />
+              <el-option label="调休" :value="4" />
+              <el-option label="其他" :value="5" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="审批状态" v-if="activeTab === 'approved'">
+            <el-select v-model="filterForm.approvalStatus" placeholder="请选择审批状态" clearable style="width: 150px;">
+              <el-option label="已通过" value="approved" />
+              <el-option label="已拒绝" value="rejected" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="请假时间">
+            <el-date-picker
+              v-model="filterForm.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              style="width: 240px"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button @click="resetFilter">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
       <el-table
         v-loading="loading"
         :data="requestList"
@@ -83,6 +119,18 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.size"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pagination.total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
 
     <el-dialog
@@ -99,6 +147,7 @@
         <el-descriptions :column="1" border>
           <el-descriptions-item label="申请编号">{{ currentRequest.requestNo }}</el-descriptions-item>
           <el-descriptions-item label="申请人">{{ getEmployeeName(currentRequest.employeeId) }}</el-descriptions-item>
+          <el-descriptions-item label="值班表">{{ getScheduleName(currentRequest.scheduleId) }}</el-descriptions-item>
           <el-descriptions-item label="请假类型">
             <el-tag :type="getLeaveTypeColor(currentRequest.leaveType)">
               {{ getLeaveTypeName(currentRequest.leaveType) }}
@@ -106,6 +155,7 @@
           </el-descriptions-item>
           <el-descriptions-item label="请假时长">{{ currentRequest.totalHours }}小时</el-descriptions-item>
           <el-descriptions-item label="请假时间">{{ currentRequest.startDate }} - {{ currentRequest.endDate }}</el-descriptions-item>
+          <el-descriptions-item v-if="currentRequest.shiftConfigIds" label="请假班次">{{ getShiftNames(currentRequest.shiftConfigIds) }}</el-descriptions-item>
           <el-descriptions-item label="请假原因" :span="2">{{ currentRequest.reason }}</el-descriptions-item>
         </el-descriptions>
         <el-form-item label="审批结果" prop="approvalStatus">
@@ -114,39 +164,34 @@
             <el-radio value="rejected">拒绝</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item v-if="approveForm.approvalStatus === 'approved'" label="排班处理" prop="scheduleAction">
-          <el-radio-group v-model="approveForm.scheduleAction">
-            <el-radio value="check">检查排班</el-radio>
-            <el-radio value="auto">自动排班</el-radio>
-            <el-radio value="skip">跳过</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'auto'" label="排班方式" prop="scheduleType">
-          <el-radio-group v-model="approveForm.scheduleType">
-            <el-radio value="rotate">轮换排班</el-radio>
-            <el-radio value="balance">均衡排班</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'auto'" label="排班日期范围" prop="scheduleDateRange">
-          <el-date-picker
-            v-model="approveForm.scheduleDateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            style="width: 100%"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
-        <el-form-item v-if="approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'check'" label="排班状态">
-          <el-tag :type="scheduleStatus.type">{{ scheduleStatus.text }}</el-tag>
-          <el-button v-if="scheduleStatus.type === 'success'" type="primary" size="small" @click="handleConfirmSchedule">
-            确认排班完成
-          </el-button>
-          <el-button v-if="scheduleStatus.type === 'warning'" type="primary" size="small" @click="goToSchedule">
-            去排班
-          </el-button>
+        <el-form-item v-if="approveForm.approvalStatus === 'approved'" label="排班处理">
+          <el-button type="primary" @click="checkSchedule">检查排班状态</el-button>
+          <div v-if="scheduleChecked" style="margin-top: 10px">
+            <el-tag :type="scheduleStatus.type">{{ scheduleStatus.text }}</el-tag>
+            <div v-if="substituteData.length === 0" class="text-center py-4">
+              <el-button type="primary" @click="generateSubstituteSchedule">生成顶岗排班表</el-button>
+            </div>
+            <div v-else>
+              <el-button type="primary" size="small" @click="selectAllSubstitutes">一键选择</el-button>
+              <el-table :data="substituteData" style="width: 100%; margin-top: 10px">
+                <el-table-column prop="date" label="日期" width="120" />
+                <el-table-column prop="shiftName" label="班次" width="120" />
+                <el-table-column prop="originalEmployee" label="原值班人" width="120" />
+                <el-table-column label="顶岗人员" width="200">
+                  <template #default="scope">
+                    <el-select v-model="scope.row.substituteEmployeeId" placeholder="选择顶岗人员" style="width: 100%">
+                      <el-option
+                        v-for="employee in availableSubstitutes"
+                        :key="employee.id"
+                        :label="employee.employeeName"
+                        :value="employee.id"
+                      />
+                    </el-select>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item v-if="approveForm.approvalStatus === 'rejected'" label="拒绝原因" prop="rejectReason">
           <el-input
@@ -191,6 +236,9 @@
         <el-descriptions-item label="请假时长">{{ currentRequest.totalHours }}小时</el-descriptions-item>
         <el-descriptions-item label="开始时间">{{ currentRequest.startDate }} {{ currentRequest.startTime || '' }}</el-descriptions-item>
         <el-descriptions-item label="结束时间">{{ currentRequest.endDate }} {{ currentRequest.endTime || '' }}</el-descriptions-item>
+        <el-descriptions-item v-if="currentRequest.shiftConfigIds" label="请假班次" :span="2">
+          {{ getShiftNames(currentRequest.shiftConfigIds) }}
+        </el-descriptions-item>
         <el-descriptions-item label="审批状态">
           <el-tag :type="getApprovalStatusColor(currentRequest.approvalStatus)">
             {{ getApprovalStatusName(currentRequest.approvalStatus) }}
@@ -198,13 +246,24 @@
         </el-descriptions-item>
         <el-descriptions-item label="请假原因" :span="2">{{ currentRequest.reason }}</el-descriptions-item>
         <el-descriptions-item label="申请时间" :span="2">{{ formatDateTime(currentRequest.createTime) }}</el-descriptions-item>
-        <el-descriptions-item v-if="currentRequest.substituteEmployeeId" label="替补人员">
-          {{ getEmployeeName(currentRequest.substituteEmployeeId) }}
-        </el-descriptions-item>
         <el-descriptions-item v-if="currentRequest.rejectReason" label="拒绝原因" :span="2">
           {{ currentRequest.rejectReason }}
         </el-descriptions-item>
       </el-descriptions>
+      
+      <!-- 顶岗信息表格 -->
+      <div v-if="substituteInfoList.length > 0" style="margin-top: 20px">
+        <h4>顶岗信息</h4>
+        <el-table :data="substituteInfoList" style="width: 100%">
+          <el-table-column prop="dutyDate" label="值班日期" width="120" />
+          <el-table-column prop="shiftName" label="班次" width="120" />
+          <el-table-column prop="originalEmployeeName" label="原值班人" width="120" />
+          <el-table-column prop="substituteEmployeeName" label="顶岗人员" width="120" />
+        </el-table>
+      </div>
+      <div v-else-if="currentRequest.approvalStatus === 'approved'" style="margin-top: 20px; text-align: center; color: #999">
+        暂无顶岗信息
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -219,9 +278,13 @@ import {
   getPendingApprovalsByScheduleId,
   getApprovedApprovals,
   getApprovedApprovalsByScheduleId,
+  getPendingApprovalsPage,
+  getApprovedApprovalsPage,
   approveLeaveRequest,
   confirmScheduleCompletion,
-  checkEmployeeSchedule
+  checkEmployeeSchedule,
+  getAvailableSubstitutes,
+  getLeaveSubstitutes
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
 import { getScheduleList } from '../../api/duty/schedule'
@@ -230,6 +293,7 @@ import {
   generateAutoScheduleByWorkHours,
   getEmployeeMonthlyWorkHours
 } from '../../api/duty/autoSchedule'
+import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 
@@ -247,6 +311,23 @@ const selectedScheduleId = ref('')
 const currentRequest = ref({})
 const currentApproverId = ref(1)
 const activeTab = ref('pending')
+const shiftConfigList = ref([])
+const shiftApi = shiftConfigApi()
+const substituteInfoList = ref([])
+
+// 分页相关
+const pagination = reactive({
+  page: 1,
+  size: 10,
+  total: 0
+})
+
+// 筛选条件
+const filterForm = reactive({
+  leaveType: null,
+  approvalStatus: '',
+  dateRange: null
+})
 
 const approveForm = reactive({
   requestId: null,
@@ -255,9 +336,13 @@ const approveForm = reactive({
   rejectReason: '',
   approvalOpinion: '',
   scheduleAction: 'check',
-  scheduleType: 'rotate',
-  scheduleDateRange: null
+  substituteData: [],
+  availableSubstitutes: []
 })
+
+const substituteData = ref([])
+const availableSubstitutes = ref([])
+const scheduleChecked = ref(false)
 
 const approveRules = {
   approvalStatus: [
@@ -324,6 +409,29 @@ const getEmployeeName = (employeeId) => {
   return employee ? employee.employeeName : '未知'
 }
 
+const getShiftNames = (shiftConfigIds) => {
+  if (!shiftConfigIds) return '未知'
+  
+  const shiftIds = typeof shiftConfigIds === 'string' ? shiftConfigIds.split(',') : shiftConfigIds
+  const shiftNames = []
+  
+  shiftIds.forEach(shiftId => {
+    const shift = shiftConfigList.value.find(s => s.id === Number(shiftId))
+    if (shift) {
+      shiftNames.push(shift.shiftName)
+    }
+  })
+  
+  return shiftNames.length > 0 ? shiftNames.join('、') : '未知'
+}
+
+const getScheduleName = (scheduleId) => {
+  if (!scheduleId) return '未知'
+  
+  const schedule = scheduleList.value.find(s => s.id === scheduleId)
+  return schedule ? schedule.scheduleName : '未知'
+}
+
 const fetchEmployeeList = async () => {
   try {
     const response = await getEmployeeList()
@@ -348,29 +456,52 @@ const fetchScheduleList = async () => {
   }
 }
 
+const fetchEnabledShifts = async () => {
+  try {
+    const response = await shiftApi.getEnabledShifts()
+    if (response.code === 200) {
+      shiftConfigList.value = response.data
+    }
+  } catch (error) {
+    console.error('获取班次配置列表失败:', error)
+  }
+}
+
 const fetchPendingApprovals = async (tabName = activeTab.value) => {
   console.log('Fetching approvals, tabName:', tabName)
   loading.value = true
   try {
     let response
+    const [startDate, endDate] = filterForm.dateRange || [null, null]
+    
     if (tabName === 'pending') {
       console.log('Fetching pending approvals')
-      if (selectedScheduleId.value) {
-        response = await getPendingApprovalsByScheduleId(selectedScheduleId.value)
-      } else {
-        response = await getPendingApprovals(userStore.employeeId || 1)
-      }
+      response = await getPendingApprovalsPage(
+        userStore.employeeId || 1,
+        pagination.page,
+        pagination.size,
+        selectedScheduleId.value || null,
+        filterForm.leaveType,
+        startDate,
+        endDate
+      )
     } else {
       console.log('Fetching approved approvals')
-      if (selectedScheduleId.value) {
-        response = await getApprovedApprovalsByScheduleId(selectedScheduleId.value)
-      } else {
-        response = await getApprovedApprovals(userStore.employeeId || 1)
-      }
+      response = await getApprovedApprovalsPage(
+        userStore.employeeId || 1,
+        pagination.page,
+        pagination.size,
+        selectedScheduleId.value || null,
+        filterForm.leaveType,
+        filterForm.approvalStatus || null,
+        startDate,
+        endDate
+      )
     }
     console.log('Response received:', response)
     if (response.code === 200) {
-      requestList.value = response.data
+      requestList.value = response.data.records
+      pagination.total = response.data.total
       console.log('Request list updated:', requestList.value)
     }
   } catch (error) {
@@ -382,6 +513,7 @@ const fetchPendingApprovals = async (tabName = activeTab.value) => {
 }
 
 const handleScheduleChange = () => {
+  pagination.page = 1 // 重置页码
   fetchPendingApprovals()
 }
 
@@ -391,7 +523,35 @@ const refreshList = () => {
 
 const handleTabClick = (tab) => {
   console.log('Tab clicked, tab name:', tab.props.name)
+  pagination.page = 1 // 重置页码
   fetchPendingApprovals(tab.props.name)
+}
+
+// 分页大小变化处理
+const handleSizeChange = (size) => {
+  pagination.size = size
+  fetchPendingApprovals()
+}
+
+// 页码变化处理
+const handleCurrentChange = (current) => {
+  pagination.page = current
+  fetchPendingApprovals()
+}
+
+// 搜索处理
+const handleSearch = () => {
+  pagination.page = 1 // 重置页码
+  fetchPendingApprovals()
+}
+
+// 重置筛选条件
+const resetFilter = () => {
+  filterForm.leaveType = null
+  filterForm.approvalStatus = ''
+  filterForm.dateRange = null
+  pagination.page = 1
+  fetchPendingApprovals()
 }
 
 const openApproveDialog = (row) => {
@@ -401,12 +561,20 @@ const openApproveDialog = (row) => {
   approveForm.approvalStatus = 'approved'
   approveForm.rejectReason = ''
   approveForm.approvalOpinion = ''
+  // 重置检查状态和顶岗数据
+  scheduleChecked.value = false
+  substituteData.value = []
+  scheduleStatus.type = 'info'
+  scheduleStatus.text = '未检查'
   approveDialogVisible.value = true
 }
 
-const openViewDialog = (row) => {
+const openViewDialog = async (row) => {
   currentRequest.value = row
   viewDialogVisible.value = true
+  
+  // 获取顶岗信息
+  await fetchSubstituteInfo(row.id)
 }
 
 const handleApprove = async () => {
@@ -414,40 +582,21 @@ const handleApprove = async () => {
     await approveFormRef.value.validate()
     approveLoading.value = true
     
-    if (approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'check') {
-      await checkSchedule()
-      return
-    }
-    
-    if (approveForm.approvalStatus === 'approved' && approveForm.scheduleAction === 'auto') {
-      if (!selectedScheduleId.value) {
-        ElMessage.error('请先选择值班表')
+    if (approveForm.approvalStatus === 'approved') {
+      // 验证是否已经检查了排班状态
+      if (!scheduleChecked.value) {
+        ElMessage.warning('请先检查排班状态')
         approveLoading.value = false
         return
       }
       
-      if (!approveForm.scheduleDateRange) {
-        ElMessage.error('请选择排班日期范围')
+      // 验证是否所有顶岗人员都已选择
+      const hasEmptySubstitute = substituteData.value.some(item => !item.substituteEmployeeId)
+      if (hasEmptySubstitute) {
+        ElMessage.error('请为所有班次选择顶岗人员')
         approveLoading.value = false
         return
       }
-      
-      const [startDate, endDate] = approveForm.scheduleDateRange
-      let response
-      
-      if (approveForm.scheduleType === 'rotate') {
-        response = await generateAutoSchedule(selectedScheduleId.value, startDate, endDate, 1)
-      } else if (approveForm.scheduleType === 'balance') {
-        response = await generateAutoScheduleByWorkHours(selectedScheduleId.value, startDate, endDate, 1, currentRequest.value.employeeId)
-      }
-      
-      if (response.code !== 200) {
-        ElMessage.error('自动排班失败')
-        approveLoading.value = false
-        return
-      }
-      
-      ElMessage.success('自动排班成功')
     }
     
     const response = await approveLeaveRequest(
@@ -455,9 +604,8 @@ const handleApprove = async () => {
       approveForm.approverId,
       approveForm.approvalStatus,
       approveForm.approvalStatus === 'rejected' ? approveForm.rejectReason : approveForm.approvalOpinion,
-      approveForm.scheduleAction,
-      approveForm.scheduleType,
-      approveForm.scheduleDateRange
+      'substitute', // 固定使用substitute作为排班处理方式
+      substituteData.value // 传递顶岗人员数据
     )
     
     if (response.code === 200) {
@@ -476,27 +624,101 @@ const handleApprove = async () => {
 }
 
 const handleApprovalStatusChange = (status) => {
-  if (status === 'rejected') {
-    approveForm.scheduleAction = 'skip'
-  } else {
-    approveForm.scheduleAction = 'check'
+  // 重置检查状态
+  scheduleChecked.value = false
+  substituteData.value = []
+}
+
+const generateSubstituteSchedule = async () => {
+  try {
+    // 获取请假期间的所有日期和班次
+    const startDate = currentRequest.value.startDate
+    const endDate = currentRequest.value.endDate
+    const shiftConfigIds = currentRequest.value.shiftConfigIds ? currentRequest.value.shiftConfigIds.split(',') : []
+    
+    // 生成日期范围
+    const dates = []
+    let current = new Date(startDate)
+    const end = new Date(endDate)
+    while (current <= end) {
+      dates.push(current.toISOString().split('T')[0])
+      current.setDate(current.getDate() + 1)
+    }
+    
+    // 获取可用的顶岗人员（排除请假期间请假的人）
+    await fetchAvailableSubstitutes(startDate, endDate)
+    
+    // 生成顶岗排班表
+    const data = []
+    dates.forEach(date => {
+      shiftConfigIds.forEach(shiftId => {
+        const shift = shiftConfigList.value.find(s => s.id === Number(shiftId))
+        if (shift) {
+          data.push({
+            date,
+            shiftId: Number(shiftId),
+            shiftName: shift.shiftName,
+            originalEmployee: getEmployeeName(currentRequest.value.employeeId),
+            substituteEmployeeId: null
+          })
+        }
+      })
+    })
+    
+    substituteData.value = data
+  } catch (error) {
+    console.error('生成顶岗排班表失败:', error)
+    ElMessage.error('生成顶岗排班表失败')
+  }
+}
+
+const fetchAvailableSubstitutes = async (startDate, endDate) => {
+  try {
+    // 调用后端API获取可用的顶岗人员
+    const response = await getAvailableSubstitutes(
+      currentRequest.value.scheduleId,
+      startDate,
+      endDate,
+      currentRequest.value.employeeId
+    )
+    if (response.code === 200) {
+      availableSubstitutes.value = response.data
+    }
+  } catch (error) {
+    console.error('获取可用顶岗人员失败:', error)
+    ElMessage.error('获取可用顶岗人员失败')
+  }
+}
+
+const selectAllSubstitutes = () => {
+  // 一键选择逻辑：选择第一个可用的顶岗人员填入所有班次
+  if (availableSubstitutes.value.length > 0) {
+    const firstSubstituteId = availableSubstitutes.value[0].id
+    substituteData.value.forEach(item => {
+      item.substituteEmployeeId = firstSubstituteId
+    })
+    ElMessage.success('已为所有班次选择顶岗人员')
   }
 }
 
 const checkSchedule = async () => {
   try {
-    const response = await checkEmployeeSchedule(currentRequest.value.employeeId, currentRequest.value.startDate, currentRequest.value.endDate)
+    const response = await checkEmployeeSchedule(currentRequest.value.employeeId, currentRequest.value.startDate, currentRequest.value.endDate, currentRequest.value.scheduleId)
     
     if (response.code === 200) {
       if (response.data.hasSchedule) {
-        scheduleStatus.type = 'danger'
-        scheduleStatus.text = '已有排班，请先调整'
-        ElMessage.warning('申请人请假期间已有排班，请先调整排班')
+        scheduleStatus.type = 'warning'
+        scheduleStatus.text = '已有排班，请选择顶岗人员'
+        ElMessage.warning('申请人请假期间已有排班，请选择顶岗人员')
       } else {
-        scheduleStatus.type = 'success'
-        scheduleStatus.text = '无排班，可以审批'
-        ElMessage.success('申请人请假期间无排班，可以审批')
+        scheduleStatus.type = 'info'
+        scheduleStatus.text = '无排班，需要选择顶岗人员'
+        ElMessage.info('申请人请假期间无排班，需要选择顶岗人员')
       }
+      // 设置检查状态为已检查
+      scheduleChecked.value = true
+      // 生成顶岗排班表
+      await generateSubstituteSchedule()
     }
   } catch (error) {
     console.error('检查排班失败:', error)
@@ -532,9 +754,28 @@ const handleConfirmSchedule = async () => {
   }
 }
 
+const fetchSubstituteInfo = async (leaveRequestId) => {
+  try {
+    const response = await getLeaveSubstitutes(leaveRequestId)
+    if (response.code === 200) {
+      // 处理顶岗信息数据
+      substituteInfoList.value = response.data.map(item => ({
+        dutyDate: item.dutyDate,
+        shiftName: getShiftNames([item.shiftConfigId]),
+        originalEmployeeName: getEmployeeName(item.originalEmployeeId),
+        substituteEmployeeName: getEmployeeName(item.substituteEmployeeId)
+      }))
+    }
+  } catch (error) {
+    console.error('获取顶岗信息失败:', error)
+    substituteInfoList.value = []
+  }
+}
+
 onMounted(async () => {
   await fetchEmployeeList()
   await fetchScheduleList()
+  await fetchEnabledShifts()
   await fetchPendingApprovals()
 })
 </script>
@@ -569,5 +810,18 @@ onMounted(async () => {
 
 .content-card {
   margin-bottom: 10px;
+}
+
+.filter-container {
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

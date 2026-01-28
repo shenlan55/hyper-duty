@@ -199,6 +199,23 @@
             :rows="3"
           />
         </el-form-item>
+        <el-form-item label="互斥班次">
+          <el-select
+            v-model="form.mutexShiftIds"
+            multiple
+            placeholder="请选择互斥班次"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="shift in shiftConfigList"
+              :key="shift.id"
+              :label="shift.shiftName"
+              :value="shift.id"
+              :disabled="shift.id === form.id"
+            />
+          </el-select>
+          <div class="el-form-item__help">互斥班次表示同一天不能同时应用的班次</div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -239,7 +256,8 @@ const form = reactive({
   breakHours: 0,
   isOvertimeShift: 0,
   status: 1,
-  remark: ''
+  remark: '',
+  mutexShiftIds: []
 })
 
 const rules = {
@@ -311,7 +329,15 @@ const openAddDialog = () => {
 }
 
 const openEditDialog = (row) => {
-  Object.assign(form, row)
+  // 先深拷贝对象
+  const formData = JSON.parse(JSON.stringify(row))
+  // 将isCrossDay从数字类型转换为布尔类型
+  formData.isCrossDay = formData.isCrossDay === 1
+  // 确保mutexShiftIds存在
+  if (!formData.mutexShiftIds) {
+    formData.mutexShiftIds = []
+  }
+  Object.assign(form, formData)
   dialogTitle.value = '编辑班次'
   dialogVisible.value = true
 }
@@ -332,7 +358,8 @@ const resetForm = () => {
     breakHours: 0,
     isOvertimeShift: 0,
     status: 1,
-    remark: ''
+    remark: '',
+    mutexShiftIds: []
   })
 }
 

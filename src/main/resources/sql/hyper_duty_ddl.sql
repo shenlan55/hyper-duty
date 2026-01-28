@@ -336,6 +336,8 @@ CREATE TABLE IF NOT EXISTS leave_request (
     end_date DATE NOT NULL COMMENT '结束日期',
     start_time TIME COMMENT '开始时间',
     end_time TIME COMMENT '结束时间',
+    shift_config_id BIGINT COMMENT '班次配置ID',
+    shift_config_ids VARCHAR(500) COMMENT '班次配置ID列表，多个用逗号分隔',
     total_hours DECIMAL(6,2) COMMENT '请假总时长(小时)',
     reason VARCHAR(500) NOT NULL COMMENT '请假原因',
     attachment_url VARCHAR(500) COMMENT '附件URL',
@@ -361,7 +363,8 @@ CREATE TABLE IF NOT EXISTS leave_request (
     FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE,
     FOREIGN KEY (schedule_id) REFERENCES duty_schedule(id) ON DELETE SET NULL,
     FOREIGN KEY (current_approver_id) REFERENCES sys_employee(id) ON DELETE SET NULL,
-    FOREIGN KEY (substitute_employee_id) REFERENCES sys_employee(id) ON DELETE SET NULL
+    FOREIGN KEY (substitute_employee_id) REFERENCES sys_employee(id) ON DELETE SET NULL,
+    FOREIGN KEY (shift_config_id) REFERENCES duty_shift_config(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='请假申请表';
 
 -- 审批记录表
@@ -507,6 +510,55 @@ CREATE TABLE IF NOT EXISTS sys_schedule_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='定时任务日志表';
 
 -- ========================================
+-- 班次互斥关系表
+-- ========================================
+
+-- 班次互斥关系表
+CREATE TABLE IF NOT EXISTS duty_shift_mutex (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+    shift_config_id BIGINT NOT NULL COMMENT '班次配置ID',
+    mutex_shift_config_id BIGINT NOT NULL COMMENT '互斥班次配置ID',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_shift_mutex (shift_config_id, mutex_shift_config_id),
+    INDEX idx_shift_config_id (shift_config_id),
+    INDEX idx_mutex_shift_config_id (mutex_shift_config_id),
+    FOREIGN KEY (shift_config_id) REFERENCES duty_shift_config(id) ON DELETE CASCADE,
+    FOREIGN KEY (mutex_shift_config_id) REFERENCES duty_shift_config(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='班次互斥关系表';
+
+-- ========================================
+-- 请假顶岗信息表
+-- ========================================
+
+-- 请假顶岗信息表
+CREATE TABLE IF NOT EXISTS leave_substitute (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+    leave_request_id BIGINT NOT NULL COMMENT '请假申请ID',
+    original_employee_id BIGINT NOT NULL COMMENT '原值班人员ID',
+    substitute_employee_id BIGINT NOT NULL COMMENT '顶岗人员ID',
+    duty_date DATE NOT NULL COMMENT '值班日期',
+    shift_config_id BIGINT NOT NULL COMMENT '班次配置ID',
+    status INT DEFAULT 1 COMMENT '状态',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_leave_request_id (leave_request_id),
+    INDEX idx_duty_date (duty_date),
+    INDEX idx_shift_config_id (shift_config_id),
+    FOREIGN KEY (leave_request_id) REFERENCES leave_request(id) ON DELETE CASCADE,
+    FOREIGN KEY (original_employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE,
+    FOREIGN KEY (substitute_employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE,
+    FOREIGN KEY (shift_config_id) REFERENCES duty_shift_config(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='请假顶岗信息表';
+
+-- ========================================
+-- 表结构修改语句
+-- ========================================
+
+-- 修改 operation_log 表的 error_msg 列类型为 TEXT，解决数据截断问题
+ALTER TABLE operation_log MODIFY COLUMN error_msg TEXT COMMENT '错误信息';
+
+-- ========================================
 -- DDL 脚本执行完成
 -- ========================================
-SELECT 'Hyper Duty DDL 脚本执行完成！共创建23个表' AS message;
+SELECT 'Hyper Duty DDL 脚本执行完成！共创建25个表' AS message;

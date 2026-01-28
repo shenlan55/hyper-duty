@@ -20,10 +20,10 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private JwtUtil jwtUtil;
-    private SysUserService sysUserService;
+    private final JwtUtil jwtUtil;
+    private final SysUserService sysUserService;
 
-    // 使用构造函数注入，避免循环依赖
+    // 使用构造函数注入
     @Autowired
     public JwtAuthenticationFilter(JwtUtil jwtUtil, SysUserService sysUserService) {
         this.jwtUtil = jwtUtil;
@@ -34,25 +34,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) 
             throws ServletException, IOException {
 
-        final String authorizationHeader = request.getHeader("Authorization");
-
-        String username = null;
-        String jwt = null;
-
-        // 从Authorization头中提取JWT令牌
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            try {
-                username = jwtUtil.extractUsername(jwt);
-            } catch (Exception e) {
-                // JWT解析失败，可能是令牌无效或已过期
-                ResponseUtil.sendUnauthorizedResponse(response, "Token invalid or expired");
-                return;
-            }
+        // 获取请求路径
+        String requestPath = request.getServletPath();
+        
+        // 对于不需要认证的路径，直接放行
+        if (requestPath.startsWith("/auth/login") || 
+            requestPath.startsWith("/auth/logout") ||
+            requestPath.startsWith("/doc.html") ||
+            requestPath.startsWith("/swagger-ui/") ||
+            requestPath.startsWith("/v3/api-docs/") ||
+            requestPath.startsWith("/druid/") ||
+            requestPath.startsWith("/static/")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        // 如果令牌有效且用户未认证
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        final String authorizationHeader = request.getHeader("Authorization");
+
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            // 没有令牌，返回401
+            ResponseUtil.sendUnauthorizedResponse(response, "Token not provided");
+            return;
+        }
+
+        String jwt = authorizationHeader.substring(7);
+        String username = null;
+
+        try {
+            username = jwtUtil.extractUsername(jwt);
+        } catch (Exception e) {
+            // JWT解析失败，可能是令牌无效或已过期
+            ResponseUtil.sendUnauthorizedResponse(response, "Token invalid or expired");
+            return;
+        }
+
+        if (username == null) {
+            // 用户名为空，返回401
+            ResponseUtil.sendUnauthorizedResponse(response, "Token invalid");
+            return;
+        }
+
+        // 如果用户未认证
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.sysUserService.loadUserByUsername(username);
 
             try {

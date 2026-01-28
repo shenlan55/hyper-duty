@@ -28,10 +28,16 @@ export function getApprovedApprovalsByScheduleId(scheduleId) {
   })
 }
 
-export function approveLeaveRequest(requestId, approverId, approvalStatus, opinion) {
+export function approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, substituteData) {
   return request({
     url: `/duty/leave-request/approve/${requestId}`,
     method: 'put',
-    params: { approverId, approvalStatus, opinion }
+    params: {
+      approverId,
+      approvalStatus,
+      opinion,
+      scheduleAction
+    },
+    data: substituteData
   })
 }

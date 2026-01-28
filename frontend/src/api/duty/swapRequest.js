@@ -29,3 +29,17 @@ export function deleteSwapRequest(id) {
     method: 'delete'
   })
 }
+
+export function getMySwapRequestsPage(employeeId, page, size, approvalStatus, startDate, endDate) {
+  return request({
+    url: `/duty/swap-request/my/page/${employeeId}`,
+    method: 'get',
+    params: {
+      page,
+      size,
+      approvalStatus,
+      startDate,
+      endDate
+    }
+  })
+}
