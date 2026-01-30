@@ -28,6 +28,8 @@ public class SwapRequest implements Serializable {
 
     private Long targetAssignmentId;
 
+    private Long scheduleId;
+
     private LocalDate swapDate;
 
     private Integer swapShift;

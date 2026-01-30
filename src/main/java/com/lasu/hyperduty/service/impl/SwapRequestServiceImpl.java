@@ -7,8 +7,11 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.SwapRequest;
 import com.lasu.hyperduty.mapper.SwapRequestMapper;
 import com.lasu.hyperduty.service.SwapRequestService;
+import com.lasu.hyperduty.service.DutyAssignmentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -17,6 +20,8 @@ import java.util.Random;
 
 @Service
 public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapRequest> implements SwapRequestService {
+
+    private static final Logger log = LoggerFactory.getLogger(SwapRequestServiceImpl.class);
 
     @Autowired
     private SwapRequestMapper swapRequestMapper;
@@ -30,6 +35,7 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
 
     @Override
     public SwapRequest submitSwapRequest(SwapRequest swapRequest) {
+        // 生成申请编号
         swapRequest.setRequestNo(generateRequestNo());
         swapRequest.setApprovalStatus("pending");
         swapRequest.setApprovalLevel(1);
@@ -37,6 +43,8 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
         swapRequest.setTargetConfirmStatus("pending");
         swapRequest.setCreateTime(LocalDateTime.now());
         swapRequest.setUpdateTime(LocalDateTime.now());
+        
+        // 保存调班申请
         save(swapRequest);
         return swapRequest;
     }
@@ -57,6 +65,9 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
         return updateById(request);
     }
 
+    @Autowired
+    private DutyAssignmentService dutyAssignmentService;
+
     @Override
     public boolean confirmSwapRequest(Long requestId, Long employeeId, String confirmStatus) {
         SwapRequest request = getById(requestId);
@@ -71,6 +82,25 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
                 request.setTargetConfirmStatus("confirmed");
             }
             request.setUpdateTime(LocalDateTime.now());
+            
+            // 当双方都确认后，自动替换班次
+            if ("confirmed".equals(request.getOriginalConfirmStatus()) && "confirmed".equals(request.getTargetConfirmStatus())) {
+                request.setApprovalStatus("approved");
+                
+                // 自动替换班次
+                try {
+                    dutyAssignmentService.swapDutyAssignments(
+                        request.getOriginalEmployeeId(),
+                        request.getTargetEmployeeId(),
+                        request.getSwapDate(),
+                        request.getSwapShift()
+                    );
+                } catch (Exception e) {
+                    // 记录替换班次失败的日志
+                    log.error("自动替换班次失败: {}", e.getMessage(), e);
+                    // 不影响调班申请的状态更新
+                }
+            }
         }
 
         return updateById(request);
@@ -97,7 +127,7 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
     }
 
     @Override
-    public IPage<SwapRequest> getMySwapRequestsPage(Long employeeId, Integer page, Integer size, String approvalStatus, String startDate, String endDate) {
+    public IPage<SwapRequest> getMySwapRequestsPage(Long employeeId, Integer page, Integer size, String approvalStatus, Long scheduleId, String startDate, String endDate) {
         IPage<SwapRequest> pageInfo = new Page<>(page, size);
         return lambdaQuery()
                 .and(wrapper -> wrapper
@@ -105,6 +135,7 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
                         .or()
                         .eq(SwapRequest::getTargetEmployeeId, employeeId))
                 .eq(approvalStatus != null && !approvalStatus.isEmpty(), SwapRequest::getApprovalStatus, approvalStatus)
+                .eq(scheduleId != null, SwapRequest::getScheduleId, scheduleId)
                 .ge(startDate != null && !startDate.isEmpty(), SwapRequest::getCreateTime, startDate)
                 .le(endDate != null && !endDate.isEmpty(), SwapRequest::getCreateTime, endDate)
                 .orderByDesc(SwapRequest::getCreateTime)
