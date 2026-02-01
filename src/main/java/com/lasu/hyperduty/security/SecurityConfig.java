@@ -1,6 +1,7 @@
 package com.lasu.hyperduty.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,6 +22,10 @@ import java.util.Collections;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    
+    // 从环境变量读取允许的源
+    @Value("${CORS_ALLOWED_ORIGINS:http://localhost:5173}")
+    private String corsAllowedOrigins;
 
     // 使用构造函数注入
     @Autowired
@@ -45,9 +50,10 @@ public class SecurityConfig {
                 // 添加CORS配置
                 .cors(cors -> cors.configurationSource(request -> {
                     org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-                    configuration.addAllowedOrigin("http://localhost:8187");
-                    configuration.addAllowedOrigin("http://localhost:5173"); // 同时支持README中提到的默认端口
-                    configuration.addAllowedOrigin("http://localhost:5174"); // 支持当前使用的端口
+                    // 从环境变量读取允许的源并添加
+                    for (String origin : corsAllowedOrigins.split(",")) {
+                        configuration.addAllowedOrigin(origin.trim());
+                    }
                     configuration.addAllowedMethod("*");
                     configuration.addAllowedHeader("*");
                     configuration.setAllowCredentials(true);

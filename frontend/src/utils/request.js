@@ -27,8 +27,8 @@ const isJWTExpired = (token) => {
 }
 
 // 创建axios实例
-const request = axios.create({
-  baseURL: 'http://localhost:8080/api', // 后端API基础URL，包含context-path
+ const request = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api', // 后端API基础URL，包含context-path
   timeout: 5000 // 请求超时时间
 })
 

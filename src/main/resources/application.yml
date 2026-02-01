@@ -4,9 +4,9 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/hyper_duty?useUnicode=true&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=Asia/Shanghai&useLegacyDatetimeCode=false
-    username: root
-    password: 123456
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:hyper_duty}?useUnicode=true&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=Asia/Shanghai&useLegacyDatetimeCode=false
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:123456}
     #password: Feiwu2023!
     druid:
       initial-size: 5
