@@ -25,13 +25,7 @@ COPY --from=build /app/target/hyper-duty-*.jar app.jar
 # 暴露端口
 EXPOSE 8080
 
-# 设置环境变量
-ENV DB_HOST=localhost
-ENV DB_PORT=3306
-ENV DB_NAME=hyper_duty
-ENV DB_USER=root
-ENV DB_PASSWORD=123456
-ENV CORS_ALLOWED_ORIGINS=http://localhost:5173
+# 环境变量由docker-compose.yml提供
 
 # 启动应用
 CMD ["java", "-jar", "app.jar"]
