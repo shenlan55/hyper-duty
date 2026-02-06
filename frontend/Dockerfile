@@ -1,6 +1,12 @@
 # 第一阶段：构建前端项目
 FROM node:18-alpine as build
 
+# 设置构建时的环境变量
+ARG VITE_API_BASE_URL=/api
+
+# 将构建时的环境变量传递给运行时
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
 # 设置工作目录
 WORKDIR /app
 

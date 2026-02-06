@@ -52,7 +52,12 @@ public class SecurityConfig {
                     org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
                     // 从环境变量读取允许的源并添加
                     for (String origin : corsAllowedOrigins.split(",")) {
-                        configuration.addAllowedOrigin(origin.trim());
+                        if (origin.trim().equals("*")) {
+                            // 使用allowedOriginPatterns支持通配符
+                            configuration.addAllowedOriginPattern("*");
+                        } else {
+                            configuration.addAllowedOrigin(origin.trim());
+                        }
                     }
                     configuration.addAllowedMethod("*");
                     configuration.addAllowedHeader("*");
