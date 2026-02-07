@@ -7,7 +7,6 @@ spring:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:hyper_duty}?useUnicode=true&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=Asia/Shanghai&useLegacyDatetimeCode=false
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:123456}
-    #password: Feiwu2023!
     druid:
       initial-size: 5
       min-idle: 5
