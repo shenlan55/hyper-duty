@@ -155,23 +155,26 @@ public class OperationLogAspect {
                 responseResult = resultStr.length() > 1000 ? resultStr.substring(0, 1000) + "..." : resultStr;
             }
 
-            // 记录操作日志
-            operationLogService.logOperation(
-                    operatorId,
-                    operatorName,
-                    operationType,
-                    operationModule,
-                    operationDesc,
-                    requestMethod,
-                    requestUrl,
-                    requestParams,
-                    responseResult,
-                    ipAddress,
-                    userAgent,
-                    executionTime,
-                    status,
-                    errorMsg
-            );
+            // 跳过查询类型的操作日志，减少数据库存储
+            if (!"查询".equals(operationType)) {
+                // 记录操作日志
+                operationLogService.logOperation(
+                        operatorId,
+                        operatorName,
+                        operationType,
+                        operationModule,
+                        operationDesc,
+                        requestMethod,
+                        requestUrl,
+                        requestParams,
+                        responseResult,
+                        ipAddress,
+                        userAgent,
+                        executionTime,
+                        status,
+                        errorMsg
+                );
+            }
         }
 
         return result;
