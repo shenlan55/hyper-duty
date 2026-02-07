@@ -37,6 +37,8 @@ public class OperationLogServiceImpl extends ServiceImpl<OperationLogMapper, Ope
         log.setExecutionTime(executionTime);
         log.setStatus(status);
         log.setErrorMsg(errorMsg);
+        // 显式设置创建时间为当前本地时间，避免MySQL默认的UTC时间导致的时区问题
+        log.setCreateTime(LocalDateTime.now());
         save(log);
     }
 

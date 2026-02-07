@@ -16,6 +16,11 @@ RUN mvn clean package -DskipTests
 # 第二阶段：使用Java基础镜像运行后端服务
 FROM eclipse-temurin:17-jre-alpine
 
+# 安装时区数据和设置时区
+RUN apk add --no-cache tzdata && \
+    ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo "Asia/Shanghai" > /etc/timezone
+
 # 设置工作目录
 WORKDIR /app
 
@@ -27,5 +32,5 @@ EXPOSE 8080
 
 # 环境变量由docker-compose.yml提供
 
-# 启动应用
-CMD ["java", "-jar", "app.jar"]
+# 启动应用，添加时区参数
+CMD ["java", "-Duser.timezone=Asia/Shanghai", "-jar", "app.jar"]

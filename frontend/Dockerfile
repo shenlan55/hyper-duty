@@ -25,6 +25,11 @@ RUN npm run build
 # 第二阶段：使用Nginx运行前端项目
 FROM nginx:alpine
 
+# 安装时区数据和设置时区
+RUN apk add --no-cache tzdata && \
+    ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo "Asia/Shanghai" > /etc/timezone
+
 # 复制构建产物到Nginx的静态文件目录
 COPY --from=build /app/dist /usr/share/nginx/html
 

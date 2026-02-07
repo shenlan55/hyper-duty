@@ -72,7 +72,7 @@
       width="600px"
       @close="async () => {
         // 恢复原始的排班员工列表
-        await fetchScheduleEmployees(selectedScheduleId.value)
+        await fetchScheduleEmployees(selectedScheduleId.value, false)
       }"
     >
       <el-form
@@ -631,8 +631,14 @@ const fetchScheduleModeList = async () => {
   }
 }
 
-const fetchScheduleEmployees = async (scheduleId) => {
+const fetchScheduleEmployees = async (scheduleId, showError = true) => {
   try {
+    if (!scheduleId) {
+      if (showError) {
+        ElMessage.error('缺少值班表信息，无法获取值班人员')
+      }
+      return []
+    }
     const [employeeRes, leaderRes] = await Promise.all([
       getScheduleEmployees(scheduleId),
       getScheduleLeaders(scheduleId)
@@ -655,7 +661,10 @@ const fetchScheduleEmployees = async (scheduleId) => {
 }
 
 const isLeader = computed(() => {
-  return scheduleLeaderList.value.includes(userStore.employeeId)
+  // 转换为相同类型后再比较，避免字符串和数字类型不匹配的问题
+  return scheduleLeaderList.value.some(leaderId => {
+    return String(leaderId) === String(userStore.employeeId)
+  })
 })
 
 const fetchAssignmentList = async (scheduleId = null) => {
@@ -686,6 +695,7 @@ const handleScheduleChange = async (scheduleId) => {
   } else {
     scheduleEmployeeList.value = []
     assignmentList.value = []
+    await fetchScheduleEmployees(scheduleId, false)
   }
 }
 
@@ -717,7 +727,9 @@ const openAddDialog = (date) => {
   dialogTitle.value = '添加值班安排'
   
   // 先恢复原始的排班员工列表
-  fetchScheduleEmployees(selectedScheduleId.value)
+  if (selectedScheduleId.value) {
+    fetchScheduleEmployees(selectedScheduleId.value)
+  }
   
   dialogVisible.value = true
 }
@@ -727,6 +739,13 @@ const openEditDialog = (assignment) => {
     ElMessage.warning('只有值班长才能编辑值班安排')
     return
   }
+  // 先设置selectedScheduleId，避免触发handleShiftChange时使用undefined
+  if (!assignment.scheduleId) {
+    ElMessage.error('值班安排缺少值班表信息，无法编辑')
+    return
+  }
+  selectedScheduleId.value = assignment.scheduleId
+  // 再复制其他属性
   Object.assign(assignmentForm, assignment)
   dialogTitle.value = '编辑值班安排'
   dialogVisible.value = true
@@ -750,6 +769,10 @@ const resetForm = () => {
 // 监听班次变化，重新过滤可用员工
 const handleShiftChange = async () => {
   if (!assignmentForm.dutyDate || !assignmentForm.dutyShift) return
+  if (!selectedScheduleId.value) {
+    ElMessage.error('缺少值班表信息，无法获取可用员工')
+    return
+  }
   
   // 获取原始的排班员工列表
   const originalEmployees = await fetchScheduleEmployees(selectedScheduleId.value)
@@ -792,8 +815,8 @@ const handleSave = async () => {
       ElMessage.success(assignmentForm.id ? '编辑值班安排成功' : '添加值班安排成功')
       dialogVisible.value = false
       // 恢复原始的排班员工列表
-      await fetchScheduleEmployees(selectedScheduleId.value)
-      fetchAssignmentList(selectedScheduleId.value)
+      await fetchScheduleEmployees(assignmentForm.scheduleId)
+      fetchAssignmentList(assignmentForm.scheduleId)
     } else {
       ElMessage.error(response.message || (assignmentForm.id ? '编辑值班安排失败' : '添加值班安排失败'))
     }
