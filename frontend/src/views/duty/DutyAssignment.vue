@@ -1206,12 +1206,59 @@ const getDatesInRange = (startDate, endDate) => {
   return dates
 }
 
+ /**
+ * 检查用户是否在指定值班表中
+ * @param {Array} employeeIds - 值班表员工ID列表
+ * @returns {boolean} - 用户是否在值班表中
+ */
+const isUserInSchedule = (employeeIds) => {
+  return employeeIds.includes(userStore.employeeId)
+}
+
+/**
+ * 查找用户所在的值班表
+ * @param {Array} schedules - 值班表列表
+ * @returns {Object|null} - 用户所在的值班表或null
+ */
+const findUserSchedule = async (schedules) => {
+  for (const schedule of schedules) {
+    try {
+      const response = await getScheduleEmployees(schedule.id)
+      if (response.code === 200 && response.data) {
+        const employeeIds = response.data
+        if (isUserInSchedule(employeeIds)) {
+          return schedule
+        }
+      }
+    } catch (error) {
+      console.error(`获取值班表${schedule.id}员工失败:`, error)
+    }
+  }
+  return null
+}
+
 onMounted(async () => {
   await fetchScheduleList()
   await fetchEmployeeList()
   await fetchShiftConfigList()
   await fetchScheduleModeList()
   await updateHolidaysByMonth()
+  
+  // 默认选择值班表逻辑
+  if (scheduleList.value.length > 0) {
+    // 暂时简化处理，后续可根据用户角色进行判断
+    // 先尝试查找用户所在的值班表
+    const userSchedule = await findUserSchedule(scheduleList.value)
+    if (userSchedule) {
+      // 用户在某个值班表中，默认选择该值班表
+      selectedScheduleId.value = userSchedule.id
+      await handleScheduleChange(userSchedule.id)
+    } else {
+      // 用户不在任何值班表中，默认选择第一个值班表
+      selectedScheduleId.value = scheduleList.value[0].id
+      await handleScheduleChange(scheduleList.value[0].id)
+    }
+  }
 })
 </script>
 
