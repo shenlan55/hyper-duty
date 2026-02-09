@@ -42,17 +42,19 @@
                 v-for="assignment in getAssignmentsByDate(data.day)"
                 :key="assignment.id"
                 class="duty-item"
-                :class="{ 'clickable': isLeader }"
+                :class="{ 'clickable': isLeader, 'invalid-duty': assignment.status === 0 }"
                 @click.stop="isLeader ? openEditDialog(assignment) : null"
               >
                 <el-tag :type="getShiftTypeColor(assignment.dutyShift)" size="small">
                   {{ getShiftName(assignment.dutyShift) }}
                 </el-tag>
-                <span class="employee-name">{{ getEmployeeName(assignment.employeeId) }}</span>
+                <span class="employee-name" :class="{ 'invalid-employee': assignment.status === 0 }">
+                  {{ getEmployeeName(assignment.employeeId) }}
+                </span>
               </div>
             </div>
             <el-button
-              v-if="selectedScheduleId && isLeader && !hasAssignment(data.day)"
+              v-if="selectedScheduleId && isLeader"
               type="primary"
               size="small"
               text
@@ -505,7 +507,13 @@ const getEmployeeName = (employeeId) => {
 }
 
 const getAssignmentsByDate = (date) => {
-  return assignmentList.value.filter(assignment => assignment.dutyDate === date)
+  // 先过滤出当天的值班安排
+  const assignments = assignmentList.value.filter(assignment => assignment.dutyDate === date)
+  // 排序：状态为1（有效）的排在前面，状态为0（无效）的排在后面
+  return assignments.sort((a, b) => {
+    if (a.status === b.status) return 0
+    return a.status > b.status ? -1 : 1
+  })
 }
 
 const isHoliday = (date) => {
@@ -1358,6 +1366,16 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 无效状态的人员样式 */
+.invalid-employee {
+  text-decoration: line-through;
+  color: #909399;
+}
+
+.invalid-duty {
+  opacity: 0.7;
 }
 
 .add-btn {
