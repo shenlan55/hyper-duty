@@ -309,7 +309,8 @@
     <el-dialog
       v-model="detailDialogVisible"
       :title="detailDialogTitle"
-      width="600px"
+      width="1200px"
+      height="800px"
     >
       <div v-if="selectedDateAssignments.length > 0">
         <el-tabs type="border-card">
@@ -323,6 +324,8 @@
                 </template>
               </el-table-column>
               <el-table-column prop="employeeName" label="值班人员" width="150" />
+              <el-table-column prop="deptName" label="所在部门" width="150" />
+              <el-table-column prop="phone" label="联系电话" width="150" />
               <el-table-column prop="status" label="状态" width="100">
                 <template #default="scope">
                   <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'" size="small">
@@ -372,6 +375,7 @@ import {
 } from '../../api/duty/assignment'
 import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleModeList, generateScheduleByMode } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
+import { getDeptList } from '../../api/dept'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { holidayApi } from '../../api/duty/holiday'
 import { getEmployeeLeaveInfo as getEmployeeLeaveInfoAPI, getSubstitutesByEmployees } from '../../api/duty/leaveRequest'
@@ -400,6 +404,7 @@ const scheduleLeaderList = ref([])
 const shiftConfigList = ref([])
 const assignmentList = ref([])
 const scheduleModeList = ref([])
+const deptList = ref([])
 
 const assignmentForm = reactive({
   id: null,
@@ -506,6 +511,17 @@ const getEmployeeName = (employeeId) => {
   return employee ? employee.employeeName : '未知人员'
 }
 
+// 根据员工ID获取员工信息
+const getEmployeeInfo = (employeeId) => {
+  return allEmployeeList.value.find(e => e.id === employeeId) || {}
+}
+
+// 根据部门ID获取部门名称
+const getDeptName = (deptId) => {
+  const dept = deptList.value.find(d => d.id === deptId)
+  return dept ? dept.deptName : '未知部门'
+}
+
 const getAssignmentsByDate = (date) => {
   // 先过滤出当天的值班安排
   const assignments = assignmentList.value.filter(assignment => assignment.dutyDate === date)
@@ -548,11 +564,16 @@ const handleCellClick = (date) => {
   
   // 获取当天的值班安排并格式化数据
   const assignments = getAssignmentsByDate(date)
-  selectedDateAssignments.value = assignments.map(assignment => ({
-    ...assignment,
-    shiftName: getShiftName(assignment.dutyShift),
-    employeeName: getEmployeeName(assignment.employeeId)
-  }))
+  selectedDateAssignments.value = assignments.map(assignment => {
+    const employeeInfo = getEmployeeInfo(assignment.employeeId)
+    return {
+      ...assignment,
+      shiftName: getShiftName(assignment.dutyShift),
+      employeeName: getEmployeeName(assignment.employeeId),
+      deptName: getDeptName(employeeInfo.deptId),
+      phone: employeeInfo.phone || '无'
+    }
+  })
   
   detailDialogVisible.value = true
 }
@@ -582,6 +603,19 @@ const fetchEmployeeList = async () => {
   } catch (error) {
     console.error('获取员工列表失败:', error)
     ElMessage.error('获取员工列表失败')
+  }
+}
+
+// 获取部门列表
+const fetchDeptList = async () => {
+  try {
+    const response = await getDeptList()
+    if (response.code === 200) {
+      deptList.value = response.data
+    }
+  } catch (error) {
+    console.error('获取部门列表失败:', error)
+    ElMessage.error('获取部门列表失败')
   }
 }
 
@@ -1248,6 +1282,7 @@ const findUserSchedule = async (schedules) => {
 onMounted(async () => {
   await fetchScheduleList()
   await fetchEmployeeList()
+  await fetchDeptList()
   await fetchShiftConfigList()
   await fetchScheduleModeList()
   await updateHolidaysByMonth()

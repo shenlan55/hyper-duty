@@ -432,6 +432,8 @@ const handleDictTypeChange = (dictTypeId) => {
     fetchDictDataList(dictTypeId)
   } else {
     dictDataList.value = []
+    // 当字典类型被清除时，同时清空字典数据ID
+    employeeForm.dictDataId = null
   }
 }
 
