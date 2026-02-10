@@ -113,11 +113,12 @@
             </el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="值班人员" prop="employeeId">
+        <el-form-item label="值班人员" prop="employeeIds">
           <el-select
-            v-model="assignmentForm.employeeId"
+            v-model="assignmentForm.employeeIds"
             placeholder="请选择值班人员"
             style="width: 100%"
+            multiple
             filterable
           >
             <el-option
@@ -229,6 +230,16 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="班次人数" prop="shiftEmployeeCount" v-if="batchForm.scheduleType === 1">
+          <el-input-number
+            v-model="batchForm.shiftEmployeeCount"
+            :min="1"
+            :max="scheduleEmployeeList.length"
+            :step="1"
+            placeholder="请输入每个班次的人数"
+            style="width: 100%"
+          />
+        </el-form-item>
         <el-form-item label="值班人员" prop="employeeIds">
           <el-select
             v-model="batchForm.employeeIds"
@@ -236,7 +247,14 @@
             style="width: 100%"
             multiple
             filterable
+            @change="handleEmployeeSelectChange"
           >
+            <!-- 全选选项 -->
+            <el-option
+              :key="'all'"
+              :label="'全选'"
+              :value="'all'"
+            />
             <el-option
               v-for="employee in scheduleEmployeeList"
               :key="employee.id"
@@ -411,7 +429,7 @@ const assignmentForm = reactive({
   scheduleId: null,
   dutyDate: null,
   dutyShift: null,
-  employeeId: null,
+  employeeIds: [],
   status: 1,
   remark: ''
 })
@@ -420,6 +438,7 @@ const batchForm = reactive({
   dateRange: null,
   scheduleType: 1,
   dutyShift: null,
+  shiftEmployeeCount: 1, // 每个班次的人数，默认为1
   employeeIds: [],
   remark: '',
   scheduleModeId: null,
@@ -440,6 +459,9 @@ const detailDialogTitle = ref('')
 const selectedDetailDate = ref('')
 const selectedDateAssignments = ref([])
 
+// 批量排班全选相关
+const selectAllEmployees = ref(false)
+
 const assignmentRules = {
   dutyDate: [
     { required: true, message: '请选择值班日期', trigger: 'blur' }
@@ -447,8 +469,9 @@ const assignmentRules = {
   dutyShift: [
     { required: true, message: '请选择班次', trigger: 'blur' }
   ],
-  employeeId: [
-    { required: true, message: '请选择值班人员', trigger: 'blur' }
+  employeeIds: [
+    { required: true, message: '请选择值班人员', trigger: 'blur' },
+    { type: 'array', min: 1, message: '至少选择一个值班人员', trigger: 'blur' }
   ]
 }
 
@@ -788,7 +811,15 @@ const openEditDialog = (assignment) => {
   }
   selectedScheduleId.value = assignment.scheduleId
   // 再复制其他属性
-  Object.assign(assignmentForm, assignment)
+  Object.assign(assignmentForm, {
+    id: assignment.id,
+    scheduleId: assignment.scheduleId,
+    dutyDate: assignment.dutyDate,
+    dutyShift: assignment.dutyShift,
+    employeeIds: [assignment.employeeId], // 将单个employeeId转换为数组
+    status: assignment.status,
+    remark: assignment.remark
+  })
   dialogTitle.value = '编辑值班安排'
   dialogVisible.value = true
 }
@@ -802,7 +833,7 @@ const resetForm = () => {
     scheduleId: selectedScheduleId.value,
     dutyDate: null,
     dutyShift: null,
-    employeeId: null,
+    employeeIds: [],
     status: 1,
     remark: ''
   })
@@ -846,21 +877,59 @@ const handleSave = async () => {
     await assignmentFormRef.value.validate()
     dialogLoading.value = true
     
-    let response
-    if (assignmentForm.id) {
-      response = await updateAssignment(assignmentForm)
-    } else {
-      response = await addAssignment(assignmentForm)
+    // 检查是否选择了值班人员
+    if (!assignmentForm.employeeIds || assignmentForm.employeeIds.length === 0) {
+      ElMessage.warning('请选择值班人员')
+      dialogLoading.value = false
+      return
     }
     
-    if (response.code === 200) {
-      ElMessage.success(assignmentForm.id ? '编辑值班安排成功' : '添加值班安排成功')
+    let successCount = 0
+    
+    if (assignmentForm.id) {
+      // 编辑模式：只更新当前记录（只能编辑一个值班人员）
+      const singleAssignment = {
+        id: assignmentForm.id,
+        scheduleId: assignmentForm.scheduleId,
+        dutyDate: assignmentForm.dutyDate,
+        dutyShift: assignmentForm.dutyShift,
+        employeeId: assignmentForm.employeeIds[0], // 只使用第一个选择的员工ID
+        status: assignmentForm.status,
+        remark: assignmentForm.remark
+      }
+      const response = await updateAssignment(singleAssignment)
+      if (response.code === 200) {
+        successCount++
+      }
+    } else {
+      // 添加模式：为每个员工创建新记录
+      for (const employeeId of assignmentForm.employeeIds) {
+        // 创建单个排班记录
+        const singleAssignment = {
+          id: null,
+          scheduleId: assignmentForm.scheduleId,
+          dutyDate: assignmentForm.dutyDate,
+          dutyShift: assignmentForm.dutyShift,
+          employeeId: employeeId, // 使用单个employeeId
+          status: assignmentForm.status,
+          remark: assignmentForm.remark
+        }
+        
+        const response = await addAssignment(singleAssignment)
+        if (response.code === 200) {
+          successCount++
+        }
+      }
+    }
+    
+    if (successCount > 0) {
+      ElMessage.success(assignmentForm.id ? '编辑值班安排成功' : `添加值班安排成功，共添加 ${successCount} 条记录`)
       dialogVisible.value = false
       // 恢复原始的排班员工列表
       await fetchScheduleEmployees(assignmentForm.scheduleId)
       fetchAssignmentList(assignmentForm.scheduleId)
     } else {
-      ElMessage.error(response.message || (assignmentForm.id ? '编辑值班安排失败' : '添加值班安排失败'))
+      ElMessage.error(assignmentForm.id ? '编辑值班安排失败' : '添加值班安排失败')
     }
   } catch (error) {
     console.error('保存值班安排失败:', error)
@@ -881,6 +950,14 @@ const openBatchDialog = () => {
     dateType: ['workday'] // 默认选择工作日
   })
   batchDialogVisible.value = true
+}
+
+// 处理人员选择变化
+const handleEmployeeSelectChange = (values) => {
+  if (values.includes('all')) {
+    // 如果包含全选选项，选择所有值班人员，不包含'all'本身
+    batchForm.employeeIds = scheduleEmployeeList.value.map(emp => emp.id)
+  }
 }
 
 // 获取符合条件的日期列表
@@ -1014,6 +1091,13 @@ const handleBatchSave = async () => {
     await batchFormRef.value.validate()
     batchDialogLoading.value = true
     
+    // 检查是否选择了员工
+    if (batchForm.employeeIds.length === 0) {
+      ElMessage.warning('请选择值班人员')
+      batchDialogLoading.value = false
+      return
+    }
+    
     const [startDate, endDate] = batchForm.dateRange
     // 获取符合条件的日期列表
     const filteredDates = await getFilteredDates(startDate, endDate, batchForm.dateType)
@@ -1110,12 +1194,16 @@ const handleBatchSave = async () => {
             if (batchForm.scheduleType === 1) {
               // 轮换排班模式
               // 保持原始轮换顺序，同时处理请假和顶岗人员的情况
-              let selectedEmployeeId = null;
+              let selectedEmployeeIds = [];
+              let tempRotationIndex = rotationIndex;
+              
+              // 需要选择的人数
+              const needSelectCount = batchForm.shiftEmployeeCount;
               
               // 按原始员工列表的顺序查找合适的员工
-              for (let i = 0; i < batchForm.employeeIds.length; i++) {
+              for (let i = 0; i < batchForm.employeeIds.length && selectedEmployeeIds.length < needSelectCount; i++) {
                 // 计算当前轮换位置
-                const currentIndex = (rotationIndex + i) % batchForm.employeeIds.length;
+                const currentIndex = (tempRotationIndex + i) % batchForm.employeeIds.length;
                 const currentEmployeeId = batchForm.employeeIds[currentIndex];
                 
                 // 检查当前员工是否请假
@@ -1129,9 +1217,8 @@ const handleBatchSave = async () => {
                 
                 if (!isCurrentEmployeeOnLeave) {
                   // 当前员工未请假，可以直接使用
-                  selectedEmployeeId = currentEmployeeId;
-                  rotationIndex = (currentIndex + 1) % batchForm.employeeIds.length;
-                  break;
+                  selectedEmployeeIds.push(currentEmployeeId);
+                  tempRotationIndex = (currentIndex + 1) % batchForm.employeeIds.length;
                 } else {
                   // 当前员工请假，检查是否有顶岗人员
                   const substituteKey = `${currentEmployeeId}_${date}_${batchForm.dutyShift}`;
@@ -1139,27 +1226,36 @@ const handleBatchSave = async () => {
                   
                   if (substituteEmployeeId) {
                     // 有顶岗人员，使用顶岗人员
-                    selectedEmployeeId = substituteEmployeeId;
-                    rotationIndex = (currentIndex + 1) % batchForm.employeeIds.length;
-                    break;
+                    selectedEmployeeIds.push(substituteEmployeeId);
+                    tempRotationIndex = (currentIndex + 1) % batchForm.employeeIds.length;
                   }
                 }
               }
               
               // 如果找到了合适的员工，进行排班
-              if (selectedEmployeeId) {
-                assignments.push({
-                  scheduleId: selectedScheduleId.value,
-                  dutyDate: date,
-                  dutyShift: batchForm.dutyShift,
-                  employeeId: selectedEmployeeId,
-                  status: 1,
-                  remark: batchForm.remark
+              if (selectedEmployeeIds.length > 0) {
+                // 更新全局轮换索引
+                rotationIndex = tempRotationIndex;
+                
+                // 为每个选中的员工创建排班记录
+                selectedEmployeeIds.forEach(employeeId => {
+                  assignments.push({
+                    scheduleId: selectedScheduleId.value,
+                    dutyDate: date,
+                    dutyShift: batchForm.dutyShift,
+                    employeeId: employeeId,
+                    status: 1,
+                    remark: batchForm.remark
+                  });
                 });
               }
             } else {
               // 固定排班模式
-              dayAvailableEmployees.forEach(employeeId => {
+              // 限制每个班次的人数
+              const needSelectCount = batchForm.scheduleType === 1 ? batchForm.shiftEmployeeCount : dayAvailableEmployees.length;
+              const selectedEmployees = dayAvailableEmployees.slice(0, needSelectCount);
+              
+              selectedEmployees.forEach(employeeId => {
                 assignments.push({
                   scheduleId: selectedScheduleId.value,
                   dutyDate: date,
