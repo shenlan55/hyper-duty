@@ -101,7 +101,7 @@
             @change="handleShiftChange"
           >
             <el-option
-              v-for="shift in shiftConfigList"
+              v-for="shift in availableShiftList"
               :key="shift.id"
               :label="shift.shiftName"
               :value="shift.id"
@@ -112,6 +112,14 @@
               </span>
             </el-option>
           </el-select>
+          <el-alert
+            v-if="availableShiftList.length === 0"
+            type="warning"
+            message="当前值班表未配置可选班次，请联系管理员设置"
+            show-icon
+            :closable="false"
+            style="margin-top: 8px"
+          />
         </el-form-item>
         <el-form-item label="值班人员" prop="employeeIds">
           <el-select
@@ -223,12 +231,25 @@
             style="width: 100%"
           >
             <el-option
-              v-for="shift in shiftConfigList"
+              v-for="shift in availableShiftList"
               :key="shift.id"
               :label="shift.shiftName"
               :value="shift.id"
-            />
+            >
+              <span>{{ shift.shiftName }}</span>
+              <span style="float: right; color: #8492a6; font-size: 12px">
+                {{ shift.startTime }} - {{ shift.endTime }}
+              </span>
+            </el-option>
           </el-select>
+          <el-alert
+            v-if="availableShiftList.length === 0"
+            type="warning"
+            message="当前值班表未配置可选班次，请联系管理员设置"
+            show-icon
+            :closable="false"
+            style="margin-top: 8px"
+          />
         </el-form-item>
         <el-form-item label="班次人数" prop="shiftEmployeeCount" v-if="batchForm.scheduleType === 1">
           <el-input-number
@@ -391,7 +412,7 @@ import {
   deleteAssignment,
   deleteBatchAssignments
 } from '../../api/duty/assignment'
-import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleModeList, generateScheduleByMode } from '../../api/duty/schedule'
+import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleShifts, getScheduleModeList, generateScheduleByMode } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
 import { getDeptList } from '../../api/dept'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
@@ -420,6 +441,7 @@ const allEmployeeList = ref([])
 const scheduleEmployeeList = ref([])
 const scheduleLeaderList = ref([])
 const shiftConfigList = ref([])
+const availableShiftList = ref([])
 const assignmentList = ref([])
 const scheduleModeList = ref([])
 const deptList = ref([])
@@ -725,6 +747,26 @@ const fetchScheduleEmployees = async (scheduleId, showError = true) => {
   }
 }
 
+const fetchScheduleShifts = async (scheduleId) => {
+  try {
+    if (!scheduleId) {
+      availableShiftList.value = []
+      return
+    }
+    const response = await getScheduleShifts(scheduleId)
+    if (response.code === 200) {
+      const shiftIds = response.data || []
+      // 过滤出当前值班表可用的班次
+      availableShiftList.value = shiftConfigList.value.filter(shift => 
+        shiftIds.includes(shift.id)
+      )
+    }
+  } catch (error) {
+    console.error('获取值班表班次失败:', error)
+    ElMessage.error('获取值班表班次失败')
+  }
+}
+
 const isLeader = computed(() => {
   // 转换为相同类型后再比较，避免字符串和数字类型不匹配的问题
   return scheduleLeaderList.value.some(leaderId => {
@@ -756,9 +798,11 @@ const fetchAssignmentList = async (scheduleId = null) => {
 const handleScheduleChange = async (scheduleId) => {
   if (scheduleId) {
     await fetchScheduleEmployees(scheduleId)
+    await fetchScheduleShifts(scheduleId)
     await fetchAssignmentList(scheduleId)
   } else {
     scheduleEmployeeList.value = []
+    availableShiftList.value = []
     assignmentList.value = []
     await fetchScheduleEmployees(scheduleId, false)
   }

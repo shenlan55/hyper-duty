@@ -75,6 +75,21 @@ export function updateScheduleLeaders(id, leaderIds) {
   })
 }
 
+export function getScheduleShifts(id) {
+  return request({
+    url: `/duty/schedule/${id}/shifts`,
+    method: 'get'
+  })
+}
+
+export function updateScheduleShifts(id, shiftConfigIds) {
+  return request({
+    url: `/duty/schedule/${id}/shifts`,
+    method: 'put',
+    data: shiftConfigIds
+  })
+}
+
 export function deleteSchedule(id) {
   return request({
     url: `/duty/schedule/${id}`,

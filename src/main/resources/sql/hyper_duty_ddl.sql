@@ -555,6 +555,24 @@ CREATE TABLE IF NOT EXISTS leave_substitute (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='请假顶岗信息表';
 
 -- ========================================
+-- 值班表班次关联表
+-- ========================================
+
+-- 值班表班次关联表
+CREATE TABLE IF NOT EXISTS duty_schedule_shift (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+    schedule_id BIGINT NOT NULL COMMENT '值班表ID',
+    shift_config_id BIGINT NOT NULL COMMENT '班次配置ID',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    UNIQUE KEY uk_schedule_shift (schedule_id, shift_config_id),
+    INDEX idx_schedule_id (schedule_id),
+    INDEX idx_shift_config_id (shift_config_id),
+    FOREIGN KEY (schedule_id) REFERENCES duty_schedule(id) ON DELETE CASCADE,
+    FOREIGN KEY (shift_config_id) REFERENCES duty_shift_config(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='值班表班次关联表';
+
+-- ========================================
 -- 表结构修改语句
 -- ========================================
 

@@ -3,6 +3,7 @@ package com.lasu.hyperduty.controller;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.DutySchedule;
 import com.lasu.hyperduty.service.DutyScheduleService;
+import com.lasu.hyperduty.service.DutyScheduleShiftService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,9 @@ public class DutyScheduleController {
 
     @Autowired
     private DutyScheduleService dutyScheduleService;
+    
+    @Autowired
+    private DutyScheduleShiftService dutyScheduleShiftService;
 
     @GetMapping("/list")
     public ResponseResult<List<DutySchedule>> getAllSchedules() {
@@ -47,6 +51,12 @@ public class DutyScheduleController {
         return ResponseResult.success(leaderIds);
     }
 
+    @GetMapping("/{id}/shifts")
+    public ResponseResult<List<Long>> getScheduleShifts(@PathVariable Long id) {
+        List<Long> shiftConfigIds = dutyScheduleShiftService.getShiftConfigIdsByScheduleId(id);
+        return ResponseResult.success(shiftConfigIds);
+    }
+
     @PostMapping
     public ResponseResult<Void> addSchedule(@Validated @RequestBody DutySchedule dutySchedule) {
         dutyScheduleService.save(dutySchedule);
@@ -76,6 +86,12 @@ public class DutyScheduleController {
     @PutMapping("/{id}/leaders")
     public ResponseResult<Void> updateScheduleLeaders(@PathVariable Long id, @RequestBody List<Long> leaderIds) {
         dutyScheduleService.updateLeaders(id, leaderIds);
+        return ResponseResult.success();
+    }
+
+    @PutMapping("/{id}/shifts")
+    public ResponseResult<Void> updateScheduleShifts(@PathVariable Long id, @RequestBody List<Long> shiftConfigIds) {
+        dutyScheduleShiftService.saveScheduleShifts(id, shiftConfigIds);
         return ResponseResult.success();
     }
 
