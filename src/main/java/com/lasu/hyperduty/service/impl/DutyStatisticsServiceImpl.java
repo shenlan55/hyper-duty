@@ -363,7 +363,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
             for (DutyRecord record : records) {
                 if (record.getEmployeeId().equals(employeeId) && 
                     record.getApprovalStatus() != null && 
-                    "approved".equals(record.getApprovalStatus()) &&
+                    "已批准".equals(record.getApprovalStatus()) &&
                     record.getOvertimeHours() != null) {
                     compensatoryHours = compensatoryHours.add(new BigDecimal(record.getOvertimeHours()));
                 }
