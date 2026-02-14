@@ -198,7 +198,7 @@
                     </template>
                     <el-select v-model="detail.originalSwapShift" placeholder="请选择班次" style="width: 100%">
                       <el-option
-                        v-for="shiftConfig in shiftConfigList"
+                        v-for="shiftConfig in shiftConfigList.filter(s => availableShiftIds.length === 0 || availableShiftIds.includes(s.id))"
                         :key="shiftConfig.id"
                         :label="shiftConfig.shiftName"
                         :value="shiftConfig.shiftType"
@@ -253,7 +253,7 @@
                     </template>
                     <el-select v-model="detail.targetSwapShift" placeholder="请选择班次" style="width: 100%">
                       <el-option
-                        v-for="shiftConfig in shiftConfigList"
+                        v-for="shiftConfig in shiftConfigList.filter(s => availableShiftIds.length === 0 || availableShiftIds.includes(s.id))"
                         :key="shiftConfig.id"
                         :label="shiftConfig.shiftName"
                         :value="shiftConfig.shiftType"
@@ -327,7 +327,7 @@ import {
   getMySwapRequestsPage
 } from '../../api/duty/swapRequest'
 import { getEmployeeList } from '../../api/employee'
-import { getScheduleList, getScheduleEmployees } from '../../api/duty/schedule'
+import { getScheduleList, getScheduleEmployees, getScheduleShifts } from '../../api/duty/schedule'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { getUserInfo } from '../../utils/auth'
@@ -346,6 +346,8 @@ const employeeList = ref([])
 const shiftConfigList = ref([])
 const scheduleList = ref([])
 const availableEmployeeList = ref([])
+// 当前值班表可用的班次ID列表
+const availableShiftIds = ref([])
 const currentSwapRequest = ref({})
 const currentEmployeeId = ref(1)
 const isLeader = ref(false)
@@ -554,6 +556,29 @@ const handleCurrentChange = (current) => {
 
 const handleScheduleChange = async (scheduleId) => {
   await fetchAvailableEmployees(scheduleId)
+  
+  // 清空之前的班次选择
+  form.swapDetails.forEach(detail => {
+    detail.originalSwapShift = null
+    detail.targetSwapShift = null
+  })
+  
+  if (scheduleId) {
+    try {
+      // 获取值班表绑定的班次列表
+      const response = await getScheduleShifts(scheduleId)
+      if (response.code === 200) {
+        availableShiftIds.value = response.data || []
+      }
+    } catch (error) {
+      console.error('获取值班表班次失败:', error)
+      ElMessage.error('获取值班表班次失败')
+      availableShiftIds.value = []
+    }
+  } else {
+    availableShiftIds.value = []
+  }
+  
   // 非值班长只能选择自己
   if (!isLeader.value) {
     form.swapDetails.forEach(detail => {
@@ -593,6 +618,7 @@ const resetForm = () => {
     ]
   })
   availableEmployeeList.value = []
+  availableShiftIds.value = []
 }
 
 const addSwapDetail = () => {

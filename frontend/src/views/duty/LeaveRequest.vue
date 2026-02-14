@@ -126,7 +126,7 @@
         label-position="top"
       >
         <el-form-item label="值班表" prop="scheduleId">
-          <el-select v-model="form.scheduleId" placeholder="请选择值班表" style="width: 100%">
+          <el-select v-model="form.scheduleId" placeholder="请选择值班表" style="width: 100%" @change="handleScheduleChange">
             <el-option
               v-for="schedule in scheduleList"
               :key="schedule.id"
@@ -151,7 +151,7 @@
             <el-form-item label="班次" prop="shiftConfigIds">
               <el-select v-model="form.shiftConfigIds" multiple placeholder="请选择班次" style="width: 100%" @change="handleShiftChange">
                 <el-option
-                  v-for="shift in shiftConfigList"
+                  v-for="shift in shiftConfigList.filter(s => availableShiftIds.length === 0 || availableShiftIds.includes(s.id))"
                   :key="shift.id"
                   :label="shift.shiftName"
                   :value="shift.id"
@@ -358,7 +358,7 @@ import {
   getApprovalRecords
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
-import { getScheduleList, getScheduleEmployeesWithLeaderInfo } from '../../api/duty/schedule'
+import { getScheduleList, getScheduleEmployeesWithLeaderInfo, getScheduleShifts } from '../../api/duty/schedule'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
@@ -380,6 +380,8 @@ const shiftConfigList = ref([])
 const shiftApi = shiftConfigApi()
 const scheduleLeaders = ref([])
 const disabledShiftIds = ref(new Set())
+// 当前值班表可用的班次ID列表
+const availableShiftIds = ref([])
 
 // 分页相关
 const pagination = reactive({
@@ -666,6 +668,32 @@ const resetForm = () => {
   fileList.value = []
   // 重置禁用班次状态
   disabledShiftIds.value.clear()
+}
+
+// 处理值班表选择变化
+const handleScheduleChange = async (scheduleId) => {
+  // 清空之前的班次选择
+  form.shiftConfigIds = []
+  form.totalHours = 0
+  
+  if (scheduleId) {
+    try {
+      // 获取值班表绑定的班次列表
+      const response = await getScheduleShifts(scheduleId)
+      if (response.code === 200) {
+        availableShiftIds.value = response.data || []
+      }
+    } catch (error) {
+      // console.error('获取值班表班次失败:', error)
+      ElMessage.error('获取值班表班次失败')
+      availableShiftIds.value = []
+    }
+  } else {
+    availableShiftIds.value = []
+  }
+  
+  // 更新禁用班次状态
+  await updateDisabledShifts([])
 }
 
 const handleSave = async () => {
