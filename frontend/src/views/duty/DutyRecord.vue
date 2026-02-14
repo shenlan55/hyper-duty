@@ -574,7 +574,7 @@ import {
 import { getEmployeeList } from '../../api/employee'
 import { getAssignmentList, getAssignmentsByScheduleId } from '../../api/duty/assignment'
 import { getDeptList } from '../../api/dept'
-import { getScheduleList } from '../../api/duty/schedule'
+import { getScheduleList, getScheduleLeaders } from '../../api/duty/schedule'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
@@ -628,12 +628,54 @@ const availableShifts = ref([])
 // 选中的值班表ID
 const selectedScheduleId = ref(null)
 
+// 值班长列表
+const scheduleLeaders = ref({})
+
+// 获取值班表的值班长列表
+const fetchScheduleLeaders = async (scheduleId) => {
+  if (!scheduleId) return []
+  
+  try {
+    const response = await getScheduleLeaders(scheduleId)
+    if (response.code === 200) {
+      scheduleLeaders.value[scheduleId] = response.data
+      return response.data
+    }
+  } catch (error) {
+    // console.error('获取值班长列表失败:', error)
+  }
+  return []
+}
+
 // 是否是值班长（根据选择的值班表判断）
 const isDutyManager = computed(() => {
-  if (!selectedScheduleId.value) return false
-  // 这里需要根据选择的值班表和当前用户判断是否是值班长
-  // 暂时返回true，后续需要根据实际逻辑修改
-  return true
+  if (!selectedScheduleId.value || !userStore.employeeId) {
+    return false
+  }
+  
+  // 检查当前用户是否在值班长列表中
+  const leaders = scheduleLeaders.value[selectedScheduleId.value] || []
+  const currentEmployeeId = parseInt(userStore.employeeId) || 0
+  
+  let isLeader = false
+  
+  // 处理值班长列表是ID数组的情况
+  if (leaders.length > 0 && typeof leaders[0] === 'number') {
+    isLeader = leaders.some(leaderId => {
+      const id = parseInt(leaderId) || 0
+      return id === currentEmployeeId
+    })
+  } 
+  // 处理值班长列表是对象数组的情况
+  else {
+    isLeader = leaders.some(leader => {
+      // 确保类型匹配
+      const leaderId = parseInt(leader.id) || parseInt(leader.employeeId) || 0
+      return leaderId === currentEmployeeId
+    })
+  }
+  
+  return isLeader
 })
 
 // 班次选项
@@ -1435,6 +1477,9 @@ const handleScheduleChange = async (scheduleId) => {
         // console.log('可用日期:', availableDates.value)
         // console.log('用户ID:', userStore.employeeId)
       }
+      
+      // 获取值班表的值班长列表
+      await fetchScheduleLeaders(scheduleId)
     } catch (error) {
       // console.error('获取值班安排失败:', error)
       ElMessage.error('获取值班安排失败')
@@ -1963,6 +2008,8 @@ const fetchScheduleList = async () => {
       // 如果有值班表，默认选择第一个
       if (scheduleList.value.length > 0 && !selectedScheduleId.value) {
         selectedScheduleId.value = scheduleList.value[0].id
+        // 获取默认值班表的值班长列表
+        await fetchScheduleLeaders(selectedScheduleId.value)
       }
     }
   } catch (error) {
@@ -1975,13 +2022,13 @@ const fetchScheduleList = async () => {
 onMounted(async () => {
   // 先获取班次配置列表
   await fetchShiftConfigs()
-  // 检查用户是否是值班长
-  await checkIfDutyManager()
   // 再获取其他数据
   await fetchEmployeeList()
   await fetchAssignmentList()
   await fetchDeptList()
+  // 先获取值班表列表，设置默认值班表并获取值班长列表
   await fetchScheduleList()
+  // 最后获取记录列表
   await fetchRecordList()
 })
 </script>
