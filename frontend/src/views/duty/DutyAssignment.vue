@@ -377,6 +377,13 @@
                 </template>
               </el-table-column>
               <el-table-column prop="remark" label="备注" />
+              <el-table-column label="操作" width="100" v-if="isLeader">
+                <template #default="scope">
+                  <el-button size="small" type="primary" @click="openEditDetailDialog(scope.row)">
+                    修改
+                  </el-button>
+                </template>
+              </el-table-column>
             </el-table>
           </el-tab-pane>
           <el-tab-pane label="统计信息">
@@ -432,6 +439,48 @@
           <el-button @click="exportDialogVisible = false">取消</el-button>
           <el-button type="primary" @click="handleExport" :loading="exportDialogLoading">
             确认导出
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑值班详情对话框 -->
+    <el-dialog
+      v-model="editDetailDialogVisible"
+      title="编辑值班详情"
+      width="500px"
+    >
+      <el-form
+        ref="editDetailFormRef"
+        :model="editDetailForm"
+        label-position="top"
+      >
+        <el-form-item label="值班人员">
+          <el-input v-model="editDetailForm.employeeName" disabled />
+        </el-form-item>
+        <el-form-item label="班次">
+          <el-input v-model="editDetailForm.shiftName" disabled />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-radio-group v-model="editDetailForm.status">
+            <el-radio label="1">有效</el-radio>
+            <el-radio label="0">无效</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input
+            v-model="editDetailForm.remark"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入备注"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="editDetailDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSaveDetail" :loading="editDetailDialogLoading">
+            保存
           </el-button>
         </span>
       </template>
@@ -535,6 +584,19 @@ const exportRules = {
     }
   ]
 }
+
+// 编辑值班详情对话框相关
+const editDetailDialogVisible = ref(false)
+const editDetailDialogLoading = ref(false)
+const editDetailFormRef = ref()
+
+const editDetailForm = reactive({
+  id: null,
+  employeeName: '',
+  shiftName: '',
+  status: 1,
+  remark: ''
+})
 
 // 当天值班人员详情弹窗相关
 const detailDialogVisible = ref(false)
@@ -1108,6 +1170,69 @@ const handleExport = async () => {
     ElMessage.error('导出失败')
   } finally {
     exportDialogLoading.value = false
+  }
+}
+
+const openEditDetailDialog = (row) => {
+  // 填充编辑表单数据
+  Object.assign(editDetailForm, {
+    id: row.id,
+    employeeName: row.employeeName,
+    shiftName: row.shiftName,
+    status: row.status,
+    remark: row.remark || ''
+  })
+  editDetailDialogVisible.value = true
+}
+
+const handleSaveDetail = async () => {
+  try {
+    editDetailDialogLoading.value = true
+    
+    // 确保status是数字类型
+    const statusValue = Number(editDetailForm.status)
+    
+    // 准备更新数据
+    const updateData = {
+      id: editDetailForm.id,
+      status: statusValue,
+      remark: editDetailForm.remark
+    }
+    
+    // 调用更新接口
+    const response = await updateAssignment(updateData)
+    
+    if (response.code === 200) {
+      // 更新本地数据
+      const index = assignmentList.value.findIndex(item => item.id === editDetailForm.id)
+      if (index !== -1) {
+        assignmentList.value[index].status = statusValue
+        assignmentList.value[index].remark = editDetailForm.remark
+      }
+      
+      // 更新详情弹窗中的数据
+      const detailIndex = selectedDateAssignments.value.findIndex(item => item.id === editDetailForm.id)
+      if (detailIndex !== -1) {
+        // 创建新对象以确保Vue能够检测到变化
+        const updatedItem = {
+          ...selectedDateAssignments.value[detailIndex],
+          status: statusValue,
+          remark: editDetailForm.remark
+        }
+        // 替换整个数组项
+        selectedDateAssignments.value.splice(detailIndex, 1, updatedItem)
+      }
+      
+      editDetailDialogVisible.value = false
+      ElMessage.success('保存成功')
+    } else {
+      ElMessage.error('保存失败')
+    }
+  } catch (error) {
+    console.error('保存失败:', error)
+    ElMessage.error('保存失败')
+  } finally {
+    editDetailDialogLoading.value = false
   }
 }
 
