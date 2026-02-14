@@ -1475,19 +1475,50 @@ const handleScheduleChange = async (scheduleId) => {
   if (scheduleId) {
     assignmentsLoading.value = true
     try {
+      // 获取班次配置列表
+      await fetchShiftConfigs()
+      
       // 获取值班表下的值班安排
       const response = await getAssignmentsByScheduleId(scheduleId)
       if (response.code === 200) {
-        // 提取当前用户的可用日期
+        // 提取当前用户的可用日期（只包含有加班班次的日期）
         const dates = new Set()
         response.data.forEach(assignment => {
           // 确保是当前用户的值班安排
           const assignmentEmployeeId = parseInt(assignment.employeeId) || 0
           const userEmployeeId = parseInt(userStore.employeeId) || 0
           if (assignmentEmployeeId === userEmployeeId) {
-            // 确保日期格式一致
-            const formattedDate = formatDate(assignment.dutyDate)
-            dates.add(formattedDate)
+            // 检查是否是加班班次
+            let isOvertime = false
+            
+            // 优先使用shiftConfigId查找班次配置
+            if (assignment.shiftConfigId) {
+              const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
+              if (shiftConfig) {
+                isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
+              }
+            } else if (assignment.dutyShift) {
+              // 如果没有shiftConfigId，使用dutyShift查找班次配置
+              const shift = parseInt(assignment.dutyShift) || 0
+              if (shift > 0) {
+                const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
+                if (shiftConfig) {
+                  isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
+                }
+              }
+            }
+            
+            // 如果从班次配置中没有找到，尝试从值班安排中获取
+            if (!isOvertime && assignment.isOvertime !== undefined) {
+              isOvertime = assignment.isOvertime
+            }
+            
+            // 只添加有加班班次的日期
+            if (isOvertime) {
+              // 确保日期格式一致
+              const formattedDate = formatDate(assignment.dutyDate)
+              dates.add(formattedDate)
+            }
           }
         })
         availableDates.value = Array.from(dates)
@@ -1650,10 +1681,12 @@ const handleDateChange = async (date) => {
       if (response.code === 200) {
         // console.log('后端返回的所有值班安排:', response.data)
         
-        // 过滤出该日期下的所有值班安排（不按用户过滤，确保能够获取到所有班次）
+        // 过滤出该日期下的当前用户的值班安排
+        const userEmployeeId = parseInt(userStore.employeeId) || 0
         const dateAssignments = response.data.filter(assignment => {
           const assignmentDate = formatDate(assignment.dutyDate)
-          return assignmentDate === dateStr
+          const assignmentEmployeeId = parseInt(assignment.employeeId) || 0
+          return assignmentDate === dateStr && assignmentEmployeeId === userEmployeeId
         })
         // console.log('该日期下的所有值班安排:', dateAssignments)
         
@@ -1698,6 +1731,10 @@ const handleDateChange = async (date) => {
               if (shiftConfig) {
                 // 根据开发文档，班次配置表中的is_overtime_shift字段表示是否为加班班次
                 isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
+                // 检查是否为字符串类型的"是"/"否"
+                if (typeof isOvertime === 'string') {
+                  isOvertime = isOvertime === '是'
+                }
                 // console.log('班次是否为加班:', isOvertime)
               }
             } else if (assignment.dutyShift) {
@@ -1710,6 +1747,10 @@ const handleDateChange = async (date) => {
                 if (shiftConfig) {
                   // 根据开发文档，班次配置表中的is_overtime_shift字段表示是否为加班班次
                   isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
+                  // 检查是否为字符串类型的"是"/"否"
+                  if (typeof isOvertime === 'string') {
+                    isOvertime = isOvertime === '是'
+                  }
                   // console.log('班次是否为加班:', isOvertime)
                 }
               }
@@ -1718,6 +1759,10 @@ const handleDateChange = async (date) => {
             // 如果从班次配置中没有找到，尝试从值班安排中获取
             if (!isOvertime && assignment.isOvertime !== undefined) {
               isOvertime = assignment.isOvertime
+              // 检查是否为字符串类型的"是"/"否"
+              if (typeof isOvertime === 'string') {
+                isOvertime = isOvertime === '是'
+              }
               // console.log('从值班安排中获取是否为加班:', isOvertime)
             }
             
