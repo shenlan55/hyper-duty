@@ -111,6 +111,7 @@
         <el-table-column prop="plannedHours" label="计划工时(小时)" width="150" />
         <el-table-column prop="actualHours" label="实际工时(小时)" width="150" />
         <el-table-column prop="actualDays" label="实际天数" width="120" />
+        <el-table-column prop="compensatoryHours" label="可调休工时(小时)" width="150" />
         <el-table-column label="完成率" width="120">
           <template #default="scope">
             {{ getCompletionRate(scope.row) }}%

@@ -28,7 +28,7 @@ const isJWTExpired = (token) => {
 
 // 创建axios实例
 const request = axios.create({
-  baseURL: '/api', // 后端API基础URL，使用相对路径通过nginx代理
+  baseURL: '/api', // 后端API基础URL，使用/api前缀，通过Vite代理转发
   timeout: 5000 // 请求超时时间
 })
 
@@ -39,14 +39,21 @@ request.interceptors.request.use(
     const token = localStorage.getItem('token')
     if (token) {
       // 检查token是否过期
-      if (isJWTExpired(token)) {
-        // token过期，清除token并重定向到登录页
+      try {
+        if (!isJWTExpired(token)) {
+          config.headers.Authorization = `Bearer ${token}`
+        } else {
+          // token过期，清除token
+          localStorage.removeItem('token')
+          localStorage.removeItem('username')
+          localStorage.removeItem('employeeId')
+        }
+      } catch (error) {
+        // token解析失败，清除token
         localStorage.removeItem('token')
         localStorage.removeItem('username')
-        window.location.href = '/login'
-        return Promise.reject(new Error('Token expired'))
+        localStorage.removeItem('employeeId')
       }
-      config.headers.Authorization = `Bearer ${token}`
     }
     
     // 设置POST请求的默认Content-Type为application/json
@@ -77,29 +84,26 @@ request.interceptors.response.use(
           // 未授权，跳转到登录页
           localStorage.removeItem('token')
           localStorage.removeItem('username')
+          localStorage.removeItem('employeeId')
           window.location.href = '/login'
           break
         case 403:
           // 禁止访问
-          console.error('禁止访问')
           break
         case 404:
           // 资源不存在
-          console.error('资源不存在')
           break
         case 500:
           // 服务器内部错误
-          console.error('服务器内部错误')
           break
         default:
-          console.error('请求失败')
+          // 其他错误
+          break
       }
     } else if (error.request) {
       // 请求已发送但没有收到响应
-      console.error('网络错误，请检查网络连接')
     } else {
       // 请求配置错误
-      console.error('请求配置错误')
     }
     return Promise.reject(error)
   }

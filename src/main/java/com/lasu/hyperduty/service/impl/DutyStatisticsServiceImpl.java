@@ -358,6 +358,18 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
             BigDecimal actualDays = actualHours.divide(BigDecimal.valueOf(8), 2, RoundingMode.HALF_UP);
             stat.put("actualDays", actualDays);
 
+            // 计算可调休工时：审批通过的加班时长
+            BigDecimal compensatoryHours = BigDecimal.ZERO;
+            for (DutyRecord record : records) {
+                if (record.getEmployeeId().equals(employeeId) && 
+                    record.getApprovalStatus() != null && 
+                    "approved".equals(record.getApprovalStatus()) &&
+                    record.getOvertimeHours() != null) {
+                    compensatoryHours = compensatoryHours.add(new BigDecimal(record.getOvertimeHours()));
+                }
+            }
+            stat.put("compensatoryHours", compensatoryHours);
+
             employeeStats.add(stat);
         }
 
