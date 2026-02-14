@@ -468,14 +468,14 @@ const fetchEnabledShifts = async () => {
 }
 
 const fetchPendingApprovals = async (tabName = activeTab.value) => {
-  console.log('Fetching approvals, tabName:', tabName)
+  // console.log('Fetching approvals, tabName:', tabName)
   loading.value = true
   try {
     let response
     const [startDate, endDate] = filterForm.dateRange || [null, null]
     
     if (tabName === 'pending') {
-      console.log('Fetching pending approvals')
+      // console.log('Fetching pending approvals')
       response = await getPendingApprovalsPage(
         userStore.employeeId || 1,
         pagination.page,
@@ -486,7 +486,7 @@ const fetchPendingApprovals = async (tabName = activeTab.value) => {
         endDate
       )
     } else {
-      console.log('Fetching approved approvals')
+      // console.log('Fetching approved approvals')
       response = await getApprovedApprovalsPage(
         userStore.employeeId || 1,
         pagination.page,
@@ -498,11 +498,11 @@ const fetchPendingApprovals = async (tabName = activeTab.value) => {
         endDate
       )
     }
-    console.log('Response received:', response)
+    // console.log('Response received:', response)
     if (response.code === 200) {
       requestList.value = response.data.records
       pagination.total = response.data.total
-      console.log('Request list updated:', requestList.value)
+      // console.log('Request list updated:', requestList.value)
     }
   } catch (error) {
     console.error('获取审批列表失败:', error)
@@ -522,7 +522,7 @@ const refreshList = () => {
 }
 
 const handleTabClick = (tab) => {
-  console.log('Tab clicked, tab name:', tab.props.name)
+  // console.log('Tab clicked, tab name:', tab.props.name)
   pagination.page = 1 // 重置页码
   fetchPendingApprovals(tab.props.name)
 }

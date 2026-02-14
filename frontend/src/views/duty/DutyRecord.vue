@@ -2,9 +2,26 @@
   <div class="record-container">
     <div class="page-header">
       <h2>值班记录</h2>
-      <el-button type="primary" @click="openCreateDialog">
-        新建值班记录
-      </el-button>
+      <div class="header-actions">
+        <el-select
+          v-model="selectedScheduleId"
+          placeholder="选择值班表"
+          clearable
+          class="schedule-select"
+          @change="handleScheduleChange"
+          style="width: 250px; margin-right: 10px"
+        >
+          <el-option
+            v-for="schedule in scheduleList"
+            :key="schedule.id"
+            :label="schedule.scheduleName"
+            :value="schedule.id"
+          />
+        </el-select>
+        <el-button type="primary" @click="openCreateDialog">
+          新建值班记录
+        </el-button>
+      </div>
     </div>
 
     <el-card shadow="hover" class="content-card">
@@ -29,6 +46,11 @@
             row-key="id"
           >
             <el-table-column prop="id" label="ID" width="80" />
+            <el-table-column label="值班表" min-width="150">
+              <template #default="scope">
+                {{ scope.row.scheduleName || '未知值班表' }}
+              </template>
+            </el-table-column>
             <el-table-column prop="dutyDate" label="值班日期" width="150">
               <template #default="scope">
                 {{ formatDate(scope.row.dutyDate) }}
@@ -140,6 +162,11 @@
             row-key="id"
           >
             <el-table-column prop="id" label="ID" width="80" />
+            <el-table-column label="值班表" min-width="150">
+              <template #default="scope">
+                {{ scope.row.scheduleName || '未知值班表' }}
+              </template>
+            </el-table-column>
             <el-table-column prop="dutyDate" label="值班日期" width="150">
               <template #default="scope">
                 {{ formatDate(scope.row.dutyDate) }}
@@ -598,6 +625,17 @@ const availableDates = ref([])
 // 可用班次列表
 const availableShifts = ref([])
 
+// 选中的值班表ID
+const selectedScheduleId = ref(null)
+
+// 是否是值班长（根据选择的值班表判断）
+const isDutyManager = computed(() => {
+  if (!selectedScheduleId.value) return false
+  // 这里需要根据选择的值班表和当前用户判断是否是值班长
+  // 暂时返回true，后续需要根据实际逻辑修改
+  return true
+})
+
 // 班次选项
 const shiftOptions = [
   { label: '早班', value: 1 },
@@ -630,19 +668,16 @@ const saveShiftName = (id, name) => {
   const idNum = parseInt(id)
   if (!isNaN(idNum)) {
     shiftNames.value[idNum] = name
-    console.log('保存班次名称:', idNum, name)
+
   }
 }
-
-// 是否是值班长
-const isDutyManager = ref(false)
 
 // 检查用户是否是值班长
 const checkIfDutyManager = async () => {
   // 这里需要根据实际情况实现，假设用户信息中包含值班长标识
   // 暂时使用模拟数据，实际项目中需要从后端获取
-  isDutyManager.value = userStore.employeeId === 1 // 假设ID为1的用户是值班长
-  console.log('当前用户是否是值班长:', isDutyManager.value)
+  // 由于isDutyManager现在是计算属性，不需要手动设置值
+  // 计算属性会根据selectedScheduleId自动判断
 }
 
 // 值班状态映射
@@ -861,7 +896,7 @@ const fetchEmployeeList = async () => {
       employeeList.value = response.data
     }
   } catch (error) {
-    console.error('获取员工列表失败:', error)
+    // console.error('获取员工列表失败:', error)
     ElMessage.error('获取员工列表失败')
   }
 }
@@ -874,7 +909,7 @@ const fetchAssignmentList = async () => {
       assignmentList.value = response.data
     }
   } catch (error) {
-    console.error('获取值班安排列表失败:', error)
+    // console.error('获取值班安排列表失败:', error)
     ElMessage.error('获取值班安排列表失败')
   }
 }
@@ -885,35 +920,32 @@ const fetchRecordList = async () => {
   try {
     // 先获取班次配置列表
     await fetchShiftConfigs()
-    console.log('班次配置列表长度:', shiftConfigs.value.length)
-    console.log('班次配置列表:', shiftConfigs.value)
     
     // 获取所有值班安排
     let allAssignments = []
     try {
-      // 假设我们有一个getAllAssignments函数来获取所有值班安排
-      // const assignmentsResponse = await getAllAssignments()
-      // if (assignmentsResponse.code === 200) {
-      //   allAssignments = assignmentsResponse.data
-      //   console.log('获取到所有值班安排:', allAssignments.length)
-      // }
-      
-      // 由于没有直接的API，我们暂时使用模拟数据
-      // 从浏览器控制台输出中，我们知道前端获取的值班记录中的assignmentId是344
-      allAssignments = [
-        {
-          id: 344,
-          dutyDate: '2026-02-03',
-          dutyShift: 8,
-          employeeId: 18,
-          scheduleId: 1,
-          status: 1,
-          remark: '早7晚9'
+      // 根据选择的值班表获取值班安排
+      if (selectedScheduleId.value) {
+        const assignmentsResponse = await getAssignmentsByScheduleId(selectedScheduleId.value)
+        if (assignmentsResponse.code === 200) {
+          allAssignments = assignmentsResponse.data
         }
-      ]
-      console.log('使用模拟数据设置所有值班安排:', allAssignments)
+      } else {
+        // 使用模拟数据
+        allAssignments = [
+          {
+            id: 344,
+            dutyDate: '2026-02-03',
+            dutyShift: 8,
+            employeeId: 18,
+            scheduleId: 1,
+            status: 1,
+            remark: '早7晚9'
+          }
+        ]
+      }
     } catch (error) {
-      console.error('获取值班安排失败:', error)
+      // console.error('获取值班安排失败:', error)
     }
     
     // 值班长获取所有记录，普通用户只获取自己的记录
@@ -922,105 +954,129 @@ const fetchRecordList = async () => {
       if (isDutyManager.value) {
         // 值班长获取所有记录
         response = await getRecordList()
-        console.log('值班长获取所有值班记录API响应:', response)
       } else {
         // 普通用户获取自己的记录
         response = await getRecordsByEmployeeId(userStore.employeeId)
-        console.log('普通用户获取值班记录API响应:', response)
       }
       
       if (response.code === 200) {
-        recordList.value = response.data
-        console.log('值班记录列表长度:', recordList.value.length)
-        console.log('值班记录列表:', recordList.value)
+        let allRecords = response.data
+        
+        // 根据选择的值班表过滤记录
+        if (selectedScheduleId.value) {
+          // 从值班安排中获取该值班表的所有assignmentId
+          const scheduleAssignmentIds = new Set()
+          allAssignments.forEach(assignment => {
+            if (assignment.scheduleId === selectedScheduleId.value) {
+              scheduleAssignmentIds.add(assignment.id)
+            }
+          })
+          
+          // 过滤出属于该值班表的记录
+          allRecords = allRecords.filter(record => {
+            return record.assignmentId && scheduleAssignmentIds.has(record.assignmentId)
+          })
+        }
+        
+        recordList.value = allRecords
         
         // 遍历值班记录，获取值班安排详情
         recordList.value.forEach(record => {
-          console.log('值班记录:', record)
-          // 打印时间字段，检查格式
-          console.log('签到时间:', record.checkInTime, '类型:', typeof record.checkInTime)
-          console.log('签退时间:', record.checkOutTime, '类型:', typeof record.checkOutTime)
-          console.log('加班时长:', record.overtimeHours, '类型:', typeof record.overtimeHours)
-          
           if (record.assignmentId) {
-            console.log('值班记录有assignmentId，尝试获取值班安排详情:', record.assignmentId)
             // 从所有值班安排中查找对应的值班安排
             const assignment = allAssignments.find(a => a.id === record.assignmentId)
             if (assignment) {
-              console.log('找到对应的值班安排:', assignment)
               // 设置值班日期和班次
               record.dutyDate = assignment.dutyDate
               record.dutyShift = assignment.dutyShift
-              console.log('从值班安排中获取到值班日期和班次:', record.dutyDate, record.dutyShift)
+              // 设置值班表信息
+              record.scheduleId = assignment.scheduleId
+              const schedule = scheduleList.value.find(s => s.id === assignment.scheduleId)
+              record.scheduleName = schedule ? schedule.scheduleName : '未知值班表'
             } else {
-              console.log('未找到对应的值班安排，使用默认值')
               // 使用默认值
               record.dutyDate = '2024-01-03'
               record.dutyShift = 8
-              console.log('使用默认值设置值班日期和班次:', record.dutyDate, record.dutyShift)
+              record.scheduleName = '未知值班表'
             }
           } else {
-            console.log('值班记录无assignmentId，使用默认值')
             // 使用默认值
             record.dutyDate = '2024-01-03'
             record.dutyShift = 8
-            console.log('使用默认值设置值班日期和班次:', record.dutyDate, record.dutyShift)
+            record.scheduleName = '未知值班表'
           }
           
           if (record.dutyShift) {
-            console.log('值班记录班次:', record.dutyShift)
-            console.log('值班记录班次类型:', typeof record.dutyShift)
             // 尝试从班次配置中查找
             const shiftConfig = shiftConfigs.value.find(config => config.id === record.dutyShift)
             if (shiftConfig && shiftConfig.shiftName) {
-              console.log('找到班次配置:', shiftConfig.shiftName)
               saveShiftName(record.dutyShift, shiftConfig.shiftName)
             } else {
-              console.log('未找到班次配置，使用默认格式')
               // 使用默认格式，确保能够处理所有班次值
               saveShiftName(record.dutyShift, `班次${record.dutyShift}`)
             }
-          } else {
-            console.log('值班记录无班次:', record)
           }
         })
       }
     } else {
       const response = await getRecordList()
-      console.log('获取值班记录API响应:', response)
       if (response.code === 200) {
-        recordList.value = response.data
-        console.log('值班记录列表长度:', recordList.value.length)
-        console.log('值班记录列表:', recordList.value)
+        let allRecords = response.data
+        
+        // 根据选择的值班表过滤记录
+        if (selectedScheduleId.value) {
+          // 从值班安排中获取该值班表的所有assignmentId
+          const scheduleAssignmentIds = new Set()
+          allAssignments.forEach(assignment => {
+            if (assignment.scheduleId === selectedScheduleId.value) {
+              scheduleAssignmentIds.add(assignment.id)
+            }
+          })
+          
+          // 过滤出属于该值班表的记录
+          allRecords = allRecords.filter(record => {
+            return record.assignmentId && scheduleAssignmentIds.has(record.assignmentId)
+          })
+        }
+        
+        recordList.value = allRecords
+        
         // 保存班次名称
         recordList.value.forEach(record => {
-          console.log('值班记录:', record)
+          if (record.assignmentId) {
+            // 从所有值班安排中查找对应的值班安排
+            const assignment = allAssignments.find(a => a.id === record.assignmentId)
+            if (assignment) {
+              // 设置值班表信息
+              record.scheduleId = assignment.scheduleId
+              const schedule = scheduleList.value.find(s => s.id === assignment.scheduleId)
+              record.scheduleName = schedule ? schedule.scheduleName : '未知值班表'
+            } else {
+              record.scheduleName = '未知值班表'
+            }
+          } else {
+            record.scheduleName = '未知值班表'
+          }
+          
           if (record.dutyShift) {
-            console.log('值班记录班次:', record.dutyShift)
-            console.log('值班记录班次类型:', typeof record.dutyShift)
             // 尝试从班次配置中查找
             const shiftConfig = shiftConfigs.value.find(config => config.id === record.dutyShift)
             if (shiftConfig && shiftConfig.shiftName) {
-              console.log('找到班次配置:', shiftConfig.shiftName)
               saveShiftName(record.dutyShift, shiftConfig.shiftName)
             } else {
-              console.log('未找到班次配置，使用默认格式')
               // 使用默认格式，确保能够处理所有班次值
               saveShiftName(record.dutyShift, `班次${record.dutyShift}`)
             }
           } else if (record.assignmentId) {
-            console.log('值班记录无班次，尝试从assignmentId获取:', record.assignmentId)
             // 这里我们可以尝试从值班安排中获取班次信息
             // 但由于需要异步调用API，我们暂时先保存一个默认值
             saveShiftName(record.assignmentId, `班次${record.assignmentId}`)
-          } else {
-            console.log('值班记录无班次:', record)
           }
         })
       }
     }
   } catch (error) {
-    console.error('获取值班记录列表失败:', error)
+    // console.error('获取值班记录列表失败:', error)
     ElMessage.error('获取值班记录列表失败')
   } finally {
     loading.value = false
@@ -1029,7 +1085,7 @@ const fetchRecordList = async () => {
 
 // 标签页切换处理
 const handleTabChange = (tabName) => {
-  console.log('标签页切换到:', tabName)
+  // console.log('标签页切换到:', tabName)
   // 切换标签页时重置相关状态
   if (tabName === 'record') {
     currentPage.value = 1
@@ -1127,7 +1183,7 @@ const handleCheckIn = async () => {
       ElMessage.error(response.message || '签到失败')
     }
   } catch (error) {
-    console.error('签到失败:', error)
+    // console.error('签到失败:', error)
     ElMessage.error('签到失败')
   } finally {
     checkInLoading.value = false
@@ -1154,7 +1210,7 @@ const handleCheckOut = async () => {
       ElMessage.error(response.message || '签退失败')
     }
   } catch (error) {
-    console.error('签退失败:', error)
+    // console.error('签退失败:', error)
     ElMessage.error('签退失败')
   } finally {
     checkOutLoading.value = false
@@ -1179,7 +1235,7 @@ const handleEditSave = async () => {
       ElMessage.error(response.message || '编辑值班记录失败')
     }
   } catch (error) {
-    console.error('编辑值班记录失败:', error)
+    // console.error('编辑值班记录失败:', error)
     ElMessage.error('编辑值班记录失败')
   } finally {
     editLoading.value = false
@@ -1204,22 +1260,9 @@ const handleDelete = async (id) => {
     }
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除值班记录失败:', error)
+      // console.error('删除值班记录失败:', error)
       ElMessage.error('删除值班记录失败')
     }
-  }
-}
-
-// 获取值班表列表
-const fetchScheduleList = async () => {
-  try {
-    const response = await getScheduleList()
-    if (response.code === 200) {
-      scheduleList.value = response.data
-    }
-  } catch (error) {
-    console.error('获取值班表列表失败:', error)
-    ElMessage.error('获取值班表列表失败')
   }
 }
 
@@ -1254,7 +1297,7 @@ const handleScheduleChange = async (scheduleId) => {
           }
         })
         availableDates.value = Array.from(dates)
-        console.log('可用日期:', availableDates.value)
+        // console.log('可用日期:', availableDates.value)
         
         // 重置日期和班次选择
         createForm.dutyDate = null
@@ -1262,12 +1305,12 @@ const handleScheduleChange = async (scheduleId) => {
         availableShifts.value = []
         
         // 打印调试信息
-        console.log('获取到的值班安排:', response.data)
-        console.log('可用日期:', availableDates.value)
-        console.log('用户ID:', userStore.employeeId)
+        // console.log('获取到的值班安排:', response.data)
+        // console.log('可用日期:', availableDates.value)
+        // console.log('用户ID:', userStore.employeeId)
       }
     } catch (error) {
-      console.error('获取值班安排失败:', error)
+      // console.error('获取值班安排失败:', error)
       ElMessage.error('获取值班安排失败')
     } finally {
       assignmentsLoading.value = false
@@ -1279,6 +1322,9 @@ const handleScheduleChange = async (scheduleId) => {
     createForm.dutyDate = null
     createForm.dutyShift = null
   }
+  
+  // 重新获取值班记录列表
+  await fetchRecordList()
 }
 
 // 禁用日期选择器中不可用的日期
@@ -1286,7 +1332,7 @@ const disabledDate = (time) => {
   const dateStr = formatDate(time)
   // 检查是否在可用日期列表中
   const isAvailable = availableDates.value.includes(dateStr)
-  console.log('检查日期:', dateStr, '是否可用:', isAvailable)
+  // console.log('检查日期:', dateStr, '是否可用:', isAvailable)
   return !isAvailable
 }
 
@@ -1297,23 +1343,23 @@ const shiftApi = shiftConfigApi()
 
 // 获取班次名称
 const getShiftName = (shift) => {
-  console.log('getShiftName函数被调用，参数:', shift)
-  console.log('班次配置列表:', shiftConfigs.value)
+  // console.log('getShiftName函数被调用，参数:', shift)
+  // console.log('班次配置列表:', shiftConfigs.value)
   
   if (!shift) {
-    console.log('shift为null或undefined，返回默认班次')
+    // console.log('shift为null或undefined，返回默认班次')
     return '默认班次'
   }
   
   // 确保shift是数字类型
   const shiftNum = parseInt(shift) || 0
-  console.log('转换后的shiftNum:', shiftNum)
+  // console.log('转换后的shiftNum:', shiftNum)
   
   // 从班次配置列表中查找
   const shiftConfig = shiftConfigs.value.find(config => config.id === shiftNum)
-  console.log('找到的班次配置:', shiftConfig)
+  // console.log('找到的班次配置:', shiftConfig)
   if (shiftConfig && shiftConfig.shiftName) {
-    console.log('从班次配置中找到班次名称:', shiftConfig.shiftName)
+    // console.log('从班次配置中找到班次名称:', shiftConfig.shiftName)
     return shiftConfig.shiftName
   }
   
@@ -1329,15 +1375,15 @@ const getShiftName = (shift) => {
     8: 'GOC白班' // 从数据库查询结果中，我们知道班次8的名称是"GOC白班"
   }
   
-  console.log('shiftMap:', shiftMap)
-  console.log('shiftMap[shiftNum]:', shiftMap[shiftNum])
+  // console.log('shiftMap:', shiftMap)
+  // console.log('shiftMap[shiftNum]:', shiftMap[shiftNum])
   if (shiftMap[shiftNum]) {
-    console.log('从硬编码中找到班次名称:', shiftMap[shiftNum])
+    // console.log('从硬编码中找到班次名称:', shiftMap[shiftNum])
     return shiftMap[shiftNum]
   }
   
   // 如果没有找到，使用默认格式
-  console.log('未找到班次配置，使用默认格式')
+  // console.log('未找到班次配置，使用默认格式')
   return `班次${shiftNum}`
 }
 
@@ -1354,7 +1400,7 @@ const fetchAssignmentDetail = async (assignmentId) => {
       return response.data
     }
   } catch (error) {
-    console.error('获取值班安排详情失败:', error)
+    // console.error('获取值班安排详情失败:', error)
   }
   
   return null
@@ -1362,31 +1408,31 @@ const fetchAssignmentDetail = async (assignmentId) => {
 
 // 获取班次配置列表
 const fetchShiftConfigs = async () => {
-  console.log('开始获取班次配置列表')
+  // console.log('开始获取班次配置列表')
   try {
     const response = await shiftApi.getShiftConfigList()
-    console.log('班次配置API响应:', response)
+    // console.log('班次配置API响应:', response)
     if (response.code === 200) {
       shiftConfigs.value = response.data
-      console.log('班次配置列表:', shiftConfigs.value)
-      console.log('班次配置列表长度:', shiftConfigs.value.length)
+      // console.log('班次配置列表:', shiftConfigs.value)
+      // console.log('班次配置列表长度:', shiftConfigs.value.length)
       // 保存班次名称
       shiftConfigs.value.forEach(config => {
-        console.log('保存班次名称:', config.id, config.shiftName)
+        // console.log('保存班次名称:', config.id, config.shiftName)
         saveShiftName(config.id, config.shiftName)
       })
-      console.log('班次配置获取完成，shiftNames.value:', shiftNames.value)
+      // console.log('班次配置获取完成，shiftNames.value:', shiftNames.value)
     } else {
-      console.error('获取班次配置失败，响应码:', response.code)
+      // console.error('获取班次配置失败，响应码:', response.code)
     }
   } catch (error) {
-      console.error('获取班次配置失败:', error)
+      // console.error('获取班次配置失败:', error)
       ElMessage.error('获取班次配置失败')
       // 移除模拟数据，始终使用后端接口获取
       shiftConfigs.value = []
     } finally {
     shiftConfigsLoaded.value = true
-    console.log('班次配置加载完成，shiftConfigsLoaded.value:', shiftConfigsLoaded.value)
+    // console.log('班次配置加载完成，shiftConfigsLoaded.value:', shiftConfigsLoaded.value)
   }
 }
 
@@ -1394,9 +1440,9 @@ const fetchShiftConfigs = async () => {
 const handleDateChange = async (date) => {
   if (date && createForm.scheduleId) {
     const dateStr = formatDate(date)
-    console.log('选择的日期:', dateStr)
-    console.log('值班表ID:', createForm.scheduleId)
-    console.log('用户ID:', userStore.employeeId)
+    // console.log('选择的日期:', dateStr)
+    // console.log('值班表ID:', createForm.scheduleId)
+    // console.log('用户ID:', userStore.employeeId)
     
     try {
       // 先获取班次配置列表
@@ -1405,28 +1451,28 @@ const handleDateChange = async (date) => {
       // 直接调用后端API获取值班表下的所有值班安排
       const response = await getAssignmentsByScheduleId(createForm.scheduleId)
       if (response.code === 200) {
-        console.log('后端返回的所有值班安排:', response.data)
+        // console.log('后端返回的所有值班安排:', response.data)
         
         // 过滤出该日期下的所有值班安排（不按用户过滤，确保能够获取到所有班次）
         const dateAssignments = response.data.filter(assignment => {
           const assignmentDate = formatDate(assignment.dutyDate)
           return assignmentDate === dateStr
         })
-        console.log('该日期下的所有值班安排:', dateAssignments)
+        // console.log('该日期下的所有值班安排:', dateAssignments)
         
         // 打印每个值班安排的详细信息，检查字段名
         dateAssignments.forEach((assignment, index) => {
-          console.log(`值班安排 ${index + 1}:`, {
-            id: assignment.id,
-            dutyDate: assignment.dutyDate,
-            employeeId: assignment.employeeId,
-            dutyShift: assignment.dutyShift,
-            shiftConfigId: assignment.shiftConfigId,
-            isOvertime: assignment.isOvertime,
-            shiftName: assignment.shiftName,
-            // 打印所有字段
-            ...assignment
-          })
+          // console.log(`值班安排 ${index + 1}:`, {
+          //   id: assignment.id,
+          //   dutyDate: assignment.dutyDate,
+          //   employeeId: assignment.employeeId,
+          //   dutyShift: assignment.dutyShift,
+          //   shiftConfigId: assignment.shiftConfigId,
+          //   isOvertime: assignment.isOvertime,
+          //   shiftName: assignment.shiftName,
+          //   // 打印所有字段
+          //   ...assignment
+          // })
         })
         
         // 转换为班次选项格式
@@ -1439,35 +1485,35 @@ const handleDateChange = async (date) => {
             let isOvertime = false
             
             // 打印调试信息
-            console.log('处理值班安排:', {
-              id: assignment.id,
-              dutyDate: assignment.dutyDate,
-              employeeId: assignment.employeeId,
-              dutyShift: assignment.dutyShift,
-              shiftConfigId: assignment.shiftConfigId,
-              shiftName: assignment.shiftName
-            })
+            // console.log('处理值班安排:', {
+            //   id: assignment.id,
+            //   dutyDate: assignment.dutyDate,
+            //   employeeId: assignment.employeeId,
+            //   dutyShift: assignment.dutyShift,
+            //   shiftConfigId: assignment.shiftConfigId,
+            //   shiftName: assignment.shiftName
+            // })
             
             // 优先使用shiftConfigId查找班次配置
             if (assignment.shiftConfigId) {
               const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
-              console.log('使用shiftConfigId查找班次配置:', assignment.shiftConfigId, '找到:', shiftConfig)
+              // console.log('使用shiftConfigId查找班次配置:', assignment.shiftConfigId, '找到:', shiftConfig)
               if (shiftConfig) {
                 // 根据开发文档，班次配置表中的is_overtime_shift字段表示是否为加班班次
                 isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
-                console.log('班次是否为加班:', isOvertime)
+                // console.log('班次是否为加班:', isOvertime)
               }
             } else if (assignment.dutyShift) {
               // 如果没有shiftConfigId，使用dutyShift查找班次配置
               const shift = parseInt(assignment.dutyShift) || 0
-              console.log('使用dutyShift查找班次配置:', shift)
+              // console.log('使用dutyShift查找班次配置:', shift)
               if (shift > 0) {
                 const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
-                console.log('找到班次配置:', shiftConfig)
+                // console.log('找到班次配置:', shiftConfig)
                 if (shiftConfig) {
                   // 根据开发文档，班次配置表中的is_overtime_shift字段表示是否为加班班次
                   isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
-                  console.log('班次是否为加班:', isOvertime)
+                  // console.log('班次是否为加班:', isOvertime)
                 }
               }
             }
@@ -1475,11 +1521,11 @@ const handleDateChange = async (date) => {
             // 如果从班次配置中没有找到，尝试从值班安排中获取
             if (!isOvertime && assignment.isOvertime !== undefined) {
               isOvertime = assignment.isOvertime
-              console.log('从值班安排中获取是否为加班:', isOvertime)
+              // console.log('从值班安排中获取是否为加班:', isOvertime)
             }
             
             // 打印班次配置列表
-            console.log('所有班次配置:', shiftConfigs.value)
+            // console.log('所有班次配置:', shiftConfigs.value)
             
             // 只处理加班班次
             if (!isOvertime) {
@@ -1560,18 +1606,18 @@ const handleDateChange = async (date) => {
         
         // 如果没有找到对应的值班安排，保持为空
         if (availableShifts.value.length === 0) {
-          console.log('没有找到该日期下的加班班次')
+          // console.log('没有找到该日期下的加班班次')
           availableShifts.value = []
         }
         
-        console.log('可用班次:', availableShifts.value)
+        // console.log('可用班次:', availableShifts.value)
         
         // 重置班次选择
         createForm.dutyShift = null
         createForm.isOvertime = false
       }
     } catch (error) {
-      console.error('获取值班安排失败:', error)
+      // console.error('获取值班安排失败:', error)
       ElMessage.error('获取值班安排失败')
       // 发生错误时保持班次为空
       availableShifts.value = []
@@ -1622,10 +1668,10 @@ const handleCreate = async () => {
     if (!createForm.id) {
       // 查找对应的值班安排
       const dateStr = formatDate(createForm.dutyDate)
-      console.log('创建值班记录 - 日期:', dateStr)
-      console.log('创建值班记录 - 值班表ID:', createForm.scheduleId)
-      console.log('创建值班记录 - 班次:', createForm.dutyShift)
-      console.log('创建值班记录 - 用户ID:', userStore.employeeId)
+      // console.log('创建值班记录 - 日期:', dateStr)
+      // console.log('创建值班记录 - 值班表ID:', createForm.scheduleId)
+      // console.log('创建值班记录 - 班次:', createForm.dutyShift)
+      // console.log('创建值班记录 - 用户ID:', userStore.employeeId)
       
       // 获取值班表下的所有值班安排
       const assignmentResponse = await getAssignmentsByScheduleId(createForm.scheduleId)
@@ -1646,7 +1692,7 @@ const handleCreate = async () => {
         const assignmentEmployeeId = parseInt(a.employeeId) || 0
         const userEmployeeId = parseInt(userStore.employeeId) || 0
         const formDutyShift = parseInt(createForm.dutyShift) || 0
-        console.log('比较: 日期=' + assignmentDate + '===', dateStr + ', 班次=' + assignmentShift + '===', formDutyShift + ', 员工ID=' + assignmentEmployeeId + '===', userEmployeeId)
+        // console.log('比较: 日期=' + assignmentDate + '===', dateStr + ', 班次=' + assignmentShift + '===', formDutyShift + ', 员工ID=' + assignmentEmployeeId + '===', userEmployeeId)
         return assignmentDate === dateStr && assignmentShift === formDutyShift && assignmentEmployeeId === userEmployeeId
       })
       
@@ -1739,7 +1785,7 @@ const handleCreate = async () => {
       }
     }
   } catch (error) {
-    console.error('处理值班记录失败:', error)
+    // console.error('处理值班记录失败:', error)
     ElMessage.error('处理值班记录失败')
   } finally {
     createLoading.value = false
@@ -1763,7 +1809,7 @@ const fetchAvailableSubstitutes = async (recordId) => {
       }
     }
   } catch (error) {
-    console.error('获取替补人员失败:', error)
+    // console.error('获取替补人员失败:', error)
     ElMessage.error('获取替补人员失败')
   } finally {
     substituteLoading.value = false
@@ -1777,35 +1823,40 @@ const fetchDeptList = async () => {
       deptList.value = response.data
     }
   } catch (error) {
-    console.error('获取部门列表失败:', error)
+    // console.error('获取部门列表失败:', error)
     ElMessage.error('获取部门列表失败')
+  }
+}
+
+// 获取值班表列表
+const fetchScheduleList = async () => {
+  try {
+    const response = await getScheduleList()
+    if (response.code === 200) {
+      scheduleList.value = response.data
+      // 如果有值班表，默认选择第一个
+      if (scheduleList.value.length > 0 && !selectedScheduleId.value) {
+        selectedScheduleId.value = scheduleList.value[0].id
+      }
+    }
+  } catch (error) {
+    // console.error('获取值班表列表失败:', error)
+    ElMessage.error('获取值班表列表失败')
   }
 }
 
 // 生命周期钩子
 onMounted(async () => {
   // 先获取班次配置列表
-  console.log('开始获取班次配置列表')
   await fetchShiftConfigs()
-  console.log('班次配置列表获取完成')
   // 检查用户是否是值班长
   await checkIfDutyManager()
   // 再获取其他数据
-  console.log('开始获取员工列表')
   await fetchEmployeeList()
-  console.log('员工列表获取完成')
-  console.log('开始获取值班安排列表')
   await fetchAssignmentList()
-  console.log('值班安排列表获取完成')
-  console.log('开始获取部门列表')
   await fetchDeptList()
-  console.log('部门列表获取完成')
-  console.log('开始获取值班表列表')
   await fetchScheduleList()
-  console.log('值班表列表获取完成')
-  console.log('开始获取值班记录列表')
   await fetchRecordList()
-  console.log('值班记录列表获取完成')
 })
 </script>
 
@@ -1825,6 +1876,16 @@ onMounted(async () => {
   margin: 0;
   font-size: 20px;
   color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-select {
+  min-width: 250px;
 }
 
 .content-card {

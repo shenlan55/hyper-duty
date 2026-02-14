@@ -211,17 +211,17 @@ const routeNameMap = ref({
 const fetchUserMenus = async () => {
   loading.value = true
   try {
-    console.log('开始获取用户菜单...')
+    // console.log('开始获取用户菜单...')
     // 调用后端API获取用户的实际菜单权限
     const response = await getUserMenus()
     
-    console.log('获取用户菜单响应：', response)
+    // console.log('获取用户菜单响应：', response)
     
     if (response && response.code === 200) {
       // 从后端API响应中获取菜单数据
       const backendMenus = response.data
       
-      console.log('后端返回的菜单数据：', backendMenus)
+      // console.log('后端返回的菜单数据：', backendMenus)
       
       if (backendMenus && Array.isArray(backendMenus) && backendMenus.length > 0) {
         // 转换后端菜单数据为前端需要的格式
@@ -273,8 +273,8 @@ const fetchUserMenus = async () => {
         })
         routeNameMap.value = newRouteNameMap
         
-        console.log('转换后的菜单数据：', topMenus.value)
-        console.log('更新后的路由名称映射：', routeNameMap.value)
+        // console.log('转换后的菜单数据：', topMenus.value)
+        // console.log('更新后的路由名称映射：', routeNameMap.value)
         
         // 始终设置首页为默认激活
         activeTopMenu.value = 'dashboard'

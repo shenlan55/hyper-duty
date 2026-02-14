@@ -258,7 +258,7 @@ const fetchDeptList = async () => {
       buildDeptTree(response.data)
       // 生成带缩进的部门选项
       generateIndentedOptions()
-      console.log('Indented options:', indentedDeptOptions.value)
+      // console.log('Indented options:', indentedDeptOptions.value)
     }
   } catch (error) {
     console.error('获取部门列表失败:', error)

@@ -516,7 +516,7 @@ const fetchEmployeeList = async () => {
       employeeList.value = response.data
     }
   } catch (error) {
-    console.error('获取员工列表失败:', error)
+    // console.error('获取员工列表失败:', error)
   }
 }
 
@@ -527,7 +527,7 @@ const fetchScheduleList = async () => {
       scheduleList.value = response.data
     }
   } catch (error) {
-    console.error('获取值班表列表失败:', error)
+    // console.error('获取值班表列表失败:', error)
   }
 }
 
@@ -538,7 +538,7 @@ const fetchEnabledShifts = async () => {
       shiftConfigList.value = response.data
     }
   } catch (error) {
-    console.error('获取班次配置列表失败:', error)
+    // console.error('获取班次配置列表失败:', error)
   }
 }
 
@@ -560,7 +560,7 @@ const fetchMyLeaveRequests = async () => {
       pagination.total = response.data.total
     }
   } catch (error) {
-    console.error('获取请假申请列表失败:', error)
+    // console.error('获取请假申请列表失败:', error)
     ElMessage.error('获取请假申请列表失败')
   } finally {
     loading.value = false
@@ -608,7 +608,7 @@ const fetchScheduleLeaders = async (scheduleId) => {
       scheduleLeaders.value = response.data.filter(employee => employee.isLeader === 1)
     }
   } catch (error) {
-    console.error('获取值班长列表失败:', error)
+    // console.error('获取值班长列表失败:', error)
   }
 }
 
@@ -633,7 +633,7 @@ const fetchApprovalRecords = async (requestId) => {
       currentRequest.value.approvalRecords = response.data
     }
   } catch (error) {
-    console.error('获取审批记录失败:', error)
+    // console.error('获取审批记录失败:', error)
   }
 }
 
@@ -691,7 +691,7 @@ const handleSave = async () => {
       ElMessage.error(response.message || '请假申请提交失败')
     }
   } catch (error) {
-    console.error('提交请假申请失败:', error)
+    // console.error('提交请假申请失败:', error)
     ElMessage.error('提交请假申请失败')
   } finally {
     dialogLoading.value = false
@@ -715,18 +715,18 @@ const handleDelete = async (id) => {
     }
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('撤销请假申请失败:', error)
+      // console.error('撤销请假申请失败:', error)
       ElMessage.error('撤销请假申请失败')
     }
   }
 }
 
 const handlePreview = (file) => {
-  console.log(file)
+  // console.log(file)
 }
 
 const handleRemove = (file, fileList) => {
-  console.log(file, fileList)
+  // console.log(file, fileList)
 }
 
 const beforeRemove = (file) => {
@@ -763,7 +763,7 @@ const updateDisabledShifts = async (selectedShiftIds) => {
           break
         }
       } catch (error) {
-        console.error('检查班次互斥失败:', error)
+        // console.error('检查班次互斥失败:', error)
       }
     }
   }
@@ -795,7 +795,7 @@ const handleShiftChange = async (newShiftConfigIds) => {
             break
           }
         } catch (error) {
-          console.error('检查班次互斥失败:', error)
+          // console.error('检查班次互斥失败:', error)
         }
       }
       if (hasMutex) break

@@ -757,7 +757,7 @@ const fetchScheduleList = async () => {
       scheduleList.value = response.data
     }
   } catch (error) {
-    console.error('获取值班表列表失败:', error)
+    // console.error('获取值班表列表失败:', error)
     ElMessage.error('获取值班表列表失败')
   }
 }
@@ -769,7 +769,7 @@ const fetchEmployeeList = async () => {
       allEmployeeList.value = response.data
     }
   } catch (error) {
-    console.error('获取员工列表失败:', error)
+    // console.error('获取员工列表失败:', error)
     ElMessage.error('获取员工列表失败')
   }
 }
@@ -782,7 +782,7 @@ const fetchDeptList = async () => {
       deptList.value = response.data
     }
   } catch (error) {
-    console.error('获取部门列表失败:', error)
+    // console.error('获取部门列表失败:', error)
     ElMessage.error('获取部门列表失败')
   }
 }
@@ -800,29 +800,29 @@ const fetchShiftConfigList = async () => {
       shiftConfigList.value = response.data.filter(shift => shift.status === 1)
     }
   } catch (error) {
-    console.error('获取班次配置列表失败:', error)
+    // console.error('获取班次配置列表失败:', error)
     ElMessage.error('获取班次配置列表失败')
   }
 }
 
 const fetchHolidaysList = async (startDate, endDate) => {
   try {
-    console.log('开始获取节假日列表:', startDate, endDate)
+    // console.log('开始获取节假日列表:', startDate, endDate)
     const response = await holidayService.getHolidaysInRange(startDate, endDate)
-    console.log('节假日API响应:', response)
+    // console.log('节假日API响应:', response)
     if (response.code === 200) {
       holidaysList.value = response.data
-      console.log('获取到的节假日数据:', response.data)
+      // console.log('获取到的节假日数据:', response.data)
       // 构建节假日映射，方便快速查询
       const map = {}
       response.data.forEach(holiday => {
         map[holiday.holidayDate] = holiday
       })
       holidayMap.value = map
-      console.log('构建的节假日映射:', map)
+      // console.log('构建的节假日映射:', map)
     }
   } catch (error) {
-    console.error('获取节假日列表失败:', error)
+    // console.error('获取节假日列表失败:', error)
     // 节假日获取失败不影响主功能，只在控制台报错
     holidaysList.value = []
     holidayMap.value = {}
@@ -836,7 +836,7 @@ const fetchScheduleModeList = async () => {
       scheduleModeList.value = response.data.filter(mode => mode.status === 1)
     }
   } catch (error) {
-    console.error('获取排班模式列表失败:', error)
+    // console.error('获取排班模式列表失败:', error)
     ElMessage.error('获取排班模式列表失败')
   }
 }
@@ -864,7 +864,7 @@ const fetchScheduleEmployees = async (scheduleId, showError = true) => {
     }
     return scheduleEmployeeList.value
   } catch (error) {
-    console.error('获取值班人员失败:', error)
+    // console.error('获取值班人员失败:', error)
     ElMessage.error('获取值班人员失败')
     return []
   }
@@ -885,7 +885,7 @@ const fetchScheduleShifts = async (scheduleId) => {
       )
     }
   } catch (error) {
-    console.error('获取值班表班次失败:', error)
+    // console.error('获取值班表班次失败:', error)
     ElMessage.error('获取值班表班次失败')
   }
 }
@@ -911,7 +911,7 @@ const fetchAssignmentList = async (scheduleId = null) => {
       assignmentList.value = response.data
     }
   } catch (error) {
-    console.error('获取值班安排列表失败:', error)
+    // console.error('获取值班安排列表失败:', error)
     ElMessage.error('获取值班安排列表失败')
   } finally {
     loading.value = false
@@ -1099,7 +1099,7 @@ const handleSave = async () => {
       ElMessage.error(assignmentForm.id ? '编辑值班安排失败' : '添加值班安排失败')
     }
   } catch (error) {
-    console.error('保存值班安排失败:', error)
+    // console.error('保存值班安排失败:', error)
     ElMessage.error('保存值班安排失败')
   } finally {
     dialogLoading.value = false
@@ -1166,7 +1166,7 @@ const handleExport = async () => {
     exportDialogVisible.value = false
     ElMessage.success('导出成功')
   } catch (error) {
-    console.error('导出失败:', error)
+    // console.error('导出失败:', error)
     ElMessage.error('导出失败')
   } finally {
     exportDialogLoading.value = false
@@ -1229,7 +1229,7 @@ const handleSaveDetail = async () => {
       ElMessage.error('保存失败')
     }
   } catch (error) {
-    console.error('保存失败:', error)
+    // console.error('保存失败:', error)
     ElMessage.error('保存失败')
   } finally {
     editDetailDialogLoading.value = false
@@ -1305,7 +1305,7 @@ const getFilteredDates = async (startDate, endDate, dateTypes) => {
     
     return filteredDates
   } catch (error) {
-    console.error('筛选日期失败:', error)
+    // console.error('筛选日期失败:', error)
     return getDatesInRange(startDate, endDate) // 失败时返回所有日期
   }
 }
@@ -1327,7 +1327,7 @@ const fetchEmployeeLeaveInfo = async (employeeIds, startDate, endDate) => {
     
     return {}
   } catch (error) {
-    console.error('获取请假信息失败:', error)
+    // console.error('获取请假信息失败:', error)
     return {}
   }
 }
@@ -1378,7 +1378,7 @@ const fetchAllSubstituteInfo = async (employeeIds, startDate, endDate) => {
       return substituteMap
     }
   } catch (error) {
-    console.error('获取顶岗信息失败:', error)
+    // console.error('获取顶岗信息失败:', error)
   }
   return new Map()
 }
@@ -1484,7 +1484,7 @@ const handleBatchSave = async () => {
             
             if (dayAvailableEmployees.length === 0) {
               // 当天没有可用员工，跳过
-              console.log(`日期 ${date} 没有可用员工，跳过排班`)
+              // console.log(`日期 ${date} 没有可用员工，跳过排班`)
               continue
             }
             
@@ -1582,7 +1582,7 @@ const handleBatchSave = async () => {
     // 刷新排班数据
     await fetchAssignmentList(selectedScheduleId.value)
   } catch (error) {
-    console.error('批量排班失败:', error)
+    // console.error('批量排班失败:', error)
     ElMessage.error('批量排班失败')
   } finally {
     batchDialogLoading.value = false
@@ -1620,7 +1620,7 @@ const handleClearSave = async () => {
     fetchAssignmentList(selectedScheduleId.value)
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('批量清空失败:', error)
+      // console.error('批量清空失败:', error)
       ElMessage.error('批量清空失败')
     }
   } finally {
@@ -1666,7 +1666,7 @@ const findUserSchedule = async (schedules) => {
         }
       }
     } catch (error) {
-      console.error(`获取值班表${schedule.id}员工失败:`, error)
+      // console.error(`获取值班表${schedule.id}员工失败:`, error)
     }
   }
   return null
