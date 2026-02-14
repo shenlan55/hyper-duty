@@ -26,6 +26,10 @@
           <el-icon><Delete /></el-icon>
           批量清空
         </el-button>
+        <el-button @click="openExportDialog" :disabled="!selectedScheduleId">
+          <el-icon><Download /></el-icon>
+          导出
+        </el-button>
       </div>
     </div>
 
@@ -397,6 +401,41 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 导出值班安排对话框 -->
+    <el-dialog
+      v-model="exportDialogVisible"
+      title="导出值班安排"
+      width="500px"
+    >
+      <el-form
+        ref="exportFormRef"
+        :model="exportForm"
+        :rules="exportRules"
+        label-position="top"
+      >
+        <el-form-item label="日期范围" prop="dateRange">
+          <el-date-picker
+            v-model="exportForm.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="exportDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleExport" :loading="exportDialogLoading">
+            确认导出
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -421,6 +460,8 @@ import { getEmployeeLeaveInfo as getEmployeeLeaveInfoAPI, getSubstitutesByEmploy
 import dayjs from 'dayjs'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
 
 const userStore = useUserStore()
 
@@ -474,6 +515,26 @@ const clearFormRef = ref()
 const clearForm = reactive({
   dateRange: null
 })
+
+// 导出值班安排对话框相关
+const exportDialogVisible = ref(false)
+const exportDialogLoading = ref(false)
+const exportFormRef = ref()
+
+const exportForm = reactive({
+  dateRange: null
+})
+
+const exportRules = {
+  dateRange: [
+    {
+      type: 'array',
+      required: true,
+      message: '请选择日期范围',
+      trigger: 'change'
+    }
+  ]
+}
 
 // 当天值班人员详情弹窗相关
 const detailDialogVisible = ref(false)
@@ -980,6 +1041,73 @@ const handleSave = async () => {
     ElMessage.error('保存值班安排失败')
   } finally {
     dialogLoading.value = false
+  }
+}
+
+const openExportDialog = () => {
+  // 默认设置为当前月份的开始和结束日期
+  exportForm.dateRange = [
+    dayjs(currentDate.value).startOf('month').format('YYYY-MM-DD'),
+    dayjs(currentDate.value).endOf('month').format('YYYY-MM-DD')
+  ]
+  exportDialogVisible.value = true
+}
+
+const handleExport = async () => {
+  try {
+    await exportFormRef.value.validate()
+    exportDialogLoading.value = true
+    
+    if (!selectedScheduleId.value) {
+      ElMessage.error('请先选择值班表')
+      return
+    }
+    
+    // 获取当前值班表的名称
+    const currentSchedule = scheduleList.value.find(s => s.id === selectedScheduleId.value)
+    const scheduleName = currentSchedule ? currentSchedule.scheduleName : '值班安排'
+    
+    // 获取用户选择的时间范围
+    const [startDate, endDate] = exportForm.dateRange
+    
+    // 准备导出数据
+    const exportData = assignmentList.value
+      .filter(item => {
+        return item.scheduleId === selectedScheduleId.value && 
+               item.dutyDate >= startDate && 
+               item.dutyDate <= endDate
+      })
+      .map(item => {
+        return {
+          '值班日期': item.dutyDate,
+          '班次': getShiftName(item.dutyShift),
+          '值班人员': getEmployeeName(item.employeeId),
+          '状态': item.status === 1 ? '有效' : '无效',
+          '备注': item.remark || ''
+        }
+      })
+    
+    // 创建工作表
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    
+    // 创建工作簿
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, '值班安排')
+    
+    // 生成Excel文件
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+    const dataBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    
+    // 保存文件
+    saveAs(dataBlob, `${scheduleName}_${startDate}_${endDate}.xlsx`)
+    
+    exportDialogVisible.value = false
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
+  } finally {
+    exportDialogLoading.value = false
   }
 }
 
