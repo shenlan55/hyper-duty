@@ -368,6 +368,25 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                     compensatoryHours = compensatoryHours.add(new BigDecimal(record.getOvertimeHours()));
                 }
             }
+            
+            // 减去审批通过的调休请假时长
+            List<LeaveRequest> leaveRequests = leaveRequestService.list();
+            for (LeaveRequest request : leaveRequests) {
+                if (request.getEmployeeId().equals(employeeId) && 
+                    request.getApprovalStatus() != null && 
+                    "approved".equals(request.getApprovalStatus()) &&
+                    request.getLeaveType() != null && 
+                    request.getLeaveType() == 4 && // 调休类型
+                    request.getTotalHours() != null) {
+                    compensatoryHours = compensatoryHours.subtract(BigDecimal.valueOf(request.getTotalHours()));
+                }
+            }
+            
+            // 确保可调休工时不小于0
+            if (compensatoryHours.compareTo(BigDecimal.ZERO) < 0) {
+                compensatoryHours = BigDecimal.ZERO;
+            }
+            
             stat.put("compensatoryHours", compensatoryHours);
 
             employeeStats.add(stat);

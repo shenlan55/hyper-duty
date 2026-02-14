@@ -138,7 +138,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="请假类型" prop="leaveType">
-              <el-select v-model="form.leaveType" placeholder="请选择请假类型" style="width: 100%">
+              <el-select v-model="form.leaveType" placeholder="请选择请假类型" style="width: 100%" @change="fetchCompensatoryHours">
                 <el-option label="事假" :value="1" />
                 <el-option label="病假" :value="2" />
                 <el-option label="年假" :value="3" />
@@ -168,7 +168,7 @@
           </el-col>
         </el-row>
         <el-row :gutter="20">
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="请假时长(小时)" prop="totalHours">
               <el-input-number
                 v-model="form.totalHours"
@@ -180,6 +180,19 @@
                 :disabled="true"
               />
               <div class="el-form-item__help">请假时长由所选班次的时长决定</div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12" v-if="form.leaveType === 4">
+            <el-form-item label="可调休工时(小时)">
+              <el-input-number
+                v-model="compensatoryHours"
+                :min="0"
+                :step="0.5"
+                placeholder="可调休工时"
+                style="width: 100%"
+                :disabled="true"
+              />
+              <div class="el-form-item__help">可调休工时为审批通过的加班时长</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -360,6 +373,7 @@ import {
 import { getEmployeeList } from '../../api/employee'
 import { getScheduleList, getScheduleEmployeesWithLeaderInfo, getScheduleShifts } from '../../api/duty/schedule'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
+import { getEmployeeStatistics } from '../../api/duty/statistics'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 
@@ -382,6 +396,8 @@ const scheduleLeaders = ref([])
 const disabledShiftIds = ref(new Set())
 // 当前值班表可用的班次ID列表
 const availableShiftIds = ref([])
+// 可调休工时
+const compensatoryHours = ref(0)
 
 // 分页相关
 const pagination = reactive({
@@ -427,7 +443,17 @@ const rules = {
     { required: true, message: '请选择结束日期', trigger: 'blur' }
   ],
   totalHours: [
-    { required: true, message: '请输入请假时长', trigger: 'blur' }
+    { required: true, message: '请输入请假时长', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (form.leaveType === 4 && value > compensatoryHours.value) {
+          callback(new Error('请假时长不能超过可调休工时'))
+        } else {
+          callback()
+        }
+      },
+      trigger: ['blur', 'change']
+    }
   ],
   reason: [
     { required: true, message: '请输入请假原因', trigger: 'blur' }
@@ -694,6 +720,29 @@ const handleScheduleChange = async (scheduleId) => {
   
   // 更新禁用班次状态
   await updateDisabledShifts([])
+}
+
+// 获取可调休工时
+const fetchCompensatoryHours = async () => {
+  if (form.leaveType === 4) { // 调休
+    try {
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = now.getMonth() + 1
+      const response = await getEmployeeStatistics(year, month)
+      if (response.code === 200) {
+        const employeeStat = response.data.find(stat => stat.employeeId === userStore.employeeId)
+        if (employeeStat) {
+          compensatoryHours.value = employeeStat.compensatoryHours || 0
+        }
+      }
+    } catch (error) {
+      console.error('获取可调休工时失败:', error)
+      compensatoryHours.value = 0
+    }
+  } else {
+    compensatoryHours.value = 0
+  }
 }
 
 const handleSave = async () => {
