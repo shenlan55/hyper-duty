@@ -121,10 +121,20 @@
                 >
                   签退
                 </el-button>
-                <el-button type="warning" size="small" @click="openEditDialog(scope.row)">
+                <el-button 
+                  v-if="scope.row.approvalStatus !== '已批准'"
+                  type="warning" 
+                  size="small" 
+                  @click="openEditDialog(scope.row)"
+                >
                   编辑
                 </el-button>
-                <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
+                <el-button 
+                  v-if="scope.row.approvalStatus !== '已批准'"
+                  type="danger" 
+                  size="small" 
+                  @click="handleDelete(scope.row.id)"
+                >
                   删除
                 </el-button>
               </template>
@@ -219,10 +229,20 @@
             </el-table-column>
             <el-table-column label="操作" width="160" fixed="right">
               <template #default="scope">
-                <el-button type="warning" size="small" @click="openEditDialog(scope.row)">
+                <el-button 
+                  v-if="scope.row.approvalStatus !== '已批准'"
+                  type="warning" 
+                  size="small" 
+                  @click="openEditDialog(scope.row)"
+                >
                   审批
                 </el-button>
-                <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
+                <el-button 
+                  v-if="scope.row.approvalStatus !== '已批准'"
+                  type="danger" 
+                  size="small" 
+                  @click="handleDelete(scope.row.id)"
+                >
                   删除
                 </el-button>
               </template>
@@ -1194,6 +1214,12 @@ const openCheckOutDialog = (record) => {
 
 // 打开编辑对话框
 const openEditDialog = async (record) => {
+  // 检查审批状态，如果已批准则不允许编辑
+  if (record.approvalStatus === '已批准') {
+    ElMessage.warning('已批准的记录不能编辑')
+    return
+  }
+  
   currentRecord.value = record
   Object.assign(createForm, record)
   substituteType.value = record.substituteType || 1
