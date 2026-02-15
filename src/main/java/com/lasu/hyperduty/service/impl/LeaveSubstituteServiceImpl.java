@@ -35,30 +35,74 @@ public class LeaveSubstituteServiceImpl extends ServiceImpl<LeaveSubstituteMappe
         }
 
         // 先删除该请假申请的所有顶岗信息
-        this.lambdaUpdate()
-                .eq(LeaveSubstitute::getLeaveRequestId, leaveRequestId)
-                .remove();
-
-        // 保存新的顶岗信息
-        for (java.util.Map<String, Object> data : substituteData) {
-            String date = (String) data.get("date");
-            Long shiftId = ((Number) data.get("shiftId")).longValue();
-            Long substituteEmployeeId = ((Number) data.get("substituteEmployeeId")).longValue();
-
-            LeaveSubstitute substitute = new LeaveSubstitute();
-            substitute.setLeaveRequestId(leaveRequestId);
-            substitute.setOriginalEmployeeId(originalEmployeeId);
-            substitute.setSubstituteEmployeeId(substituteEmployeeId);
-            substitute.setDutyDate(LocalDate.parse(date));
-            substitute.setShiftConfigId(shiftId);
-            substitute.setStatus(1);
-            substitute.setCreateTime(LocalDateTime.now());
-            substitute.setUpdateTime(LocalDateTime.now());
-
-            this.save(substitute);
+        try {
+            this.lambdaUpdate()
+                    .eq(LeaveSubstitute::getLeaveRequestId, leaveRequestId)
+                    .remove();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
 
-        return true;
+        // 保存新的顶岗信息
+        try {
+            for (java.util.Map<String, Object> data : substituteData) {
+                String date = (String) data.get("date");
+                if (date == null) continue;
+                
+                Object shiftIdObj = data.get("shiftId");
+                if (shiftIdObj == null) continue;
+                Long shiftId = null;
+                if (shiftIdObj instanceof Number) {
+                    shiftId = ((Number) shiftIdObj).longValue();
+                } else if (shiftIdObj instanceof String) {
+                    try {
+                        shiftId = Long.parseLong((String) shiftIdObj);
+                    } catch (NumberFormatException e) {
+                        continue;
+                    }
+                }
+                if (shiftId == null) continue;
+                
+                Object substituteEmployeeIdObj = data.get("substituteEmployeeId");
+                if (substituteEmployeeIdObj == null) continue;
+                Long substituteEmployeeId = null;
+                if (substituteEmployeeIdObj instanceof Number) {
+                    substituteEmployeeId = ((Number) substituteEmployeeIdObj).longValue();
+                } else if (substituteEmployeeIdObj instanceof String) {
+                    try {
+                        substituteEmployeeId = Long.parseLong((String) substituteEmployeeIdObj);
+                    } catch (NumberFormatException e) {
+                        continue;
+                    }
+                }
+                if (substituteEmployeeId == null) continue;
+                
+                try {
+                    LocalDate dutyDate = LocalDate.parse(date);
+                    LeaveSubstitute substitute = new LeaveSubstitute();
+                    substitute.setLeaveRequestId(leaveRequestId);
+                    substitute.setOriginalEmployeeId(originalEmployeeId);
+                    substitute.setSubstituteEmployeeId(substituteEmployeeId);
+                    substitute.setDutyDate(dutyDate);
+                    substitute.setShiftConfigId(shiftId);
+                    substitute.setStatus(1);
+                    substitute.setCreateTime(LocalDateTime.now());
+                    substitute.setUpdateTime(LocalDateTime.now());
+
+                    this.save(substitute);
+                } catch (Exception e) {
+                    // 日期解析或其他异常，跳过当前记录
+                    e.printStackTrace();
+                    continue;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            // 捕获所有异常，确保审批流程不会中断
+            e.printStackTrace();
+            return false;
+        }
     }
 
 }

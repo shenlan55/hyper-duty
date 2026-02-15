@@ -222,30 +222,7 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="开始时间" prop="startTime">
-              <el-time-picker
-                v-model="form.startTime"
-                placeholder="选择开始时间"
-                style="width: 100%"
-                format="HH:mm:ss"
-                value-format="HH:mm:ss"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="结束时间" prop="endTime">
-              <el-time-picker
-                v-model="form.endTime"
-                placeholder="选择结束时间"
-                style="width: 100%"
-                format="HH:mm:ss"
-                value-format="HH:mm:ss"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
+
         <el-form-item label="请假原因" prop="reason">
           <el-input
             v-model="form.reason"
@@ -360,7 +337,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick, watch } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -916,12 +893,25 @@ const handleShiftChange = async (newShiftConfigIds) => {
   // 计算所选班次的总时长
   let totalHours = 0
   if (Array.isArray(newShiftConfigIds) && newShiftConfigIds.length > 0) {
+    // 计算班次总工时
+    let shiftsTotalHours = 0
     newShiftConfigIds.forEach(shiftId => {
       const selectedShift = shiftConfigList.value.find(shift => shift.id === shiftId)
       if (selectedShift) {
-        totalHours += selectedShift.durationHours
+        shiftsTotalHours += selectedShift.durationHours
       }
     })
+    
+    // 计算天数
+    let days = 1
+    if (form.startDate && form.endDate) {
+      const start = new Date(form.startDate)
+      const end = new Date(form.endDate)
+      days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
+    }
+    
+    // 总时长 = 班次总工时 * 天数
+    totalHours = shiftsTotalHours * days
   } else {
     totalHours = 0
   }
@@ -930,6 +920,35 @@ const handleShiftChange = async (newShiftConfigIds) => {
   // 更新禁用的班次
   await updateDisabledShifts(newShiftConfigIds)
 }
+
+// 监听日期变化，重新计算请假时长
+watch(
+  [() => form.startDate, () => form.endDate],
+  () => {
+    if (form.shiftConfigIds && form.shiftConfigIds.length > 0) {
+      // 计算班次总工时
+      let shiftsTotalHours = 0
+      form.shiftConfigIds.forEach(shiftId => {
+        const selectedShift = shiftConfigList.value.find(shift => shift.id === shiftId)
+        if (selectedShift) {
+          shiftsTotalHours += selectedShift.durationHours
+        }
+      })
+      
+      // 计算天数
+      let days = 1
+      if (form.startDate && form.endDate) {
+        const start = new Date(form.startDate)
+        const end = new Date(form.endDate)
+        days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
+      }
+      
+      // 总时长 = 班次总工时 * 天数
+      form.totalHours = shiftsTotalHours * days
+    }
+  },
+  { deep: true }
+)
 
 onMounted(async () => {
   await fetchEmployeeList()

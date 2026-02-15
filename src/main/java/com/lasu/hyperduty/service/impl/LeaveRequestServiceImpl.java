@@ -110,39 +110,79 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         if ("approved".equals(approvalStatus) && "substitute".equals(scheduleAction)) {
             // 处理顶岗人员排班
             if (substituteData != null && !substituteData.isEmpty()) {
-                for (Map<String, Object> data : substituteData) {
-                    String date = (String) data.get("date");
-                    Long shiftId = ((Number) data.get("shiftId")).longValue();
-                    Long substituteEmployeeId = ((Number) data.get("substituteEmployeeId")).longValue();
-                    
-                    // 检查是否已有排班
-                    List<DutyAssignment> existingAssignments = dutyAssignmentService.lambdaQuery()
-                            .eq(DutyAssignment::getScheduleId, request.getScheduleId())
-                            .eq(DutyAssignment::getEmployeeId, request.getEmployeeId())
-                            .eq(DutyAssignment::getDutyDate, LocalDate.parse(date))
-                            .and(wrapper -> wrapper
-                                    .eq(DutyAssignment::getShiftConfigId, shiftId)
-                                    .or()
-                                    .eq(DutyAssignment::getDutyShift, shiftId.intValue())
-                            )
-                            .list();
-                    
-                    if (!existingAssignments.isEmpty()) {
-                        // 已排班，替换为顶岗人员
-                        for (DutyAssignment assignment : existingAssignments) {
-                            assignment.setEmployeeId(substituteEmployeeId);
-                            // 确保顶岗人显示为有效
-                            assignment.setStatus(1);
-                            dutyAssignmentService.updateById(assignment);
+                try {
+                    for (Map<String, Object> data : substituteData) {
+                        String date = (String) data.get("date");
+                        if (date == null) continue;
+                        
+                        Object shiftIdObj = data.get("shiftId");
+                        if (shiftIdObj == null) continue;
+                        Long shiftId = null;
+                        if (shiftIdObj instanceof Number) {
+                            shiftId = ((Number) shiftIdObj).longValue();
+                        } else if (shiftIdObj instanceof String) {
+                            try {
+                                shiftId = Long.parseLong((String) shiftIdObj);
+                            } catch (NumberFormatException e) {
+                                continue;
+                            }
                         }
-                    } else {
-                        // 未排班，不创建新的排班记录
-                        // 根据用户要求：没有安排排班时，不存在替换的情况，顶岗人就不用加到值班安排
+                        if (shiftId == null) continue;
+                        
+                        Object substituteEmployeeIdObj = data.get("substituteEmployeeId");
+                        if (substituteEmployeeIdObj == null) continue;
+                        Long substituteEmployeeId = null;
+                        if (substituteEmployeeIdObj instanceof Number) {
+                            substituteEmployeeId = ((Number) substituteEmployeeIdObj).longValue();
+                        } else if (substituteEmployeeIdObj instanceof String) {
+                            try {
+                                substituteEmployeeId = Long.parseLong((String) substituteEmployeeIdObj);
+                            } catch (NumberFormatException e) {
+                                continue;
+                            }
+                        }
+                        if (substituteEmployeeId == null) continue;
+                        
+                        try {
+                            LocalDate dutyDate = LocalDate.parse(date);
+                            // 创建局部变量存储shiftId，使其成为effectively final
+                            final Long finalShiftId = shiftId;
+                            // 检查是否已有排班
+                            List<DutyAssignment> existingAssignments = dutyAssignmentService.lambdaQuery()
+                                    .eq(DutyAssignment::getScheduleId, request.getScheduleId())
+                                    .eq(DutyAssignment::getEmployeeId, request.getEmployeeId())
+                                    .eq(DutyAssignment::getDutyDate, dutyDate)
+                                    .and(wrapper -> wrapper
+                                            .eq(DutyAssignment::getShiftConfigId, finalShiftId)
+                                            .or()
+                                            .eq(DutyAssignment::getDutyShift, finalShiftId.intValue())
+                                    )
+                                    .list();
+                            
+                            if (!existingAssignments.isEmpty()) {
+                                // 已排班，替换为顶岗人员
+                                for (DutyAssignment assignment : existingAssignments) {
+                                    assignment.setEmployeeId(substituteEmployeeId);
+                                    // 确保顶岗人显示为有效
+                                    assignment.setStatus(1);
+                                    dutyAssignmentService.updateById(assignment);
+                                }
+                            } else {
+                                // 未排班，不创建新的排班记录
+                                // 根据用户要求：没有安排排班时，不存在替换的情况，顶岗人就不用加到值班安排
+                            }
+                        } catch (Exception e) {
+                            // 日期解析或其他异常，跳过当前记录
+                            continue;
+                        }
                     }
+                    
+                    // 保存顶岗信息到数据库
+                    leaveSubstituteService.saveSubstitutes(requestId, request.getEmployeeId(), substituteData);
+                } catch (Exception e) {
+                    // 捕获所有异常，确保审批流程不会中断
+                    e.printStackTrace();
                 }
-                
-                // 保存顶岗信息到数据库
-                leaveSubstituteService.saveSubstitutes(requestId, request.getEmployeeId(), substituteData);
             }
             
             request.setScheduleCompleted(1);

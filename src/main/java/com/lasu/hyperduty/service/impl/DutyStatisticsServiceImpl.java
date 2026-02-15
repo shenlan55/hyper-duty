@@ -378,7 +378,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                     request.getLeaveType() != null && 
                     request.getLeaveType() == 4 && // 调休类型
                     request.getTotalHours() != null) {
-                    compensatoryHours = compensatoryHours.subtract(BigDecimal.valueOf(request.getTotalHours()));
+                    compensatoryHours = compensatoryHours.subtract(request.getTotalHours());
                 }
             }
             
