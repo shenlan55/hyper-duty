@@ -225,7 +225,7 @@
                       @change="(val) => handleEmployeeChange(val, detail, 'target')"
                     >
                       <el-option
-                        v-for="employee in availableEmployeeList"
+                        v-for="employee in availableEmployeeList.filter(emp => emp.id !== detail.originalEmployeeId)"
                         :key="employee.id"
                         :label="employee.employeeName"
                         :value="employee.id"
@@ -243,6 +243,7 @@
                       type="date"
                       placeholder="选择日期"
                       style="width: 100%"
+                      :disabled-date="(time) => isTargetDateDisabled(time, detail.targetEmployeeId)"
                       @change="(val) => handleDateChange(val, detail, 'target')"
                     />
                   </el-form-item>
@@ -654,6 +655,15 @@ const fetchEmployeeDutyShifts = async (scheduleId, employeeId, date) => {
 
 // 检查日期是否在排班日期列表中
 const isDateDisabled = (time, employeeId) => {
+  if (!employeeId) return true
+  
+  const dates = dutyDatesMap.value.get(employeeId) || []
+  const dateStr = formatDate(time)
+  return !dates.includes(dateStr)
+}
+
+// 检查目标值班人员的日期是否在排班日期列表中
+const isTargetDateDisabled = (time, employeeId) => {
   if (!employeeId) return true
   
   const dates = dutyDatesMap.value.get(employeeId) || []
