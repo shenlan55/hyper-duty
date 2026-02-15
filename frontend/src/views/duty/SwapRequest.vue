@@ -222,6 +222,7 @@
                       placeholder="请选择目标值班人员"
                       style="width: 100%"
                       filterable
+                      @change="(val) => handleEmployeeChange(val, detail, 'target')"
                     >
                       <el-option
                         v-for="employee in availableEmployeeList"
@@ -242,6 +243,7 @@
                       type="date"
                       placeholder="选择日期"
                       style="width: 100%"
+                      @change="(val) => handleDateChange(val, detail, 'target')"
                     />
                   </el-form-item>
                 </el-col>
@@ -252,10 +254,10 @@
                     </template>
                     <el-select v-model="detail.targetSwapShift" placeholder="请选择班次" style="width: 100%">
                       <el-option
-                        v-for="shiftConfig in shiftConfigList.filter(s => availableShiftIds.length === 0 || availableShiftIds.includes(s.id))"
-                        :key="shiftConfig.id"
-                        :label="shiftConfig.shiftName"
-                        :value="shiftConfig.shiftType"
+                        v-for="shiftType in getAvailableShifts(detail.targetEmployeeId, detail.targetSwapDate)"
+                        :key="shiftType"
+                        :label="getShiftName(shiftType)"
+                        :value="shiftType"
                       />
                     </el-select>
                   </el-form-item>
@@ -506,11 +508,21 @@ const approvalStatusColorMap = {
 }
 
 const getShiftName = (shift) => {
-  const shiftConfig = shiftConfigList.value.find(config => config.shiftType === shift)
-  if (shiftConfig) {
-    return shiftConfig.shiftName
+  console.log('获取班次名称:', { shift, shiftConfigList: shiftConfigList.value })
+  // 首先尝试通过班次ID查找
+  const shiftConfigById = shiftConfigList.value.find(config => config.id === shift)
+  if (shiftConfigById) {
+    console.log('通过ID找到班次配置:', shiftConfigById)
+    return shiftConfigById.shiftName
   }
-  return shiftNames[shift] || '未知'
+  // 然后尝试通过班次类型查找
+  const shiftConfigByType = shiftConfigList.value.find(config => config.shiftType === shift)
+  if (shiftConfigByType) {
+    console.log('通过类型找到班次配置:', shiftConfigByType)
+    return shiftConfigByType.shiftName
+  }
+  console.log('未找到班次配置，返回未知')
+  return '未知'
 }
 
 const getApprovalStatusName = (status) => {
@@ -553,9 +565,14 @@ const fetchEmployeeList = async () => {
 
 const fetchShiftConfigList = async () => {
   try {
+    console.log('开始获取班次配置列表')
     const response = await shiftApi.getShiftConfigList()
+    console.log('班次配置API响应:', response)
     if (response.code === 200) {
-      shiftConfigList.value = response.data.filter(config => config.status === 1)
+      console.log('班次配置原始数据:', response.data)
+      const filteredData = response.data.filter(config => config.status === 1)
+      console.log('过滤后的班次配置:', filteredData)
+      shiftConfigList.value = filteredData
     }
   } catch (error) {
     console.error('获取班次配置列表失败:', error)
@@ -614,13 +631,17 @@ const fetchEmployeeDutyDates = async (scheduleId, employeeId) => {
 // 获取值班人员在特定日期的排班班次
 const fetchEmployeeDutyShifts = async (scheduleId, employeeId, date) => {
   try {
+    console.log('获取值班人员排班班次:', { scheduleId, employeeId, date })
     if (scheduleId && employeeId && date) {
       const response = await getEmployeeDutyShifts(scheduleId, employeeId, date)
+      console.log('API响应:', response)
       if (response.code === 200) {
         const shifts = response.data
+        console.log('获取到的班次:', shifts)
         // 使用员工ID和日期作为键存储班次列表
         const key = `${employeeId}_${date}`
         dutyShiftsMap.value.set(key, shifts)
+        console.log('存储班次后dutyShiftsMap:', dutyShiftsMap.value)
         return shifts
       }
     }
@@ -644,20 +665,33 @@ const isDateDisabled = (time, employeeId) => {
 const getAvailableShifts = (employeeId, date) => {
   if (!employeeId || !date) return []
   
-  const key = `${employeeId}_${date}`
-  return dutyShiftsMap.value.get(key) || []
+  // 格式化日期为YYYY-MM-DD格式，确保与存储时的键格式一致
+  const dateStr = formatDate(date)
+  const key = `${employeeId}_${dateStr}`
+  console.log('获取可用班次:', { employeeId, date, dateStr, key })
+  const shifts = dutyShiftsMap.value.get(key) || []
+  console.log('获取到的班次:', shifts)
+  return shifts
 }
 
 // 处理日期选择变化
 const handleDateChange = async (val, detail, type) => {
-  if (!val || !form.scheduleId) return
+  console.log('处理日期变化:', { val, detail, type, scheduleId: form.scheduleId })
+  if (!val || !form.scheduleId) {
+    console.log('日期或排班表为空，返回')
+    return
+  }
   
   const dateStr = formatDate(val)
   const employeeId = type === 'original' ? detail.originalEmployeeId : detail.targetEmployeeId
   
+  console.log('处理日期变化详情:', { dateStr, employeeId })
+  
   if (employeeId) {
     // 获取该员工在选择日期的排班班次
-    await fetchEmployeeDutyShifts(form.scheduleId, employeeId, dateStr)
+    console.log('调用fetchEmployeeDutyShifts:', { scheduleId: form.scheduleId, employeeId, dateStr })
+    const shifts = await fetchEmployeeDutyShifts(form.scheduleId, employeeId, dateStr)
+    console.log('获取到的班次结果:', shifts)
     
     // 清空之前的班次选择
     if (type === 'original') {
@@ -665,23 +699,33 @@ const handleDateChange = async (val, detail, type) => {
     } else {
       detail.targetSwapShift = null
     }
+    console.log('清空班次选择后:', detail)
   }
 }
 
 // 处理员工选择变化
 const handleEmployeeChange = async (val, detail, type) => {
-  if (!val || !form.scheduleId) return
+  console.log('处理员工选择变化:', { val, detail, type, scheduleId: form.scheduleId })
+  if (!val || !form.scheduleId) {
+    console.log('员工ID或排班表为空，返回')
+    return
+  }
   
   // 清空之前的日期和班次选择
   if (type === 'original') {
     detail.originalSwapDate = null
     detail.originalSwapShift = null
     // 获取该员工在当前值班表中的排班日期列表
+    console.log('获取原值班人员的排班日期:', { scheduleId: form.scheduleId, employeeId: val })
     await fetchEmployeeDutyDates(form.scheduleId, val)
   } else {
     detail.targetSwapDate = null
     detail.targetSwapShift = null
+    // 获取目标值班人员在当前值班表中的排班日期列表
+    console.log('获取目标值班人员的排班日期:', { scheduleId: form.scheduleId, employeeId: val })
+    await fetchEmployeeDutyDates(form.scheduleId, val)
   }
+  console.log('处理员工选择变化后:', detail)
 }
 
 const fetchMySwapRequests = async () => {
@@ -773,13 +817,9 @@ const handleScheduleChange = async (scheduleId) => {
 }
 
 const openAddDialog = () => {
-  console.log('openAddDialog - before resetForm')
   resetForm()
-  console.log('openAddDialog - after resetForm')
-  console.log('openAddDialog - form.swapDetails[0].originalEmployeeId:', form.swapDetails[0].originalEmployeeId)
   dialogTitle.value = '申请调班'
   dialogVisible.value = true
-  console.log('openAddDialog - dialogVisible set to true')
 }
 
 const openConfirmDialog = (row) => {
@@ -790,7 +830,6 @@ const openConfirmDialog = (row) => {
 const resetForm = () => {
   // 更新当前用户信息
   updateCurrentEmployee();
-  console.log('resetForm - currentEmployee.value:', currentEmployee.value);
   
   // 直接赋值form对象
   Object.assign(form, {
@@ -808,14 +847,11 @@ const resetForm = () => {
       }
     ]
   })
-  console.log('resetForm - form.swapDetails[0].originalEmployeeId:', form.swapDetails[0].originalEmployeeId)
   availableEmployeeList.value = []
   availableShiftIds.value = []
 }
 
 const addSwapDetail = () => {
-  console.log('addSwapDetail - currentEmployee.value:', currentEmployee.value);
-  
   form.swapDetails.push({
     originalEmployeeId: currentEmployee.value.employeeId,
     originalSwapDate: null,
@@ -824,7 +860,6 @@ const addSwapDetail = () => {
     targetSwapDate: null,
     targetSwapShift: null
   })
-  console.log('addSwapDetail - form.swapDetails:', form.swapDetails)
 }
 
 const removeSwapDetail = (index) => {
