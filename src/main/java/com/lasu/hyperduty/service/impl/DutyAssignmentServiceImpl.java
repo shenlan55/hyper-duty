@@ -7,6 +7,10 @@ import com.lasu.hyperduty.mapper.DutyAssignmentMapper;
 import com.lasu.hyperduty.service.DutyAssignmentService;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
 @Service
 public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper, DutyAssignment> implements DutyAssignmentService {
 
@@ -48,5 +52,39 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
             updateById(originalAssignment);
             updateById(targetAssignment);
         }
+    }
+
+    @Override
+    public List<String> getEmployeeDutyDates(Long scheduleId, Long employeeId) {
+        // 查询指定值班表和员工的所有排班记录
+        LambdaQueryWrapper<DutyAssignment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(DutyAssignment::getScheduleId, scheduleId)
+                .eq(DutyAssignment::getEmployeeId, employeeId)
+                .select(DutyAssignment::getDutyDate);
+        
+        // 提取日期并去重，转换为字符串格式
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        return this.list(wrapper).stream()
+                .map(assignment -> assignment.getDutyDate().format(formatter))
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    @Override
+    public List<Integer> getEmployeeDutyShifts(Long scheduleId, Long employeeId, String date) {
+        // 查询指定值班表、员工和日期的所有排班班次
+        LambdaQueryWrapper<DutyAssignment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(DutyAssignment::getScheduleId, scheduleId)
+                .eq(DutyAssignment::getEmployeeId, employeeId)
+                .eq(DutyAssignment::getDutyDate, LocalDate.parse(date))
+                .select(DutyAssignment::getDutyShift);
+        
+        // 提取班次并去重
+        return this.list(wrapper).stream()
+                .map(DutyAssignment::getDutyShift)
+                .distinct()
+                .sorted()
+                .toList();
     }
 }

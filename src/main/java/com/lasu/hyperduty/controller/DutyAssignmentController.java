@@ -84,4 +84,27 @@ public class DutyAssignmentController {
         return ResponseResult.success();
     }
 
+    /**
+     * 获取值班人员在特定值班表中的排班日期列表
+     */
+    @GetMapping("/dates/{scheduleId}/{employeeId}")
+    public ResponseResult<List<String>> getEmployeeDutyDates(
+            @PathVariable Long scheduleId,
+            @PathVariable Long employeeId) {
+        List<String> dutyDates = dutyAssignmentService.getEmployeeDutyDates(scheduleId, employeeId);
+        return ResponseResult.success(dutyDates);
+    }
+
+    /**
+     * 获取值班人员在特定日期的排班班次
+     */
+    @GetMapping("/shifts/{scheduleId}/{employeeId}/{date}")
+    public ResponseResult<List<Integer>> getEmployeeDutyShifts(
+            @PathVariable Long scheduleId,
+            @PathVariable Long employeeId,
+            @PathVariable String date) {
+        List<Integer> dutyShifts = dutyAssignmentService.getEmployeeDutyShifts(scheduleId, employeeId, date);
+        return ResponseResult.success(dutyShifts);
+    }
+
 }

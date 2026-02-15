@@ -59,3 +59,19 @@ export function deleteBatchAssignments(scheduleId, startDate, endDate) {
     params: { scheduleId, startDate, endDate }
   })
 }
+
+// 获取值班人员在特定值班表中的排班日期列表
+export function getEmployeeDutyDates(scheduleId, employeeId) {
+  return request({
+    url: `/duty/assignment/dates/${scheduleId}/${employeeId}`,
+    method: 'get'
+  })
+}
+
+// 获取值班人员在特定日期的排班班次
+export function getEmployeeDutyShifts(scheduleId, employeeId, date) {
+  return request({
+    url: `/duty/assignment/shifts/${scheduleId}/${employeeId}/${date}`,
+    method: 'get'
+  })
+}

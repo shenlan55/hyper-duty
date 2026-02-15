@@ -164,16 +164,13 @@
                     </template>
                     <el-select
                       v-model="detail.originalEmployeeId"
-                      placeholder="请选择原值班人员"
+                      placeholder="请选择值班人员"
                       style="width: 100%"
-                      :disabled="!isLeader"
-                      filterable
+                      disabled
                     >
                       <el-option
-                        v-for="employee in availableEmployeeList"
-                        :key="employee.id"
-                        :label="employee.employeeName"
-                        :value="employee.id"
+                        :label="currentEmployee.employeeName"
+                        :value="currentEmployee.employeeId"
                       />
                     </el-select>
                   </el-form-item>
@@ -188,6 +185,8 @@
                       type="date"
                       placeholder="选择日期"
                       style="width: 100%"
+                      :disabled-date="(time) => isDateDisabled(time, detail.originalEmployeeId)"
+                      @change="(val) => handleDateChange(val, detail, 'original')"
                     />
                   </el-form-item>
                 </el-col>
@@ -198,10 +197,10 @@
                     </template>
                     <el-select v-model="detail.originalSwapShift" placeholder="请选择班次" style="width: 100%">
                       <el-option
-                        v-for="shiftConfig in shiftConfigList.filter(s => availableShiftIds.length === 0 || availableShiftIds.includes(s.id))"
-                        :key="shiftConfig.id"
-                        :label="shiftConfig.shiftName"
-                        :value="shiftConfig.shiftType"
+                        v-for="shiftType in getAvailableShifts(detail.originalEmployeeId, detail.originalSwapDate)"
+                        :key="shiftType"
+                        :label="getShiftName(shiftType)"
+                        :value="shiftType"
                       />
                     </el-select>
                   </el-form-item>
@@ -328,6 +327,7 @@ import {
 } from '../../api/duty/swapRequest'
 import { getEmployeeList } from '../../api/employee'
 import { getScheduleList, getScheduleEmployees, getScheduleShifts } from '../../api/duty/schedule'
+import { getEmployeeDutyDates, getEmployeeDutyShifts } from '../../api/duty/assignment'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { getUserInfo } from '../../utils/auth'
@@ -352,12 +352,98 @@ const currentSwapRequest = ref({})
 const currentEmployeeId = ref(1)
 const isLeader = ref(false)
 
+// 调班日期和班次限制相关
+const dutyDatesMap = ref(new Map()) // 存储每个员工的排班日期列表
+const dutyShiftsMap = ref(new Map()) // 存储每个员工在特定日期的排班班次
+
 // 获取当前用户信息
-const userInfo = getUserInfo()
+let userInfo = getUserInfo()
 if (userInfo) {
   currentEmployeeId.value = userInfo.employeeId
   isLeader.value = userInfo.roles.includes('值班长')
 }
+
+// 获取当前用户信息
+const getUserInfoNow = () => {
+  try {
+    // 从localStorage获取token
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username');
+    const employeeId = localStorage.getItem('employeeId');
+    
+    // 解码JWT令牌
+    const decodeJWT = (token) => {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+      } catch (error) {
+        console.error('JWT解码失败:', error);
+        return null;
+      }
+    };
+    
+    if (token) {
+      // 解码JWT令牌
+      const decoded = decodeJWT(token);
+      if (decoded) {
+        return {
+          employeeId: employeeId ? parseInt(employeeId) : decoded.employeeId,
+          employeeName: decoded.name || '当前用户',
+          username: username,
+          roles: ['值班长']
+        };
+      }
+    }
+    
+    // 如果没有token或解码失败，返回默认值
+    return {
+      employeeId: employeeId ? parseInt(employeeId) : 1,
+      employeeName: '当前用户',
+      username: username,
+      roles: ['值班长']
+    };
+  } catch (error) {
+    console.error('获取用户信息失败:', error);
+    // 发生异常时，返回默认值，而不是null
+    return {
+      employeeId: 1,
+      employeeName: '当前用户',
+      username: '',
+      roles: ['值班长']
+    };
+  }
+};
+
+// 存储当前用户的下拉框选项
+const currentEmployeeOption = ref({
+  id: currentEmployeeId.value || 1,
+  employeeName: userInfo ? userInfo.employeeName : '当前用户'
+})
+
+// 存储当前用户信息的ref对象
+const currentEmployee = ref(getUserInfoNow())
+
+// 更新当前用户信息
+const updateCurrentEmployee = () => {
+  currentEmployee.value = getUserInfoNow()
+}
+
+// 更新当前用户的下拉框选项
+const updateCurrentEmployeeOption = () => {
+  userInfo = getUserInfo()
+  currentEmployeeId.value = userInfo ? userInfo.employeeId : 1
+  currentEmployeeOption.value = {
+    id: currentEmployeeId.value,
+    employeeName: userInfo ? userInfo.employeeName : '当前用户'
+  }
+}
+
+// 获取当前用户信息
+const currentUser = getUserInfoNow();
 
 const form = reactive({
   id: null,
@@ -365,7 +451,7 @@ const form = reactive({
   reason: '',
   swapDetails: [
     {
-      originalEmployeeId: null,
+      originalEmployeeId: currentUser.employeeId,
       originalSwapDate: null,
       originalSwapShift: null,
       targetEmployeeId: null,
@@ -506,6 +592,98 @@ const fetchAvailableEmployees = async (scheduleId) => {
   }
 }
 
+// 获取值班人员在特定值班表中的排班日期列表
+const fetchEmployeeDutyDates = async (scheduleId, employeeId) => {
+  try {
+    if (scheduleId && employeeId) {
+      const response = await getEmployeeDutyDates(scheduleId, employeeId)
+      if (response.code === 200) {
+        const dates = response.data
+        // 使用员工ID作为键存储日期列表
+        dutyDatesMap.value.set(employeeId, dates)
+        return dates
+      }
+    }
+    return []
+  } catch (error) {
+    console.error('获取值班人员排班日期失败:', error)
+    return []
+  }
+}
+
+// 获取值班人员在特定日期的排班班次
+const fetchEmployeeDutyShifts = async (scheduleId, employeeId, date) => {
+  try {
+    if (scheduleId && employeeId && date) {
+      const response = await getEmployeeDutyShifts(scheduleId, employeeId, date)
+      if (response.code === 200) {
+        const shifts = response.data
+        // 使用员工ID和日期作为键存储班次列表
+        const key = `${employeeId}_${date}`
+        dutyShiftsMap.value.set(key, shifts)
+        return shifts
+      }
+    }
+    return []
+  } catch (error) {
+    console.error('获取值班人员排班班次失败:', error)
+    return []
+  }
+}
+
+// 检查日期是否在排班日期列表中
+const isDateDisabled = (time, employeeId) => {
+  if (!employeeId) return true
+  
+  const dates = dutyDatesMap.value.get(employeeId) || []
+  const dateStr = formatDate(time)
+  return !dates.includes(dateStr)
+}
+
+// 获取员工在特定日期的可用班次
+const getAvailableShifts = (employeeId, date) => {
+  if (!employeeId || !date) return []
+  
+  const key = `${employeeId}_${date}`
+  return dutyShiftsMap.value.get(key) || []
+}
+
+// 处理日期选择变化
+const handleDateChange = async (val, detail, type) => {
+  if (!val || !form.scheduleId) return
+  
+  const dateStr = formatDate(val)
+  const employeeId = type === 'original' ? detail.originalEmployeeId : detail.targetEmployeeId
+  
+  if (employeeId) {
+    // 获取该员工在选择日期的排班班次
+    await fetchEmployeeDutyShifts(form.scheduleId, employeeId, dateStr)
+    
+    // 清空之前的班次选择
+    if (type === 'original') {
+      detail.originalSwapShift = null
+    } else {
+      detail.targetSwapShift = null
+    }
+  }
+}
+
+// 处理员工选择变化
+const handleEmployeeChange = async (val, detail, type) => {
+  if (!val || !form.scheduleId) return
+  
+  // 清空之前的日期和班次选择
+  if (type === 'original') {
+    detail.originalSwapDate = null
+    detail.originalSwapShift = null
+    // 获取该员工在当前值班表中的排班日期列表
+    await fetchEmployeeDutyDates(form.scheduleId, val)
+  } else {
+    detail.targetSwapDate = null
+    detail.targetSwapShift = null
+  }
+}
+
 const fetchMySwapRequests = async () => {
   loading.value = true
   try {
@@ -579,18 +757,29 @@ const handleScheduleChange = async (scheduleId) => {
     availableShiftIds.value = []
   }
   
-  // 非值班长只能选择自己
-  if (!isLeader.value) {
-    form.swapDetails.forEach(detail => {
-      detail.originalEmployeeId = currentEmployeeId.value
-    })
+  // 原值班人员只能选择自己
+  form.swapDetails.forEach(detail => {
+    detail.originalEmployeeId = currentEmployee.value.employeeId
+  })
+  
+  // 为每个调班组合获取原值班人员的排班日期列表
+  if (scheduleId) {
+    for (const detail of form.swapDetails) {
+      if (detail.originalEmployeeId) {
+        await fetchEmployeeDutyDates(scheduleId, detail.originalEmployeeId)
+      }
+    }
   }
 }
 
 const openAddDialog = () => {
+  console.log('openAddDialog - before resetForm')
   resetForm()
+  console.log('openAddDialog - after resetForm')
+  console.log('openAddDialog - form.swapDetails[0].originalEmployeeId:', form.swapDetails[0].originalEmployeeId)
   dialogTitle.value = '申请调班'
   dialogVisible.value = true
+  console.log('openAddDialog - dialogVisible set to true')
 }
 
 const openConfirmDialog = (row) => {
@@ -599,16 +788,18 @@ const openConfirmDialog = (row) => {
 }
 
 const resetForm = () => {
-  if (formRef.value) {
-    formRef.value.resetFields()
-  }
+  // 更新当前用户信息
+  updateCurrentEmployee();
+  console.log('resetForm - currentEmployee.value:', currentEmployee.value);
+  
+  // 直接赋值form对象
   Object.assign(form, {
     id: null,
     scheduleId: null,
     reason: '',
     swapDetails: [
       {
-        originalEmployeeId: isLeader.value ? null : currentEmployeeId.value,
+        originalEmployeeId: currentEmployee.value.employeeId,
         originalSwapDate: null,
         originalSwapShift: null,
         targetEmployeeId: null,
@@ -617,19 +808,23 @@ const resetForm = () => {
       }
     ]
   })
+  console.log('resetForm - form.swapDetails[0].originalEmployeeId:', form.swapDetails[0].originalEmployeeId)
   availableEmployeeList.value = []
   availableShiftIds.value = []
 }
 
 const addSwapDetail = () => {
+  console.log('addSwapDetail - currentEmployee.value:', currentEmployee.value);
+  
   form.swapDetails.push({
-    originalEmployeeId: isLeader.value ? null : currentEmployeeId.value,
+    originalEmployeeId: currentEmployee.value.employeeId,
     originalSwapDate: null,
     originalSwapShift: null,
     targetEmployeeId: null,
     targetSwapDate: null,
     targetSwapShift: null
   })
+  console.log('addSwapDetail - form.swapDetails:', form.swapDetails)
 }
 
 const removeSwapDetail = (index) => {
