@@ -715,8 +715,8 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                                     if (shiftConfigIds.contains(dutyShift)) {
                                         isOnLeave = true;
                                         System.out.println("员工 " + employee.getId() + " 在当天请假");
-                                        // 检查是否有顶岗人员
-                                        // 注意：这里使用dutyShift作为shiftConfigId查询，因为前端传递的是班次配置ID
+                                         // 检查是否有顶岗人员
+                                        // 使用dutyShift作为shiftConfigId查询，因为前端传递的是班次配置ID
                                         Long substituteEmployeeId = findSubstituteEmployee(employee.getId(), currentDate, dutyShift);
                                         System.out.println("找到的顶岗人员ID: " + substituteEmployeeId);
                                         if (substituteEmployeeId != null) {
@@ -901,16 +901,30 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
      */
     private Long findSubstituteEmployee(Long originalEmployeeId, LocalDate dutyDate, Long shiftConfigId) {
         try {
+            System.out.println("=== 开始查找顶岗人员 ===");
+            System.out.println("原始员工ID: " + originalEmployeeId);
+            System.out.println("值班日期: " + dutyDate);
+            System.out.println("班次配置ID: " + shiftConfigId);
+            
             // 1. 先查询请假记录
+            System.out.println("1. 查询请假记录...");
             List<com.lasu.hyperduty.entity.LeaveRequest> leaveRequests = leaveRequestService.lambdaQuery()
                     .eq(com.lasu.hyperduty.entity.LeaveRequest::getEmployeeId, originalEmployeeId)
-                    .eq(com.lasu.hyperduty.entity.LeaveRequest::getApprovalStatus, "已批准")
+                    .eq(com.lasu.hyperduty.entity.LeaveRequest::getApprovalStatus, "approved")
                     .le(com.lasu.hyperduty.entity.LeaveRequest::getStartDate, dutyDate)
                     .ge(com.lasu.hyperduty.entity.LeaveRequest::getEndDate, dutyDate)
                     .list();
             
+            System.out.println("找到请假记录数量: " + leaveRequests.size());
+            
             for (com.lasu.hyperduty.entity.LeaveRequest leaveRequest : leaveRequests) {
+                System.out.println("请假记录ID: " + leaveRequest.getId());
+                System.out.println("请假开始日期: " + leaveRequest.getStartDate());
+                System.out.println("请假结束日期: " + leaveRequest.getEndDate());
+                System.out.println("请假状态: " + leaveRequest.getApprovalStatus());
+                
                 // 2. 根据请假记录查询顶岗信息
+                System.out.println("2. 根据请假记录查询顶岗信息...");
                 List<com.lasu.hyperduty.entity.LeaveSubstitute> substitutes = leaveSubstituteService.lambdaQuery()
                         .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getLeaveRequestId, leaveRequest.getId())
                         .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getDutyDate, dutyDate)
@@ -918,12 +932,22 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                         .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getStatus, 1)
                         .list();
                 
+                System.out.println("找到顶岗信息数量: " + substitutes.size());
+                for (com.lasu.hyperduty.entity.LeaveSubstitute substitute : substitutes) {
+                    System.out.println("顶岗信息ID: " + substitute.getId());
+                    System.out.println("顶岗人员ID: " + substitute.getSubstituteEmployeeId());
+                    System.out.println("顶岗日期: " + substitute.getDutyDate());
+                    System.out.println("顶岗班次配置ID: " + substitute.getShiftConfigId());
+                }
+                
                 if (!substitutes.isEmpty()) {
+                    System.out.println("返回顶岗人员ID: " + substitutes.get(0).getSubstituteEmployeeId());
                     return substitutes.get(0).getSubstituteEmployeeId();
                 }
             }
             
             // 3. 如果通过leaveRequestId查询不到，尝试通过originalEmployeeId查询
+            System.out.println("3. 通过originalEmployeeId查询顶岗信息...");
             List<com.lasu.hyperduty.entity.LeaveSubstitute> substitutes = leaveSubstituteService.lambdaQuery()
                     .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getOriginalEmployeeId, originalEmployeeId)
                     .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getDutyDate, dutyDate)
@@ -931,9 +955,20 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                     .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getStatus, 1)
                     .list();
             
+            System.out.println("找到顶岗信息数量: " + substitutes.size());
+            for (com.lasu.hyperduty.entity.LeaveSubstitute substitute : substitutes) {
+                System.out.println("顶岗信息ID: " + substitute.getId());
+                System.out.println("顶岗人员ID: " + substitute.getSubstituteEmployeeId());
+                System.out.println("顶岗日期: " + substitute.getDutyDate());
+                System.out.println("顶岗班次配置ID: " + substitute.getShiftConfigId());
+            }
+            
             if (!substitutes.isEmpty()) {
+                System.out.println("返回顶岗人员ID: " + substitutes.get(0).getSubstituteEmployeeId());
                 return substitutes.get(0).getSubstituteEmployeeId();
             }
+            
+            System.out.println("未找到顶岗人员");
         } catch (Exception e) {
             // 查找顶岗人员失败，记录错误但继续排班
             System.err.println("查找顶岗人员失败: " + e.getMessage());

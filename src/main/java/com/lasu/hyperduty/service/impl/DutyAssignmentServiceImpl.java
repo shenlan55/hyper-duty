@@ -106,83 +106,28 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
         int rotationIndex = 0; // 维护全局的轮换索引
         Set<Long> lastAssignedEmployees = new HashSet<>(); // 记录上一次排班的员工
         
-        // 获取所有请假人员的顶岗信息
-        Map<String, Long> substituteInfo = fetchAllSubstituteInfo(request.getEmployeeIds(), request.getStartDate(), request.getEndDate());
-        
         // 遍历过滤后的日期列表
         for (String dateStr : request.getFilteredDates()) {
             LocalDate date = LocalDate.parse(dateStr);
             
-            // 首先处理请假人员的顶岗替换
-            Map<Long, Long> substituteMap = new HashMap<>();
-            
-            // 检查每个员工是否请假，如果请假且有顶岗人员，则记录顶岗关系
-            for (Long employeeId : request.getEmployeeIds()) {
-                if (isEmployeeOnLeave(employeeId, dateStr, request.getScheduleId(), request.getDutyShift())) {
-                    // 查找该员工在当天该班次的顶岗人员
-                    String substituteKey = employeeId + "_" + dateStr + "_" + request.getDutyShift();
-                    Long substituteEmployeeId = substituteInfo.get(substituteKey);
-                    if (substituteEmployeeId != null) {
-                        substituteMap.put(employeeId, substituteEmployeeId);
-                    }
-                }
-            }
-            
-            // 过滤出当天没有请假的员工，加上顶岗人员
-            List<Long> dayAvailableEmployees = new ArrayList<>();
-            Set<Long> usedSubstitutes = new HashSet<>();
-            
-            // 首先添加顶岗人员
-            for (Map.Entry<Long, Long> entry : substituteMap.entrySet()) {
-                Long substituteEmployeeId = entry.getValue();
-                if (!usedSubstitutes.contains(substituteEmployeeId)) {
-                    dayAvailableEmployees.add(substituteEmployeeId);
-                    usedSubstitutes.add(substituteEmployeeId);
-                }
-            }
-            
-            // 然后添加其他没有请假的员工
-            for (Long employeeId : request.getEmployeeIds()) {
-                if (!isEmployeeOnLeave(employeeId, dateStr, request.getScheduleId(), request.getDutyShift()) && 
-                    !usedSubstitutes.contains(employeeId)) {
-                    dayAvailableEmployees.add(employeeId);
-                }
-            }
-            
-            if (dayAvailableEmployees.isEmpty()) {
-                // 当天没有可用员工，跳过
-                continue;
-            }
+            // 1. 先正常排班
+            List<Long> selectedEmployeeIds = new ArrayList<>();
             
             if (request.getScheduleType() == 1) {
                 // 轮换排班模式
-                List<Long> selectedEmployeeIds = new ArrayList<>();
                 Set<Long> usedEmployees = new HashSet<>();
-                
-                // 需要选择的人数
                 int needSelectCount = request.getShiftEmployeeCount();
                 
-                // 从轮换索引开始，按原始员工列表顺序选择可用员工
+                // 从轮换索引开始，按原始员工列表顺序选择员工
                 for (int i = 0; i < request.getEmployeeIds().size() * 2 && selectedEmployeeIds.size() < needSelectCount; i++) {
                     int currentIndex = (rotationIndex + i) % request.getEmployeeIds().size();
                     Long currentEmployeeId = request.getEmployeeIds().get(currentIndex);
                     
-                    // 检查该员工是否在当天可用列表中、未被使用、且不是上一次排班的员工
-                    if (dayAvailableEmployees.contains(currentEmployeeId) && 
-                        !usedEmployees.contains(currentEmployeeId) && 
-                        !lastAssignedEmployees.contains(currentEmployeeId)) {
+                    // 检查该员工是否不是上一次排班的员工
+                    if (!lastAssignedEmployees.contains(currentEmployeeId) && 
+                        !usedEmployees.contains(currentEmployeeId)) {
                         selectedEmployeeIds.add(currentEmployeeId);
                         usedEmployees.add(currentEmployeeId);
-                    }
-                }
-                
-                // 如果还需要更多员工，从可用列表中补充（包括顶岗人员）
-                if (selectedEmployeeIds.size() < needSelectCount) {
-                    for (Long employeeId : dayAvailableEmployees) {
-                        if (!usedEmployees.contains(employeeId) && selectedEmployeeIds.size() < needSelectCount) {
-                            selectedEmployeeIds.add(employeeId);
-                            usedEmployees.add(employeeId);
-                        }
                     }
                 }
                 
@@ -207,40 +152,49 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
                     // 更新上一次排班的员工
                     lastAssignedEmployees.clear();
                     lastAssignedEmployees.addAll(selectedEmployeeIds);
-                    
-                    // 为每个选中的员工创建排班记录
-                    for (Long employeeId : selectedEmployeeIds) {
-                        DutyAssignment assignment = new DutyAssignment();
-                        assignment.setScheduleId(request.getScheduleId());
-                        assignment.setDutyDate(date);
-                        assignment.setDutyShift(request.getDutyShift());
-                        assignment.setEmployeeId(employeeId);
-                        assignment.setStatus(1);
-                        assignment.setRemark(request.getRemark());
-                        assignments.add(assignment);
-                    }
                 }
             } else {
                 // 固定排班模式
-                // 限制每个班次的人数
                 int needSelectCount = request.getShiftEmployeeCount();
-                List<Long> selectedEmployees = dayAvailableEmployees.subList(0, Math.min(needSelectCount, dayAvailableEmployees.size()));
-                
-                // 为每个选中的员工创建排班记录
-                for (Long employeeId : selectedEmployees) {
-                    DutyAssignment assignment = new DutyAssignment();
-                    assignment.setScheduleId(request.getScheduleId());
-                    assignment.setDutyDate(date);
-                    assignment.setDutyShift(request.getDutyShift());
-                    assignment.setEmployeeId(employeeId);
-                    assignment.setStatus(1);
-                    assignment.setRemark(request.getRemark());
-                    assignments.add(assignment);
+                // 直接从员工列表中选择前needSelectCount个员工
+                for (int i = 0; i < Math.min(needSelectCount, request.getEmployeeIds().size()); i++) {
+                    selectedEmployeeIds.add(request.getEmployeeIds().get(i));
+                }
+            }
+            
+            // 2. 为每个选中的员工创建排班记录
+            for (Long employeeId : selectedEmployeeIds) {
+                DutyAssignment assignment = new DutyAssignment();
+                assignment.setScheduleId(request.getScheduleId());
+                assignment.setDutyDate(date);
+                assignment.setDutyShift(request.getDutyShift());
+                assignment.setEmployeeId(employeeId);
+                assignment.setStatus(1);
+                assignment.setRemark(request.getRemark());
+                assignments.add(assignment);
+            }
+        }
+        
+        // 3. 检查并替换请假人员为顶岗人员
+        for (DutyAssignment assignment : assignments) {
+            Long employeeId = assignment.getEmployeeId();
+            LocalDate dutyDate = assignment.getDutyDate();
+            Integer dutyShift = assignment.getDutyShift();
+            
+            // 检查该员工是否在当天请假
+            if (isEmployeeOnLeave(employeeId, dutyDate.toString(), assignment.getScheduleId(), dutyShift)) {
+                // 查找对应的顶岗人员
+                Long substituteEmployeeId = findSubstituteEmployee(employeeId, dutyDate, dutyShift.longValue());
+                if (substituteEmployeeId != null) {
+                    // 替换为顶岗人员
+                    System.out.println("替换请假人员 " + employeeId + " 为顶岗人员 " + substituteEmployeeId + 
+                            " (日期: " + dutyDate + ", 班次: " + dutyShift + ")");
+                    assignment.setEmployeeId(substituteEmployeeId);
                 }
             }
         }
         
-        // 保存排班记录到数据库
+        // 4. 保存排班记录到数据库
         if (!assignments.isEmpty()) {
             saveBatch(assignments);
         }
@@ -249,36 +203,36 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
     }
     
     /**
-     * 获取所有请假人员的顶岗信息
+     * 查找请假员工的顶岗人员
      */
-    private Map<String, Long> fetchAllSubstituteInfo(List<Long> employeeIds, String startDate, String endDate) {
-        Map<String, Long> substituteMap = new HashMap<>();
-        
-        if (employeeIds == null || employeeIds.isEmpty()) {
-            return substituteMap;
-        }
-        
-        // 查询请假记录
-        LambdaQueryWrapper<LeaveRequest> leaveWrapper = new LambdaQueryWrapper<>();
-        leaveWrapper.in(LeaveRequest::getEmployeeId, employeeIds)
-                .eq(LeaveRequest::getApprovalStatus, "已批准") // 已批准
-                .le(LeaveRequest::getStartDate, endDate)
-                .ge(LeaveRequest::getEndDate, startDate);
-        List<LeaveRequest> leaveRequests = leaveRequestMapper.selectList(leaveWrapper);
-        
-        // 查询对应的顶岗信息
-        for (LeaveRequest leaveRequest : leaveRequests) {
-            LambdaQueryWrapper<LeaveSubstitute> substituteWrapper = new LambdaQueryWrapper<>();
-            substituteWrapper.eq(LeaveSubstitute::getLeaveRequestId, leaveRequest.getId());
-            List<LeaveSubstitute> substitutes = leaveSubstituteMapper.selectList(substituteWrapper);
+    private Long findSubstituteEmployee(Long originalEmployeeId, LocalDate dutyDate, Long shiftConfigId) {
+        try {
+            // 1. 先查询请假记录
+            LambdaQueryWrapper<LeaveRequest> leaveWrapper = new LambdaQueryWrapper<>();
+            leaveWrapper.eq(LeaveRequest::getEmployeeId, originalEmployeeId)
+                    .eq(LeaveRequest::getApprovalStatus, "approved")
+                    .le(LeaveRequest::getStartDate, dutyDate)
+                    .ge(LeaveRequest::getEndDate, dutyDate);
+            LeaveRequest leaveRequest = leaveRequestMapper.selectOne(leaveWrapper);
             
-            for (LeaveSubstitute substitute : substitutes) {
-                String key = leaveRequest.getEmployeeId() + "_" + substitute.getDutyDate() + "_" + substitute.getShiftConfigId();
-                substituteMap.put(key, substitute.getSubstituteEmployeeId());
+            if (leaveRequest != null) {
+                // 2. 根据请假记录查询顶岗信息
+                LambdaQueryWrapper<LeaveSubstitute> substituteWrapper = new LambdaQueryWrapper<>();
+                substituteWrapper.eq(LeaveSubstitute::getLeaveRequestId, leaveRequest.getId())
+                        .eq(LeaveSubstitute::getDutyDate, dutyDate)
+                        .eq(LeaveSubstitute::getShiftConfigId, shiftConfigId)
+                        .eq(LeaveSubstitute::getStatus, 1);
+                LeaveSubstitute substitute = leaveSubstituteMapper.selectOne(substituteWrapper);
+                
+                if (substitute != null) {
+                    return substitute.getSubstituteEmployeeId();
+                }
             }
+        } catch (Exception e) {
+            // 查找顶岗人员失败，记录错误但继续排班
+            System.err.println("查找顶岗人员失败: " + e.getMessage());
         }
-        
-        return substituteMap;
+        return null;
     }
     
     /**
@@ -290,7 +244,7 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
         // 查询员工在指定日期的请假记录
         LambdaQueryWrapper<LeaveRequest> leaveWrapper = new LambdaQueryWrapper<>();
         leaveWrapper.eq(LeaveRequest::getEmployeeId, employeeId)
-                .eq(LeaveRequest::getApprovalStatus, "已批准") // 已批准
+                .eq(LeaveRequest::getApprovalStatus, "approved")
                 .le(LeaveRequest::getStartDate, date)
                 .ge(LeaveRequest::getEndDate, date);
         LeaveRequest leaveRequest = leaveRequestMapper.selectOne(leaveWrapper);
@@ -303,7 +257,8 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
         LambdaQueryWrapper<LeaveSubstitute> substituteWrapper = new LambdaQueryWrapper<>();
         substituteWrapper.eq(LeaveSubstitute::getLeaveRequestId, leaveRequest.getId())
                 .eq(LeaveSubstitute::getDutyDate, date)
-                .eq(LeaveSubstitute::getShiftConfigId, dutyShift.longValue());
+                .eq(LeaveSubstitute::getShiftConfigId, dutyShift.longValue())
+                .eq(LeaveSubstitute::getStatus, 1);
         LeaveSubstitute substitute = leaveSubstituteMapper.selectOne(substituteWrapper);
         
         return substitute != null;
