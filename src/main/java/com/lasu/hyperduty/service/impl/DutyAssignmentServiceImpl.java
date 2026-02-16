@@ -155,9 +155,10 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
                 }
             } else {
                 // 固定排班模式
-                int needSelectCount = request.getShiftEmployeeCount();
-                // 直接从员工列表中选择前needSelectCount个员工
-                for (int i = 0; i < Math.min(needSelectCount, request.getEmployeeIds().size()); i++) {
+                // 使用员工列表的所有员工
+                int needSelectCount = request.getEmployeeIds().size();
+                // 直接从员工列表中选择所有员工
+                for (int i = 0; i < needSelectCount; i++) {
                     selectedEmployeeIds.add(request.getEmployeeIds().get(i));
                 }
             }
