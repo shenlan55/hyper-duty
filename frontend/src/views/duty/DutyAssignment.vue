@@ -198,9 +198,9 @@
         </el-form-item>
         <el-form-item label="日期类型" prop="dateType">
           <el-checkbox-group v-model="batchForm.dateType">
-            <el-checkbox label="workday">工作日（包括调休）</el-checkbox>
-            <el-checkbox label="weekend">休息日（周末）</el-checkbox>
-            <el-checkbox label="holiday">节假日</el-checkbox>
+            <el-checkbox :value="'workday'">工作日（包括调休）</el-checkbox>
+            <el-checkbox :value="'weekend'">休息日（周末）</el-checkbox>
+            <el-checkbox :value="'holiday'">节假日</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
         <el-form-item label="排班模式" prop="scheduleModeId" v-if="batchForm.scheduleType === 3">
@@ -498,7 +498,8 @@ import {
   addAssignment,
   updateAssignment,
   deleteAssignment,
-  deleteBatchAssignments
+  deleteBatchAssignments,
+  batchSchedule
 } from '../../api/duty/assignment'
 import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleShifts, getScheduleModeList, generateScheduleByMode } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
@@ -880,9 +881,10 @@ const fetchScheduleShifts = async (scheduleId) => {
     if (response.code === 200) {
       const shiftIds = response.data || []
       // 过滤出当前值班表可用的班次
-      availableShiftList.value = shiftConfigList.value.filter(shift => 
-        shiftIds.includes(shift.id)
-      )
+      availableShiftList.value = shiftConfigList.value.filter(shift => {
+        // 确保id的类型一致
+        return shiftIds.includes(Number(shift.id))
+      })
     }
   } catch (error) {
     // console.error('获取值班表班次失败:', error)
@@ -1439,143 +1441,27 @@ const handleBatchSave = async () => {
             return
           }
         } else {
-          // 传统排班方式
-          const assignments = []
-          let rotationIndex = 0 // 维护全局的轮换索引
+          // 传统排班方式 - 调用后端API处理
+          const response = await batchSchedule({
+            scheduleId: selectedScheduleId.value,
+            startDate: startDate,
+            endDate: endDate,
+            scheduleType: batchForm.scheduleType,
+            shiftEmployeeCount: batchForm.shiftEmployeeCount,
+            dutyShift: batchForm.dutyShift,
+            employeeIds: batchForm.employeeIds,
+            dateType: batchForm.dateType,
+            filteredDates: filteredDates,
+            remark: batchForm.remark
+          })
           
-          // 首先获取所有请假人员的顶岗信息
-          const substituteInfo = await fetchAllSubstituteInfo(batchForm.employeeIds, startDate, endDate)
-          
-          for (const date of filteredDates) {
-            // 首先处理请假人员的顶岗替换
-            let substituteMap = new Map()
-            
-            // 检查每个员工是否请假，如果请假且有顶岗人员，则记录顶岗关系
-            for (const employeeId of batchForm.employeeIds) {
-              if (isEmployeeOnLeave(employeeId, date, selectedScheduleId.value, batchForm.dutyShift, leaveInfo)) {
-                // 查找该员工在当天该班次的顶岗人员
-                const substituteKey = `${employeeId}_${date}_${batchForm.dutyShift}`
-                const substituteEmployeeId = substituteInfo.get(substituteKey)
-                if (substituteEmployeeId) {
-                  substituteMap.set(employeeId, substituteEmployeeId)
-                }
-              }
-            }
-            
-            // 过滤出当天没有请假的员工，加上顶岗人员
-            const dayAvailableEmployees = []
-            const usedSubstitutes = new Set()
-            
-            // 首先添加顶岗人员
-            for (const [originalEmployeeId, substituteEmployeeId] of substituteMap.entries()) {
-              if (!usedSubstitutes.has(substituteEmployeeId)) {
-                dayAvailableEmployees.push(substituteEmployeeId)
-                usedSubstitutes.add(substituteEmployeeId)
-              }
-            }
-            
-            // 然后添加其他没有请假的员工
-            for (const employeeId of batchForm.employeeIds) {
-              if (!isEmployeeOnLeave(employeeId, date, selectedScheduleId.value, batchForm.dutyShift, leaveInfo) && 
-                  !usedSubstitutes.has(employeeId)) {
-                dayAvailableEmployees.push(employeeId)
-              }
-            }
-            
-            if (dayAvailableEmployees.length === 0) {
-              // 当天没有可用员工，跳过
-              // console.log(`日期 ${date} 没有可用员工，跳过排班`)
-              continue
-            }
-            
-            if (batchForm.scheduleType === 1) {
-              // 轮换排班模式
-              // 保持原始轮换顺序，同时处理请假和顶岗人员的情况
-              let selectedEmployeeIds = [];
-              let tempRotationIndex = rotationIndex;
-              
-              // 需要选择的人数
-              const needSelectCount = batchForm.shiftEmployeeCount;
-              
-              // 按原始员工列表的顺序查找合适的员工
-              for (let i = 0; i < batchForm.employeeIds.length && selectedEmployeeIds.length < needSelectCount; i++) {
-                // 计算当前轮换位置
-                const currentIndex = (tempRotationIndex + i) % batchForm.employeeIds.length;
-                const currentEmployeeId = batchForm.employeeIds[currentIndex];
-                
-                // 检查当前员工是否请假
-                const isCurrentEmployeeOnLeave = isEmployeeOnLeave(
-                  currentEmployeeId, 
-                  date, 
-                  selectedScheduleId.value, 
-                  batchForm.dutyShift, 
-                  leaveInfo
-                );
-                
-                if (!isCurrentEmployeeOnLeave) {
-                  // 当前员工未请假，可以直接使用
-                  selectedEmployeeIds.push(currentEmployeeId);
-                  tempRotationIndex = (currentIndex + 1) % batchForm.employeeIds.length;
-                } else {
-                  // 当前员工请假，检查是否有顶岗人员
-                  const substituteKey = `${currentEmployeeId}_${date}_${batchForm.dutyShift}`;
-                  const substituteEmployeeId = substituteInfo.get(substituteKey);
-                  
-                  if (substituteEmployeeId) {
-                    // 有顶岗人员，使用顶岗人员
-                    selectedEmployeeIds.push(substituteEmployeeId);
-                    tempRotationIndex = (currentIndex + 1) % batchForm.employeeIds.length;
-                  }
-                }
-              }
-              
-              // 如果找到了合适的员工，进行排班
-              if (selectedEmployeeIds.length > 0) {
-                // 更新全局轮换索引
-                rotationIndex = tempRotationIndex;
-                
-                // 为每个选中的员工创建排班记录
-                selectedEmployeeIds.forEach(employeeId => {
-                  assignments.push({
-                    scheduleId: selectedScheduleId.value,
-                    dutyDate: date,
-                    dutyShift: batchForm.dutyShift,
-                    employeeId: employeeId,
-                    status: 1,
-                    remark: batchForm.remark
-                  });
-                });
-              }
-            } else {
-              // 固定排班模式
-              // 限制每个班次的人数
-              const needSelectCount = batchForm.scheduleType === 1 ? batchForm.shiftEmployeeCount : dayAvailableEmployees.length;
-              const selectedEmployees = dayAvailableEmployees.slice(0, needSelectCount);
-              
-              selectedEmployees.forEach(employeeId => {
-                assignments.push({
-                  scheduleId: selectedScheduleId.value,
-                  dutyDate: date,
-                  dutyShift: batchForm.dutyShift,
-                  employeeId: employeeId,
-                  status: 1,
-                  remark: batchForm.remark
-                })
-              })
-            }
-          }
-          
-          if (assignments.length === 0) {
-            ElMessage.warning('所选日期范围内没有可用员工进行排班')
-            batchDialogLoading.value = false
+          if (response.code === 200) {
+            const successCount = response.data || 0
+            ElMessage.success(`批量排班成功，共添加 ${successCount} 条记录`)
+          } else {
+            ElMessage.error('批量排班失败: ' + (response.message || '未知错误'))
             return
           }
-          
-          for (const assignment of assignments) {
-            await addAssignment(assignment)
-          }
-          
-          ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
         }
     
     batchDialogVisible.value = false
@@ -1728,6 +1614,7 @@ onMounted(async () => {
 
 .calendar-cell {
   height: 100%;
+  min-height: 120px;
   padding: 5px;
   display: flex;
   flex-direction: column;
@@ -1816,7 +1703,8 @@ onMounted(async () => {
 }
 
 :deep(.el-calendar-table .el-calendar-day) {
-  height: 120px;
+  min-height: 120px;
+  height: auto;
 }
 
 :deep(.el-calendar-table td.is-selected .el-calendar-day) {

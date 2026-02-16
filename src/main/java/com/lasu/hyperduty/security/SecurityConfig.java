@@ -11,7 +11,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import com.lasu.hyperduty.service.SysUserService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -35,12 +34,17 @@ public class SecurityConfig {
 
     
 
+    @Autowired
+    private SysUserService sysUserService;
+    
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+    
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http, SysUserService sysUserService) throws Exception {
-        AuthenticationManagerBuilder authenticationManagerBuilder = 
-                http.getSharedObject(AuthenticationManagerBuilder.class);
-        authenticationManagerBuilder.userDetailsService(sysUserService);
-        return authenticationManagerBuilder.build();
+    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
+        AuthenticationManagerBuilder authBuilder = http.getSharedObject(AuthenticationManagerBuilder.class);
+        authBuilder.userDetailsService(sysUserService).passwordEncoder(passwordEncoder);
+        return authBuilder.build();
     }
 
     @Bean

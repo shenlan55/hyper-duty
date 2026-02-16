@@ -689,22 +689,39 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                     // 检查员工是否在当天、当前值班表、当前班次请假
                     boolean isOnLeave = false;
                     Map<LocalDate, Map<Long, List<Long>>> employeeLeaveMap = leaveInfo.get(employee.getId());
+                    System.out.println("检查员工: " + employee.getId() + " - " + employee.getEmployeeName());
+                    System.out.println("当前日期: " + currentDate);
+                    System.out.println("当前班次: " + shiftType);
+                    System.out.println("当前值班表: " + scheduleId);
+                    System.out.println("leaveInfo中是否有该员工: " + (employeeLeaveMap != null));
+                    
                     if (employeeLeaveMap != null) {
                         Map<Long, List<Long>> scheduleLeaveMap = employeeLeaveMap.get(currentDate);
+                        System.out.println("该员工当天是否有请假: " + (scheduleLeaveMap != null));
+                        
                         if (scheduleLeaveMap != null) {
                             // 检查当前值班表的请假记录
                             List<Long> shiftConfigIds = scheduleLeaveMap.get(scheduleId);
+                            System.out.println("该员工当天在当前值班表是否有请假: " + (shiftConfigIds != null));
+                            
                             if (shiftConfigIds != null) {
+                                System.out.println("请假班次列表: " + shiftConfigIds);
                                 // 检查当前班次是否在请假的班次列表中
                                 try {
                                     Long dutyShift = Long.parseLong(shiftType);
+                                    System.out.println("当前班次ID: " + dutyShift);
+                                    System.out.println("当前班次是否在请假列表中: " + shiftConfigIds.contains(dutyShift));
+                                    
                                     if (shiftConfigIds.contains(dutyShift)) {
                                         isOnLeave = true;
+                                        System.out.println("员工 " + employee.getId() + " 在当天请假");
                                         // 检查是否有顶岗人员
                                         // 注意：这里使用dutyShift作为shiftConfigId查询，因为前端传递的是班次配置ID
                                         Long substituteEmployeeId = findSubstituteEmployee(employee.getId(), currentDate, dutyShift);
+                                        System.out.println("找到的顶岗人员ID: " + substituteEmployeeId);
                                         if (substituteEmployeeId != null) {
                                             substituteMap.put(employee.getId(), substituteEmployeeId);
+                                            System.out.println("添加顶岗人员到substituteMap: " + employee.getId() + " -> " + substituteEmployeeId);
                                         }
                                     }
                                 } catch (NumberFormatException e) {
@@ -715,10 +732,15 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                         }
                     }
                     
+                    System.out.println("员工是否请假: " + isOnLeave);
                     if (!isOnLeave) {
                         dayAvailableEmployees.add(employee);
+                        System.out.println("添加员工到dayAvailableEmployees: " + employee.getId() + " - " + employee.getEmployeeName());
                     }
                 }
+                
+                System.out.println("substituteMap: " + substituteMap);
+                System.out.println("dayAvailableEmployees: " + dayAvailableEmployees.stream().map(e -> e.getId() + "-" + e.getEmployeeName()).collect(Collectors.toList()));
                 
                 // 添加顶岗人员到可用员工列表
                 for (Map.Entry<Long, Long> entry : substituteMap.entrySet()) {
@@ -879,7 +901,29 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
      */
     private Long findSubstituteEmployee(Long originalEmployeeId, LocalDate dutyDate, Long shiftConfigId) {
         try {
-            // 查询请假顶岗信息
+            // 1. 先查询请假记录
+            List<com.lasu.hyperduty.entity.LeaveRequest> leaveRequests = leaveRequestService.lambdaQuery()
+                    .eq(com.lasu.hyperduty.entity.LeaveRequest::getEmployeeId, originalEmployeeId)
+                    .eq(com.lasu.hyperduty.entity.LeaveRequest::getApprovalStatus, "已批准")
+                    .le(com.lasu.hyperduty.entity.LeaveRequest::getStartDate, dutyDate)
+                    .ge(com.lasu.hyperduty.entity.LeaveRequest::getEndDate, dutyDate)
+                    .list();
+            
+            for (com.lasu.hyperduty.entity.LeaveRequest leaveRequest : leaveRequests) {
+                // 2. 根据请假记录查询顶岗信息
+                List<com.lasu.hyperduty.entity.LeaveSubstitute> substitutes = leaveSubstituteService.lambdaQuery()
+                        .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getLeaveRequestId, leaveRequest.getId())
+                        .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getDutyDate, dutyDate)
+                        .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getShiftConfigId, shiftConfigId)
+                        .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getStatus, 1)
+                        .list();
+                
+                if (!substitutes.isEmpty()) {
+                    return substitutes.get(0).getSubstituteEmployeeId();
+                }
+            }
+            
+            // 3. 如果通过leaveRequestId查询不到，尝试通过originalEmployeeId查询
             List<com.lasu.hyperduty.entity.LeaveSubstitute> substitutes = leaveSubstituteService.lambdaQuery()
                     .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getOriginalEmployeeId, originalEmployeeId)
                     .eq(com.lasu.hyperduty.entity.LeaveSubstitute::getDutyDate, dutyDate)
@@ -893,6 +937,7 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
         } catch (Exception e) {
             // 查找顶岗人员失败，记录错误但继续排班
             System.err.println("查找顶岗人员失败: " + e.getMessage());
+            e.printStackTrace();
         }
         return null;
     }

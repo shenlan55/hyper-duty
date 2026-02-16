@@ -38,12 +38,6 @@ const routes = [
             meta: { title: '人员管理' }
           },
           {
-            path: 'user',
-            name: 'User',
-            component: () => import('../views/User.vue'),
-            meta: { title: '用户管理' }
-          },
-          {
             path: 'menu',
             name: 'Menu',
             component: () => import('../views/Menu.vue'),

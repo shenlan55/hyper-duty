@@ -17,18 +17,18 @@ INSERT IGNORE INTO sys_dept (dept_name, parent_id, dept_code, sort, status) VALU
 ('财务部', 1, '004', 4, 1);
 
 -- 插入默认人员
-INSERT IGNORE INTO sys_employee (employee_name, dept_id, employee_code, phone, email, gender, status) VALUES
-('管理员', 1, 'EMP001', '13800138000', 'admin@example.com', 1, 1),
-('张三', 2, 'EMP002', '13800138001', 'zhangsan@example.com', 1, 1),
-('李四', 2, 'EMP003', '13800138002', 'lisi@example.com', 1, 1),
-('王五', 3, 'EMP004', '13800138003', 'wangwu@example.com', 2, 1);
+INSERT IGNORE INTO sys_employee (employee_name, dept_id, employee_code, phone, email, gender, status, username, password) VALUES
+('管理员', 1, 'EMP001', '13800138000', 'admin@example.com', 1, 1, 'admin', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2'),
+('张三', 2, 'EMP002', '13800138001', 'zhangsan@example.com', 1, 1, 'zhangsan', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2'),
+('李四', 2, 'EMP003', '13800138002', 'lisi@example.com', 1, 1, 'lisi', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2'),
+('王五', 3, 'EMP004', '13800138003', 'wangwu@example.com', 2, 1, 'wangwu', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2');
 
--- 插入默认用户（密码为123456的BCrypt加密）
-INSERT IGNORE INTO sys_user (username, password, employee_id, status) VALUES
-('admin', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 1, 1),
-('zhangsan', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 2, 1),
-('lisi', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 3, 1),
-('wangwu', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 4, 1);
+-- 插入默认用户（已废弃，用户信息直接存储在 sys_employee 表中）
+-- INSERT IGNORE INTO sys_user (username, password, employee_id, status) VALUES
+-- ('admin', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 1, 1),
+-- ('zhangsan', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 2, 1),
+-- ('lisi', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 3, 1),
+-- ('wangwu', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 4, 1);
 
 -- 插入默认角色
 INSERT IGNORE INTO sys_role (role_name, role_code, description, status) VALUES
@@ -50,8 +50,8 @@ INSERT IGNORE INTO sys_menu (menu_name, parent_id, path, component, perm, type, 
 ('值班安排', 8, '/duty/assignment', 'views/duty/DutyAssignment.vue', 'duty:assignment:list', 2, 'Calendar', 2, 1),
 ('值班记录', 8, '/duty/record', 'views/duty/DutyRecord.vue', 'duty:record:list', 2, 'Document', 3, 1);
 
--- 插入用户角色关联
-INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES
+-- 插入人员角色关联
+INSERT IGNORE INTO sys_user_role (employee_id, role_id) VALUES
 (1, 1), -- admin 关联 超级管理员
 (2, 2), -- zhangsan 关联 普通用户
 (3, 2), -- lisi 关联 普通用户

@@ -1,6 +1,7 @@
 package com.lasu.hyperduty.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.lasu.hyperduty.controller.DutyAssignmentController;
 import com.lasu.hyperduty.entity.DutyAssignment;
 
 import java.util.List;
@@ -14,4 +15,6 @@ public interface DutyAssignmentService extends IService<DutyAssignment> {
     List<String> getEmployeeDutyDates(Long scheduleId, Long employeeId);
     
     List<Integer> getEmployeeDutyShifts(Long scheduleId, Long employeeId, String date);
+    
+    int batchSchedule(DutyAssignmentController.BatchScheduleRequest request);
 }

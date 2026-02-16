@@ -23,6 +23,10 @@ public class SysEmployee implements Serializable {
 
     private String employeeCode;
 
+    private String username;
+
+    private String password;
+
     private String phone;
 
     private String email;

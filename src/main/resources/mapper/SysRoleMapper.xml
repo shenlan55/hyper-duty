@@ -7,7 +7,7 @@
     </select>
     
     <select id="selectUserIdsByRoleId" resultType="java.lang.Long">
-        SELECT user_id FROM sys_user_role WHERE role_id = #{roleId}
+        SELECT employee_id FROM sys_user_role WHERE role_id = #{roleId}
     </select>
     
     <delete id="deleteUserByRoleId" parameterType="java.lang.Long">
@@ -15,7 +15,7 @@
     </delete>
     
     <insert id="batchInsertUserRoles" parameterType="java.util.List">
-        INSERT INTO sys_user_role (user_id, role_id) VALUES
+        INSERT INTO sys_user_role (employee_id, role_id) VALUES
         <foreach collection="list" item="userRole" separator=",">
             (#{userRole.userId}, #{userRole.roleId})
         </foreach>

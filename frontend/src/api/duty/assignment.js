@@ -75,3 +75,12 @@ export function getEmployeeDutyShifts(scheduleId, employeeId, date) {
     method: 'get'
   })
 }
+
+// 批量排班（传统方式，由后端处理）
+export function batchSchedule(data) {
+  return request({
+    url: '/duty/assignment/batch-schedule',
+    method: 'post',
+    data
+  })
+}

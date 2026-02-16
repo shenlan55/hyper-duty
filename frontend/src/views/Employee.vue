@@ -45,6 +45,7 @@
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="employeeName" label="人员姓名" min-width="150" />
         <el-table-column prop="employeeCode" label="人员编码" width="150" />
+        <el-table-column prop="username" label="用户名" min-width="150" />
         <el-table-column prop="deptId" label="所属部门" min-width="180">
           <template #default="scope">
             {{ getDeptName(scope.row.deptId) }}
@@ -135,6 +136,25 @@
               <el-input
                 v-model="employeeForm.employeeCode"
                 placeholder="请输入人员编码"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="用户名" prop="username">
+              <el-input
+                v-model="employeeForm.username"
+                placeholder="请输入用户名"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="密码" :required="!employeeForm.id" prop="password">
+              <el-input
+                v-model="employeeForm.password"
+                type="password"
+                placeholder="请输入密码"
               />
             </el-form-item>
           </el-col>
@@ -293,6 +313,8 @@ const employeeForm = reactive({
   id: null,
   employeeName: '',
   employeeCode: '',
+  username: '',
+  password: '',
   deptId: null,
   phone: '',
   email: '',
@@ -311,6 +333,20 @@ const employeeRules = {
   employeeCode: [
     { required: true, message: '请输入人员编码', trigger: 'blur' },
     { min: 2, max: 20, message: '人员编码长度在 2 到 20 个字符', trigger: 'blur' }
+  ],
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 2, max: 50, message: '用户名长度在 2 到 50 个字符', trigger: 'blur' }
+  ],
+  password: [
+    { required: (rule, value, callback) => {
+        if (!employeeForm.id && !value) {
+          callback(new Error('请输入密码'))
+        } else {
+          callback()
+        }
+      }, trigger: 'blur' },
+    { min: 6, max: 100, message: '密码长度在 6 到 100 个字符', trigger: 'blur' }
   ],
   deptId: [
     { required: true, message: '请选择所属部门', trigger: 'blur' }
@@ -332,7 +368,8 @@ const filteredEmployeeList = computed(() => {
     const query = searchQuery.value.toLowerCase()
     list = list.filter(emp => 
       emp.employeeName.toLowerCase().includes(query) || 
-      emp.employeeCode.toLowerCase().includes(query)
+      emp.employeeCode.toLowerCase().includes(query) ||
+      (emp.username && emp.username.toLowerCase().includes(query))
     )
   }
   
@@ -501,6 +538,8 @@ const resetForm = () => {
     id: null,
     employeeName: '',
     employeeCode: '',
+    username: '',
+    password: '',
     deptId: null,
     phone: '',
     email: '',

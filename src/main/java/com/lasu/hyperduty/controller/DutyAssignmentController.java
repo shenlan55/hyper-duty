@@ -107,4 +107,49 @@ public class DutyAssignmentController {
         return ResponseResult.success(dutyShifts);
     }
 
+    /**
+     * 批量排班（传统方式）
+     */
+    @PostMapping("/batch-schedule")
+    public ResponseResult<Integer> batchSchedule(@RequestBody BatchScheduleRequest request) {
+        int successCount = dutyAssignmentService.batchSchedule(request);
+        return ResponseResult.success(successCount);
+    }
+
+    // 批量排班请求参数
+    public static class BatchScheduleRequest {
+        private Long scheduleId;
+        private String startDate;
+        private String endDate;
+        private Integer scheduleType; // 1=轮换排班，2=固定排班
+        private Integer shiftEmployeeCount;
+        private Integer dutyShift;
+        private List<Long> employeeIds;
+        private List<String> dateType;
+        private List<String> filteredDates;
+        private String remark;
+
+        // Getters and Setters
+        public Long getScheduleId() { return scheduleId; }
+        public void setScheduleId(Long scheduleId) { this.scheduleId = scheduleId; }
+        public String getStartDate() { return startDate; }
+        public void setStartDate(String startDate) { this.startDate = startDate; }
+        public String getEndDate() { return endDate; }
+        public void setEndDate(String endDate) { this.endDate = endDate; }
+        public Integer getScheduleType() { return scheduleType; }
+        public void setScheduleType(Integer scheduleType) { this.scheduleType = scheduleType; }
+        public Integer getShiftEmployeeCount() { return shiftEmployeeCount; }
+        public void setShiftEmployeeCount(Integer shiftEmployeeCount) { this.shiftEmployeeCount = shiftEmployeeCount; }
+        public Integer getDutyShift() { return dutyShift; }
+        public void setDutyShift(Integer dutyShift) { this.dutyShift = dutyShift; }
+        public List<Long> getEmployeeIds() { return employeeIds; }
+        public void setEmployeeIds(List<Long> employeeIds) { this.employeeIds = employeeIds; }
+        public List<String> getDateType() { return dateType; }
+        public void setDateType(List<String> dateType) { this.dateType = dateType; }
+        public List<String> getFilteredDates() { return filteredDates; }
+        public void setFilteredDates(List<String> filteredDates) { this.filteredDates = filteredDates; }
+        public String getRemark() { return remark; }
+        public void setRemark(String remark) { this.remark = remark; }
+    }
+
 }

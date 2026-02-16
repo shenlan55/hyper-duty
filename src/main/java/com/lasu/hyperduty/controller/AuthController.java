@@ -45,21 +45,15 @@ public class AuthController {
         // 将认证信息存入SecurityContext
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // 获取用户信息
-        SysUser user = sysUserService.lambdaQuery()
-                .eq(SysUser::getUsername, loginDTO.getUsername())
+        // 获取用户信息（从SysEmployee表中查询）
+        com.lasu.hyperduty.entity.SysEmployee employee = sysEmployeeService.lambdaQuery()
+                .eq(com.lasu.hyperduty.entity.SysEmployee::getUsername, loginDTO.getUsername())
                 .one();
 
         // 生成JWT令牌
         String token;
-        if (user != null) {
-            // 获取员工信息
-            com.lasu.hyperduty.entity.SysEmployee employee = sysEmployeeService.getById(user.getEmployeeId());
-            if (employee != null) {
-                token = jwtUtil.generateToken(loginDTO.getUsername(), user.getEmployeeId(), employee.getEmployeeName());
-            } else {
-                token = jwtUtil.generateToken(loginDTO.getUsername());
-            }
+        if (employee != null) {
+            token = jwtUtil.generateToken(loginDTO.getUsername(), employee.getId(), employee.getEmployeeName());
         } else {
             token = jwtUtil.generateToken(loginDTO.getUsername());
         }
@@ -68,8 +62,8 @@ public class AuthController {
         Map<String, Object> userInfo = new HashMap<>();
         userInfo.put("username", loginDTO.getUsername());
         userInfo.put("token", token);
-        if (user != null) {
-            userInfo.put("employeeId", user.getEmployeeId());
+        if (employee != null) {
+            userInfo.put("employeeId", employee.getId());
         }
 
         return ResponseResult.success("登录成功", userInfo);
