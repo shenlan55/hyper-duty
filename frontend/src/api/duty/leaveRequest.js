@@ -57,20 +57,20 @@ export function submitLeaveRequest(data) {
   })
 }
 
-export function approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, substituteData) {
+export function approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, substituteData, excludeSameDayShifts) {
   return request({
     url: `/duty/leave-request/approve/${requestId}`,
     method: 'put',
-    params: { approverId, approvalStatus, opinion, scheduleAction },
+    params: { approverId, approvalStatus, opinion, scheduleAction, excludeSameDayShifts },
     data: substituteData
   })
 }
 
-export function getAvailableSubstitutes(scheduleId, startDate, endDate, leaveEmployeeId) {
+export function getAvailableSubstitutes(scheduleId, startDate, endDate, leaveEmployeeId, excludeSameDayShifts, shiftId) {
   return request({
     url: '/duty/leave-request/available-substitutes',
     method: 'get',
-    params: { scheduleId, startDate, endDate, leaveEmployeeId }
+    params: { scheduleId, startDate, endDate, leaveEmployeeId, excludeSameDayShifts, shiftId }
   })
 }
 
@@ -163,5 +163,16 @@ export function getSubstitutesByEmployees(employeeIds, startDate, endDate) {
     url: '/duty/leave-request/substitutes-by-employees',
     method: 'get',
     params: { employeeIds: employeeIds.join(','), startDate, endDate }
+  })
+}
+
+/**
+ * 一键选择顶岗人员
+ */
+export function autoSelectSubstitutes(data) {
+  return request({
+    url: '/duty/leave-request/auto-select-substitutes',
+    method: 'post',
+    data
   })
 }

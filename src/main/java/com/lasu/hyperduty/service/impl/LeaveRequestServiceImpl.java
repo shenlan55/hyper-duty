@@ -12,15 +12,19 @@ import com.lasu.hyperduty.service.DutyScheduleEmployeeService;
 import com.lasu.hyperduty.service.LeaveRequestService;
 import com.lasu.hyperduty.service.LeaveSubstituteService;
 import com.lasu.hyperduty.service.SysEmployeeService;
+import com.lasu.hyperduty.service.DutyShiftConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 @Service
 public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, LeaveRequest> implements LeaveRequestService {
@@ -39,6 +43,9 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
 
     @Autowired
     private LeaveSubstituteService leaveSubstituteService;
+
+    @Autowired
+    private DutyShiftConfigService dutyShiftConfigService;
 
     @Override
     public String generateRequestNo() {
@@ -72,7 +79,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public boolean approveLeaveRequest(Long requestId, Long approverId, String approvalStatus, String opinion, String scheduleAction, List<Map<String, Object>> substituteData) {
+    public boolean approveLeaveRequest(Long requestId, Long approverId, String approvalStatus, String opinion, String scheduleAction, List<Map<String, Object>> substituteData, Boolean excludeSameDayShifts) {
         LeaveRequest request = getById(requestId);
         if (request == null) {
             return false;
@@ -84,13 +91,25 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         }
 
         // 权限控制：只有值班长才能审批请假申请
-        // 1. 检查当前审批人是否是请假申请的审批人（值班长）
-        if (!approverId.equals(request.getCurrentApproverId())) {
+        // 1. 检查审批人是否是值班长
+        boolean isLeader = false;
+        if (request.getScheduleId() != null) {
+            // 查询该值班表中的值班长
+            List<com.lasu.hyperduty.entity.DutyScheduleEmployee> leaders = dutyScheduleEmployeeService.lambdaQuery()
+                    .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getScheduleId, request.getScheduleId())
+                    .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getIsLeader, 1)
+                    .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getEmployeeId, approverId)
+                    .list();
+            isLeader = !leaders.isEmpty();
+        }
+        
+        // 只有值班长可以审批请假
+        if (!isLeader) {
             return false;
         }
-
-        // 2. 检查当前审批人是否是请假申请的发起人（申请人不能审批自己的请假）
-        if (approverId.equals(request.getEmployeeId())) {
+        
+        // 2. 检查当前审批人是否是请假申请的审批人（值班长）
+        if (request.getCurrentApproverId() != null && !approverId.equals(request.getCurrentApproverId())) {
             return false;
         }
 
@@ -329,9 +348,10 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         // 查询员工在指定日期范围内的请假记录
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
         queryWrapper.in("employee_id", employeeIds);
-        queryWrapper.ge("start_date", startDate);
-        queryWrapper.le("end_date", endDate);
-        queryWrapper.eq("approval_status", "approved"); // 只考虑已通过的请假，待审批状态的请假不影响排班
+        // 查询与指定日期范围有重叠的请假记录
+        queryWrapper.le("start_date", endDate); // 请假开始日期 <= 范围结束日期
+        queryWrapper.ge("end_date", startDate); // 请假结束日期 >= 范围开始日期
+        queryWrapper.eq("approval_status", "approved"); // 只考虑已通过的请假
         
         List<LeaveRequest> leaveRequests = this.list(queryWrapper);
         
@@ -499,7 +519,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public List<com.lasu.hyperduty.entity.SysEmployee> getAvailableSubstitutes(Long scheduleId, String startDate, String endDate, Long leaveEmployeeId) {
+    public List<com.lasu.hyperduty.entity.SysEmployee> getAvailableSubstitutes(Long scheduleId, String startDate, String endDate, Long leaveEmployeeId, Boolean excludeSameDayShifts, Long shiftId) {
         // 获取值班表中的所有员工
         List<com.lasu.hyperduty.entity.DutyScheduleEmployee> scheduleEmployees = dutyScheduleEmployeeService.lambdaQuery()
                 .eq(com.lasu.hyperduty.entity.DutyScheduleEmployee::getScheduleId, scheduleId)
@@ -522,11 +542,218 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         // 排除请假期间也请假的员工
         employeeIds.removeAll(leaveDuringEmployees);
         
+        // 如果需要排除当日已有班次的人员
+        if (excludeSameDayShifts != null && excludeSameDayShifts && shiftId != null) {
+            LocalDate dutyDate = LocalDate.parse(startDate);
+            
+            // 查询当日已有该班次的人员
+            List<com.lasu.hyperduty.entity.DutyAssignment> sameDayAssignments = dutyAssignmentService.lambdaQuery()
+                    .eq(com.lasu.hyperduty.entity.DutyAssignment::getScheduleId, scheduleId)
+                    .eq(com.lasu.hyperduty.entity.DutyAssignment::getDutyDate, dutyDate)
+                    .and(wrapper -> wrapper
+                            .eq(com.lasu.hyperduty.entity.DutyAssignment::getShiftConfigId, shiftId)
+                            .or()
+                            .eq(com.lasu.hyperduty.entity.DutyAssignment::getDutyShift, shiftId.intValue())
+                    )
+                    .list();
+            
+            // 提取当日已有该班次的人员ID
+            List<Long> sameDayEmployees = sameDayAssignments.stream()
+                    .map(com.lasu.hyperduty.entity.DutyAssignment::getEmployeeId)
+                    .collect(java.util.stream.Collectors.toList());
+            
+            // 排除当日已有该班次的人员
+            employeeIds.removeAll(sameDayEmployees);
+        }
+        
         // 根据员工ID列表查询员工信息
         if (employeeIds.isEmpty()) {
             return new java.util.ArrayList<>();
         }
         
-        return sysEmployeeService.listByIds(employeeIds);
+        List<com.lasu.hyperduty.entity.SysEmployee> employees = sysEmployeeService.listByIds(employeeIds);
+        
+        // 为每个员工添加当月工时信息
+        LocalDate currentDate = LocalDate.now();
+        String monthStart = currentDate.withDayOfMonth(1).toString();
+        String monthEnd = currentDate.withDayOfMonth(currentDate.lengthOfMonth()).toString();
+        
+        for (com.lasu.hyperduty.entity.SysEmployee employee : employees) {
+            // 计算当月校准工时：计划工时 - 请假工时
+            int monthlyWorkHours = calculateMonthlyWorkHours(employee.getId(), monthStart, monthEnd);
+            employee.setMonthlyWorkHours(monthlyWorkHours);
+        }
+        
+        return employees;
+    }
+    
+    /**
+     * 计算员工当月工时
+     * @param employeeId 员工ID
+     * @param monthStart 月份开始日期
+     * @param monthEnd 月份结束日期
+     * @return 当月工时
+     */
+    private int calculateMonthlyWorkHours(Long employeeId, String monthStart, String monthEnd) {
+        // 1. 获取员工实际排班工时
+        int plannedWorkHours = getEmployeeScheduledWorkHours(employeeId, monthStart, monthEnd);
+        
+        // 2. 计算员工当月请假工时
+        int leaveHours = calculateLeaveHours(employeeId, monthStart, monthEnd);
+        
+        // 3. 计算校准工时：计划工时 - 请假工时
+        int calibratedWorkHours = plannedWorkHours - leaveHours;
+        
+        // 确保工时不为负数
+        return Math.max(0, calibratedWorkHours);
+    }
+    
+    /**
+     * 获取员工当月实际排班工时
+     * @param employeeId 员工ID
+     * @param monthStart 月份开始日期
+     * @param monthEnd 月份结束日期
+     * @return 当月排班工时
+     */
+    private int getEmployeeScheduledWorkHours(Long employeeId, String monthStart, String monthEnd) {
+        // 查询员工当月的所有排班记录
+        List<com.lasu.hyperduty.entity.DutyAssignment> assignments = dutyAssignmentService.lambdaQuery()
+                .eq(com.lasu.hyperduty.entity.DutyAssignment::getEmployeeId, employeeId)
+                .ge(com.lasu.hyperduty.entity.DutyAssignment::getDutyDate, LocalDate.parse(monthStart))
+                .le(com.lasu.hyperduty.entity.DutyAssignment::getDutyDate, LocalDate.parse(monthEnd))
+                .eq(com.lasu.hyperduty.entity.DutyAssignment::getStatus, 1)
+                .list();
+        
+        // 计算总排班工时
+        int totalHours = 0;
+        for (com.lasu.hyperduty.entity.DutyAssignment assignment : assignments) {
+            if (assignment.getShiftConfigId() != null) {
+                // 根据班次配置计算工时
+                com.lasu.hyperduty.entity.DutyShiftConfig shiftConfig = dutyShiftConfigService.getById(assignment.getShiftConfigId());
+                if (shiftConfig != null && shiftConfig.getDurationHours() != null) {
+                    totalHours += shiftConfig.getDurationHours().intValue();
+                } else {
+                    // 默认8小时
+                    totalHours += 8;
+                }
+            } else {
+                // 默认8小时
+                totalHours += 8;
+            }
+        }
+        
+        return totalHours;
+    }
+    
+    /**
+     * 计算员工当月请假工时
+     * @param employeeId 员工ID
+     * @param monthStart 月份开始日期
+     * @param monthEnd 月份结束日期
+     * @return 请假工时
+     */
+    private int calculateLeaveHours(Long employeeId, String monthStart, String monthEnd) {
+        // 查询员工当月的请假记录
+        List<LeaveRequest> leaveRequests = lambdaQuery()
+                .eq(LeaveRequest::getEmployeeId, employeeId)
+                .eq(LeaveRequest::getApprovalStatus, "approved")
+                .ge(LeaveRequest::getStartDate, LocalDate.parse(monthStart))
+                .le(LeaveRequest::getEndDate, LocalDate.parse(monthEnd))
+                .list();
+        
+        // 计算请假总工时
+        int totalLeaveHours = 0;
+        for (LeaveRequest request : leaveRequests) {
+            if (request.getTotalHours() != null) {
+                totalLeaveHours += request.getTotalHours().intValue();
+            }
+        }
+        
+        return totalLeaveHours;
+    }
+
+    @Override
+    public List<Map<String, Object>> autoSelectSubstitutes(Long requestId, List<Map<String, Object>> substituteData) {
+        // 获取请假申请信息
+        LeaveRequest leaveRequest = getById(requestId);
+        if (leaveRequest == null) {
+            return substituteData;
+        }
+        
+        Long scheduleId = leaveRequest.getScheduleId();
+        Long leaveEmployeeId = leaveRequest.getEmployeeId();
+        
+        // 初始化动态工时状态，记录每个员工的当前累计工时
+        Map<Long, Integer> dynamicWorkHours = new HashMap<>();
+        
+        // 处理每个顶岗班次
+        for (Map<String, Object> item : substituteData) {
+            String date = (String) item.get("date");
+            Long shiftId = null;
+            Object shiftIdObj = item.get("shiftId");
+            if (shiftIdObj != null) {
+                if (shiftIdObj instanceof Number) {
+                    shiftId = ((Number) shiftIdObj).longValue();
+                } else if (shiftIdObj instanceof String) {
+                    try {
+                        shiftId = Long.parseLong((String) shiftIdObj);
+                    } catch (NumberFormatException e) {
+                        // 忽略格式错误的班次ID
+                    }
+                }
+            }
+            
+            if (date != null && shiftId != null) {
+                // 获取该班次的时长
+                int shiftHours = getShiftDurationHours(shiftId);
+                
+                // 获取该日期班次的可用顶岗人员
+                List<com.lasu.hyperduty.entity.SysEmployee> availableSubstitutes = getAvailableSubstitutes(
+                        scheduleId, date, date, leaveEmployeeId, true, shiftId
+                );
+                
+                if (!availableSubstitutes.isEmpty()) {
+                    // 计算每个可用人员的动态工时（基础工时 + 已分配的工时）
+                    List<com.lasu.hyperduty.entity.SysEmployee> substitutesWithDynamicHours = availableSubstitutes.stream()
+                            .map(sub -> {
+                                int baseHours = sub.getMonthlyWorkHours() != null ? sub.getMonthlyWorkHours() : 0;
+                                int allocatedHours = dynamicWorkHours.getOrDefault(sub.getId(), 0);
+                                // 临时设置动态工时用于排序
+                                sub.setMonthlyWorkHours(baseHours + allocatedHours);
+                                return sub;
+                            })
+                            .collect(Collectors.toList());
+                    
+                    // 按动态工时排序，选择工时最少的
+                    substitutesWithDynamicHours.sort(Comparator.comparingInt(e -> e.getMonthlyWorkHours() != null ? e.getMonthlyWorkHours() : 0));
+                    com.lasu.hyperduty.entity.SysEmployee selectedSubstitute = substitutesWithDynamicHours.get(0);
+                    
+                    // 分配顶岗人员
+                    item.put("substituteEmployeeId", selectedSubstitute.getId());
+                    item.put("substituteEmployeeName", selectedSubstitute.getEmployeeName());
+                    
+                    // 更新动态工时
+                    dynamicWorkHours.put(selectedSubstitute.getId(), 
+                            dynamicWorkHours.getOrDefault(selectedSubstitute.getId(), 0) + shiftHours);
+                }
+            }
+        }
+        
+        return substituteData;
+    }
+    
+    /**
+     * 获取班次的时长（小时）
+     * @param shiftId 班次ID
+     * @return 班次时长
+     */
+    private int getShiftDurationHours(Long shiftId) {
+        // 从数据库中获取班次配置
+        com.lasu.hyperduty.entity.DutyShiftConfig shiftConfig = dutyShiftConfigService.getById(shiftId);
+        if (shiftConfig != null && shiftConfig.getDurationHours() != null) {
+            return shiftConfig.getDurationHours().intValue();
+        }
+        // 默认8小时
+        return 8;
     }
 }

@@ -76,8 +76,9 @@ public class LeaveRequestController {
                                                  @RequestParam String approvalStatus,
                                                  @RequestParam(required = false) String opinion,
                                                  @RequestParam(required = false) String scheduleAction,
+                                                 @RequestParam(required = false, defaultValue = "true") Boolean excludeSameDayShifts,
                                                  @RequestBody(required = false) List<Map<String, Object>> substituteData) {
-        boolean success = leaveRequestService.approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, substituteData);
+        boolean success = leaveRequestService.approveLeaveRequest(requestId, approverId, approvalStatus, opinion, scheduleAction, substituteData, excludeSameDayShifts);
         return success ? ResponseResult.success() : ResponseResult.error("审批失败");
     }
 
@@ -180,8 +181,10 @@ public class LeaveRequestController {
             @RequestParam Long scheduleId,
             @RequestParam String startDate,
             @RequestParam String endDate,
-            @RequestParam Long leaveEmployeeId) {
-        List<com.lasu.hyperduty.entity.SysEmployee> availableSubstitutes = leaveRequestService.getAvailableSubstitutes(scheduleId, startDate, endDate, leaveEmployeeId);
+            @RequestParam Long leaveEmployeeId,
+            @RequestParam(required = false, defaultValue = "true") Boolean excludeSameDayShifts,
+            @RequestParam(required = false) Long shiftId) {
+        List<com.lasu.hyperduty.entity.SysEmployee> availableSubstitutes = leaveRequestService.getAvailableSubstitutes(scheduleId, startDate, endDate, leaveEmployeeId, excludeSameDayShifts, shiftId);
         return ResponseResult.success(availableSubstitutes);
     }
 
@@ -209,5 +212,17 @@ public class LeaveRequestController {
                 .eq(LeaveSubstitute::getStatus, 1)
                 .list();
         return ResponseResult.success(substitutes);
+    }
+
+    /**
+     * 一键选择顶岗人员
+     */
+    @PostMapping("/auto-select-substitutes")
+    public ResponseResult<List<Map<String, Object>>> autoSelectSubstitutes(
+            @RequestBody Map<String, Object> requestData) {
+        List<Map<String, Object>> substituteData = (List<Map<String, Object>>) requestData.get("substituteData");
+        Long requestId = ((Number) requestData.get("requestId")).longValue();
+        List<Map<String, Object>> result = leaveRequestService.autoSelectSubstitutes(requestId, substituteData);
+        return ResponseResult.success(result);
     }
 }

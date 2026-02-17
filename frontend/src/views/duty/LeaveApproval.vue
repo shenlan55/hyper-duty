@@ -166,6 +166,12 @@
         </el-form-item>
         <el-form-item v-if="approveForm.approvalStatus === 'approved'" label="排班处理">
           <el-button type="primary" @click="checkSchedule">检查排班状态</el-button>
+          <el-switch
+            v-model="approveForm.excludeSameDayShifts"
+            active-text="不允许当日已有班次的人员顶岗"
+            inactive-text="允许当日已有班次的人员顶岗"
+            style="margin-left: 20px"
+          />
           <div v-if="scheduleChecked" style="margin-top: 10px">
             <el-tag :type="scheduleStatus.type">{{ scheduleStatus.text }}</el-tag>
             <div v-if="substituteData.length === 0" class="text-center py-4">
@@ -179,9 +185,14 @@
                 <el-table-column prop="originalEmployee" label="原值班人" width="120" />
                 <el-table-column label="顶岗人员" width="200">
                   <template #default="scope">
-                    <el-select v-model="scope.row.substituteEmployeeId" placeholder="选择顶岗人员" style="width: 100%">
+                    <el-select 
+                      v-model="scope.row.substituteEmployeeId" 
+                      placeholder="选择顶岗人员" 
+                      style="width: 100%"
+                      @visible-change="(visible) => visible && loadSubstitutesForRow(scope.row)"
+                    >
                       <el-option
-                        v-for="employee in availableSubstitutes"
+                        v-for="employee in getAvailableSubstitutesForRow(scope.row)"
                         :key="employee.id"
                         :label="employee.employeeName"
                         :value="employee.id"
@@ -284,7 +295,8 @@ import {
   confirmScheduleCompletion,
   checkEmployeeSchedule,
   getAvailableSubstitutes,
-  getLeaveSubstitutes
+  getLeaveSubstitutes,
+  autoSelectSubstitutes
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
 import { getScheduleList } from '../../api/duty/schedule'
@@ -337,7 +349,8 @@ const approveForm = reactive({
   approvalOpinion: '',
   scheduleAction: 'check',
   substituteData: [],
-  availableSubstitutes: []
+  availableSubstitutes: [],
+  excludeSameDayShifts: true
 })
 
 const substituteData = ref([])
@@ -349,7 +362,16 @@ const approveRules = {
     { required: true, message: '请选择审批结果', trigger: 'blur' }
   ],
   rejectReason: [
-    { required: true, message: '请输入拒绝原因', trigger: 'blur' }
+    {
+      validator: (rule, value, callback) => {
+        if (approveForm.approvalStatus === 'rejected' && (!value || value.trim() === '')) {
+          callback(new Error('请输入拒绝原因'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
   ]
 }
 
@@ -604,8 +626,9 @@ const handleApprove = async () => {
       approveForm.approverId,
       approveForm.approvalStatus,
       approveForm.approvalStatus === 'rejected' ? approveForm.rejectReason : approveForm.approvalOpinion,
-      'substitute', // 固定使用substitute作为排班处理方式
-      substituteData.value // 传递顶岗人员数据
+      approveForm.approvalStatus === 'rejected' ? 'reject' : 'substitute', // 拒绝时使用reject
+      approveForm.approvalStatus === 'rejected' ? [] : substituteData.value, // 拒绝时不传递顶岗数据
+      approveForm.excludeSameDayShifts // 传递是否排除当日已有班次的人员
     )
     
     if (response.code === 200) {
@@ -645,9 +668,6 @@ const generateSubstituteSchedule = async () => {
       current.setDate(current.getDate() + 1)
     }
     
-    // 获取可用的顶岗人员（排除请假期间请假的人）
-    await fetchAvailableSubstitutes(startDate, endDate)
-    
     // 生成顶岗排班表
     const data = []
     dates.forEach(date => {
@@ -665,7 +685,23 @@ const generateSubstituteSchedule = async () => {
       })
     })
     
-    substituteData.value = data
+    // 处理选择"否"的情况：合并相同值班表相同日期相同班次的记录
+    if (!approveForm.excludeSameDayShifts) {
+      const mergedData = []
+      const seen = new Set()
+      
+      data.forEach(item => {
+        const key = `${item.date}_${item.shiftId}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          mergedData.push(item)
+        }
+      })
+      
+      substituteData.value = mergedData
+    } else {
+      substituteData.value = data
+    }
   } catch (error) {
     console.error('生成顶岗排班表失败:', error)
     ElMessage.error('生成顶岗排班表失败')
@@ -690,15 +726,60 @@ const fetchAvailableSubstitutes = async (startDate, endDate) => {
   }
 }
 
-const selectAllSubstitutes = () => {
-  // 一键选择逻辑：选择第一个可用的顶岗人员填入所有班次
-  if (availableSubstitutes.value.length > 0) {
-    const firstSubstituteId = availableSubstitutes.value[0].id
-    substituteData.value.forEach(item => {
-      item.substituteEmployeeId = firstSubstituteId
+const selectAllSubstitutes = async () => {
+  // 调用后端API进行一键选择顶岗人员
+  try {
+    const response = await autoSelectSubstitutes({
+      requestId: currentRequest.value.id,
+      substituteData: substituteData.value
     })
-    ElMessage.success('已为所有班次选择顶岗人员')
+    
+    if (response.code === 200) {
+      // 更新前端顶岗数据
+      substituteData.value = response.data
+      
+      // 重新加载每个班次的可用人员列表，确保下拉框能正确显示姓名
+      for (const item of substituteData.value) {
+        await loadSubstitutesForRow(item)
+      }
+      
+      ElMessage.success('已为所有班次选择顶岗人员')
+    } else {
+      ElMessage.error('一键选择失败: ' + response.message)
+    }
+  } catch (error) {
+    console.error('一键选择失败:', error)
+    ElMessage.error('一键选择失败')
   }
+}
+
+const rowSubstitutes = ref({})
+
+const loadSubstitutesForRow = async (row) => {
+  try {
+    const key = `${row.date}_${row.shiftId}`
+    if (!rowSubstitutes.value[key] || approveForm.excludeSameDayShifts) {
+      // 调用后端API获取该行的可用顶岗人员
+      const response = await getAvailableSubstitutes(
+        currentRequest.value.scheduleId,
+        row.date,
+        row.date,
+        currentRequest.value.employeeId,
+        approveForm.excludeSameDayShifts,
+        row.shiftId
+      )
+      if (response.code === 200) {
+        rowSubstitutes.value[key] = response.data
+      }
+    }
+  } catch (error) {
+    console.error('加载顶岗人员失败:', error)
+  }
+}
+
+const getAvailableSubstitutesForRow = (row) => {
+  const key = `${row.date}_${row.shiftId}`
+  return rowSubstitutes.value[key] || []
 }
 
 const checkSchedule = async () => {

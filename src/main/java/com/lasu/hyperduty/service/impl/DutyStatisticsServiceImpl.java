@@ -282,7 +282,8 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                     LocalDate assignmentDate = a.getDutyDate();
                     return assignmentDate != null && 
                            assignmentDate.getYear() == targetYear && 
-                           assignmentDate.getMonthValue() == targetMonth;
+                           assignmentDate.getMonthValue() == targetMonth &&
+                           a.getStatus() != null && a.getStatus() == 1;
                 })
                 .collect(Collectors.groupingBy(DutyAssignment::getEmployeeId));
 
@@ -293,9 +294,23 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                     return assignmentDate != null && 
                            assignmentDate.getYear() == targetYear && 
                            assignmentDate.getMonthValue() == targetMonth &&
-                           !assignmentDate.isAfter(today);
+                           !assignmentDate.isAfter(today) &&
+                           a.getStatus() != null && a.getStatus() == 1;
                 })
                 .collect(Collectors.groupingBy(DutyAssignment::getEmployeeId));
+
+        // 按员工分组统计审批通过的加班记录（用于计算实际工时和可调休工时）
+        Map<Long, List<DutyRecord>> approvedOvertimeByEmployee = records.stream()
+                .filter(r -> {
+                    LocalDateTime checkInTime = r.getCheckInTime();
+                    return r.getApprovalStatus() != null && 
+                           "已批准".equals(r.getApprovalStatus()) &&
+                           checkInTime != null &&
+                           checkInTime.getYear() == targetYear &&
+                           checkInTime.getMonthValue() == targetMonth &&
+                           !checkInTime.toLocalDate().isAfter(today);
+                })
+                .collect(Collectors.groupingBy(DutyRecord::getEmployeeId));
 
         // 构建员工统计结果
         List<Map<String, Object>> employeeStats = new ArrayList<>();
@@ -313,21 +328,24 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
             // 获取该员工整个月份的排班列表（用于计算计划工时）
             List<DutyAssignment> monthAssignments = monthAssignmentsByEmployee.getOrDefault(employeeId, new ArrayList<>());
             
-            // 计算计划工时：整个月份的排班工时求和（从班次配置中获取时长，默认8小时）
+            // 计算计划工时：月度所有已排班的工时和
             BigDecimal plannedHours = BigDecimal.ZERO;
             for (DutyAssignment assignment : monthAssignments) {
+                // 优先使用shiftConfigId关联
                 if (assignment.getShiftConfigId() != null) {
                     DutyShiftConfig shiftConfig = shiftConfigMap.get(assignment.getShiftConfigId());
                     if (shiftConfig != null && shiftConfig.getDurationHours() != null) {
                         // 使用班次配置中的时长
                         plannedHours = plannedHours.add(shiftConfig.getDurationHours());
-                    } else {
-                        // 班次配置不存在或时长为空，默认8小时
-                        plannedHours = plannedHours.add(BigDecimal.valueOf(8));
                     }
-                } else {
-                    // 没有班次配置ID，默认8小时
-                    plannedHours = plannedHours.add(BigDecimal.valueOf(8));
+                } 
+                // 其次使用dutyShift关联
+                else if (assignment.getDutyShift() != null) {
+                    DutyShiftConfig shiftConfig = shiftConfigMap.get(assignment.getDutyShift().longValue());
+                    if (shiftConfig != null && shiftConfig.getDurationHours() != null) {
+                        // 使用班次配置中的时长
+                        plannedHours = plannedHours.add(shiftConfig.getDurationHours());
+                    }
                 }
             }
             stat.put("plannedHours", plannedHours);
@@ -335,41 +353,51 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
             // 获取该员工当前时间之前的排班列表（用于计算实际工时）
             List<DutyAssignment> actualAssignments = actualAssignmentsByEmployee.getOrDefault(employeeId, new ArrayList<>());
             
-            // 计算实际工时：当前时间之前的排班工时求和
+            // 计算实际工时：已排班的，过去日期的工时和，包括加班填报审批通过的工时
             BigDecimal actualHours = BigDecimal.ZERO;
+            // 1. 计算过去日期的排班工时
             for (DutyAssignment assignment : actualAssignments) {
+                // 优先使用shiftConfigId关联
                 if (assignment.getShiftConfigId() != null) {
                     DutyShiftConfig shiftConfig = shiftConfigMap.get(assignment.getShiftConfigId());
                     if (shiftConfig != null && shiftConfig.getDurationHours() != null) {
                         // 使用班次配置中的时长
                         actualHours = actualHours.add(shiftConfig.getDurationHours());
-                    } else {
-                        // 班次配置不存在或时长为空，默认8小时
-                        actualHours = actualHours.add(BigDecimal.valueOf(8));
                     }
-                } else {
-                    // 没有班次配置ID，默认8小时
-                    actualHours = actualHours.add(BigDecimal.valueOf(8));
+                } 
+                // 其次使用dutyShift关联
+                else if (assignment.getDutyShift() != null) {
+                    DutyShiftConfig shiftConfig = shiftConfigMap.get(assignment.getDutyShift().longValue());
+                    if (shiftConfig != null && shiftConfig.getDurationHours() != null) {
+                        // 使用班次配置中的时长
+                        actualHours = actualHours.add(shiftConfig.getDurationHours());
+                    }
+                }
+            }
+            // 2. 加上审批通过的加班工时
+            List<DutyRecord> approvedOvertime = approvedOvertimeByEmployee.getOrDefault(employeeId, new ArrayList<>());
+            for (DutyRecord record : approvedOvertime) {
+                if (record.getOvertimeHours() != null) {
+                    actualHours = actualHours.add(new BigDecimal(record.getOvertimeHours()));
                 }
             }
             stat.put("actualHours", actualHours);
             
-            // 计算实际天数：实际工时 / 8
+            // 计算实际天数：实际工时转换（实际工时 / 8）
             BigDecimal actualDays = actualHours.divide(BigDecimal.valueOf(8), 2, RoundingMode.HALF_UP);
             stat.put("actualDays", actualDays);
 
-            // 计算可调休工时：审批通过的加班时长
+            // 计算可调休工时：审批通过的加班时长 - 审批通过的调休请假时长
             BigDecimal compensatoryHours = BigDecimal.ZERO;
-            for (DutyRecord record : records) {
-                if (record.getEmployeeId().equals(employeeId) && 
-                    record.getApprovalStatus() != null && 
-                    "已批准".equals(record.getApprovalStatus()) &&
-                    record.getOvertimeHours() != null) {
+            // 1. 计算审批通过的加班时长
+            for (DutyRecord record : approvedOvertime) {
+                // 检查是否为加班班次
+                if (record.getOvertimeHours() != null) {
                     compensatoryHours = compensatoryHours.add(new BigDecimal(record.getOvertimeHours()));
                 }
             }
             
-            // 减去审批通过的调休请假时长
+            // 2. 减去审批通过的调休请假时长
             List<LeaveRequest> leaveRequests = leaveRequestService.list();
             for (LeaveRequest request : leaveRequests) {
                 if (request.getEmployeeId().equals(employeeId) && 
