@@ -387,17 +387,17 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
             BigDecimal actualDays = actualHours.divide(BigDecimal.valueOf(8), 2, RoundingMode.HALF_UP);
             stat.put("actualDays", actualDays);
 
-            // 计算可调休工时：审批通过的加班时长 - 审批通过的调休请假时长
-            BigDecimal compensatoryHours = BigDecimal.ZERO;
-            // 1. 计算审批通过的加班时长
+            // 计算加班工时：审批通过的加班时长
+            BigDecimal overtimeHours = BigDecimal.ZERO;
             for (DutyRecord record : approvedOvertime) {
-                // 检查是否为加班班次
                 if (record.getOvertimeHours() != null) {
-                    compensatoryHours = compensatoryHours.add(new BigDecimal(record.getOvertimeHours()));
+                    overtimeHours = overtimeHours.add(new BigDecimal(record.getOvertimeHours()));
                 }
             }
+            stat.put("overtimeHours", overtimeHours);
             
-            // 2. 减去审批通过的调休请假时长
+            // 计算已调休工时：审批通过的调休请假时长
+            BigDecimal usedCompensatoryHours = BigDecimal.ZERO;
             List<LeaveRequest> leaveRequests = leaveRequestService.list();
             for (LeaveRequest request : leaveRequests) {
                 if (request.getEmployeeId().equals(employeeId) && 
@@ -406,9 +406,14 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                     request.getLeaveType() != null && 
                     request.getLeaveType() == 4 && // 调休类型
                     request.getTotalHours() != null) {
-                    compensatoryHours = compensatoryHours.subtract(request.getTotalHours());
+                    usedCompensatoryHours = usedCompensatoryHours.add(request.getTotalHours());
                 }
             }
+            stat.put("usedCompensatoryHours", usedCompensatoryHours);
+            
+            // 计算可调休工时：审批通过的加班时长 - 审批通过的调休请假时长
+            BigDecimal compensatoryHours = BigDecimal.ZERO;
+            compensatoryHours = overtimeHours.subtract(usedCompensatoryHours);
             
             // 确保可调休工时不小于0
             if (compensatoryHours.compareTo(BigDecimal.ZERO) < 0) {

@@ -102,22 +102,24 @@
         </div>
       </div>
       <el-table :data="employeeStatistics" border stripe v-loading="employeeLoading">
-        <el-table-column prop="employeeName" label="员工姓名" width="120" />
-        <el-table-column label="年月" width="100">
-          <template #default="scope">
-            {{ scope.row.year }}年{{ scope.row.month }}月
-          </template>
-        </el-table-column>
-        <el-table-column prop="plannedHours" label="计划工时(小时)" width="150" />
-        <el-table-column prop="actualHours" label="实际工时(小时)" width="150" />
-        <el-table-column prop="actualDays" label="实际天数" width="120" />
-        <el-table-column prop="compensatoryHours" label="可调休工时(小时)" width="150" />
-        <el-table-column label="完成率" width="120">
-          <template #default="scope">
-            {{ getCompletionRate(scope.row) }}%
-          </template>
-        </el-table-column>
-      </el-table>
+          <el-table-column prop="employeeName" label="员工姓名" width="120" />
+          <el-table-column label="年月" width="100">
+            <template #default="scope">
+              {{ scope.row.year }}年{{ scope.row.month }}月
+            </template>
+          </el-table-column>
+          <el-table-column prop="plannedHours" label="计划工时(小时)" width="150" />
+          <el-table-column prop="actualHours" label="实际工时(小时)" width="150" />
+          <el-table-column prop="actualDays" label="实际天数" width="120" />
+          <el-table-column prop="overtimeHours" label="加班工时(小时)" width="150" />
+          <el-table-column prop="compensatoryHours" label="可调休工时(小时)" width="150" />
+          <el-table-column prop="usedCompensatoryHours" label="已调休工时(小时)" width="150" />
+          <el-table-column label="完成率" width="120">
+            <template #default="scope">
+              {{ getCompletionRate(scope.row) }}%
+            </template>
+          </el-table-column>
+        </el-table>
     </el-card>
   </div>
 </template>
