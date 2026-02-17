@@ -16,6 +16,10 @@
           </div>
           <template #dropdown>
             <el-dropdown-menu>
+              <el-dropdown-item @click="handlePasswordChange">
+                <el-icon><Edit /></el-icon>
+                <span>修改密码</span>
+              </el-dropdown-item>
               <el-dropdown-item @click="handleLogout">
                 <el-icon><SwitchButton /></el-icon>
                 <span>退出登录</span>
@@ -23,6 +27,31 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
+        
+        <!-- 修改密码模态框 -->
+        <el-dialog
+          v-model="passwordDialogVisible"
+          title="修改密码"
+          width="400px"
+        >
+          <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef">
+            <el-form-item label="原密码" prop="oldPassword">
+              <el-input v-model="passwordForm.oldPassword" type="password" placeholder="请输入原密码" />
+            </el-form-item>
+            <el-form-item label="新密码" prop="newPassword">
+              <el-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码" />
+            </el-form-item>
+            <el-form-item label="确认新密码" prop="confirmPassword">
+              <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="请确认新密码" />
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <span class="dialog-footer">
+              <el-button @click="passwordDialogVisible = false">取消</el-button>
+              <el-button type="primary" @click="submitPasswordChange">确定</el-button>
+            </span>
+          </template>
+        </el-dialog>
       </div>
     </el-header>
     <!-- 主体内容 -->
@@ -111,10 +140,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
-import { logout } from '../api/auth'
+import { logout, changePassword } from '../api/auth'
 import { getUserMenus } from '../api/menu'
 import { ElMessage } from 'element-plus'
 import { 
@@ -130,7 +159,77 @@ const router = useRouter()
 const userStore = useUserStore()
 const collapsed = ref(false)
 
-const username = computed(() => userStore.username)
+const username = computed(() => userStore.employeeName || userStore.username)
+
+// 修改密码相关状态
+const passwordDialogVisible = ref(false)
+const passwordFormRef = ref(null)
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+const passwordRules = reactive({
+  oldPassword: [
+    { required: true, message: '请输入原密码', trigger: 'blur' }
+  ],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '新密码长度至少为6位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认新密码', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (value !== passwordForm.newPassword) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+})
+
+// 处理修改密码
+const handlePasswordChange = () => {
+  passwordDialogVisible.value = true
+}
+
+// 提交修改密码
+const submitPasswordChange = async () => {
+  if (!passwordFormRef.value) return
+  
+  try {
+    await passwordFormRef.value.validate()
+    
+    // 调用修改密码的API
+    const response = await changePassword({
+      oldPassword: passwordForm.oldPassword,
+      newPassword: passwordForm.newPassword
+    })
+    
+    if (response.code === 200) {
+      ElMessage.success('密码修改成功')
+      passwordDialogVisible.value = false
+      
+      // 重置表单
+      passwordForm.oldPassword = ''
+      passwordForm.newPassword = ''
+      passwordForm.confirmPassword = ''
+    } else {
+      ElMessage.error(response.message || '密码修改失败')
+    }
+  } catch (error) {
+    console.error('修改密码失败:', error)
+    if (error.response && error.response.data && error.response.data.message) {
+      ElMessage.error(error.response.data.message || '密码修改失败')
+    } else {
+      ElMessage.error('网络错误，请稍后重试')
+    }
+  }
+}
 
 // 动态菜单数据
 const topMenus = ref([])
