@@ -230,7 +230,7 @@
             <el-table-column label="操作" width="160" fixed="right">
               <template #default="scope">
                 <el-button 
-                  v-if="scope.row.approvalStatus !== '已批准'"
+                  v-if="isDutyManager && scope.row.approvalStatus !== '已批准'"
                   type="warning" 
                   size="small" 
                   @click="openEditDialog(scope.row)"
@@ -598,6 +598,9 @@ import { getScheduleList, getScheduleLeaders } from '../../api/duty/schedule'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
 
 // 响应式数据
 const searchQuery = ref('')
@@ -930,6 +933,9 @@ const pagedRecordList = computed(() => {
 // 审批页面过滤后的值班记录列表
 const filteredApprovalList = computed(() => {
   let list = recordList.value
+  
+  // 只显示审批状态为待审批的记录
+  list = list.filter(record => record.approvalStatus === '待审批')
   
   // 按搜索词过滤（现在按值班日期过滤）
   if (approvalSearchQuery.value) {
@@ -2097,10 +2103,34 @@ onMounted(async () => {
   await fetchEmployeeList()
   await fetchAssignmentList()
   await fetchDeptList()
-  // 先获取值班表列表，设置默认值班表并获取值班长列表
+  
+  // 先处理路由参数，设置selectedScheduleId
+  let routeScheduleId = null
+  if (route.query.scheduleId) {
+    routeScheduleId = parseInt(route.query.scheduleId)
+  }
+  
+  // 如果有路由参数，先设置selectedScheduleId
+  if (routeScheduleId) {
+    selectedScheduleId.value = routeScheduleId
+  }
+  
+  // 获取值班表列表，设置默认值班表并获取值班长列表
   await fetchScheduleList()
-  // 最后获取记录列表
-  await fetchRecordList()
+  
+  // 处理activeTab参数
+  if (route.query.activeTab) {
+    activeTab.value = route.query.activeTab
+  }
+  
+  // 如果有路由参数，获取对应值班表的值班长列表和记录列表
+  if (routeScheduleId) {
+    await fetchScheduleLeaders(routeScheduleId)
+    await fetchRecordList()
+  } else {
+    // 最后获取记录列表
+    await fetchRecordList()
+  }
 })
 </script>
 

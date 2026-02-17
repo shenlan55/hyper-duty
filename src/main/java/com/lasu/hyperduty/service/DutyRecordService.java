@@ -28,4 +28,11 @@ public interface DutyRecordService extends IService<DutyRecord> {
      * @return 替补人员列表
      */
     List<SysEmployee> getAvailableSubstitutes(Long employeeId, LocalDate dutyDate, Integer dutyShift);
+
+    /**
+     * 获取待审批的加班记录
+     * @param employeeId 审批人ID
+     * @return 待审批的加班记录列表
+     */
+    List<DutyRecord> getPendingApprovals(Long employeeId);
 }

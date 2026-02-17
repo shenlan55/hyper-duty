@@ -151,4 +151,15 @@ public class DutyRecordController {
         return ResponseResult.success();
     }
 
+    /**
+     * 获取待审批的加班记录
+     * @param employeeId 审批人ID
+     * @return 待审批的加班记录列表
+     */
+    @GetMapping("/pending/{employeeId}")
+    public ResponseResult<List<DutyRecord>> getPendingApprovals(@PathVariable Long employeeId) {
+        List<DutyRecord> recordList = dutyRecordService.getPendingApprovals(employeeId);
+        return ResponseResult.success(recordList);
+    }
+
 }
