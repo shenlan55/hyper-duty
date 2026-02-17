@@ -12,6 +12,8 @@ public interface DutyAssignmentService extends IService<DutyAssignment> {
     
     void swapDutyAssignments(Long originalEmployeeId, Long targetEmployeeId, java.time.LocalDate swapDate, Integer swapShift);
     
+    void swapDutyAssignments(Long originalEmployeeId, Long targetEmployeeId, java.time.LocalDate originalDate, Integer originalShift, java.time.LocalDate targetDate, Integer targetShift);
+    
     List<String> getEmployeeDutyDates(Long scheduleId, Long employeeId);
     
     List<Integer> getEmployeeDutyShifts(Long scheduleId, Long employeeId, String date);

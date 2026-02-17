@@ -34,6 +34,14 @@ public class SwapRequest implements Serializable {
 
     private Integer swapShift;
 
+    private LocalDate originalSwapDate;
+
+    private Integer originalSwapShift;
+
+    private LocalDate targetSwapDate;
+
+    private Integer targetSwapShift;
+
     private String reason;
 
     private String approvalStatus;

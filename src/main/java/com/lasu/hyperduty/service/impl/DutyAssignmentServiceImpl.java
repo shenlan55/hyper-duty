@@ -67,6 +67,37 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
     }
 
     @Override
+    public void swapDutyAssignments(Long originalEmployeeId, Long targetEmployeeId, java.time.LocalDate originalDate, Integer originalShift, java.time.LocalDate targetDate, Integer targetShift) {
+        // 查找原值班人员的值班安排（在原日期和原班次）
+        LambdaQueryWrapper<DutyAssignment> originalWrapper = new LambdaQueryWrapper<>();
+        originalWrapper.eq(DutyAssignment::getEmployeeId, originalEmployeeId)
+                .eq(DutyAssignment::getDutyDate, originalDate)
+                .eq(DutyAssignment::getDutyShift, originalShift);
+        DutyAssignment originalAssignment = getOne(originalWrapper);
+        
+        // 查找目标值班人员的值班安排（在目标日期和目标班次）
+        LambdaQueryWrapper<DutyAssignment> targetWrapper = new LambdaQueryWrapper<>();
+        targetWrapper.eq(DutyAssignment::getEmployeeId, targetEmployeeId)
+                .eq(DutyAssignment::getDutyDate, targetDate)
+                .eq(DutyAssignment::getDutyShift, targetShift);
+        DutyAssignment targetAssignment = getOne(targetWrapper);
+        
+        // 如果两条记录都存在，交换员工ID
+        if (originalAssignment != null && targetAssignment != null) {
+            // 保存原始的员工ID
+            Long tempEmployeeId = originalAssignment.getEmployeeId();
+            
+            // 交换员工ID
+            originalAssignment.setEmployeeId(targetAssignment.getEmployeeId());
+            targetAssignment.setEmployeeId(tempEmployeeId);
+            
+            // 保存更新后的记录
+            updateById(originalAssignment);
+            updateById(targetAssignment);
+        }
+    }
+
+    @Override
     public List<String> getEmployeeDutyDates(Long scheduleId, Long employeeId) {
         // 查询指定值班表和员工的所有排班记录
         LambdaQueryWrapper<DutyAssignment> wrapper = new LambdaQueryWrapper<>();

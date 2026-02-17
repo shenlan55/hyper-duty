@@ -62,9 +62,14 @@
         <el-table-column prop="scheduleName" label="值班表" width="150" show-overflow-tooltip />
         <el-table-column prop="originalEmployeeName" label="原值班人员" width="120" />
         <el-table-column prop="targetEmployeeName" label="目标值班人员" width="120" />
-        <el-table-column label="调班信息" width="250">
+        <el-table-column label="原值班信息" width="200">
           <template #default="scope">
-            {{ formatDate(scope.row.swapDate) }} {{ getShiftName(scope.row.swapShift) }}
+            {{ formatDate(scope.row.originalSwapDate) }} {{ getShiftName(scope.row.originalSwapShift) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="目标值班信息" width="200">
+          <template #default="scope">
+            {{ formatDate(scope.row.targetSwapDate) }} {{ getShiftName(scope.row.targetSwapShift) }}
           </template>
         </el-table-column>
         <el-table-column prop="reason" label="调班原因" min-width="200" show-overflow-tooltip />
@@ -83,20 +88,21 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="scope">
             <el-button
-              v-if="scope.row.approvalStatus === 'pending'"
+              v-if="scope.row.approvalStatus === 'pending' && scope.row.targetEmployeeId === currentEmployeeId"
               type="primary"
               size="small"
               @click="openConfirmDialog(scope.row)"
             >
               确认
             </el-button>
+            <!-- 对发起人显示"撤销"，对目标值班人员显示"打回" -->
             <el-button
               v-if="scope.row.approvalStatus === 'pending'"
               type="danger"
               size="small"
               @click="handleDelete(scope.row.id)"
             >
-              撤销
+              {{ scope.row.originalEmployeeId === currentEmployeeId ? '撤销' : '打回' }}
             </el-button>
           </template>
         </el-table-column>
@@ -301,14 +307,16 @@
         <el-descriptions-item label="值班表">{{ getScheduleName(currentSwapRequest.scheduleId) }}</el-descriptions-item>
         <el-descriptions-item label="原值班人员">{{ getEmployeeName(currentSwapRequest.originalEmployeeId) }}</el-descriptions-item>
         <el-descriptions-item label="目标值班人员">{{ getEmployeeName(currentSwapRequest.targetEmployeeId) }}</el-descriptions-item>
-        <el-descriptions-item label="调班日期">{{ formatDate(currentSwapRequest.swapDate) }}</el-descriptions-item>
-        <el-descriptions-item label="调班班次">{{ getShiftName(currentSwapRequest.swapShift) }}</el-descriptions-item>
+        <el-descriptions-item label="原值班日期">{{ formatDate(currentSwapRequest.originalSwapDate) }}</el-descriptions-item>
+        <el-descriptions-item label="原值班班次">{{ getShiftName(currentSwapRequest.originalSwapShift) }}</el-descriptions-item>
+        <el-descriptions-item label="目标值班日期">{{ formatDate(currentSwapRequest.targetSwapDate) }}</el-descriptions-item>
+        <el-descriptions-item label="目标值班班次">{{ getShiftName(currentSwapRequest.targetSwapShift) }}</el-descriptions-item>
         <el-descriptions-item label="调班原因">{{ currentSwapRequest.reason }}</el-descriptions-item>
       </el-descriptions>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="confirmDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="confirmLoading" @click="handleConfirm">
+          <el-button type="primary" :loading="confirmLoading" @click="handleConfirm" v-if="currentEmployeeId === currentSwapRequest.targetEmployeeId">
             确认调班
           </el-button>
         </span>
@@ -751,7 +759,22 @@ const fetchMySwapRequests = async () => {
       filterForm.endDate
     )
     if (response.code === 200) {
-      requestList.value = response.data.records
+      // 处理调班申请列表，设置员工名称和值班表名称
+      requestList.value = response.data.records.map(item => {
+        // 设置值班表名称
+        const schedule = scheduleList.value.find(s => s.id === item.scheduleId)
+        item.scheduleName = schedule ? schedule.scheduleName : '未知'
+        
+        // 设置原值班人员名称
+        const originalEmployee = employeeList.value.find(e => e.id === item.originalEmployeeId)
+        item.originalEmployeeName = originalEmployee ? originalEmployee.employeeName : '未知'
+        
+        // 设置目标值班人员名称
+        const targetEmployee = employeeList.value.find(e => e.id === item.targetEmployeeId)
+        item.targetEmployeeName = targetEmployee ? targetEmployee.employeeName : '未知'
+        
+        return item
+      })
       total.value = response.data.total
     }
   } catch (error) {
@@ -915,14 +938,25 @@ const handleSave = async () => {
     dialogLoading.value = true
     
     // 构建调班申请数据
-    const swapRequests = form.swapDetails.map(detail => ({
-      scheduleId: form.scheduleId,
-      originalEmployeeId: detail.originalEmployeeId,
-      targetEmployeeId: detail.targetEmployeeId,
-      swapDate: detail.originalSwapDate,
-      swapShift: detail.originalSwapShift,
-      reason: form.reason
-    }))
+    const swapRequests = form.swapDetails.map(detail => {
+      // 处理日期，确保格式正确，避免时区偏移
+      const originalSwapDate = new Date(detail.originalSwapDate);
+      const formattedOriginalDate = `${originalSwapDate.getFullYear()}-${String(originalSwapDate.getMonth() + 1).padStart(2, '0')}-${String(originalSwapDate.getDate()).padStart(2, '0')}`;
+      
+      const targetSwapDate = new Date(detail.targetSwapDate);
+      const formattedTargetDate = `${targetSwapDate.getFullYear()}-${String(targetSwapDate.getMonth() + 1).padStart(2, '0')}-${String(targetSwapDate.getDate()).padStart(2, '0')}`;
+      
+      return {
+        scheduleId: form.scheduleId,
+        originalEmployeeId: detail.originalEmployeeId,
+        targetEmployeeId: detail.targetEmployeeId,
+        originalSwapDate: formattedOriginalDate,
+        originalSwapShift: detail.originalSwapShift,
+        targetSwapDate: formattedTargetDate,
+        targetSwapShift: detail.targetSwapShift,
+        reason: form.reason
+      };
+    })
     
     // 提交多个调班申请
     let allSuccess = true
