@@ -520,6 +520,8 @@ const openAddDialog = () => {
 // 打开编辑对话框
 const openEditDialog = (employee) => {
   Object.assign(employeeForm, employee)
+  // 清空密码字段，避免加载加密密码
+  employeeForm.password = ''
   dialogTitle.value = '编辑人员'
   dialogVisible.value = true
   
