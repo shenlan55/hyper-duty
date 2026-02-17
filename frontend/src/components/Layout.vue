@@ -384,7 +384,7 @@ const useDefaultMenus = () => {
           icon: 'Calendar'
         },
         {
-          name: '值班记录',
+          name: '加班记录',
           path: '/duty/record',
           icon: 'Document'
         },
@@ -433,7 +433,7 @@ const useDefaultMenus = () => {
     '/duty/schedule': '值班表管理',
     '/duty/schedule-mode': '排班模式管理',
     '/duty/assignment': '值班安排',
-    '/duty/record': '值班记录',
+    '/duty/record': '加班记录',
     '/duty/shift-config': '班次配置',
     '/duty/leave-request': '请假申请',
     '/duty/leave-approval': '请假审批',

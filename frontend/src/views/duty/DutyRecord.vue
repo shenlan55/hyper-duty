@@ -1,7 +1,7 @@
 <template>
   <div class="record-container">
     <div class="page-header">
-      <h2>值班记录</h2>
+      <h2>加班记录</h2>
       <div class="header-actions">
         <el-select
           v-model="selectedScheduleId"
@@ -19,7 +19,7 @@
           />
         </el-select>
         <el-button type="primary" @click="openCreateDialog">
-          新建值班记录
+          新建加班记录
         </el-button>
       </div>
     </div>
@@ -27,7 +27,7 @@
     <el-card shadow="hover" class="content-card">
       <!-- 标签页组件 -->
       <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="mb-4">
-        <el-tab-pane label="值班人员记录" name="record">
+        <el-tab-pane label="加班人员记录" name="record">
           <div class="table-toolbar">
             <el-input
               v-model="searchQuery"
@@ -153,7 +153,7 @@
             />
           </div>
         </el-tab-pane>
-        <el-tab-pane label="值班长审批" name="approval" :disabled="!isDutyManager">
+        <el-tab-pane label="加班审批" name="approval" :disabled="!isDutyManager">
           <div class="table-toolbar">
             <el-input
               v-model="approvalSearchQuery"
@@ -267,7 +267,7 @@
     <!-- 签到对话框 -->
     <el-dialog
       v-model="checkInDialogVisible"
-      title="值班签到"
+      title="加班签到"
       width="500px"
     >
       <el-form
@@ -319,7 +319,7 @@
     <!-- 签退对话框 -->
     <el-dialog
       v-model="checkOutDialogVisible"
-      title="值班签退"
+      title="加班签退"
       width="500px"
     >
       <el-form
@@ -384,10 +384,10 @@
       </template>
     </el-dialog>
 
-    <!-- 新建/编辑值班记录对话框 -->
+    <!-- 新建/编辑加班记录对话框 -->
     <el-dialog
       v-model="createDialogVisible"
-      :title="createForm.id ? '编辑值班记录' : '新建值班记录'"
+      :title="createForm.id ? '编辑加班记录' : '新建加班记录'"
       width="600px"
     >
       <el-form

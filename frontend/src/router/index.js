@@ -98,7 +98,7 @@ const routes = [
             path: 'record',
             name: 'DutyRecord',
             component: () => import('../views/duty/DutyRecord.vue'),
-            meta: { title: '值班记录' }
+            meta: { title: '加班记录' }
           },
           {
             path: 'shift-config',

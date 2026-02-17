@@ -214,19 +214,20 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
                     .eq(LeaveRequest::getApprovalStatus, "approved")
                     .le(LeaveRequest::getStartDate, dutyDate)
                     .ge(LeaveRequest::getEndDate, dutyDate);
-            LeaveRequest leaveRequest = leaveRequestMapper.selectOne(leaveWrapper);
+            List<LeaveRequest> leaveRequests = leaveRequestMapper.selectList(leaveWrapper);
             
-            if (leaveRequest != null) {
+            if (!leaveRequests.isEmpty()) {
+                LeaveRequest leaveRequest = leaveRequests.get(0); // 只取第一个结果
                 // 2. 根据请假记录查询顶岗信息
                 LambdaQueryWrapper<LeaveSubstitute> substituteWrapper = new LambdaQueryWrapper<>();
                 substituteWrapper.eq(LeaveSubstitute::getLeaveRequestId, leaveRequest.getId())
                         .eq(LeaveSubstitute::getDutyDate, dutyDate)
                         .eq(LeaveSubstitute::getShiftConfigId, shiftConfigId)
                         .eq(LeaveSubstitute::getStatus, 1);
-                LeaveSubstitute substitute = leaveSubstituteMapper.selectOne(substituteWrapper);
+                List<LeaveSubstitute> substitutes = leaveSubstituteMapper.selectList(substituteWrapper);
                 
-                if (substitute != null) {
-                    return substitute.getSubstituteEmployeeId();
+                if (!substitutes.isEmpty()) {
+                    return substitutes.get(0).getSubstituteEmployeeId(); // 只取第一个结果
                 }
             }
         } catch (Exception e) {
@@ -248,20 +249,21 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
                 .eq(LeaveRequest::getApprovalStatus, "approved")
                 .le(LeaveRequest::getStartDate, date)
                 .ge(LeaveRequest::getEndDate, date);
-        LeaveRequest leaveRequest = leaveRequestMapper.selectOne(leaveWrapper);
+        List<LeaveRequest> leaveRequests = leaveRequestMapper.selectList(leaveWrapper);
         
-        if (leaveRequest == null) {
+        if (leaveRequests.isEmpty()) {
             return false;
         }
         
+        LeaveRequest leaveRequest = leaveRequests.get(0); // 只取第一个结果
         // 查询该请假记录的顶岗信息，检查是否包含当前班次
         LambdaQueryWrapper<LeaveSubstitute> substituteWrapper = new LambdaQueryWrapper<>();
         substituteWrapper.eq(LeaveSubstitute::getLeaveRequestId, leaveRequest.getId())
                 .eq(LeaveSubstitute::getDutyDate, date)
                 .eq(LeaveSubstitute::getShiftConfigId, dutyShift.longValue())
                 .eq(LeaveSubstitute::getStatus, 1);
-        LeaveSubstitute substitute = leaveSubstituteMapper.selectOne(substituteWrapper);
+        List<LeaveSubstitute> substitutes = leaveSubstituteMapper.selectList(substituteWrapper);
         
-        return substitute != null;
+        return !substitutes.isEmpty();
     }
 }
