@@ -2,8 +2,6 @@ package com.lasu.hyperduty.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.lasu.hyperduty.entity.DutyScheduleMode;
-import com.lasu.hyperduty.service.algorithm.ScheduleAlgorithm;
-
 import java.util.List;
 import java.util.Map;
 
@@ -30,20 +28,6 @@ public interface DutyScheduleModeService extends IService<DutyScheduleMode> {
      * @return 排班模式
      */
     DutyScheduleMode getByCode(String modeCode);
-
-    /**
-     * 获取排班算法实例
-     * @param algorithmClass 算法类名
-     * @return 排班算法实例
-     */
-    ScheduleAlgorithm getAlgorithmInstance(String algorithmClass);
-
-    /**
-     * 获取排班算法实例
-     * @param modeId 排班模式ID
-     * @return 排班算法实例
-     */
-    ScheduleAlgorithm getAlgorithmInstanceByModeId(Long modeId);
 
     /**
      * 获取模式的配置参数

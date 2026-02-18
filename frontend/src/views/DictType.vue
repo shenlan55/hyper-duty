@@ -146,11 +146,9 @@ const pagedDictTypeList = computed(() => {
 const loadDictTypeList = async () => {
   loading.value = true
   try {
-    const response = await listDictType({ pageNum: 1, pageSize: 1000 })
-    if (response.code === 200) {
-      dictTypeList.value = response.data.records
-      total.value = response.data.total
-    }
+    const data = await listDictType({ pageNum: 1, pageSize: 1000 })
+    dictTypeList.value = data.records || []
+    total.value = data.total || 0
   } catch (error) {
     ElMessage.error('加载字典类型列表失败')
   } finally {
@@ -188,12 +186,14 @@ const handleSave = async () => {
       dialogLoading.value = true
       try {
         const isEdit = form.id !== null
-        const response = isEdit ? await updateDictType(form) : await addDictType(form)
-        if (response.code === 200) {
-          ElMessage.success(isEdit ? '更新成功' : '添加成功')
-          dialogVisible.value = false
-          loadDictTypeList()
+        if (isEdit) {
+          await updateDictType(form)
+        } else {
+          await addDictType(form)
         }
+        ElMessage.success(isEdit ? '更新成功' : '添加成功')
+        dialogVisible.value = false
+        loadDictTypeList()
       } catch (error) {
         ElMessage.error('保存失败')
       } finally {
@@ -210,11 +210,9 @@ const handleDelete = async (id) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const response = await deleteDictType(id)
-    if (response.code === 200) {
-      ElMessage.success('删除成功')
-      loadDictTypeList()
-    }
+    await deleteDictType(id)
+    ElMessage.success('删除成功')
+    loadDictTypeList()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')

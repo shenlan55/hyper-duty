@@ -659,11 +659,9 @@ const fetchScheduleLeaders = async (scheduleId) => {
   if (!scheduleId) return []
   
   try {
-    const response = await getScheduleLeaders(scheduleId)
-    if (response.code === 200) {
-      scheduleLeaders.value[scheduleId] = response.data
-      return response.data
-    }
+    const data = await getScheduleLeaders(scheduleId)
+    scheduleLeaders.value[scheduleId] = data
+    return data
   } catch (error) {
     // console.error('获取值班长列表失败:', error)
   }
@@ -959,10 +957,8 @@ const pagedApprovalList = computed(() => {
 // 获取员工列表
 const fetchEmployeeList = async () => {
   try {
-    const response = await getEmployeeList()
-    if (response.code === 200) {
-      employeeList.value = response.data
-    }
+    const data = await getEmployeeList()
+    employeeList.value = data || []
   } catch (error) {
     // console.error('获取员工列表失败:', error)
     ElMessage.error('获取员工列表失败')
@@ -972,10 +968,8 @@ const fetchEmployeeList = async () => {
 // 获取值班安排列表
 const fetchAssignmentList = async () => {
   try {
-    const response = await getAssignmentList()
-    if (response.code === 200) {
-      assignmentList.value = response.data
-    }
+    const data = await getAssignmentList()
+    assignmentList.value = data || []
   } catch (error) {
     // console.error('获取值班安排列表失败:', error)
     ElMessage.error('获取值班安排列表失败')
@@ -995,9 +989,7 @@ const fetchRecordList = async () => {
       // 根据选择的值班表获取值班安排
       if (selectedScheduleId.value) {
         const assignmentsResponse = await getAssignmentsByScheduleId(selectedScheduleId.value)
-        if (assignmentsResponse.code === 200) {
-          allAssignments = assignmentsResponse.data
-        }
+        allAssignments = assignmentsResponse || []
       } else {
         // 使用模拟数据
         allAssignments = [
@@ -1017,131 +1009,124 @@ const fetchRecordList = async () => {
     }
     
     // 值班长获取所有记录，普通用户只获取自己的记录
-    let response
+    let allRecords = []
     if (userStore.employeeId) {
       if (isDutyManager.value) {
         // 值班长获取所有记录
-        response = await getRecordList()
+        allRecords = await getRecordList()
       } else {
         // 普通用户获取自己的记录
-        response = await getRecordsByEmployeeId(userStore.employeeId)
+        allRecords = await getRecordsByEmployeeId(userStore.employeeId)
       }
       
-      if (response.code === 200) {
-        let allRecords = response.data
+      // 根据选择的值班表过滤记录
+      if (selectedScheduleId.value) {
+        // 从值班安排中获取该值班表的所有assignmentId
+        const scheduleAssignmentIds = new Set()
+        allAssignments.forEach(assignment => {
+          if (assignment.scheduleId === selectedScheduleId.value) {
+            scheduleAssignmentIds.add(assignment.id)
+          }
+        })
         
-        // 根据选择的值班表过滤记录
-        if (selectedScheduleId.value) {
-          // 从值班安排中获取该值班表的所有assignmentId
-          const scheduleAssignmentIds = new Set()
-          allAssignments.forEach(assignment => {
-            if (assignment.scheduleId === selectedScheduleId.value) {
-              scheduleAssignmentIds.add(assignment.id)
-            }
-          })
-          
-          // 过滤出属于该值班表的记录
-          allRecords = allRecords.filter(record => {
-            return record.assignmentId && scheduleAssignmentIds.has(record.assignmentId)
-          })
-        }
-        
-        recordList.value = allRecords
-        
-        // 遍历值班记录，获取值班安排详情
-        recordList.value.forEach(record => {
-          if (record.assignmentId) {
-            // 从所有值班安排中查找对应的值班安排
-            const assignment = allAssignments.find(a => a.id === record.assignmentId)
-            if (assignment) {
-              // 设置值班日期和班次
-              record.dutyDate = assignment.dutyDate
-              record.dutyShift = assignment.dutyShift
-              // 设置值班表信息
-              record.scheduleId = assignment.scheduleId
-              const schedule = scheduleList.value.find(s => s.id === assignment.scheduleId)
-              record.scheduleName = schedule ? schedule.scheduleName : '未知值班表'
-            } else {
-              // 使用默认值
-              record.dutyDate = '2024-01-03'
-              record.dutyShift = 8
-              record.scheduleName = '未知值班表'
-            }
+        // 过滤出属于该值班表的记录
+        allRecords = allRecords.filter(record => {
+          return record.assignmentId && scheduleAssignmentIds.has(record.assignmentId)
+        })
+      }
+      
+      recordList.value = allRecords || []
+      
+      // 遍历值班记录，获取值班安排详情
+      recordList.value.forEach(record => {
+        if (record.assignmentId) {
+          // 从所有值班安排中查找对应的值班安排
+          const assignment = allAssignments.find(a => a.id === record.assignmentId)
+          if (assignment) {
+            // 设置值班日期和班次
+            record.dutyDate = assignment.dutyDate
+            record.dutyShift = assignment.dutyShift
+            // 设置值班表信息
+            record.scheduleId = assignment.scheduleId
+            const schedule = scheduleList.value.find(s => s.id === assignment.scheduleId)
+            record.scheduleName = schedule ? schedule.scheduleName : '未知值班表'
           } else {
             // 使用默认值
             record.dutyDate = '2024-01-03'
             record.dutyShift = 8
             record.scheduleName = '未知值班表'
           }
-          
-          if (record.dutyShift) {
-            // 尝试从班次配置中查找
-            const shiftConfig = shiftConfigs.value.find(config => config.id === record.dutyShift)
-            if (shiftConfig && shiftConfig.shiftName) {
-              saveShiftName(record.dutyShift, shiftConfig.shiftName)
-            } else {
-              // 使用默认格式，确保能够处理所有班次值
-              saveShiftName(record.dutyShift, `班次${record.dutyShift}`)
-            }
-          }
-        })
-      }
-    } else {
-      const response = await getRecordList()
-      if (response.code === 200) {
-        let allRecords = response.data
-        
-        // 根据选择的值班表过滤记录
-        if (selectedScheduleId.value) {
-          // 从值班安排中获取该值班表的所有assignmentId
-          const scheduleAssignmentIds = new Set()
-          allAssignments.forEach(assignment => {
-            if (assignment.scheduleId === selectedScheduleId.value) {
-              scheduleAssignmentIds.add(assignment.id)
-            }
-          })
-          
-          // 过滤出属于该值班表的记录
-          allRecords = allRecords.filter(record => {
-            return record.assignmentId && scheduleAssignmentIds.has(record.assignmentId)
-          })
+        } else {
+          // 使用默认值
+          record.dutyDate = '2024-01-03'
+          record.dutyShift = 8
+          record.scheduleName = '未知值班表'
         }
         
-        recordList.value = allRecords
+        if (record.dutyShift) {
+          // 尝试从班次配置中查找
+          const shiftConfig = shiftConfigs.value.find(config => config.id === record.dutyShift)
+          if (shiftConfig && shiftConfig.shiftName) {
+            saveShiftName(record.dutyShift, shiftConfig.shiftName)
+          } else {
+            // 使用默认格式，确保能够处理所有班次值
+            saveShiftName(record.dutyShift, `班次${record.dutyShift}`)
+          }
+        }
+      })
+    } else {
+      allRecords = await getRecordList()
+      
+      // 根据选择的值班表过滤记录
+      if (selectedScheduleId.value) {
+        // 从值班安排中获取该值班表的所有assignmentId
+        const scheduleAssignmentIds = new Set()
+        allAssignments.forEach(assignment => {
+          if (assignment.scheduleId === selectedScheduleId.value) {
+            scheduleAssignmentIds.add(assignment.id)
+          }
+        })
         
-        // 保存班次名称
-        recordList.value.forEach(record => {
-          if (record.assignmentId) {
-            // 从所有值班安排中查找对应的值班安排
-            const assignment = allAssignments.find(a => a.id === record.assignmentId)
-            if (assignment) {
-              // 设置值班表信息
-              record.scheduleId = assignment.scheduleId
-              const schedule = scheduleList.value.find(s => s.id === assignment.scheduleId)
-              record.scheduleName = schedule ? schedule.scheduleName : '未知值班表'
-            } else {
-              record.scheduleName = '未知值班表'
-            }
+        // 过滤出属于该值班表的记录
+        allRecords = allRecords.filter(record => {
+          return record.assignmentId && scheduleAssignmentIds.has(record.assignmentId)
+        })
+      }
+      
+      recordList.value = allRecords || []
+      
+      // 保存班次名称
+      recordList.value.forEach(record => {
+        if (record.assignmentId) {
+          // 从所有值班安排中查找对应的值班安排
+          const assignment = allAssignments.find(a => a.id === record.assignmentId)
+          if (assignment) {
+            // 设置值班表信息
+            record.scheduleId = assignment.scheduleId
+            const schedule = scheduleList.value.find(s => s.id === assignment.scheduleId)
+            record.scheduleName = schedule ? schedule.scheduleName : '未知值班表'
           } else {
             record.scheduleName = '未知值班表'
           }
-          
-          if (record.dutyShift) {
-            // 尝试从班次配置中查找
-            const shiftConfig = shiftConfigs.value.find(config => config.id === record.dutyShift)
-            if (shiftConfig && shiftConfig.shiftName) {
-              saveShiftName(record.dutyShift, shiftConfig.shiftName)
-            } else {
-              // 使用默认格式，确保能够处理所有班次值
-              saveShiftName(record.dutyShift, `班次${record.dutyShift}`)
-            }
-          } else if (record.assignmentId) {
-            // 这里我们可以尝试从值班安排中获取班次信息
-            // 但由于需要异步调用API，我们暂时先保存一个默认值
-            saveShiftName(record.assignmentId, `班次${record.assignmentId}`)
+        } else {
+          record.scheduleName = '未知值班表'
+        }
+        
+        if (record.dutyShift) {
+          // 尝试从班次配置中查找
+          const shiftConfig = shiftConfigs.value.find(config => config.id === record.dutyShift)
+          if (shiftConfig && shiftConfig.shiftName) {
+            saveShiftName(record.dutyShift, shiftConfig.shiftName)
+          } else {
+            // 使用默认格式，确保能够处理所有班次值
+            saveShiftName(record.dutyShift, `班次${record.dutyShift}`)
           }
-        })
-      }
+        } else if (record.assignmentId) {
+          // 这里我们可以尝试从值班安排中获取班次信息
+          // 但由于需要异步调用API，我们暂时先保存一个默认值
+          saveShiftName(record.assignmentId, `班次${record.assignmentId}`)
+        }
+      })
     }
   } catch (error) {
     // console.error('获取值班记录列表失败:', error)
@@ -1369,19 +1354,15 @@ const handleCheckIn = async () => {
     await checkInFormRef.value.validate()
     checkInLoading.value = true
     
-    const response = await checkIn(currentRecord.value.assignmentId, {
+    await checkIn(currentRecord.value.assignmentId, {
       employeeId: currentRecord.value.employeeId,
       checkInTime: checkInForm.checkInTime,
       checkInRemark: checkInForm.checkInRemark
     })
     
-    if (response.code === 200) {
-      ElMessage.success('签到成功')
-      checkInDialogVisible.value = false
-      fetchRecordList()
-    } else {
-      ElMessage.error(response.message || '签到失败')
-    }
+    ElMessage.success('签到成功')
+    checkInDialogVisible.value = false
+    fetchRecordList()
   } catch (error) {
     // console.error('签到失败:', error)
     ElMessage.error('签到失败')
@@ -1396,19 +1377,15 @@ const handleCheckOut = async () => {
     await checkOutFormRef.value.validate()
     checkOutLoading.value = true
     
-    const response = await checkOut(currentRecord.value.id, {
+    await checkOut(currentRecord.value.id, {
       checkOutTime: checkOutForm.checkOutTime,
       checkOutRemark: checkOutForm.checkOutRemark,
       overtimeHours: checkOutForm.overtimeHours
     })
     
-    if (response.code === 200) {
-      ElMessage.success('签退成功')
-      checkOutDialogVisible.value = false
-      fetchRecordList()
-    } else {
-      ElMessage.error(response.message || '签退失败')
-    }
+    ElMessage.success('签退成功')
+    checkOutDialogVisible.value = false
+    fetchRecordList()
   } catch (error) {
     // console.error('签退失败:', error)
     ElMessage.error('签退失败')
@@ -1425,15 +1402,11 @@ const handleEditSave = async () => {
     
     editForm.substituteType = substituteType.value
     
-    const response = await updateRecord(editForm)
+    await updateRecord(editForm)
     
-    if (response.code === 200) {
-      ElMessage.success('编辑值班记录成功')
-      editDialogVisible.value = false
-      fetchRecordList()
-    } else {
-      ElMessage.error(response.message || '编辑值班记录失败')
-    }
+    ElMessage.success('编辑值班记录成功')
+    editDialogVisible.value = false
+    fetchRecordList()
   } catch (error) {
     // console.error('编辑值班记录失败:', error)
     ElMessage.error('编辑值班记录失败')
@@ -1451,13 +1424,9 @@ const handleDelete = async (id) => {
       type: 'warning'
     })
     
-    const response = await deleteRecord(id)
-    if (response.code === 200) {
-      ElMessage.success('删除值班记录成功')
-      fetchRecordList()
-    } else {
-      ElMessage.error(response.message || '删除值班记录失败')
-    }
+    await deleteRecord(id)
+    ElMessage.success('删除值班记录成功')
+    fetchRecordList()
   } catch (error) {
     if (error !== 'cancel') {
       // console.error('删除值班记录失败:', error)
@@ -1922,14 +1891,10 @@ const handleCreate = async () => {
       // console.log('创建值班记录 - 用户ID:', userStore.employeeId)
       
       // 获取值班表下的所有值班安排
-      const assignmentResponse = await getAssignmentsByScheduleId(createForm.scheduleId)
-      if (assignmentResponse.code !== 200) {
-        ElMessage.error('获取值班安排失败')
-        return
-      }
+      const assignments = await getAssignmentsByScheduleId(createForm.scheduleId)
       
       // 查找对应的值班安排
-      const assignment = assignmentResponse.data.find(a => {
+      const assignment = assignments.find(a => {
         const assignmentDate = formatDate(a.dutyDate)
         let assignmentShift = 0
         if (a.shiftConfigId) {
@@ -1940,7 +1905,6 @@ const handleCreate = async () => {
         const assignmentEmployeeId = parseInt(a.employeeId) || 0
         const userEmployeeId = parseInt(userStore.employeeId) || 0
         const formDutyShift = parseInt(createForm.dutyShift) || 0
-        // console.log('比较: 日期=' + assignmentDate + '===', dateStr + ', 班次=' + assignmentShift + '===', formDutyShift + ', 员工ID=' + assignmentEmployeeId + '===', userEmployeeId)
         return assignmentDate === dateStr && assignmentShift === formDutyShift && assignmentEmployeeId === userEmployeeId
       })
       
@@ -1999,15 +1963,11 @@ const handleCreate = async () => {
         }
       }
       
-      const response = await addRecord(recordData)
+      await addRecord(recordData)
       
-      if (response.code === 200) {
-        ElMessage.success('新建值班记录成功')
-        createDialogVisible.value = false
-        fetchRecordList()
-      } else {
-        ElMessage.error(response.message || '新建值班记录失败')
-      }
+      ElMessage.success('新建值班记录成功')
+      createDialogVisible.value = false
+      fetchRecordList()
     } else {
       // 编辑值班记录
       const recordData = {
@@ -2022,15 +1982,11 @@ const handleCreate = async () => {
         substituteType: createForm.substituteType
       }
       
-      const response = await updateRecord(recordData)
+      await updateRecord(recordData)
       
-      if (response.code === 200) {
-        ElMessage.success('编辑值班记录成功')
-        createDialogVisible.value = false
-        fetchRecordList()
-      } else {
-        ElMessage.error(response.message || '编辑值班记录失败')
-      }
+      ElMessage.success('编辑值班记录成功')
+      createDialogVisible.value = false
+      fetchRecordList()
     }
   } catch (error) {
     // console.error('处理值班记录失败:', error)
@@ -2049,12 +2005,10 @@ const handleSubstituteTypeChange = async (type) => {
 const fetchAvailableSubstitutes = async (recordId) => {
   substituteLoading.value = true
   try {
-    const response = await getAvailableSubstitutes(recordId)
-    if (response.code === 200) {
-      availableSubstitutes.value = response.data
-      if (availableSubstitutes.value.length > 0) {
-        editForm.substituteEmployeeId = availableSubstitutes.value[0].id
-      }
+    const data = await getAvailableSubstitutes(recordId)
+    availableSubstitutes.value = data || []
+    if (availableSubstitutes.value.length > 0) {
+      editForm.substituteEmployeeId = availableSubstitutes.value[0].id
     }
   } catch (error) {
     // console.error('获取替补人员失败:', error)
@@ -2066,10 +2020,8 @@ const fetchAvailableSubstitutes = async (recordId) => {
 
 const fetchDeptList = async () => {
   try {
-    const response = await getDeptList()
-    if (response.code === 200) {
-      deptList.value = response.data
-    }
+    const data = await getDeptList()
+    deptList.value = data || []
   } catch (error) {
     // console.error('获取部门列表失败:', error)
     ElMessage.error('获取部门列表失败')
@@ -2079,15 +2031,13 @@ const fetchDeptList = async () => {
 // 获取值班表列表
 const fetchScheduleList = async () => {
   try {
-    const response = await getScheduleList()
-    if (response.code === 200) {
-      scheduleList.value = response.data
-      // 如果有值班表，默认选择第一个
-      if (scheduleList.value.length > 0 && !selectedScheduleId.value) {
-        selectedScheduleId.value = scheduleList.value[0].id
-        // 获取默认值班表的值班长列表
-        await fetchScheduleLeaders(selectedScheduleId.value)
-      }
+    const data = await getScheduleList()
+    scheduleList.value = data || []
+    // 如果有值班表，默认选择第一个
+    if (scheduleList.value.length > 0 && !selectedScheduleId.value) {
+      selectedScheduleId.value = scheduleList.value[0].id
+      // 获取默认值班表的值班长列表
+      await fetchScheduleLeaders(selectedScheduleId.value)
     }
   } catch (error) {
     // console.error('获取值班表列表失败:', error)

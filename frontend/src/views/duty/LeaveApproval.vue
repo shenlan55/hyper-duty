@@ -456,10 +456,8 @@ const getScheduleName = (scheduleId) => {
 
 const fetchEmployeeList = async () => {
   try {
-    const response = await getEmployeeList()
-    if (response.code === 200) {
-      employeeList.value = response.data
-    }
+    const data = await getEmployeeList()
+    employeeList.value = data || []
   } catch (error) {
     console.error('获取员工列表失败:', error)
     ElMessage.error('获取员工列表失败')
@@ -468,10 +466,8 @@ const fetchEmployeeList = async () => {
 
 const fetchScheduleList = async () => {
   try {
-    const response = await getScheduleList()
-    if (response.code === 200) {
-      scheduleList.value = response.data
-    }
+    const data = await getScheduleList()
+    scheduleList.value = data || []
   } catch (error) {
     console.error('获取值班表列表失败:', error)
     ElMessage.error('获取值班表列表失败')
@@ -480,10 +476,8 @@ const fetchScheduleList = async () => {
 
 const fetchEnabledShifts = async () => {
   try {
-    const response = await shiftApi.getEnabledShifts()
-    if (response.code === 200) {
-      shiftConfigList.value = response.data
-    }
+    const data = await shiftApi.getEnabledShifts()
+    shiftConfigList.value = data || []
   } catch (error) {
     console.error('获取班次配置列表失败:', error)
   }
@@ -493,12 +487,12 @@ const fetchPendingApprovals = async (tabName = activeTab.value) => {
   // console.log('Fetching approvals, tabName:', tabName)
   loading.value = true
   try {
-    let response
+    let data
     const [startDate, endDate] = filterForm.dateRange || [null, null]
     
     if (tabName === 'pending') {
       // console.log('Fetching pending approvals')
-      response = await getPendingApprovalsPage(
+      data = await getPendingApprovalsPage(
         userStore.employeeId || 1,
         pagination.page,
         pagination.size,
@@ -509,7 +503,7 @@ const fetchPendingApprovals = async (tabName = activeTab.value) => {
       )
     } else {
       // console.log('Fetching approved approvals')
-      response = await getApprovedApprovalsPage(
+      data = await getApprovedApprovalsPage(
         userStore.employeeId || 1,
         pagination.page,
         pagination.size,
@@ -520,12 +514,10 @@ const fetchPendingApprovals = async (tabName = activeTab.value) => {
         endDate
       )
     }
-    // console.log('Response received:', response)
-    if (response.code === 200) {
-      requestList.value = response.data.records
-      pagination.total = response.data.total
-      // console.log('Request list updated:', requestList.value)
-    }
+    // console.log('Response received:', data)
+    requestList.value = data.records || []
+    pagination.total = data.total || 0
+    // console.log('Request list updated:', requestList.value)
   } catch (error) {
     console.error('获取审批列表失败:', error)
     ElMessage.error('获取审批列表失败')
@@ -621,7 +613,7 @@ const handleApprove = async () => {
       }
     }
     
-    const response = await approveLeaveRequest(
+    await approveLeaveRequest(
       approveForm.requestId,
       approveForm.approverId,
       approveForm.approvalStatus,
@@ -631,13 +623,9 @@ const handleApprove = async () => {
       approveForm.excludeSameDayShifts // 传递是否排除当日已有班次的人员
     )
     
-    if (response.code === 200) {
-      ElMessage.success('审批成功')
-      approveDialogVisible.value = false
-      fetchPendingApprovals()
-    } else {
-      ElMessage.error(response.message || '审批失败')
-    }
+    ElMessage.success('审批成功')
+    approveDialogVisible.value = false
+    fetchPendingApprovals()
   } catch (error) {
     console.error('审批失败:', error)
     ElMessage.error('审批失败')
@@ -711,15 +699,13 @@ const generateSubstituteSchedule = async () => {
 const fetchAvailableSubstitutes = async (startDate, endDate) => {
   try {
     // 调用后端API获取可用的顶岗人员
-    const response = await getAvailableSubstitutes(
+    const data = await getAvailableSubstitutes(
       currentRequest.value.scheduleId,
       startDate,
       endDate,
       currentRequest.value.employeeId
     )
-    if (response.code === 200) {
-      availableSubstitutes.value = response.data
-    }
+    availableSubstitutes.value = data || []
   } catch (error) {
     console.error('获取可用顶岗人员失败:', error)
     ElMessage.error('获取可用顶岗人员失败')
@@ -729,24 +715,20 @@ const fetchAvailableSubstitutes = async (startDate, endDate) => {
 const selectAllSubstitutes = async () => {
   // 调用后端API进行一键选择顶岗人员
   try {
-    const response = await autoSelectSubstitutes({
+    const data = await autoSelectSubstitutes({
       requestId: currentRequest.value.id,
       substituteData: substituteData.value
     })
     
-    if (response.code === 200) {
-      // 更新前端顶岗数据
-      substituteData.value = response.data
-      
-      // 重新加载每个班次的可用人员列表，确保下拉框能正确显示姓名
-      for (const item of substituteData.value) {
-        await loadSubstitutesForRow(item)
-      }
-      
-      ElMessage.success('已为所有班次选择顶岗人员')
-    } else {
-      ElMessage.error('一键选择失败: ' + response.message)
+    // 更新前端顶岗数据
+    substituteData.value = data || []
+    
+    // 重新加载每个班次的可用人员列表，确保下拉框能正确显示姓名
+    for (const item of substituteData.value) {
+      await loadSubstitutesForRow(item)
     }
+    
+    ElMessage.success('已为所有班次选择顶岗人员')
   } catch (error) {
     console.error('一键选择失败:', error)
     ElMessage.error('一键选择失败')
@@ -760,7 +742,7 @@ const loadSubstitutesForRow = async (row) => {
     const key = `${row.date}_${row.shiftId}`
     if (!rowSubstitutes.value[key] || approveForm.excludeSameDayShifts) {
       // 调用后端API获取该行的可用顶岗人员
-      const response = await getAvailableSubstitutes(
+      const data = await getAvailableSubstitutes(
         currentRequest.value.scheduleId,
         row.date,
         row.date,
@@ -768,9 +750,7 @@ const loadSubstitutesForRow = async (row) => {
         approveForm.excludeSameDayShifts,
         row.shiftId
       )
-      if (response.code === 200) {
-        rowSubstitutes.value[key] = response.data
-      }
+      rowSubstitutes.value[key] = data || []
     }
   } catch (error) {
     console.error('加载顶岗人员失败:', error)
@@ -784,23 +764,21 @@ const getAvailableSubstitutesForRow = (row) => {
 
 const checkSchedule = async () => {
   try {
-    const response = await checkEmployeeSchedule(currentRequest.value.employeeId, currentRequest.value.startDate, currentRequest.value.endDate, currentRequest.value.scheduleId)
+    const data = await checkEmployeeSchedule(currentRequest.value.employeeId, currentRequest.value.startDate, currentRequest.value.endDate, currentRequest.value.scheduleId)
     
-    if (response.code === 200) {
-      if (response.data.hasSchedule) {
-        scheduleStatus.type = 'warning'
-        scheduleStatus.text = '已有排班，请选择顶岗人员'
-        ElMessage.warning('申请人请假期间已有排班，请选择顶岗人员')
-      } else {
-        scheduleStatus.type = 'info'
-        scheduleStatus.text = '无排班，需要选择顶岗人员'
-        ElMessage.info('申请人请假期间无排班，需要选择顶岗人员')
-      }
-      // 设置检查状态为已检查
-      scheduleChecked.value = true
-      // 生成顶岗排班表
-      await generateSubstituteSchedule()
+    if (data.hasSchedule) {
+      scheduleStatus.type = 'warning'
+      scheduleStatus.text = '已有排班，请选择顶岗人员'
+      ElMessage.warning('申请人请假期间已有排班，请选择顶岗人员')
+    } else {
+      scheduleStatus.type = 'info'
+      scheduleStatus.text = '无排班，需要选择顶岗人员'
+      ElMessage.info('申请人请假期间无排班，需要选择顶岗人员')
     }
+    // 设置检查状态为已检查
+    scheduleChecked.value = true
+    // 生成顶岗排班表
+    await generateSubstituteSchedule()
   } catch (error) {
     console.error('检查排班失败:', error)
     ElMessage.error('检查排班失败')
@@ -820,15 +798,11 @@ const goToSchedule = () => {
 
 const handleConfirmSchedule = async () => {
   try {
-    const response = await confirmScheduleCompletion(approveForm.requestId, approveForm.approverId)
+    await confirmScheduleCompletion(approveForm.requestId, approveForm.approverId)
     
-    if (response.code === 200) {
-      ElMessage.success('排班完成确认成功')
-      approveDialogVisible.value = false
-      fetchPendingApprovals()
-    } else {
-      ElMessage.error(response.message || '确认失败')
-    }
+    ElMessage.success('排班完成确认成功')
+    approveDialogVisible.value = false
+    fetchPendingApprovals()
   } catch (error) {
     console.error('确认排班完成失败:', error)
     ElMessage.error('确认排班完成失败')
@@ -837,16 +811,14 @@ const handleConfirmSchedule = async () => {
 
 const fetchSubstituteInfo = async (leaveRequestId) => {
   try {
-    const response = await getLeaveSubstitutes(leaveRequestId)
-    if (response.code === 200) {
-      // 处理顶岗信息数据
-      substituteInfoList.value = response.data.map(item => ({
-        dutyDate: item.dutyDate,
-        shiftName: getShiftNames([item.shiftConfigId]),
-        originalEmployeeName: getEmployeeName(item.originalEmployeeId),
-        substituteEmployeeName: getEmployeeName(item.substituteEmployeeId)
-      }))
-    }
+    const data = await getLeaveSubstitutes(leaveRequestId)
+    // 处理顶岗信息数据
+    substituteInfoList.value = (data || []).map(item => ({
+      dutyDate: item.dutyDate,
+      shiftName: getShiftNames([item.shiftConfigId]),
+      originalEmployeeName: getEmployeeName(item.originalEmployeeId),
+      substituteEmployeeName: getEmployeeName(item.substituteEmployeeId)
+    }))
   } catch (error) {
     console.error('获取顶岗信息失败:', error)
     substituteInfoList.value = []

@@ -753,10 +753,8 @@ const hasAssignment = (date) => {
 
 const fetchScheduleList = async () => {
   try {
-    const response = await getScheduleList()
-    if (response.code === 200) {
-      scheduleList.value = response.data
-    }
+    const data = await getScheduleList()
+    scheduleList.value = data || []
   } catch (error) {
     // console.error('获取值班表列表失败:', error)
     ElMessage.error('获取值班表列表失败')
@@ -765,10 +763,8 @@ const fetchScheduleList = async () => {
 
 const fetchEmployeeList = async () => {
   try {
-    const response = await getEmployeeList()
-    if (response.code === 200) {
-      allEmployeeList.value = response.data
-    }
+    const data = await getEmployeeList()
+    allEmployeeList.value = data || []
   } catch (error) {
     // console.error('获取员工列表失败:', error)
     ElMessage.error('获取员工列表失败')
@@ -778,10 +774,8 @@ const fetchEmployeeList = async () => {
 // 获取部门列表
 const fetchDeptList = async () => {
   try {
-    const response = await getDeptList()
-    if (response.code === 200) {
-      deptList.value = response.data
-    }
+    const data = await getDeptList()
+    deptList.value = data || []
   } catch (error) {
     // console.error('获取部门列表失败:', error)
     ElMessage.error('获取部门列表失败')
@@ -796,10 +790,8 @@ const holidayMap = ref({})
 
 const fetchShiftConfigList = async () => {
   try {
-    const response = await shiftApi.getShiftConfigList()
-    if (response.code === 200) {
-      shiftConfigList.value = response.data.filter(shift => shift.status === 1)
-    }
+    const data = await shiftApi.getShiftConfigList()
+    shiftConfigList.value = (data || []).filter(shift => shift.status === 1)
   } catch (error) {
     // console.error('获取班次配置列表失败:', error)
     ElMessage.error('获取班次配置列表失败')
@@ -809,19 +801,17 @@ const fetchShiftConfigList = async () => {
 const fetchHolidaysList = async (startDate, endDate) => {
   try {
     // console.log('开始获取节假日列表:', startDate, endDate)
-    const response = await holidayService.getHolidaysInRange(startDate, endDate)
-    // console.log('节假日API响应:', response)
-    if (response.code === 200) {
-      holidaysList.value = response.data
-      // console.log('获取到的节假日数据:', response.data)
-      // 构建节假日映射，方便快速查询
-      const map = {}
-      response.data.forEach(holiday => {
-        map[holiday.holidayDate] = holiday
-      })
-      holidayMap.value = map
-      // console.log('构建的节假日映射:', map)
-    }
+    const data = await holidayService.getHolidaysInRange(startDate, endDate)
+    // console.log('节假日API响应:', data)
+    holidaysList.value = data || []
+    // console.log('获取到的节假日数据:', data)
+    // 构建节假日映射，方便快速查询
+    const map = {}
+    (data || []).forEach(holiday => {
+      map[holiday.holidayDate] = holiday
+    })
+    holidayMap.value = map
+    // console.log('构建的节假日映射:', map)
   } catch (error) {
     // console.error('获取节假日列表失败:', error)
     // 节假日获取失败不影响主功能，只在控制台报错
@@ -832,10 +822,8 @@ const fetchHolidaysList = async (startDate, endDate) => {
 
 const fetchScheduleModeList = async () => {
   try {
-    const response = await getScheduleModeList()
-    if (response.code === 200) {
-      scheduleModeList.value = response.data.filter(mode => mode.status === 1)
-    }
+    const data = await getScheduleModeList()
+    scheduleModeList.value = (data || []).filter(mode => mode.status === 1)
   } catch (error) {
     // console.error('获取排班模式列表失败:', error)
     ElMessage.error('获取排班模式列表失败')
@@ -850,19 +838,15 @@ const fetchScheduleEmployees = async (scheduleId, showError = true) => {
       }
       return []
     }
-    const [employeeRes, leaderRes] = await Promise.all([
+    const [employeeIds, leaderIds] = await Promise.all([
       getScheduleEmployees(scheduleId),
       getScheduleLeaders(scheduleId)
     ])
-    if (employeeRes.code === 200) {
-      const employeeIds = employeeRes.data || []
-      scheduleEmployeeList.value = allEmployeeList.value.filter(emp => 
-        employeeIds.includes(emp.id)
-      )
-    }
-    if (leaderRes.code === 200) {
-      scheduleLeaderList.value = leaderRes.data || []
-    }
+    const employeeIdsArray = employeeIds || []
+    scheduleEmployeeList.value = allEmployeeList.value.filter(emp => 
+      employeeIdsArray.includes(emp.id)
+    )
+    scheduleLeaderList.value = leaderIds || []
     return scheduleEmployeeList.value
   } catch (error) {
     // console.error('获取值班人员失败:', error)
@@ -877,15 +861,13 @@ const fetchScheduleShifts = async (scheduleId) => {
       availableShiftList.value = []
       return
     }
-    const response = await getScheduleShifts(scheduleId)
-    if (response.code === 200) {
-      const shiftIds = response.data || []
-      // 过滤出当前值班表可用的班次
-      availableShiftList.value = shiftConfigList.value.filter(shift => {
-        // 确保id的类型一致
-        return shiftIds.includes(Number(shift.id))
-      })
-    }
+    const shiftIds = await getScheduleShifts(scheduleId)
+    const shiftIdsArray = shiftIds || []
+    // 过滤出当前值班表可用的班次
+    availableShiftList.value = shiftConfigList.value.filter(shift => {
+      // 确保id的类型一致
+      return shiftIdsArray.includes(Number(shift.id))
+    })
   } catch (error) {
     // console.error('获取值班表班次失败:', error)
     ElMessage.error('获取值班表班次失败')
@@ -902,16 +884,14 @@ const isLeader = computed(() => {
 const fetchAssignmentList = async (scheduleId = null) => {
   loading.value = true
   try {
-    let response
+    let data
     if (scheduleId) {
-      response = await getAssignmentsByScheduleId(scheduleId)
+      data = await getAssignmentsByScheduleId(scheduleId)
     } else {
-      response = await getAssignmentList()
+      data = await getAssignmentList()
     }
     
-    if (response.code === 200) {
-      assignmentList.value = response.data
-    }
+    assignmentList.value = data || []
   } catch (error) {
     // console.error('获取值班安排列表失败:', error)
     ElMessage.error('获取值班安排列表失败')
@@ -1066,10 +1046,8 @@ const handleSave = async () => {
         status: assignmentForm.status,
         remark: assignmentForm.remark
       }
-      const response = await updateAssignment(singleAssignment)
-      if (response.code === 200) {
-        successCount++
-      }
+      await updateAssignment(singleAssignment)
+      successCount++
     } else {
       // 添加模式：为每个员工创建新记录
       for (const employeeId of assignmentForm.employeeIds) {
@@ -1084,10 +1062,8 @@ const handleSave = async () => {
           remark: assignmentForm.remark
         }
         
-        const response = await addAssignment(singleAssignment)
-        if (response.code === 200) {
-          successCount++
-        }
+        await addAssignment(singleAssignment)
+        successCount++
       }
     }
     
@@ -1202,34 +1178,30 @@ const handleSaveDetail = async () => {
     }
     
     // 调用更新接口
-    const response = await updateAssignment(updateData)
+    await updateAssignment(updateData)
     
-    if (response.code === 200) {
-      // 更新本地数据
-      const index = assignmentList.value.findIndex(item => item.id === editDetailForm.id)
-      if (index !== -1) {
-        assignmentList.value[index].status = statusValue
-        assignmentList.value[index].remark = editDetailForm.remark
-      }
-      
-      // 更新详情弹窗中的数据
-      const detailIndex = selectedDateAssignments.value.findIndex(item => item.id === editDetailForm.id)
-      if (detailIndex !== -1) {
-        // 创建新对象以确保Vue能够检测到变化
-        const updatedItem = {
-          ...selectedDateAssignments.value[detailIndex],
-          status: statusValue,
-          remark: editDetailForm.remark
-        }
-        // 替换整个数组项
-        selectedDateAssignments.value.splice(detailIndex, 1, updatedItem)
-      }
-      
-      editDetailDialogVisible.value = false
-      ElMessage.success('保存成功')
-    } else {
-      ElMessage.error('保存失败')
+    // 更新本地数据
+    const index = assignmentList.value.findIndex(item => item.id === editDetailForm.id)
+    if (index !== -1) {
+      assignmentList.value[index].status = statusValue
+      assignmentList.value[index].remark = editDetailForm.remark
     }
+    
+    // 更新详情弹窗中的数据
+    const detailIndex = selectedDateAssignments.value.findIndex(item => item.id === editDetailForm.id)
+    if (detailIndex !== -1) {
+      // 创建新对象以确保Vue能够检测到变化
+      const updatedItem = {
+        ...selectedDateAssignments.value[detailIndex],
+        status: statusValue,
+        remark: editDetailForm.remark
+      }
+      // 替换整个数组项
+      selectedDateAssignments.value.splice(detailIndex, 1, updatedItem)
+    }
+    
+    editDetailDialogVisible.value = false
+    ElMessage.success('保存成功')
   } catch (error) {
     // console.error('保存失败:', error)
     ElMessage.error('保存失败')
@@ -1320,14 +1292,10 @@ const fetchEmployeeLeaveInfo = async (employeeIds, startDate, endDate) => {
     }
     
     // 调用后端API获取请假信息
-    const response = await getEmployeeLeaveInfoAPI(employeeIds, startDate, endDate)
+    const data = await getEmployeeLeaveInfoAPI(employeeIds, startDate, endDate)
     
-    if (response.code === 200) {
-      // 直接返回处理后的请假信息，不需要转换格式
-      return response.data
-    }
-    
-    return {}
+    // 直接返回处理后的请假信息，不需要转换格式
+    return data || {}
   } catch (error) {
     // console.error('获取请假信息失败:', error)
     return {}
@@ -1365,20 +1333,17 @@ const fetchAllSubstituteInfo = async (employeeIds, startDate, endDate) => {
     }
     
     // 调用后端API获取顶岗信息
-    const response = await getSubstitutesByEmployees(employeeIds, startDate, endDate)
+    const substitutes = await getSubstitutesByEmployees(employeeIds, startDate, endDate)
     
-    if (response.code === 200) {
-      const substitutes = response.data
-      const substituteMap = new Map()
-      
-      // 构建顶岗信息映射，键格式为：employeeId_date_dutyShift
-      substitutes.forEach(substitute => {
-        const key = `${substitute.originalEmployeeId}_${substitute.dutyDate}_${substitute.shiftConfigId}`
-        substituteMap.set(key, substitute.substituteEmployeeId)
-      })
-      
-      return substituteMap
-    }
+    const substituteMap = new Map()
+    
+    // 构建顶岗信息映射，键格式为：employeeId_date_dutyShift
+    (substitutes || []).forEach(substitute => {
+      const key = `${substitute.originalEmployeeId}_${substitute.dutyDate}_${substitute.shiftConfigId}`
+      substituteMap.set(key, substitute.substituteEmployeeId)
+    })
+    
+    return substituteMap
   } catch (error) {
     // console.error('获取顶岗信息失败:', error)
   }
@@ -1412,7 +1377,7 @@ const handleBatchSave = async () => {
     
     if (batchForm.scheduleType === 3) {
           // 使用排班模式生成排班
-          const response = await generateScheduleByMode(
+          const assignments = await generateScheduleByMode(
             selectedScheduleId.value,
             startDate,
             endDate,
@@ -1427,22 +1392,16 @@ const handleBatchSave = async () => {
             }
           )
           
-          if (response.code === 200) {
-            // 保存生成的排班数据到数据库
-            const assignments = response.data
-            for (const assignment of assignments) {
-              // 添加remark字段
-              assignment.remark = batchForm.remark
-              await addAssignment(assignment)
-            }
-            ElMessage.success(`批量排班成功，共添加 ${assignments.length} 条记录`)
-          } else {
-            ElMessage.error('批量排班失败: ' + (response.message || '未知错误'))
-            return
+          // 保存生成的排班数据到数据库
+          for (const assignment of assignments || []) {
+            // 添加remark字段
+            assignment.remark = batchForm.remark
+            await addAssignment(assignment)
           }
+          ElMessage.success(`批量排班成功，共添加 ${(assignments || []).length} 条记录`)
         } else {
           // 传统排班方式 - 调用后端API处理
-          const response = await batchSchedule({
+          const successCount = await batchSchedule({
             scheduleId: selectedScheduleId.value,
             startDate: startDate,
             endDate: endDate,
@@ -1455,13 +1414,7 @@ const handleBatchSave = async () => {
             remark: batchForm.remark
           })
           
-          if (response.code === 200) {
-            const successCount = response.data || 0
-            ElMessage.success(`批量排班成功，共添加 ${successCount} 条记录`)
-          } else {
-            ElMessage.error('批量排班失败: ' + (response.message || '未知错误'))
-            return
-          }
+          ElMessage.success(`批量排班成功，共添加 ${successCount || 0} 条记录`)
         }
     
     batchDialogVisible.value = false

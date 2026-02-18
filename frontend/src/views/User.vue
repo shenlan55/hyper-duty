@@ -201,10 +201,8 @@ const pagedUserList = computed(() => {
 // 获取人员列表
 const fetchEmployeeList = async () => {
   try {
-    const response = await getEmployeeList()
-    if (response.code === 200) {
-      employeeList.value = response.data
-    }
+    const data = await getEmployeeList()
+    employeeList.value = data || []
   } catch (error) {
     console.error('获取人员列表失败:', error)
     ElMessage.error('获取人员列表失败')
@@ -215,10 +213,8 @@ const fetchEmployeeList = async () => {
 const fetchUserList = async () => {
   loading.value = true
   try {
-    const response = await getUserList()
-    if (response.code === 200) {
-      userList.value = response.data
-    }
+    const data = await getUserList()
+    userList.value = data || []
   } catch (error) {
     console.error('获取用户列表失败:', error)
     ElMessage.error('获取用户列表失败')
@@ -276,22 +272,18 @@ const handleSave = async () => {
     await userFormRef.value.validate()
     dialogLoading.value = true
     
-    let response
     if (userForm.id) {
       // 编辑用户
-      response = await updateUser(userForm)
+      await updateUser(userForm)
+      ElMessage.success('编辑用户成功')
     } else {
       // 添加用户
-      response = await addUser(userForm)
+      await addUser(userForm)
+      ElMessage.success('添加用户成功')
     }
     
-    if (response.code === 200) {
-      ElMessage.success(userForm.id ? '编辑用户成功' : '添加用户成功')
-      dialogVisible.value = false
-      fetchUserList()
-    } else {
-      ElMessage.error(response.message || (userForm.id ? '编辑用户失败' : '添加用户失败'))
-    }
+    dialogVisible.value = false
+    fetchUserList()
   } catch (error) {
     console.error('保存用户失败:', error)
     ElMessage.error('保存用户失败')
@@ -309,13 +301,9 @@ const handleDelete = async (id) => {
       type: 'warning'
     })
     
-    const response = await deleteUser(id)
-    if (response.code === 200) {
-      ElMessage.success('删除用户成功')
-      fetchUserList()
-    } else {
-      ElMessage.error(response.message || '删除用户失败')
-    }
+    await deleteUser(id)
+    ElMessage.success('删除用户成功')
+    fetchUserList()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除用户失败:', error)

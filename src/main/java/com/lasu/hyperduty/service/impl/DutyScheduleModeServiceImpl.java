@@ -7,10 +7,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lasu.hyperduty.entity.DutyScheduleMode;
 import com.lasu.hyperduty.mapper.DutyScheduleModeMapper;
 import com.lasu.hyperduty.service.DutyScheduleModeService;
-import com.lasu.hyperduty.service.algorithm.ScheduleAlgorithm;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,15 +17,9 @@ import java.util.Map;
  */
 @Service
 public class DutyScheduleModeServiceImpl extends ServiceImpl<DutyScheduleModeMapper, DutyScheduleMode> 
-        implements DutyScheduleModeService, ApplicationContextAware {
+        implements DutyScheduleModeService {
 
-    private ApplicationContext applicationContext;
     private ObjectMapper objectMapper = new ObjectMapper();
-
-    @Override
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        this.applicationContext = applicationContext;
-    }
 
     @Override
     public List<DutyScheduleMode> getEnabledModes() {
@@ -53,37 +43,7 @@ public class DutyScheduleModeServiceImpl extends ServiceImpl<DutyScheduleModeMap
         return this.getOne(queryWrapper);
     }
 
-    @Override
-    public ScheduleAlgorithm getAlgorithmInstance(String algorithmClass) {
-        if (algorithmClass == null || algorithmClass.isEmpty()) {
-            return null;
-        }
 
-        try {
-            // 尝试从Spring容器中获取实例
-            @SuppressWarnings("unchecked")
-            ScheduleAlgorithm algorithm = (ScheduleAlgorithm) applicationContext.getBean(Class.forName(algorithmClass));
-            return algorithm;
-        } catch (Exception e) {
-            // 如果容器中没有，则尝试反射创建
-            try {
-                @SuppressWarnings("unchecked")
-                ScheduleAlgorithm algorithm = (ScheduleAlgorithm) Class.forName(algorithmClass).getDeclaredConstructor().newInstance();
-                return algorithm;
-            } catch (Exception ex) {
-                return null;
-            }
-        }
-    }
-
-    @Override
-    public ScheduleAlgorithm getAlgorithmInstanceByModeId(Long modeId) {
-        DutyScheduleMode mode = this.getById(modeId);
-        if (mode == null || mode.getAlgorithmClass() == null) {
-            return null;
-        }
-        return getAlgorithmInstance(mode.getAlgorithmClass());
-    }
 
     @Override
     public Map<String, Object> getModeConfig(Long modeId) {

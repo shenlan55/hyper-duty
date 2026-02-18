@@ -14,6 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -54,18 +55,20 @@ public class AuthController {
                 .eq(com.lasu.hyperduty.entity.SysEmployee::getUsername, loginDTO.getUsername())
                 .one();
 
-        // 生成JWT令牌
-        String token;
+        // 生成访问令牌和刷新令牌
+        String accessToken;
         if (employee != null) {
-            token = jwtUtil.generateToken(loginDTO.getUsername(), employee.getId(), employee.getEmployeeName());
+            accessToken = jwtUtil.generateAccessToken(loginDTO.getUsername(), employee.getId(), employee.getEmployeeName());
         } else {
-            token = jwtUtil.generateToken(loginDTO.getUsername());
+            accessToken = jwtUtil.generateAccessToken(loginDTO.getUsername());
         }
+        String refreshToken = jwtUtil.generateRefreshToken(loginDTO.getUsername());
 
         // 构建返回数据
         Map<String, Object> userInfo = new HashMap<>();
         userInfo.put("username", loginDTO.getUsername());
-        userInfo.put("token", token);
+        userInfo.put("accessToken", accessToken);
+        userInfo.put("refreshToken", refreshToken);
         if (employee != null) {
             userInfo.put("employeeId", employee.getId());
             userInfo.put("employeeName", employee.getEmployeeName());
@@ -75,10 +78,48 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseResult<Void> logout() {
+    public ResponseResult<Void> logout(@RequestHeader("Authorization") String authorizationHeader) {
         // 清除SecurityContext
         SecurityContextHolder.clearContext();
+        
+        // 从请求头中提取访问令牌
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            String accessToken = authorizationHeader.substring(7);
+            String username = jwtUtil.extractUsername(accessToken);
+            jwtUtil.logout(accessToken, username);
+        }
+        
         return ResponseResult.success();
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseResult<Map<String, Object>> refreshToken(@RequestBody Map<String, String> refreshTokenInfo) {
+        String refreshToken = refreshTokenInfo.get("refreshToken");
+        String employeeIdStr = refreshTokenInfo.get("employeeId");
+        String employeeName = refreshTokenInfo.get("employeeName");
+        
+        if (refreshToken == null) {
+            return ResponseResult.error("刷新令牌不能为空");
+        }
+        
+        try {
+            // 生成新的访问令牌
+            String newAccessToken;
+            if (employeeIdStr != null) {
+                Long employeeId = Long.parseLong(employeeIdStr);
+                newAccessToken = jwtUtil.refreshAccessToken(refreshToken, employeeId, employeeName);
+            } else {
+                newAccessToken = jwtUtil.refreshAccessToken(refreshToken);
+            }
+            
+            // 构建返回数据
+            Map<String, Object> tokenInfo = new HashMap<>();
+            tokenInfo.put("accessToken", newAccessToken);
+            
+            return ResponseResult.success("令牌刷新成功", tokenInfo);
+        } catch (Exception e) {
+            return ResponseResult.error("刷新令牌无效或已过期");
+        }
     }
 
     @PostMapping("/change-password")

@@ -312,37 +312,18 @@ const fetchUserMenus = async () => {
   try {
     // console.log('开始获取用户菜单...')
     // 调用后端API获取用户的实际菜单权限
-    const response = await getUserMenus()
+    const backendMenus = await getUserMenus()
     
-    // console.log('获取用户菜单响应：', response)
+    // console.log('获取用户菜单响应：', backendMenus)
     
-    if (response && response.code === 200) {
-      // 从后端API响应中获取菜单数据
-      const backendMenus = response.data
-      
-      // console.log('后端返回的菜单数据：', backendMenus)
-      
-      if (backendMenus && Array.isArray(backendMenus) && backendMenus.length > 0) {
-        // 转换后端菜单数据为前端需要的格式
-        topMenus.value = backendMenus.map(menu => {
-          // 转换子菜单，为子菜单的路径添加父菜单的路径前缀
+    if (backendMenus && Array.isArray(backendMenus) && backendMenus.length > 0) {
+      // 转换后端菜单数据为前端需要的格式
+      topMenus.value = backendMenus.map(menu => {
+          // 直接使用后端返回的完整路径，无需转换
           const children = menu.children && Array.isArray(menu.children) ? menu.children.map(child => {
-            // 为子菜单的路径添加父菜单的路径前缀
-            let childPath = child.path || '';
-            
-            // 特殊处理系统管理菜单的子菜单
-            if (menu.menuName === '系统管理' && childPath && !childPath.startsWith('/system')) {
-              childPath = `/system${childPath.startsWith('/') ? '' : '/'}${childPath}`;
-            }
-            
-            // 特殊处理值班管理菜单的子菜单
-            if (menu.menuName === '值班管理' && childPath && !childPath.startsWith('/duty')) {
-              childPath = `/duty${childPath.startsWith('/') ? '' : '/'}${childPath}`;
-            }
-            
             return {
               name: child.menuName || '未命名菜单',
-              path: childPath,
+              path: child.path || '',
               icon: child.icon || 'Menu'
             };
           }) : []
@@ -355,36 +336,31 @@ const fetchUserMenus = async () => {
             children
           }
         })
-        
-        // 更新路由名称映射
-        const newRouteNameMap = { '/dashboard': '首页' }
-        topMenus.value.forEach(menu => {
-          if (menu.path) {
-            newRouteNameMap[menu.path] = menu.name
-          }
-          if (menu.children) {
-            menu.children.forEach(child => {
-              if (child.path) {
-                newRouteNameMap[child.path] = child.name
-              }
-            })
-          }
-        })
-        routeNameMap.value = newRouteNameMap
-        
-        // console.log('转换后的菜单数据：', topMenus.value)
-        // console.log('更新后的路由名称映射：', routeNameMap.value)
-        
-        // 始终设置首页为默认激活
-        activeTopMenu.value = 'dashboard'
-      } else {
-        // 后端返回的菜单数据为空或格式不正确，使用默认菜单数据
-        console.warn('后端返回的菜单数据为空或格式不正确，使用默认菜单数据')
-        useDefaultMenus()
-      }
+      
+      // 更新路由名称映射
+      const newRouteNameMap = { '/dashboard': '首页' }
+      topMenus.value.forEach(menu => {
+        if (menu.path) {
+          newRouteNameMap[menu.path] = menu.name
+        }
+        if (menu.children) {
+          menu.children.forEach(child => {
+            if (child.path) {
+              newRouteNameMap[child.path] = child.name
+            }
+          })
+        }
+      })
+      routeNameMap.value = newRouteNameMap
+      
+      // console.log('转换后的菜单数据：', topMenus.value)
+      // console.log('更新后的路由名称映射：', routeNameMap.value)
+      
+      // 始终设置首页为默认激活
+      activeTopMenu.value = 'dashboard'
     } else {
-      // API调用失败时，使用默认菜单数据作为 fallback
-      console.warn('获取用户菜单失败，使用默认菜单数据', response)
+      // 后端返回的菜单数据为空或格式不正确，使用默认菜单数据
+      console.warn('后端返回的菜单数据为空或格式不正确，使用默认菜单数据')
       useDefaultMenus()
     }
   } catch (error) {

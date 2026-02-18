@@ -559,10 +559,8 @@ const filterEmployee = (query) => {
 
 const fetchEmployeeList = async () => {
   try {
-    const response = await getEmployeeList()
-    if (response.code === 200) {
-      employeeList.value = response.data.filter(emp => emp.status === 1)
-    }
+    const data = await getEmployeeList()
+    employeeList.value = (data || []).filter(emp => emp.status === 1)
   } catch (error) {
     console.error('获取员工列表失败:', error)
   }
@@ -570,11 +568,9 @@ const fetchEmployeeList = async () => {
 
 const fetchShiftConfigList = async () => {
   try {
-    const response = await shiftApi.getShiftConfigList()
-    if (response.code === 200) {
-      const filteredData = response.data.filter(config => config.status === 1)
-      shiftConfigList.value = filteredData
-    }
+    const data = await shiftApi.getShiftConfigList()
+    const filteredData = (data || []).filter(config => config.status === 1)
+    shiftConfigList.value = filteredData
   } catch (error) {
     console.error('获取班次配置列表失败:', error)
   }
@@ -582,10 +578,8 @@ const fetchShiftConfigList = async () => {
 
 const fetchScheduleList = async () => {
   try {
-    const response = await getScheduleList()
-    if (response.code === 200) {
-      scheduleList.value = response.data.filter(schedule => schedule.status === 1)
-    }
+    const data = await getScheduleList()
+    scheduleList.value = (data || []).filter(schedule => schedule.status === 1)
   } catch (error) {
     console.error('获取值班表列表失败:', error)
   }
@@ -594,14 +588,11 @@ const fetchScheduleList = async () => {
 const fetchAvailableEmployees = async (scheduleId) => {
   try {
     if (scheduleId) {
-      const response = await getScheduleEmployees(scheduleId)
-      if (response.code === 200) {
-        const employeeIds = response.data
-        // 根据员工ID列表，从employeeList中获取对应的员工对象
-        availableEmployeeList.value = employeeList.value.filter(emp => 
-          employeeIds.includes(emp.id)
-        )
-      }
+      const employeeIds = await getScheduleEmployees(scheduleId)
+      // 根据员工ID列表，从employeeList中获取对应的员工对象
+      availableEmployeeList.value = employeeList.value.filter(emp => 
+        employeeIds.includes(emp.id)
+      )
     } else {
       availableEmployeeList.value = []
     }
@@ -614,13 +605,10 @@ const fetchAvailableEmployees = async (scheduleId) => {
 const fetchEmployeeDutyDates = async (scheduleId, employeeId) => {
   try {
     if (scheduleId && employeeId) {
-      const response = await getEmployeeDutyDates(scheduleId, employeeId)
-      if (response.code === 200) {
-        const dates = response.data
-        // 使用员工ID作为键存储日期列表
-        dutyDatesMap.value.set(employeeId, dates)
-        return dates
-      }
+      const dates = await getEmployeeDutyDates(scheduleId, employeeId)
+      // 使用员工ID作为键存储日期列表
+      dutyDatesMap.value.set(employeeId, dates)
+      return dates
     }
     return []
   } catch (error) {
@@ -633,14 +621,11 @@ const fetchEmployeeDutyDates = async (scheduleId, employeeId) => {
 const fetchEmployeeDutyShifts = async (scheduleId, employeeId, date) => {
   try {
     if (scheduleId && employeeId && date) {
-      const response = await getEmployeeDutyShifts(scheduleId, employeeId, date)
-      if (response.code === 200) {
-        const shifts = response.data
-        // 使用员工ID和日期作为键存储班次列表
-        const key = `${employeeId}_${date}`
-        dutyShiftsMap.value.set(key, shifts)
-        return shifts
-      }
+      const shifts = await getEmployeeDutyShifts(scheduleId, employeeId, date)
+      // 使用员工ID和日期作为键存储班次列表
+      const key = `${employeeId}_${date}`
+      dutyShiftsMap.value.set(key, shifts)
+      return shifts
     }
     return []
   } catch (error) {
@@ -723,7 +708,7 @@ const handleEmployeeChange = async (val, detail, type) => {
 const fetchMySwapRequests = async () => {
   loading.value = true
   try {
-    const response = await getMySwapRequestsPage(
+    const data = await getMySwapRequestsPage(
       currentEmployeeId.value,
       pagination.currentPage,
       pagination.pageSize,
@@ -732,25 +717,23 @@ const fetchMySwapRequests = async () => {
       filterForm.startDate,
       filterForm.endDate
     )
-    if (response.code === 200) {
-      // 处理调班申请列表，设置员工名称和值班表名称
-      requestList.value = response.data.records.map(item => {
-        // 设置值班表名称
-        const schedule = scheduleList.value.find(s => s.id === item.scheduleId)
-        item.scheduleName = schedule ? schedule.scheduleName : '未知'
-        
-        // 设置原值班人员名称
-        const originalEmployee = employeeList.value.find(e => e.id === item.originalEmployeeId)
-        item.originalEmployeeName = originalEmployee ? originalEmployee.employeeName : '未知'
-        
-        // 设置目标值班人员名称
-        const targetEmployee = employeeList.value.find(e => e.id === item.targetEmployeeId)
-        item.targetEmployeeName = targetEmployee ? targetEmployee.employeeName : '未知'
-        
-        return item
-      })
-      total.value = response.data.total
-    }
+    // 处理调班申请列表，设置员工名称和值班表名称
+    requestList.value = (data.records || []).map(item => {
+      // 设置值班表名称
+      const schedule = scheduleList.value.find(s => s.id === item.scheduleId)
+      item.scheduleName = schedule ? schedule.scheduleName : '未知'
+      
+      // 设置原值班人员名称
+      const originalEmployee = employeeList.value.find(e => e.id === item.originalEmployeeId)
+      item.originalEmployeeName = originalEmployee ? originalEmployee.employeeName : '未知'
+      
+      // 设置目标值班人员名称
+      const targetEmployee = employeeList.value.find(e => e.id === item.targetEmployeeId)
+      item.targetEmployeeName = targetEmployee ? targetEmployee.employeeName : '未知'
+      
+      return item
+    })
+    total.value = data.total || 0
   } catch (error) {
     console.error('获取调班申请列表失败:', error)
     ElMessage.error('获取调班申请列表失败')
@@ -795,10 +778,8 @@ const handleScheduleChange = async (scheduleId) => {
   if (scheduleId) {
     try {
       // 获取值班表绑定的班次列表
-      const response = await getScheduleShifts(scheduleId)
-      if (response.code === 200) {
-        availableShiftIds.value = response.data || []
-      }
+      const shiftIds = await getScheduleShifts(scheduleId)
+      availableShiftIds.value = shiftIds || []
     } catch (error) {
       console.error('获取值班表班次失败:', error)
       ElMessage.error('获取值班表班次失败')
@@ -935,22 +916,15 @@ const handleSave = async () => {
     // 提交多个调班申请
     let allSuccess = true
     for (const swapRequest of swapRequests) {
-      const response = await submitSwapRequest(swapRequest)
-      if (response.code !== 200) {
-        allSuccess = false
-        ElMessage.error(response.message || '调班申请提交失败')
-        break
-      }
+      await submitSwapRequest(swapRequest)
     }
     
-    if (allSuccess) {
-      ElMessage.success('调班申请提交成功')
-      dialogVisible.value = false
-      fetchMySwapRequests()
-    }
+    ElMessage.success('调班申请提交成功')
+    dialogVisible.value = false
+    fetchMySwapRequests()
   } catch (error) {
     console.error('提交调班申请失败:', error)
-    // 不显示通用错误，因为表单验证错误会单独处理
+    ElMessage.error('调班申请提交失败')
   } finally {
     dialogLoading.value = false
   }
@@ -960,19 +934,15 @@ const handleConfirm = async () => {
   try {
     confirmLoading.value = true
     
-    const response = await confirmSwapRequest(
+    await confirmSwapRequest(
       currentSwapRequest.value.id,
       currentEmployeeId.value,
       'approved'
     )
     
-    if (response.code === 200) {
-      ElMessage.success('调班确认成功')
-      confirmDialogVisible.value = false
-      fetchMySwapRequests()
-    } else {
-      ElMessage.error(response.message || '调班确认失败')
-    }
+    ElMessage.success('调班确认成功')
+    confirmDialogVisible.value = false
+    fetchMySwapRequests()
   } catch (error) {
     console.error('调班确认失败:', error)
     ElMessage.error('调班确认失败')
@@ -989,13 +959,9 @@ const handleDelete = async (id) => {
       type: 'warning'
     })
     
-    const response = await deleteSwapRequest(id)
-    if (response.code === 200) {
-      ElMessage.success('调班申请撤销成功')
-      fetchMySwapRequests()
-    } else {
-      ElMessage.error(response.message || '调班申请撤销失败')
-    }
+    await deleteSwapRequest(id)
+    ElMessage.success('调班申请撤销成功')
+    fetchMySwapRequests()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('撤销调班申请失败:', error)

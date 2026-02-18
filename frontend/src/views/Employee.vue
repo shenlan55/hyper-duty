@@ -412,10 +412,8 @@ const getDictDataLabel = (dictDataId, dictTypeId) => {
 // 获取部门列表
 const fetchDeptList = async () => {
   try {
-    const response = await getDeptList()
-    if (response.code === 200) {
-      deptList.value = response.data
-    }
+    const data = await getDeptList()
+    deptList.value = data || []
   } catch (error) {
     console.error('获取部门列表失败:', error)
     ElMessage.error('获取部门列表失败')
@@ -425,14 +423,12 @@ const fetchDeptList = async () => {
 // 获取字典类型列表
 const fetchDictTypeList = async () => {
   try {
-    const response = await listDictType({ pageNum: 1, pageSize: 1000 })
-    if (response.code === 200) {
-      dictTypeList.value = response.data.records
-      
-      // 预加载所有字典类型的字典数据
-      for (const dictType of dictTypeList.value) {
-        await fetchDictDataByType(dictType.id)
-      }
+    const data = await listDictType({ pageNum: 1, pageSize: 1000 })
+    dictTypeList.value = data.records || []
+    
+    // 预加载所有字典类型的字典数据
+    for (const dictType of dictTypeList.value) {
+      await fetchDictDataByType(dictType.id)
     }
   } catch (error) {
     console.error('获取字典类型列表失败:', error)
@@ -442,10 +438,8 @@ const fetchDictTypeList = async () => {
 // 获取字典数据（按字典类型）
 const fetchDictDataByType = async (dictTypeId) => {
   try {
-    const response = await getDictDataByType(dictTypeId)
-    if (response.code === 200) {
-      dictDataMap.value.set(dictTypeId, response.data)
-    }
+    const data = await getDictDataByType(dictTypeId)
+    dictDataMap.value.set(dictTypeId, data || [])
   } catch (error) {
     console.error('获取字典数据失败:', error)
   }
@@ -454,10 +448,8 @@ const fetchDictDataByType = async (dictTypeId) => {
 // 获取字典数据（用于表单下拉框）
 const fetchDictDataList = async (dictTypeId) => {
   try {
-    const response = await getDictDataByType(dictTypeId)
-    if (response.code === 200) {
-      dictDataList.value = response.data
-    }
+    const data = await getDictDataByType(dictTypeId)
+    dictDataList.value = data || []
   } catch (error) {
     console.error('获取字典数据失败:', error)
   }
@@ -478,10 +470,8 @@ const handleDictTypeChange = (dictTypeId) => {
 const fetchEmployeeList = async () => {
   loading.value = true
   try {
-    const response = await getEmployeeList()
-    if (response.code === 200) {
-      employeeList.value = response.data
-    }
+    const data = await getEmployeeList()
+    employeeList.value = data || []
   } catch (error) {
     console.error('获取人员列表失败:', error)
     ElMessage.error('获取人员列表失败')
@@ -559,22 +549,18 @@ const handleSave = async () => {
     await employeeFormRef.value.validate()
     dialogLoading.value = true
     
-    let response
     if (employeeForm.id) {
       // 编辑人员
-      response = await updateEmployee(employeeForm)
+      await updateEmployee(employeeForm)
+      ElMessage.success('编辑人员成功')
     } else {
       // 添加人员
-      response = await addEmployee(employeeForm)
+      await addEmployee(employeeForm)
+      ElMessage.success('添加人员成功')
     }
     
-    if (response.code === 200) {
-      ElMessage.success(employeeForm.id ? '编辑人员成功' : '添加人员成功')
-      dialogVisible.value = false
-      fetchEmployeeList()
-    } else {
-      ElMessage.error(response.message || (employeeForm.id ? '编辑人员失败' : '添加人员失败'))
-    }
+    dialogVisible.value = false
+    fetchEmployeeList()
   } catch (error) {
     console.error('保存人员失败:', error)
     ElMessage.error('保存人员失败')
@@ -592,13 +578,9 @@ const handleDelete = async (id) => {
       type: 'warning'
     })
     
-    const response = await deleteEmployee(id)
-    if (response.code === 200) {
-      ElMessage.success('删除人员成功')
-      fetchEmployeeList()
-    } else {
-      ElMessage.error(response.message || '删除人员失败')
-    }
+    await deleteEmployee(id)
+    ElMessage.success('删除人员成功')
+    fetchEmployeeList()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除人员失败:', error)

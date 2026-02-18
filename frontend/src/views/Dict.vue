@@ -280,10 +280,8 @@ const filteredDictTypes = computed(() => {
 const loadDictTypeList = async () => {
   typeLoading.value = true
   try {
-    const response = await listDictType({ pageNum: 1, pageSize: 1000 })
-    if (response.code === 200) {
-      dictTypeList.value = response.data.records
-    }
+    const data = await listDictType({ pageNum: 1, pageSize: 1000 })
+    dictTypeList.value = data.records || []
   } catch (error) {
     ElMessage.error('加载字典类型列表失败')
   } finally {
@@ -299,10 +297,8 @@ const loadDictDataList = async () => {
 
   dataLoading.value = true
   try {
-    const response = await getDictDataByType(selectedDictTypeId.value)
-    if (response.code === 200) {
-      dictDataList.value = response.data
-    }
+    const data = await getDictDataByType(selectedDictTypeId.value)
+    dictDataList.value = data || []
   } catch (error) {
     ElMessage.error('加载字典数据列表失败')
   } finally {
@@ -360,12 +356,14 @@ const handleSaveType = async () => {
       typeDialogLoading.value = true
       try {
         const isEdit = typeForm.id !== null
-        const response = isEdit ? await updateDictType(typeForm) : await addDictType(typeForm)
-        if (response.code === 200) {
-          ElMessage.success(isEdit ? '更新成功' : '添加成功')
-          typeDialogVisible.value = false
-          loadDictTypeList()
+        if (isEdit) {
+          await updateDictType(typeForm)
+        } else {
+          await addDictType(typeForm)
         }
+        ElMessage.success(isEdit ? '更新成功' : '添加成功')
+        typeDialogVisible.value = false
+        loadDictTypeList()
       } catch (error) {
         ElMessage.error('保存失败')
       } finally {
@@ -382,15 +380,13 @@ const handleDeleteType = async (dictType) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const response = await deleteDictType(dictType.id)
-    if (response.code === 200) {
-      ElMessage.success('删除成功')
-      if (selectedDictTypeId.value === dictType.id) {
-        selectedDictTypeId.value = ''
-        dictDataList.value = []
-      }
-      loadDictTypeList()
+    await deleteDictType(dictType.id)
+    ElMessage.success('删除成功')
+    if (selectedDictTypeId.value === dictType.id) {
+      selectedDictTypeId.value = ''
+      dictDataList.value = []
     }
+    loadDictTypeList()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
@@ -410,12 +406,14 @@ const handleSaveData = async () => {
         if (!isEdit) {
           dataToSave.dictTypeId = selectedDictTypeId.value
         }
-        const response = isEdit ? await updateDictData(dataToSave) : await addDictData(dataToSave)
-        if (response.code === 200) {
-          ElMessage.success(isEdit ? '更新成功' : '添加成功')
-          dataDialogVisible.value = false
-          loadDictDataList()
+        if (isEdit) {
+          await updateDictData(dataToSave)
+        } else {
+          await addDictData(dataToSave)
         }
+        ElMessage.success(isEdit ? '更新成功' : '添加成功')
+        dataDialogVisible.value = false
+        loadDictDataList()
       } catch (error) {
         ElMessage.error('保存失败')
       } finally {
@@ -432,11 +430,9 @@ const handleDeleteData = async (id) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const response = await deleteDictData(id)
-    if (response.code === 200) {
-      ElMessage.success('删除成功')
-      loadDictDataList()
-    }
+    await deleteDictData(id)
+    ElMessage.success('删除成功')
+    loadDictDataList()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')

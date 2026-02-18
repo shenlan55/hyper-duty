@@ -94,17 +94,13 @@ const modeApi = scheduleModeApi()
 const fetchModeList = async () => {
   loading.value = true
   try {
-    const response = await modeApi.getAllModes()
-    if (response.code === 200) {
-      // 确保status字段为字符串类型，与el-switch组件的active-value/inactive-value类型匹配
-      modeList.value = response.data.map(item => ({
-        ...item,
-        status: item.status.toString()
-      }))
-      total.value = response.data.length
-    } else {
-      ElMessage.error('获取排班模式列表失败')
-    }
+    const data = await modeApi.getAllModes()
+    // 确保status字段为字符串类型，与el-switch组件的active-value/inactive-value类型匹配
+    modeList.value = (data || []).map(item => ({
+      ...item,
+      status: item.status.toString()
+    }))
+    total.value = data ? data.length : 0
   } catch (error) {
     ElMessage.error('网络错误，请稍后重试')
   } finally {
@@ -129,13 +125,9 @@ const handleEdit = (row) => {
 // 删除排班模式
 const handleDelete = async (id) => {
   try {
-    const response = await modeApi.delete(id)
-    if (response.code === 200) {
-      ElMessage.success('删除成功')
-      fetchModeList()
-    } else {
-      ElMessage.error('删除失败')
-    }
+    await modeApi.delete(id)
+    ElMessage.success('删除成功')
+    fetchModeList()
   } catch (error) {
     ElMessage.error('网络错误，请稍后重试')
   }
@@ -151,12 +143,7 @@ const handleStatusChange = async (row) => {
       ...row,
       status: Number(row.status)
     }
-    const response = await modeApi.update(updateData)
-    if (response.code !== 200) {
-      // 恢复原状态
-      row.status = originalStatus
-      ElMessage.error('状态更新失败')
-    }
+    await modeApi.update(updateData)
   } catch (error) {
     // 恢复原状态
     row.status = originalStatus

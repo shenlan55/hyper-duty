@@ -237,10 +237,8 @@ const shiftApi = shiftConfigApi()
 // 获取启用的班次配置
 const fetchEnabledShifts = async () => {
   try {
-    const response = await shiftApi.getEnabledShifts()
-    if (response.code === 200) {
-      enabledShifts.value = response.data
-    }
+    const data = await shiftApi.getEnabledShifts()
+    enabledShifts.value = data || []
   } catch (error) {
     ElMessage.error('获取班次配置失败')
   }
@@ -251,68 +249,65 @@ const fetchModeDetail = async () => {
   if (!props.modeId) return
 
   try {
-    const response = await modeApi.getById(props.modeId)
-    if (response.code === 200) {
-      const data = response.data
-      formData.id = data.id
-      formData.modeName = data.modeName
-      formData.modeCode = data.modeCode
-      formData.modeType = data.modeType.toString()
-      formData.algorithmClass = data.algorithmClass
-      formData.description = data.description
-      formData.status = data.status.toString()
-      formData.sort = data.sort
+    const data = await modeApi.getById(props.modeId)
+    formData.id = data.id
+    formData.modeName = data.modeName
+    formData.modeCode = data.modeCode
+    formData.modeType = data.modeType.toString()
+    formData.algorithmClass = data.algorithmClass
+    formData.description = data.description
+    formData.status = data.status.toString()
+    formData.sort = data.sort
 
-      // 解析配置JSON
-      if (data.configJson) {
-        try {
-          const config = JSON.parse(data.configJson)
-          
-          // 处理天数配置
-          if (config.days && config.days.length > 0) {
-            daysConfig.value = config.days.map(day => ({
-              dayIndex: day.dayIndex,
-              name: day.name,
-              shifts: []
-            }))
-          }
-          
-          // 处理班组配置
-          if (config.teams && config.teams.length > 0) {
-            const processedTeams = config.teams.map(team => {
-              const processedShifts = team.shifts.map(shift => {
-                // 查找对应的班次配置，获取中文名称
-                const shiftConfig = enabledShifts.value.find(s => {
-                  return s.id.toString() === shift.shiftId.toString()
-                })
-                return {
-                  ...shift,
-                  shiftId: shift.shiftId.toString(), // 确保shiftId为字符串类型
-                  shiftName: shiftConfig ? shiftConfig.shiftName : '', // 确保显示中文名称
-                  count: shift.count !== undefined && shift.count !== null ? Number(shift.count) : 0 // 确保count字段存在且为数字类型，默认为0
-                }
+    // 解析配置JSON
+    if (data.configJson) {
+      try {
+        const config = JSON.parse(data.configJson)
+        
+        // 处理天数配置
+        if (config.days && config.days.length > 0) {
+          daysConfig.value = config.days.map(day => ({
+            dayIndex: day.dayIndex,
+            name: day.name,
+            shifts: []
+          }))
+        }
+        
+        // 处理班组配置
+        if (config.teams && config.teams.length > 0) {
+          const processedTeams = config.teams.map(team => {
+            const processedShifts = team.shifts.map(shift => {
+              // 查找对应的班次配置，获取中文名称
+              const shiftConfig = enabledShifts.value.find(s => {
+                return s.id.toString() === shift.shiftId.toString()
               })
               return {
-                shifts: processedShifts
+                ...shift,
+                shiftId: shift.shiftId.toString(), // 确保shiftId为字符串类型
+                shiftName: shiftConfig ? shiftConfig.shiftName : '', // 确保显示中文名称
+                count: shift.count !== undefined && shift.count !== null ? Number(shift.count) : 0 // 确保count字段存在且为数字类型，默认为0
               }
             })
-            teamsConfig.value = processedTeams
-          } else {
-            // 如果没有班组配置，使用默认配置
-            teamsConfig.value = [{
-              shifts: daysConfig.value.map(() => ({
-                shiftId: '',
-                shiftName: '',
-                count: 0
-              }))
-            }]
-          }
-          
-          // 确保班组配置与天数配置一致
-          updateTeamsConfig()
-        } catch (error) {
-          console.error('解析配置JSON失败', error)
+            return {
+              shifts: processedShifts
+            }
+          })
+          teamsConfig.value = processedTeams
+        } else {
+          // 如果没有班组配置，使用默认配置
+          teamsConfig.value = [{
+            shifts: daysConfig.value.map(() => ({
+              shiftId: '',
+              shiftName: '',
+              count: 0
+            }))
+          }]
         }
+        
+        // 确保班组配置与天数配置一致
+        updateTeamsConfig()
+      } catch (error) {
+        console.error('解析配置JSON失败', error)
       }
     }
   } catch (error) {
@@ -483,20 +478,15 @@ const handleSubmit = async () => {
     // 生成配置JSON
     formData.configJson = generateConfigJson()
 
-    let response
     if (formData.id) {
       // 编辑
-      response = await modeApi.update(formData)
+      await modeApi.update(formData)
     } else {
       // 新增
-      response = await modeApi.add(formData)
+      await modeApi.add(formData)
     }
 
-    if (response.code === 200) {
-      emit('save-success')
-    } else {
-      ElMessage.error('保存失败')
-    }
+    emit('save-success')
   } catch (error) {
     console.error('保存失败', error)
     ElMessage.error('保存失败，请稍后重试')

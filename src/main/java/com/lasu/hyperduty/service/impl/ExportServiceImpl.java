@@ -8,7 +8,7 @@ import com.lasu.hyperduty.service.DutyAssignmentService;
 import com.lasu.hyperduty.service.DutyRecordService;
 import com.lasu.hyperduty.service.LeaveRequestService;
 import com.lasu.hyperduty.service.DutyStatisticsService;
-import com.lasu.hyperduty.util.ExcelExportUtil;
+import com.lasu.hyperduty.utils.ExcelExportUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

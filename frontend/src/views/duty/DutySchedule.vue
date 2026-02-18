@@ -299,10 +299,8 @@ const getEmployeeName = (employeeId) => {
 const fetchScheduleList = async () => {
   loading.value = true
   try {
-    const response = await getScheduleList()
-    if (response.code === 200) {
-      scheduleList.value = response.data
-    }
+    const data = await getScheduleList()
+    scheduleList.value = data || []
   } catch (error) {
     console.error('获取值班表列表失败:', error)
     ElMessage.error('获取值班表列表失败')
@@ -313,14 +311,12 @@ const fetchScheduleList = async () => {
 
 const fetchEmployeeList = async () => {
   try {
-    const response = await getEmployeeList()
-    if (response.code === 200) {
-      allEmployeeList.value = response.data.map(emp => ({
-        key: emp.id,
-        label: emp.employeeName,
-        disabled: emp.status !== 1
-      }))
-    }
+    const data = await getEmployeeList()
+    allEmployeeList.value = (data || []).map(emp => ({
+      key: emp.id,
+      label: emp.employeeName,
+      disabled: emp.status !== 1
+    }))
   } catch (error) {
     console.error('获取员工列表失败:', error)
     ElMessage.error('获取员工列表失败')
@@ -331,14 +327,12 @@ const shiftApi = shiftConfigApi()
 
 const fetchShiftList = async () => {
   try {
-    const response = await shiftApi.getShiftConfigList()
-    if (response.code === 200) {
-      allShiftList.value = response.data.map(shift => ({
-        key: shift.id,
-        label: shift.shiftName,
-        disabled: shift.status !== 1
-      }))
-    }
+    const data = await shiftApi.getShiftConfigList()
+    allShiftList.value = (data || []).map(shift => ({
+      key: shift.id,
+      label: shift.shiftName,
+      disabled: shift.status !== 1
+    }))
   } catch (error) {
     console.error('获取班次列表失败:', error)
     ElMessage.error('获取班次列表失败')
@@ -389,20 +383,15 @@ const handleSave = async () => {
     await scheduleFormRef.value.validate()
     dialogLoading.value = true
     
-    let response
     if (scheduleForm.id) {
-      response = await updateSchedule(scheduleForm)
+      await updateSchedule(scheduleForm)
     } else {
-      response = await addSchedule(scheduleForm)
+      await addSchedule(scheduleForm)
     }
     
-    if (response.code === 200) {
-      ElMessage.success(scheduleForm.id ? '编辑值班表成功' : '添加值班表成功')
-      dialogVisible.value = false
-      fetchScheduleList()
-    } else {
-      ElMessage.error(response.message || (scheduleForm.id ? '编辑值班表失败' : '添加值班表失败'))
-    }
+    ElMessage.success(scheduleForm.id ? '编辑值班表成功' : '添加值班表成功')
+    dialogVisible.value = false
+    fetchScheduleList()
   } catch (error) {
     console.error('保存值班表失败:', error)
     ElMessage.error('保存值班表失败')
@@ -419,13 +408,9 @@ const handleDelete = async (id) => {
       type: 'warning'
     })
     
-    const response = await deleteSchedule(id)
-    if (response.code === 200) {
-      ElMessage.success('删除值班表成功')
-      fetchScheduleList()
-    } else {
-      ElMessage.error(response.message || '删除值班表失败')
-    }
+    await deleteSchedule(id)
+    ElMessage.success('删除值班表成功')
+    fetchScheduleList()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除值班表失败:', error)
@@ -437,20 +422,14 @@ const handleDelete = async (id) => {
 const openEmployeeDialog = async (schedule) => {
   currentScheduleId.value = schedule.id
   try {
-    const [employeeRes, leaderRes, shiftRes] = await Promise.all([
+    const [employeeData, leaderData, shiftData] = await Promise.all([
       getScheduleEmployees(schedule.id),
       getScheduleLeaders(schedule.id),
       getScheduleShifts(schedule.id)
     ])
-    if (employeeRes.code === 200) {
-      selectedEmployeeList.value = employeeRes.data || []
-    }
-    if (leaderRes.code === 200) {
-      selectedLeaderList.value = leaderRes.data || []
-    }
-    if (shiftRes.code === 200) {
-      selectedShiftList.value = shiftRes.data || []
-    }
+    selectedEmployeeList.value = employeeData || []
+    selectedLeaderList.value = leaderData || []
+    selectedShiftList.value = shiftData || []
   } catch (error) {
     console.error('获取值班信息失败:', error)
     ElMessage.error('获取值班信息失败')

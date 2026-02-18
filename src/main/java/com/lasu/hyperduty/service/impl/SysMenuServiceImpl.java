@@ -77,6 +77,19 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         List<SysMenu> children = new ArrayList<>();
         for (SysMenu subMenu : menus) {
             if (subMenu.getParentId().equals(menu.getId())) {
+                // 为子菜单添加父菜单的路径前缀
+                String parentPath = menu.getPath();
+                String childPath = subMenu.getPath();
+                
+                // 处理系统管理菜单的子菜单
+                if (menu.getMenuName().equals("系统管理") && childPath != null && !childPath.isEmpty() && !childPath.startsWith("/system")) {
+                    subMenu.setPath("/system" + (childPath.startsWith("/") ? "" : "/") + childPath);
+                }
+                // 处理值班管理菜单的子菜单
+                if (menu.getMenuName().equals("值班管理") && childPath != null && !childPath.isEmpty() && !childPath.startsWith("/duty")) {
+                    subMenu.setPath("/duty" + (childPath.startsWith("/") ? "" : "/") + childPath);
+                }
+                
                 children.add(findChildren(subMenu, menus));
             }
         }

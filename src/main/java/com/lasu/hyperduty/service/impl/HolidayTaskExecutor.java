@@ -2,7 +2,7 @@ package com.lasu.hyperduty.service.impl;
 
 import com.lasu.hyperduty.entity.DutyHoliday;
 import com.lasu.hyperduty.service.DutyHolidayService;
-import com.lasu.hyperduty.util.HolidayUtil;
+import com.lasu.hyperduty.utils.HolidayUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

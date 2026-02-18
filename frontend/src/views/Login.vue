@@ -75,16 +75,12 @@ const handleLogin = async () => {
     await loginFormRef.value.validate()
     loading.value = true
     
-    const response = await login(loginForm)
+    const userInfo = await login(loginForm)
     
-    if (response.code === 200) {
-      // 登录成功，保存用户信息和token
-      userStore.login(response.data)
-      ElMessage.success('登录成功')
-      router.push('/')
-    } else {
-      ElMessage.error(response.message || '登录失败')
-    }
+    // 登录成功，保存用户信息和token
+    userStore.login(userInfo)
+    ElMessage.success('登录成功')
+    router.push('/')
   } catch (error) {
     console.error('登录失败:', error)
     ElMessage.error('登录失败，请重试')

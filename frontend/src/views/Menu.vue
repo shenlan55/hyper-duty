@@ -239,23 +239,21 @@ const menuRules = reactive({
 
 const loadMenuData = async () => {
   try {
-    const response = await getMenuTree()
-    if (response.code === 200) {
-      const processMenuTree = (menus) => {
-        return menus.map(menu => {
-          const processedMenu = { ...menu }
-          processedMenu.hasChildren = processedMenu.children && processedMenu.children.length > 0
-          if (processedMenu.children && processedMenu.children.length > 0) {
-            processedMenu.children = processMenuTree(processedMenu.children)
-          }
-          return processedMenu
-        })
-      }
-      
-      const menuData = processMenuTree(response.data)
-      allMenus.value = flattenMenuTree(menuData)
-      menuList.value = menuData
+    const data = await getMenuTree()
+    const processMenuTree = (menus) => {
+      return menus.map(menu => {
+        const processedMenu = { ...menu }
+        processedMenu.hasChildren = processedMenu.children && processedMenu.children.length > 0
+        if (processedMenu.children && processedMenu.children.length > 0) {
+          processedMenu.children = processMenuTree(processedMenu.children)
+        }
+        return processedMenu
+      })
     }
+    
+    const menuData = processMenuTree(data)
+    allMenus.value = flattenMenuTree(menuData)
+    menuList.value = menuData
   } catch (error) {
     ElMessage.error('获取菜单列表失败')
   }
@@ -282,15 +280,12 @@ const handleAddMenu = () => {
 const handleEditMenu = async (menu) => {
   dialogTitle.value = '编辑菜单'
   try {
-    const response = await getMenuById(menu.id)
-    if (response.code === 200) {
-      const menuData = response.data
-      if (menuData.icon && !iconList.find(item => item.name === menuData.icon)) {
-        menuData.icon = ''
-      }
-      Object.assign(menuForm, menuData)
-      dialogVisible.value = true
+    const menuData = await getMenuById(menu.id)
+    if (menuData.icon && !iconList.find(item => item.name === menuData.icon)) {
+      menuData.icon = ''
     }
+    Object.assign(menuForm, menuData)
+    dialogVisible.value = true
   } catch (error) {
     ElMessage.error('获取菜单详情失败')
   }
@@ -303,11 +298,9 @@ const handleDeleteMenu = async (id) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const response = await deleteMenu(id)
-    if (response.code === 200) {
-      ElMessage.success('删除菜单成功')
-      loadMenuData()
-    }
+    await deleteMenu(id)
+    ElMessage.success('删除菜单成功')
+    loadMenuData()
   } catch (error) {
     if (error.message !== 'cancel') {
       ElMessage.error('删除菜单失败')
@@ -346,17 +339,15 @@ const handleSubmit = async () => {
   await menuFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        let response
         if (menuForm.id) {
-          response = await updateMenu(menuForm)
+          await updateMenu(menuForm)
+          ElMessage.success('更新菜单成功')
         } else {
-          response = await addMenu(menuForm)
+          await addMenu(menuForm)
+          ElMessage.success('添加菜单成功')
         }
-        if (response.code === 200) {
-          ElMessage.success(menuForm.id ? '更新菜单成功' : '添加菜单成功')
-          dialogVisible.value = false
-          loadMenuData()
-        }
+        dialogVisible.value = false
+        loadMenuData()
       } catch (error) {
         ElMessage.error(menuForm.id ? '更新菜单失败' : '添加菜单失败')
       }

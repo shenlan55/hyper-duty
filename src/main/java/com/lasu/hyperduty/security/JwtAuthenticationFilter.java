@@ -45,6 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.excludePaths = new ArrayList<>();
         this.excludePaths.add("/auth/login");
         this.excludePaths.add("/auth/logout");
+        this.excludePaths.add("/auth/refresh-token");
         this.excludePaths.add("/doc.html");
         this.excludePaths.add("/swagger-ui/**");
         this.excludePaths.add("/v3/api-docs/**");
@@ -157,7 +158,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails = this.sysUserService.loadUserByUsername(username);
                 
                 // 验证令牌有效性
-                if (jwtUtil.validateToken(jwt, userDetails.getUsername())) {
+                if (jwtUtil.validateAccessToken(jwt, userDetails.getUsername())) {
                     UsernamePasswordAuthenticationToken authenticationToken = 
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authenticationToken

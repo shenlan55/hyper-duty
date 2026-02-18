@@ -251,15 +251,13 @@ const filteredDeptList = computed(() => {
 const fetchDeptList = async () => {
   loading.value = true
   try {
-    const response = await getDeptList()
-    if (response.code === 200) {
-      deptList.value = response.data
-      // 构建树结构数据
-      buildDeptTree(response.data)
-      // 生成带缩进的部门选项
-      generateIndentedOptions()
-      // console.log('Indented options:', indentedDeptOptions.value)
-    }
+    const data = await getDeptList()
+    deptList.value = data || []
+    // 构建树结构数据
+    buildDeptTree(data || [])
+    // 生成带缩进的部门选项
+    generateIndentedOptions()
+    // console.log('Indented options:', indentedDeptOptions.value)
   } catch (error) {
     console.error('获取部门列表失败:', error)
     ElMessage.error('获取部门列表失败')
@@ -436,22 +434,18 @@ const handleSave = async () => {
     await deptFormRef.value.validate()
     dialogLoading.value = true
     
-    let response
     if (deptForm.id) {
       // 编辑部门
-      response = await updateDept(deptForm)
+      await updateDept(deptForm)
+      ElMessage.success('编辑部门成功')
     } else {
       // 添加部门
-      response = await addDept(deptForm)
+      await addDept(deptForm)
+      ElMessage.success('添加部门成功')
     }
     
-    if (response.code === 200) {
-      ElMessage.success(deptForm.id ? '编辑部门成功' : '添加部门成功')
-      dialogVisible.value = false
-      fetchDeptList()
-    } else {
-      ElMessage.error(response.message || (deptForm.id ? '编辑部门失败' : '添加部门失败'))
-    }
+    dialogVisible.value = false
+    fetchDeptList()
   } catch (error) {
     console.error('保存部门失败:', error)
     ElMessage.error('保存部门失败')
@@ -469,13 +463,9 @@ const handleDelete = async (id) => {
       type: 'warning'
     })
     
-    const response = await deleteDept(id)
-    if (response.code === 200) {
-      ElMessage.success('删除部门成功')
-      fetchDeptList()
-    } else {
-      ElMessage.error(response.message || '删除部门失败')
-    }
+    await deleteDept(id)
+    ElMessage.success('删除部门成功')
+    fetchDeptList()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除部门失败:', error)

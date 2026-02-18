@@ -1,4 +1,4 @@
-package com.lasu.hyperduty.util;
+package com.lasu.hyperduty.utils;
 
 import com.lasu.hyperduty.entity.DutyAssignment;
 import com.lasu.hyperduty.entity.DutyRecord;

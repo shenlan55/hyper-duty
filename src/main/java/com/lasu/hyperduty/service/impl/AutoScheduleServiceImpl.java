@@ -8,7 +8,7 @@ import com.lasu.hyperduty.entity.DutyScheduleRule;
 import com.lasu.hyperduty.entity.DutyShiftConfig;
 import com.lasu.hyperduty.entity.EmployeeAvailableTime;
 import com.lasu.hyperduty.entity.SysEmployee;
-import com.lasu.hyperduty.service.algorithm.ScheduleAlgorithm;
+
 import com.lasu.hyperduty.service.AutoScheduleService;
 import com.lasu.hyperduty.service.DutyAssignmentService;
 import com.lasu.hyperduty.service.DutyHolidayService;

@@ -187,12 +187,10 @@ const fetchLogList = async () => {
       params.endDate = searchForm.dateRange[1]
     }
     
-    const response = await getOperationLogList(params)
-    if (response.code === 200) {
-      // 后端返回的是PageResult对象，包含data和total字段
-      logList.value = response.data.data
-      total.value = response.data.total
-    }
+    const data = await getOperationLogList(params)
+    // 后端返回的是PageResult对象，包含data和total字段
+    logList.value = data.data || []
+    total.value = data.total || 0
   } catch (error) {
     console.error('获取操作日志列表失败:', error)
     ElMessage.error('获取操作日志列表失败')
@@ -241,13 +239,9 @@ const handleDelete = async (id) => {
       type: 'warning'
     })
     
-    const response = await deleteOperationLog(id)
-    if (response.code === 200) {
-      ElMessage.success('删除操作日志成功')
-      fetchLogList()
-    } else {
-      ElMessage.error(response.message || '删除操作日志失败')
-    }
+    await deleteOperationLog(id)
+    ElMessage.success('删除操作日志成功')
+    fetchLogList()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除操作日志失败:', error)

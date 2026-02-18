@@ -328,11 +328,9 @@ const rules = {
 const fetchJobList = async () => {
   loading.value = true
   try {
-    const response = await scheduleApi.getJobList()
-    if (response.code === 200) {
-      jobList.value = response.data
-      total.value = response.data.length
-    }
+    const data = await scheduleApi.getJobList()
+    jobList.value = data || []
+    total.value = data ? data.length : 0
   } catch (error) {
     console.error('获取任务列表失败:', error)
     ElMessage.error('获取任务列表失败')
@@ -345,10 +343,8 @@ const fetchJobList = async () => {
 const fetchLogList = async () => {
   logLoading.value = true
   try {
-    const response = await scheduleApi.getLogList()
-    if (response.code === 200) {
-      logList.value = response.data
-    }
+    const data = await scheduleApi.getLogList()
+    logList.value = data || []
   } catch (error) {
     console.error('获取日志列表失败:', error)
     ElMessage.error('获取日志列表失败')
@@ -418,19 +414,15 @@ const handleSaveJob = async () => {
       status: parseInt(jobForm.status),
       concurrent: parseInt(jobForm.concurrent)
     }
-    let response
     if (jobForm.id) {
-      response = await scheduleApi.updateJob(submitData)
+      await scheduleApi.updateJob(submitData)
+      ElMessage.success('更新任务成功')
     } else {
-      response = await scheduleApi.addJob(submitData)
+      await scheduleApi.addJob(submitData)
+      ElMessage.success('新增任务成功')
     }
-    if (response.code === 200) {
-      ElMessage.success(jobForm.id ? '更新任务成功' : '新增任务成功')
-      dialogVisible.value = false
-      fetchJobList()
-    } else {
-      ElMessage.error(jobForm.id ? '更新任务失败' : '新增任务失败')
-    }
+    dialogVisible.value = false
+    fetchJobList()
   } catch (error) {
     console.error('保存任务失败:', error)
     ElMessage.error('保存任务失败')
@@ -440,15 +432,14 @@ const handleSaveJob = async () => {
 // 处理状态变更
 const handleStatusChange = async (job) => {
   try {
-    const response = job.status === 1
-      ? await scheduleApi.pauseJob(job.id)
-      : await scheduleApi.resumeJob(job.id)
-    if (response.code === 200) {
-      ElMessage.success(job.status === 1 ? '暂停任务成功' : '恢复任务成功')
-      fetchJobList()
+    if (job.status === 1) {
+      await scheduleApi.pauseJob(job.id)
+      ElMessage.success('暂停任务成功')
     } else {
-      ElMessage.error(job.status === 1 ? '暂停任务失败' : '恢复任务失败')
+      await scheduleApi.resumeJob(job.id)
+      ElMessage.success('恢复任务成功')
     }
+    fetchJobList()
   } catch (error) {
     console.error('变更任务状态失败:', error)
     ElMessage.error('变更任务状态失败')
@@ -458,16 +449,12 @@ const handleStatusChange = async (job) => {
 // 立即执行任务
 const handleRunJob = async (jobId) => {
   try {
-    const response = await scheduleApi.runJob(jobId)
-    if (response.code === 200) {
-      ElMessage.success('任务执行成功')
-      // 刷新日志列表
-      setTimeout(() => {
-        fetchLogList()
-      }, 1000)
-    } else {
-      ElMessage.error('任务执行失败')
-    }
+    await scheduleApi.runJob(jobId)
+    ElMessage.success('任务执行成功')
+    // 刷新日志列表
+    setTimeout(() => {
+      fetchLogList()
+    }, 1000)
   } catch (error) {
     console.error('执行任务失败:', error)
     ElMessage.error('执行任务失败')
@@ -486,13 +473,9 @@ const handleDeleteJob = async (jobId) => {
         type: 'danger'
       }
     )
-    const response = await scheduleApi.deleteJob(jobId)
-    if (response.code === 200) {
-      ElMessage.success('删除任务成功')
-      fetchJobList()
-    } else {
-      ElMessage.error('删除任务失败')
-    }
+    await scheduleApi.deleteJob(jobId)
+    ElMessage.success('删除任务成功')
+    fetchJobList()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除任务失败:', error)
@@ -515,14 +498,10 @@ const handleCleanLogs = async () => {
       days = 0
     }
     
-    const response = await scheduleApi.cleanLogs(days)
-    if (response.code === 200) {
-      ElMessage.success(`清理日志成功，共清理 ${response.data} 条记录`)
-      cleanLogDialogVisible.value = false
-      fetchLogList()
-    } else {
-      ElMessage.error('清理日志失败')
-    }
+    const data = await scheduleApi.cleanLogs(days)
+    ElMessage.success(`清理日志成功，共清理 ${data} 条记录`)
+    cleanLogDialogVisible.value = false
+    fetchLogList()
   } catch (error) {
     console.error('清理日志失败:', error)
     ElMessage.error('清理日志失败')

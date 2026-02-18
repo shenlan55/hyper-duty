@@ -180,16 +180,12 @@ const userLoading = ref(false)
 // 加载角色列表
 const loadRoleList = async () => {
   try {
-    const response = await listRole({
+    const data = await listRole({
       pageNum: currentPage.value,
       pageSize: pageSize.value
     })
-    if (response.code === 200) {
-      roleList.value = response.data.records
-      total.value = response.data.total
-    } else {
-      ElMessage.error('获取角色列表失败：' + response.message)
-    }
+    roleList.value = data.records || []
+    total.value = data.total || 0
   } catch (error) {
     ElMessage.error('获取角色列表失败：' + error.message)
   }
@@ -219,13 +215,9 @@ const handleDelete = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
-      const response = await deleteRole(row.id)
-      if (response.code === 200) {
-        ElMessage.success('删除成功')
-        loadRoleList()
-      } else {
-        ElMessage.error('删除失败：' + response.message)
-      }
+      await deleteRole(row.id)
+      ElMessage.success('删除成功')
+      loadRoleList()
     } catch (error) {
       ElMessage.error('删除失败：' + error.message)
     }
@@ -240,21 +232,16 @@ const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        let response
         if (form.id) {
           // 更新角色
-          response = await updateRole(form)
+          await updateRole(form)
         } else {
           // 添加角色
-          response = await addRole(form)
+          await addRole(form)
         }
-        if (response.code === 200) {
-          ElMessage.success(form.id ? '更新成功' : '添加成功')
-          dialogVisible.value = false
-          loadRoleList()
-        } else {
-          ElMessage.error((form.id ? '更新' : '添加') + '失败：' + response.message)
-        }
+        ElMessage.success(form.id ? '更新成功' : '添加成功')
+        dialogVisible.value = false
+        loadRoleList()
       } catch (error) {
         ElMessage.error((form.id ? '更新' : '添加') + '失败：' + error.message)
       }
@@ -265,12 +252,7 @@ const handleSubmit = async () => {
 // 状态变更
 const handleStatusChange = async (row) => {
   try {
-    const response = await updateRole(row)
-    if (response.code !== 200) {
-      ElMessage.error('更新状态失败：' + response.message)
-      // 恢复原状态
-      row.status = row.status === 1 ? 0 : 1
-    }
+    await updateRole(row)
   } catch (error) {
     ElMessage.error('更新状态失败：' + error.message)
     // 恢复原状态
@@ -281,12 +263,8 @@ const handleStatusChange = async (row) => {
 // 加载菜单树
 const loadMenuTree = async () => {
   try {
-    const response = await getMenuList()
-    if (response.code === 200) {
-      menuTree.value = response.data
-    } else {
-      ElMessage.error('获取菜单列表失败：' + response.message)
-    }
+    const data = await getMenuList()
+    menuTree.value = data || []
   } catch (error) {
     ElMessage.error('获取菜单列表失败：' + error.message)
   }
@@ -302,15 +280,10 @@ const handleMenuAuth = async (row) => {
   
   // 获取角色已有菜单
   try {
-    const response = await getRoleMenu(row.id)
-    if (response.code === 200) {
-      const menuIds = response.data
-      // 设置默认勾选
-      if (menuTreeRef.value && menuIds.length > 0) {
-        menuTreeRef.value.setCheckedKeys(menuIds)
-      }
-    } else {
-      ElMessage.error('获取角色菜单失败：' + response.message)
+    const menuIds = await getRoleMenu(row.id)
+    // 设置默认勾选
+    if (menuTreeRef.value && menuIds.length > 0) {
+      menuTreeRef.value.setCheckedKeys(menuIds)
     }
   } catch (error) {
     ElMessage.error('获取角色菜单失败：' + error.message)
@@ -325,14 +298,9 @@ const handleMenuAuthSubmit = async () => {
     // 获取选中的菜单ID
     const checkedKeys = menuTreeRef.value.getCheckedKeys()
     
-    const response = await saveRoleMenu(currentRoleId.value, checkedKeys)
-    
-    if (response.code === 200) {
-      ElMessage.success('菜单授权成功')
-      menuAuthVisible.value = false
-    } else {
-      ElMessage.error('菜单授权失败：' + response.message)
-    }
+    await saveRoleMenu(currentRoleId.value, checkedKeys)
+    ElMessage.success('菜单授权成功')
+    menuAuthVisible.value = false
   } catch (error) {
     ElMessage.error('菜单授权失败：' + error.message)
   }
@@ -342,13 +310,9 @@ const handleMenuAuthSubmit = async () => {
 const remoteUserSearch = (query) => {
   if (userList.value.length === 0) {
     userLoading.value = true
-    getUserList().then(response => {
-      if (response.code === 200) {
-        // 过滤掉禁用的用户（status为0）
-        userList.value = response.data.filter(user => user.status === 1)
-      } else {
-        ElMessage.error('获取用户列表失败：' + response.message)
-      }
+    getUserList().then(data => {
+      // 过滤掉禁用的用户（status为0）
+      userList.value = data.filter(user => user.status === 1)
     }).catch(error => {
       ElMessage.error('获取用户列表失败：' + error.message)
     }).finally(() => {
@@ -367,13 +331,9 @@ const handleUserBind = async (row) => {
   if (userList.value.length === 0) {
     try {
       userLoading.value = true
-      const userResponse = await getUserList()
-      if (userResponse.code === 200) {
-        // 过滤掉禁用的用户（status为0）
-        userList.value = userResponse.data.filter(user => user.status === 1)
-      } else {
-        ElMessage.error('获取用户列表失败：' + userResponse.message)
-      }
+      const userData = await getUserList()
+      // 过滤掉禁用的用户（status为0）
+      userList.value = userData.filter(user => user.status === 1)
     } catch (error) {
       ElMessage.error('获取用户列表失败：' + error.message)
     } finally {
@@ -383,12 +343,8 @@ const handleUserBind = async (row) => {
   
   // 获取角色已有用户
   try {
-    const response = await getRoleUser(row.id)
-    if (response.code === 200) {
-      selectedUserIds.value = response.data
-    } else {
-      ElMessage.error('获取角色用户失败：' + response.message)
-    }
+    const userIds = await getRoleUser(row.id)
+    selectedUserIds.value = userIds
   } catch (error) {
     ElMessage.error('获取角色用户失败：' + error.message)
   }
@@ -399,14 +355,9 @@ const handleUserBindSubmit = async () => {
   if (!currentRoleId.value) return
   
   try {
-    const response = await saveRoleUser(currentRoleId.value, selectedUserIds.value)
-    
-    if (response.code === 200) {
-      ElMessage.success('用户绑定成功')
-      userBindVisible.value = false
-    } else {
-      ElMessage.error('用户绑定失败：' + response.message)
-    }
+    await saveRoleUser(currentRoleId.value, selectedUserIds.value)
+    ElMessage.success('用户绑定成功')
+    userBindVisible.value = false
   } catch (error) {
     ElMessage.error('用户绑定失败：' + error.message)
   }

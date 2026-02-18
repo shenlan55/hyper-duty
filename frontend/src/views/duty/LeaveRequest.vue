@@ -516,10 +516,8 @@ const isShiftDisabled = (shiftId) => {
 
 const fetchEmployeeList = async () => {
   try {
-    const response = await getEmployeeList()
-    if (response.code === 200) {
-      employeeList.value = response.data
-    }
+    const data = await getEmployeeList()
+    employeeList.value = data || []
   } catch (error) {
     // console.error('获取员工列表失败:', error)
   }
@@ -527,10 +525,8 @@ const fetchEmployeeList = async () => {
 
 const fetchScheduleList = async () => {
   try {
-    const response = await getScheduleList()
-    if (response.code === 200) {
-      scheduleList.value = response.data
-    }
+    const data = await getScheduleList()
+    scheduleList.value = data || []
   } catch (error) {
     // console.error('获取值班表列表失败:', error)
   }
@@ -538,10 +534,8 @@ const fetchScheduleList = async () => {
 
 const fetchEnabledShifts = async () => {
   try {
-    const response = await shiftApi.getEnabledShifts()
-    if (response.code === 200) {
-      shiftConfigList.value = response.data
-    }
+    const data = await shiftApi.getEnabledShifts()
+    shiftConfigList.value = data || []
   } catch (error) {
     // console.error('获取班次配置列表失败:', error)
   }
@@ -551,7 +545,7 @@ const fetchMyLeaveRequests = async () => {
   loading.value = true
   try {
     const [startDate, endDate] = filterForm.dateRange || [null, null]
-    const response = await getMyLeaveRequestsPage(
+    const data = await getMyLeaveRequestsPage(
       userStore.employeeId,
       pagination.page,
       pagination.size,
@@ -560,10 +554,8 @@ const fetchMyLeaveRequests = async () => {
       startDate,
       endDate
     )
-    if (response.code === 200) {
-      requestList.value = response.data.records
-      pagination.total = response.data.total
-    }
+    requestList.value = data.records || []
+    pagination.total = data.total || 0
   } catch (error) {
     // console.error('获取请假申请列表失败:', error)
     ElMessage.error('获取请假申请列表失败')
@@ -607,11 +599,9 @@ const openAddDialog = () => {
 
 const fetchScheduleLeaders = async (scheduleId) => {
   try {
-    const response = await getScheduleEmployeesWithLeaderInfo(scheduleId)
-    if (response.code === 200) {
-      // 过滤出值班长
-      scheduleLeaders.value = response.data.filter(employee => employee.isLeader === 1)
-    }
+    const data = await getScheduleEmployeesWithLeaderInfo(scheduleId)
+    // 过滤出值班长
+    scheduleLeaders.value = (data || []).filter(employee => employee.isLeader === 1)
   } catch (error) {
     // console.error('获取值班长列表失败:', error)
   }
@@ -633,10 +623,8 @@ const openViewDialog = async (row) => {
 
 const fetchApprovalRecords = async (requestId) => {
   try {
-    const response = await getApprovalRecords(requestId)
-    if (response.code === 200) {
-      currentRequest.value.approvalRecords = response.data
-    }
+    const data = await getApprovalRecords(requestId)
+    currentRequest.value.approvalRecords = data || []
   } catch (error) {
     // console.error('获取审批记录失败:', error)
   }
@@ -682,10 +670,8 @@ const handleScheduleChange = async (scheduleId) => {
   if (scheduleId) {
     try {
       // 获取值班表绑定的班次列表
-      const response = await getScheduleShifts(scheduleId)
-      if (response.code === 200) {
-        availableShiftIds.value = response.data || []
-      }
+      const data = await getScheduleShifts(scheduleId)
+      availableShiftIds.value = data || []
     } catch (error) {
       // console.error('获取值班表班次失败:', error)
       ElMessage.error('获取值班表班次失败')
@@ -706,12 +692,10 @@ const fetchCompensatoryHours = async () => {
       const now = new Date()
       const year = now.getFullYear()
       const month = now.getMonth() + 1
-      const response = await getEmployeeStatistics(year, month)
-      if (response.code === 200) {
-        const employeeStat = response.data.find(stat => stat.employeeId === userStore.employeeId)
-        if (employeeStat) {
-          compensatoryHours.value = employeeStat.compensatoryHours || 0
-        }
+      const data = await getEmployeeStatistics(year, month)
+      const employeeStat = data.find(stat => stat.employeeId === userStore.employeeId)
+      if (employeeStat) {
+        compensatoryHours.value = employeeStat.compensatoryHours || 0
       }
     } catch (error) {
       console.error('获取可调休工时失败:', error)
@@ -735,15 +719,11 @@ const handleSave = async () => {
       formData.shiftConfigId = formData.shiftConfigIds.split(',')[0]
     }
     
-    const response = await submitLeaveRequest(formData)
+    await submitLeaveRequest(formData)
     
-    if (response.code === 200) {
-      ElMessage.success('请假申请提交成功')
-      dialogVisible.value = false
-      fetchMyLeaveRequests()
-    } else {
-      ElMessage.error(response.message || '请假申请提交失败')
-    }
+    ElMessage.success('请假申请提交成功')
+    dialogVisible.value = false
+    fetchMyLeaveRequests()
   } catch (error) {
     // console.error('提交请假申请失败:', error)
     ElMessage.error('提交请假申请失败')
@@ -760,13 +740,9 @@ const handleDelete = async (id) => {
       type: 'warning'
     })
     
-    const response = await deleteLeaveRequest(id)
-    if (response.code === 200) {
-      ElMessage.success('请假申请撤销成功')
-      fetchMyLeaveRequests()
-    } else {
-      ElMessage.error(response.message || '请假申请撤销失败')
-    }
+    await deleteLeaveRequest(id)
+    ElMessage.success('请假申请撤销成功')
+    fetchMyLeaveRequests()
   } catch (error) {
     if (error !== 'cancel') {
       // console.error('撤销请假申请失败:', error)
@@ -810,8 +786,8 @@ const updateDisabledShifts = async (selectedShiftIds) => {
     // 检查该班次是否与已选择的任何班次互斥
     for (const selectedShiftId of selectedShiftIds) {
       try {
-        const response = await shiftApi.checkIfMutex(shift.id, selectedShiftId)
-        if (response.code === 200 && response.data) {
+        const isMutex = await shiftApi.checkIfMutex(shift.id, selectedShiftId)
+        if (isMutex) {
           // 如果互斥，则禁用该班次
           disabledShiftIds.value.add(shift.id)
           break
@@ -836,8 +812,8 @@ const handleShiftChange = async (newShiftConfigIds) => {
     for (let i = 0; i < newShiftConfigIds.length; i++) {
       for (let j = i + 1; j < newShiftConfigIds.length; j++) {
         try {
-          const response = await shiftApi.checkIfMutex(newShiftConfigIds[i], newShiftConfigIds[j])
-          if (response.code === 200 && response.data) {
+          const isMutex = await shiftApi.checkIfMutex(newShiftConfigIds[i], newShiftConfigIds[j])
+          if (isMutex) {
             // 找到互斥班次，获取班次名称
             const shift1 = shiftConfigList.value.find(shift => shift.id === newShiftConfigIds[i])
             const shift2 = shiftConfigList.value.find(shift => shift.id === newShiftConfigIds[j])

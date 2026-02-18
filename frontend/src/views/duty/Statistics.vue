@@ -168,12 +168,10 @@ const getCompletionRate = (row) => {
 const fetchStatistics = async () => {
   loading.value = true
   try {
-    const response = await getAllStatistics()
-    if (response.code === 200) {
-      Object.assign(statistics, response.data)
-      await nextTick()
-      initCharts()
-    }
+    const data = await getAllStatistics()
+    Object.assign(statistics, data)
+    await nextTick()
+    initCharts()
   } catch (error) {
     console.error('获取统计数据失败:', error)
     ElMessage.error('获取统计数据失败')
@@ -324,10 +322,8 @@ const fetchEmployeeStatistics = async () => {
       month = parseInt(monthStr)
     }
     
-    const response = await getEmployeeStatistics(year, month)
-    if (response.code === 200) {
-      employeeStatistics.value = response.data
-    }
+    const data = await getEmployeeStatistics(year, month)
+    employeeStatistics.value = data || []
   } catch (error) {
     console.error('获取员工统计数据失败:', error)
     ElMessage.error('获取员工统计数据失败')

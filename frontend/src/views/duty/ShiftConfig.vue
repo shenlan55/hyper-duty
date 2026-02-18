@@ -310,10 +310,8 @@ const getShiftTypeColor = (type) => {
 const fetchShiftConfigList = async () => {
   loading.value = true
   try {
-    const response = await shiftApi.getShiftConfigList()
-    if (response.code === 200) {
-      shiftConfigList.value = response.data
-    }
+    const data = await shiftApi.getShiftConfigList()
+    shiftConfigList.value = data || []
   } catch (error) {
     console.error('获取班次配置列表失败:', error)
     ElMessage.error('获取班次配置列表失败')
@@ -373,20 +371,15 @@ const handleSave = async () => {
       isCrossDay: form.isCrossDay ? 1 : 0
     }
     
-    let response
     if (form.id) {
-      response = await shiftApi.updateShiftConfig(formData)
+      await shiftApi.updateShiftConfig(formData)
     } else {
-      response = await shiftApi.addShiftConfig(formData)
+      await shiftApi.addShiftConfig(formData)
     }
     
-    if (response.code === 200) {
-      ElMessage.success(form.id ? '编辑班次成功' : '添加班次成功')
-      dialogVisible.value = false
-      fetchShiftConfigList()
-    } else {
-      ElMessage.error(response.message || '操作失败')
-    }
+    ElMessage.success(form.id ? '编辑班次成功' : '添加班次成功')
+    dialogVisible.value = false
+    fetchShiftConfigList()
   } catch (error) {
     console.error('保存班次配置失败:', error)
     ElMessage.error('保存班次配置失败')
@@ -398,13 +391,9 @@ const handleSave = async () => {
 const toggleStatus = async (row) => {
   try {
     const newStatus = row.status === 1 ? 0 : 1
-    const response = await shiftApi.updateShiftConfigStatus(row.id, newStatus)
-    if (response.code === 200) {
-      ElMessage.success('状态更新成功')
-      fetchShiftConfigList()
-    } else {
-      ElMessage.error(response.message || '状态更新失败')
-    }
+    await shiftApi.updateShiftConfigStatus(row.id, newStatus)
+    ElMessage.success('状态更新成功')
+    fetchShiftConfigList()
   } catch (error) {
     console.error('更新状态失败:', error)
     ElMessage.error('更新状态失败')
@@ -419,13 +408,9 @@ const handleDelete = async (id) => {
       type: 'warning'
     })
     
-    const response = await shiftApi.deleteShiftConfig(id)
-    if (response.code === 200) {
-      ElMessage.success('删除班次配置成功')
-      fetchShiftConfigList()
-    } else {
-      ElMessage.error(response.message || '删除班次配置失败')
-    }
+    await shiftApi.deleteShiftConfig(id)
+    ElMessage.success('删除班次配置成功')
+    fetchShiftConfigList()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除班次配置失败:', error)

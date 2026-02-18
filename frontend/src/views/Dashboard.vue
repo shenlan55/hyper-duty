@@ -122,10 +122,8 @@ const todoLoading = ref(false)
 // 加载统计数据
 const loadStatistics = async () => {
   try {
-    const response = await getDashboardStatistics()
-    if (response.code === 200) {
-      statistics.value = response.data
-    }
+    const data = await getDashboardStatistics()
+    statistics.value = data || {}
   } catch (error) {
     console.error('获取统计数据失败:', error)
   }
@@ -149,9 +147,9 @@ const loadTodoList = async () => {
     
     try {
       // 获取所有值班安排
-      const assignmentResponse = await getAssignmentList()
-      if (assignmentResponse.code === 200 && Array.isArray(assignmentResponse.data)) {
-        assignments = assignmentResponse.data
+      const assignmentData = await getAssignmentList()
+      if (Array.isArray(assignmentData)) {
+        assignments = assignmentData
       }
     } catch (error) {
       console.error('获取值班安排失败:', error)
@@ -159,9 +157,9 @@ const loadTodoList = async () => {
     
     try {
       // 获取所有值班表
-      const scheduleResponse = await getScheduleList()
-      if (scheduleResponse.code === 200 && Array.isArray(scheduleResponse.data)) {
-        schedules = scheduleResponse.data
+      const scheduleData = await getScheduleList()
+      if (Array.isArray(scheduleData)) {
+        schedules = scheduleData
         // 打印值班表数据结构，用于调试
         if (schedules.length > 0) {
           console.log('值班表数据结构:', schedules[0])
@@ -173,9 +171,9 @@ const loadTodoList = async () => {
     
     try {
       // 获取所有员工信息
-      const employeeResponse = await getEmployeeList()
-      if (employeeResponse.code === 200 && Array.isArray(employeeResponse.data)) {
-        employees = employeeResponse.data
+      const employeeData = await getEmployeeList()
+      if (Array.isArray(employeeData)) {
+        employees = employeeData
       }
     } catch (error) {
       console.error('获取员工信息失败:', error)
@@ -183,13 +181,13 @@ const loadTodoList = async () => {
     
     try {
       // 获取待审批的请假申请
-      const leaveResponse = await getPendingApprovals(employeeId)
-      if (leaveResponse.code === 200 && Array.isArray(leaveResponse.data)) {
+      const leaveData = await getPendingApprovals(employeeId)
+      if (Array.isArray(leaveData)) {
         // 打印第一个请假申请的数据结构，用于调试
-        if (leaveResponse.data.length > 0) {
-          console.log('请假申请数据结构:', leaveResponse.data[0])
+        if (leaveData.length > 0) {
+          console.log('请假申请数据结构:', leaveData[0])
         }
-        leaveTodos = leaveResponse.data
+        leaveTodos = leaveData
           // 只显示待审批的请假申请
           .filter(item => item.approvalStatus === '待审批' || item.approvalStatus === 'pending')
           .map(item => {
@@ -222,9 +220,9 @@ const loadTodoList = async () => {
     
     try {
       // 获取待审批的调班申请
-      const swapResponse = await getMySwapRequests(employeeId)
-      if (swapResponse.code === 200 && Array.isArray(swapResponse.data)) {
-        swapTodos = swapResponse.data
+      const swapData = await getMySwapRequests(employeeId)
+      if (Array.isArray(swapData)) {
+        swapTodos = swapData
           // 只显示待当前用户处理的调班申请
           .filter(item => item.approvalStatus === 'pending' && item.targetEmployeeId === employeeId)
           .map(item => {
@@ -257,13 +255,13 @@ const loadTodoList = async () => {
     
     try {
       // 获取待审批的加班申请
-      const overtimeResponse = await getPendingOvertimeApprovals(employeeId)
-      if (overtimeResponse.code === 200 && Array.isArray(overtimeResponse.data)) {
+      const overtimeData = await getPendingOvertimeApprovals(employeeId)
+      if (Array.isArray(overtimeData)) {
         // 打印第一个加班申请的数据结构，用于调试
-        if (overtimeResponse.data.length > 0) {
-          console.log('加班申请数据结构:', overtimeResponse.data[0])
+        if (overtimeData.length > 0) {
+          console.log('加班申请数据结构:', overtimeData[0])
         }
-        overtimeTodos = overtimeResponse.data.map(item => {
+        overtimeTodos = overtimeData.map(item => {
           // 根据assignmentId找到对应的值班安排
           const assignment = assignments.find(a => a.id === item.assignmentId)
           let scheduleId = null
