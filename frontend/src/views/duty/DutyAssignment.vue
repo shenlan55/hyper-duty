@@ -800,21 +800,21 @@ const fetchShiftConfigList = async () => {
 
 const fetchHolidaysList = async (startDate, endDate) => {
   try {
-    // console.log('开始获取节假日列表:', startDate, endDate)
     const data = await holidayService.getHolidaysInRange(startDate, endDate)
-    // console.log('节假日API响应:', data)
-    holidaysList.value = data || []
-    // console.log('获取到的节假日数据:', data)
+    
+    // 确保data是数组
+    const holidayData = Array.isArray(data) ? data : []
+    holidaysList.value = holidayData
+    
     // 构建节假日映射，方便快速查询
     const map = {}
-    (data || []).forEach(holiday => {
+    holidayData.forEach(holiday => {
       map[holiday.holidayDate] = holiday
     })
     holidayMap.value = map
-    // console.log('构建的节假日映射:', map)
   } catch (error) {
-    // console.error('获取节假日列表失败:', error)
     // 节假日获取失败不影响主功能，只在控制台报错
+    console.error('获取节假日列表失败:', error)
     holidaysList.value = []
     holidayMap.value = {}
   }

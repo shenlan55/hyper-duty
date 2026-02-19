@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.DutyHoliday;
 import com.lasu.hyperduty.mapper.DutyHolidayMapper;
 import com.lasu.hyperduty.service.DutyHolidayService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 public class DutyHolidayServiceImpl extends ServiceImpl<DutyHolidayMapper, DutyHoliday> implements DutyHolidayService {
 
     @Override
+    @Cacheable(value = "holiday", key = "'isHoliday_' + #date")
     public boolean isHoliday(LocalDate date) {
         QueryWrapper<DutyHoliday> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("holiday_date", date);
@@ -33,6 +36,7 @@ public class DutyHolidayServiceImpl extends ServiceImpl<DutyHolidayMapper, DutyH
     }
 
     @Override
+    @Cacheable(value = "holiday", key = "'isWorkday_' + #date")
     public boolean isWorkday(LocalDate date) {
         QueryWrapper<DutyHoliday> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("holiday_date", date);
@@ -49,6 +53,7 @@ public class DutyHolidayServiceImpl extends ServiceImpl<DutyHolidayMapper, DutyH
     }
 
     @Override
+    @Cacheable(value = "holiday", key = "'range_' + #startDate + '_' + #endDate")
     public List<DutyHoliday> getHolidaysInRange(LocalDate startDate, LocalDate endDate) {
         QueryWrapper<DutyHoliday> queryWrapper = new QueryWrapper<>();
         queryWrapper.between("holiday_date", startDate, endDate);
@@ -56,6 +61,7 @@ public class DutyHolidayServiceImpl extends ServiceImpl<DutyHolidayMapper, DutyH
     }
 
     @Override
+    @Cacheable(value = "holiday", key = "'workdays_' + #startDate + '_' + #endDate")
     public List<LocalDate> getWorkdaysInRange(LocalDate startDate, LocalDate endDate) {
         List<LocalDate> workdays = new ArrayList<>();
         List<DutyHoliday> holidays = getHolidaysInRange(startDate, endDate);
@@ -88,6 +94,7 @@ public class DutyHolidayServiceImpl extends ServiceImpl<DutyHolidayMapper, DutyH
     }
 
     @Override
+    @Cacheable(value = "holiday", key = "'nonWorkdays_' + #startDate + '_' + #endDate")
     public List<LocalDate> getNonWorkdaysInRange(LocalDate startDate, LocalDate endDate) {
         List<LocalDate> nonWorkdays = new ArrayList<>();
         List<DutyHoliday> holidays = getHolidaysInRange(startDate, endDate);
@@ -114,6 +121,7 @@ public class DutyHolidayServiceImpl extends ServiceImpl<DutyHolidayMapper, DutyH
     }
 
     @Override
+    @CacheEvict(value = "holiday", allEntries = true)
     public boolean importHolidays(List<DutyHoliday> holidays) {
         // 批量导入前先删除已存在的同日期数据
         List<LocalDate> dates = holidays.stream()
