@@ -418,7 +418,7 @@
             type="date"
             placeholder="选择值班日期"
             style="width: 100%"
-            :disabled-date="disabledDate"
+            :disabled-date="checkDateAvailability"
             @change="handleDateChange"
           />
         </el-form-item>
@@ -1226,63 +1226,106 @@ const openEditDialog = async (record) => {
       await fetchShiftConfigs()
       
       // 直接调用后端API获取值班表下的所有值班安排
-      const response = await getAssignmentsByScheduleId(record.scheduleId)
-      if (response.code === 200) {
-        const dateStr = formatDate(record.dutyDate)
+      const assignments = await getAssignmentsByScheduleId(record.scheduleId)
+      
+      const dateStr = formatDate(record.dutyDate)
+      
+      // 过滤出该日期下的所有值班安排
+      const dateAssignments = assignments.filter(assignment => {
+        const assignmentDate = formatDate(assignment.dutyDate)
+        return assignmentDate === dateStr
+      })
+      
+      // 转换为班次选项格式
+      const shiftMap = new Map()
+      dateAssignments.forEach(assignment => {
+        // 检查是否是加班班次
+        let isOvertime = false
         
-        // 过滤出该日期下的所有值班安排
-        const dateAssignments = response.data.filter(assignment => {
-          const assignmentDate = formatDate(assignment.dutyDate)
-          return assignmentDate === dateStr
-        })
-        
-        // 转换为班次选项格式
-        const shiftMap = new Map()
-        dateAssignments.forEach(assignment => {
-          // 检查是否是加班班次
-          let isOvertime = false
-          
-          // 优先使用shiftConfigId查找班次配置
-          if (assignment.shiftConfigId) {
-            const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
+        // 优先使用shiftConfigId查找班次配置
+        if (assignment.shiftConfigId) {
+          const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
+          if (shiftConfig) {
+            // 正确处理isOvertimeShift字段（整数类型0或1）
+            isOvertime = parseInt(shiftConfig.isOvertimeShift) === 1
+          }
+        } else if (assignment.dutyShift) {
+          // 如果没有shiftConfigId，使用dutyShift查找班次配置
+          const shift = parseInt(assignment.dutyShift) || 0
+          if (shift > 0) {
+            const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
             if (shiftConfig) {
-              isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
-            }
-          } else if (assignment.dutyShift) {
-            // 如果没有shiftConfigId，使用dutyShift查找班次配置
-            const shift = parseInt(assignment.dutyShift) || 0
-            if (shift > 0) {
-              const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
-              if (shiftConfig) {
-                isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
-              }
+              // 正确处理isOvertimeShift字段（整数类型0或1）
+              isOvertime = parseInt(shiftConfig.isOvertimeShift) === 1
             }
           }
+        }
+        
+        // 如果从班次配置中没有找到，尝试从值班安排中获取
+        if (!isOvertime && assignment.isOvertime !== undefined) {
+          // 处理值班安排中的isOvertime字段
+          if (typeof assignment.isOvertime === 'string') {
+            isOvertime = assignment.isOvertime === '是'
+          } else if (typeof assignment.isOvertime === 'number') {
+            isOvertime = assignment.isOvertime === 1
+          } else {
+            isOvertime = Boolean(assignment.isOvertime)
+          }
+        }
+        
+        // 只处理加班班次
+        if (!isOvertime) {
+          return
+        }
+        
+        // 优先使用shiftConfigId获取班次名称
+        if (assignment.shiftConfigId) {
+          const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
+          let shiftName = '未知班次'
           
-          // 如果从班次配置中没有找到，尝试从值班安排中获取
-          if (!isOvertime && assignment.isOvertime !== undefined) {
-            isOvertime = assignment.isOvertime
+          if (shiftConfig) {
+            shiftName = shiftConfig.shiftName || getShiftName(assignment.shiftConfigId)
+          } else {
+            // 如果班次配置不存在，尝试从其他值班安排中查找
+            const otherAssignment = dateAssignments.find(a => a.shiftConfigId === assignment.shiftConfigId && a.shiftName)
+            if (otherAssignment && otherAssignment.shiftName) {
+              shiftName = otherAssignment.shiftName
+            } else {
+              shiftName = getShiftName(assignment.shiftConfigId)
+            }
           }
           
-          // 只处理加班班次
-          if (!isOvertime) {
-            return
-          }
+          // 标记为加班班次
+          shiftName += '(加班)'
           
-          // 优先使用shiftConfigId获取班次名称
-          if (assignment.shiftConfigId) {
-            const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
+          // 去重
+          if (!shiftMap.has(assignment.shiftConfigId)) {
+            shiftMap.set(assignment.shiftConfigId, {
+              label: shiftName,
+              value: assignment.shiftConfigId,
+              isOvertime: true
+            })
+            // 保存班次名称
+            saveShiftName(assignment.shiftConfigId, shiftConfig ? shiftConfig.shiftName : getShiftName(assignment.shiftConfigId))
+          }
+        } else if (assignment.dutyShift) {
+          // 如果没有shiftConfigId，使用dutyShift
+          const shift = parseInt(assignment.dutyShift) || 0
+          // 只有当班次值大于0时才添加
+          if (shift > 0) {
+            // 尝试从班次配置中查找
+            const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
             let shiftName = '未知班次'
             
             if (shiftConfig) {
-              shiftName = shiftConfig.shiftName || getShiftName(assignment.shiftConfigId)
+              shiftName = shiftConfig.shiftName
             } else {
               // 如果班次配置不存在，尝试从其他值班安排中查找
-              const otherAssignment = dateAssignments.find(a => a.shiftConfigId === assignment.shiftConfigId && a.shiftName)
+              const otherAssignment = dateAssignments.find(a => a.dutyShift === shift && a.shiftName)
               if (otherAssignment && otherAssignment.shiftName) {
                 shiftName = otherAssignment.shiftName
               } else {
-                shiftName = getShiftName(assignment.shiftConfigId)
+                shiftName = getShiftName(shift)
               }
             }
             
@@ -1290,56 +1333,21 @@ const openEditDialog = async (record) => {
             shiftName += '(加班)'
             
             // 去重
-            if (!shiftMap.has(assignment.shiftConfigId)) {
-              shiftMap.set(assignment.shiftConfigId, {
+            if (!shiftMap.has(shift)) {
+              shiftMap.set(shift, {
                 label: shiftName,
-                value: assignment.shiftConfigId,
+                value: shift,
                 isOvertime: true
               })
               // 保存班次名称
-              saveShiftName(assignment.shiftConfigId, shiftConfig ? shiftConfig.shiftName : getShiftName(assignment.shiftConfigId))
-            }
-          } else if (assignment.dutyShift) {
-            // 如果没有shiftConfigId，使用dutyShift
-            const shift = parseInt(assignment.dutyShift) || 0
-            // 只有当班次值大于0时才添加
-            if (shift > 0) {
-              // 尝试从班次配置中查找
-              const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
-              let shiftName = '未知班次'
-              
-              if (shiftConfig) {
-                shiftName = shiftConfig.shiftName
-              } else {
-                // 如果班次配置不存在，尝试从其他值班安排中查找
-                const otherAssignment = dateAssignments.find(a => a.dutyShift === shift && a.shiftName)
-                if (otherAssignment && otherAssignment.shiftName) {
-                  shiftName = otherAssignment.shiftName
-                } else {
-                  shiftName = getShiftName(shift)
-                }
-              }
-              
-              // 标记为加班班次
-              shiftName += '(加班)'
-              
-              // 去重
-              if (!shiftMap.has(shift)) {
-                shiftMap.set(shift, {
-                  label: shiftName,
-                  value: shift,
-                  isOvertime: true
-                })
-                // 保存班次名称
-                saveShiftName(shift, shiftConfig ? shiftConfig.shiftName : getShiftName(shift))
-              }
+              saveShiftName(shift, shiftConfig ? shiftConfig.shiftName : getShiftName(shift))
             }
           }
-        })
-        
-        // 将Map转换为数组
-        availableShifts.value = Array.from(shiftMap.values())
-      }
+        }
+      })
+      
+      // 将Map转换为数组
+      availableShifts.value = Array.from(shiftMap.values())
     } catch (error) {
       // console.error('获取值班安排失败:', error)
     }
@@ -1454,66 +1462,96 @@ const handleScheduleChange = async (scheduleId) => {
       await fetchShiftConfigs()
       
       // 获取值班表下的值班安排
-      const response = await getAssignmentsByScheduleId(scheduleId)
-      if (response.code === 200) {
-        // 提取当前用户的可用日期（只包含有加班班次的日期）
-        const dates = new Set()
-        response.data.forEach(assignment => {
-          // 确保是当前用户的值班安排
-          const assignmentEmployeeId = parseInt(assignment.employeeId) || 0
-          const userEmployeeId = parseInt(userStore.employeeId) || 0
-          if (assignmentEmployeeId === userEmployeeId) {
-            // 检查是否是加班班次
-            let isOvertime = false
-            
-            // 优先使用shiftConfigId查找班次配置
-            if (assignment.shiftConfigId) {
-              const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
+      const assignments = await getAssignmentsByScheduleId(scheduleId)
+      
+      // 提取当前用户的可用日期（只包含有加班班次的日期）
+      const dates = new Set()
+      
+      const userEmployeeId = userStore.employeeId ? parseInt(userStore.employeeId) : 0
+      
+      // 检查用户是否登录
+      if (!userStore.employeeId) {
+        ElMessage.warning('请先登录系统')
+        availableDates.value = []
+        return
+      }
+      
+      // 强制重新加载班次配置，确保数据最新
+      await fetchShiftConfigs()
+      
+      // 确保班次配置加载成功
+      if (shiftConfigs.value.length === 0) {
+        ElMessage.error('班次配置加载失败，请刷新页面重试')
+        availableDates.value = []
+        return
+      }
+      
+      assignments.forEach((assignment) => {
+        // 确保是当前用户的值班安排
+        const assignmentEmployeeId = parseInt(assignment.employeeId) || 0
+        if (assignmentEmployeeId === userEmployeeId) {
+          // 检查是否是加班班次
+          let isOvertime = false
+          
+          // 优先使用shiftConfigId查找班次配置
+          if (assignment.shiftConfigId) {
+            const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
+            if (shiftConfig) {
+              // 正确处理isOvertimeShift字段（整数类型0或1）
+              isOvertime = parseInt(shiftConfig.isOvertimeShift) === 1
+            }
+          } else if (assignment.dutyShift) {
+            // 如果没有shiftConfigId，使用dutyShift查找班次配置
+            const shift = parseInt(assignment.dutyShift) || 0
+            if (shift > 0) {
+              const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
               if (shiftConfig) {
-                isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
+                // 正确处理isOvertimeShift字段（整数类型0或1）
+                isOvertime = parseInt(shiftConfig.isOvertimeShift) === 1
               }
-            } else if (assignment.dutyShift) {
-              // 如果没有shiftConfigId，使用dutyShift查找班次配置
-              const shift = parseInt(assignment.dutyShift) || 0
-              if (shift > 0) {
-                const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
-                if (shiftConfig) {
-                  isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
-                }
-              }
-            }
-            
-            // 如果从班次配置中没有找到，尝试从值班安排中获取
-            if (!isOvertime && assignment.isOvertime !== undefined) {
-              isOvertime = assignment.isOvertime
-            }
-            
-            // 只添加有加班班次的日期
-            if (isOvertime) {
-              // 确保日期格式一致
-              const formattedDate = formatDate(assignment.dutyDate)
-              dates.add(formattedDate)
             }
           }
-        })
-        availableDates.value = Array.from(dates)
-        // console.log('可用日期:', availableDates.value)
-        
-        // 重置日期和班次选择
-        createForm.dutyDate = null
-        createForm.dutyShift = null
-        availableShifts.value = []
-        
-        // 打印调试信息
-        // console.log('获取到的值班安排:', response.data)
-        // console.log('可用日期:', availableDates.value)
-        // console.log('用户ID:', userStore.employeeId)
+          
+          // 如果从班次配置中没有找到，尝试从值班安排中获取
+          if (!isOvertime && assignment.isOvertime !== undefined) {
+            // 处理值班安排中的isOvertime字段
+            if (typeof assignment.isOvertime === 'string') {
+              isOvertime = assignment.isOvertime === '是'
+            } else if (typeof assignment.isOvertime === 'number') {
+              isOvertime = assignment.isOvertime === 1
+            } else {
+              isOvertime = Boolean(assignment.isOvertime)
+            }
+          }
+          
+          // 只添加有加班班次的日期
+          if (isOvertime) {
+            // 确保日期格式一致
+            const formattedDate = formatDate(assignment.dutyDate)
+            dates.add(formattedDate)
+          }
+        }
+      })
+      
+      // 直接设置availableDates数组
+      availableDates.value = Array.from(dates)
+      
+      // 如果没有找到加班班次，给出提示
+      const availableDatesLength = availableDates.value && Array.isArray(availableDates.value) ? availableDates.value.length : 0
+      if (availableDatesLength === 0) {
+        ElMessage.info('当前值班表中没有您的加班班次安排')
+      } else {
+        ElMessage.success(`找到 ${availableDatesLength} 个加班班次日期`)
       }
+      
+      // 重置日期和班次选择
+      createForm.dutyDate = null
+      createForm.dutyShift = null
+      availableShifts.value = []
       
       // 获取值班表的值班长列表
       await fetchScheduleLeaders(scheduleId)
     } catch (error) {
-      // console.error('获取值班安排失败:', error)
       ElMessage.error('获取值班安排失败')
     } finally {
       assignmentsLoading.value = false
@@ -1534,8 +1572,15 @@ const handleScheduleChange = async (scheduleId) => {
 const disabledDate = (time) => {
   const dateStr = formatDate(time)
   // 检查是否在可用日期列表中
-  const isAvailable = availableDates.value.includes(dateStr)
-  // console.log('检查日期:', dateStr, '是否可用:', isAvailable)
+  const isAvailable = availableDates.value && Array.isArray(availableDates.value) ? availableDates.value.includes(dateStr) : false
+  return !isAvailable
+}
+
+// 检查日期是否可用（用于新建加班记录对话框）
+const checkDateAvailability = (time) => {
+  const dateStr = formatDate(time)
+  // 检查是否在可用日期列表中
+  const isAvailable = availableDates.value && Array.isArray(availableDates.value) ? availableDates.value.includes(dateStr) : false
   return !isAvailable
 }
 
@@ -1546,23 +1591,16 @@ const shiftApi = shiftConfigApi()
 
 // 获取班次名称
 const getShiftName = (shift) => {
-  // console.log('getShiftName函数被调用，参数:', shift)
-  // console.log('班次配置列表:', shiftConfigs.value)
-  
   if (!shift) {
-    // console.log('shift为null或undefined，返回默认班次')
     return '默认班次'
   }
   
   // 确保shift是数字类型
   const shiftNum = parseInt(shift) || 0
-  // console.log('转换后的shiftNum:', shiftNum)
   
   // 从班次配置列表中查找
   const shiftConfig = shiftConfigs.value.find(config => config.id === shiftNum)
-  // console.log('找到的班次配置:', shiftConfig)
   if (shiftConfig && shiftConfig.shiftName) {
-    // console.log('从班次配置中找到班次名称:', shiftConfig.shiftName)
     return shiftConfig.shiftName
   }
   
@@ -1578,15 +1616,11 @@ const getShiftName = (shift) => {
     8: 'GOC白班' // 从数据库查询结果中，我们知道班次8的名称是"GOC白班"
   }
   
-  // console.log('shiftMap:', shiftMap)
-  // console.log('shiftMap[shiftNum]:', shiftMap[shiftNum])
   if (shiftMap[shiftNum]) {
-    // console.log('从硬编码中找到班次名称:', shiftMap[shiftNum])
     return shiftMap[shiftNum]
   }
   
   // 如果没有找到，使用默认格式
-  // console.log('未找到班次配置，使用默认格式')
   return `班次${shiftNum}`
 }
 
@@ -1603,7 +1637,6 @@ const fetchAssignmentDetail = async (assignmentId) => {
       return response.data
     }
   } catch (error) {
-    // console.error('获取值班安排详情失败:', error)
   }
   
   return null
@@ -1611,31 +1644,25 @@ const fetchAssignmentDetail = async (assignmentId) => {
 
 // 获取班次配置列表
 const fetchShiftConfigs = async () => {
-  // console.log('开始获取班次配置列表')
   try {
-    const response = await shiftApi.getShiftConfigList()
-    // console.log('班次配置API响应:', response)
-    if (response.code === 200) {
-      shiftConfigs.value = response.data
-      // console.log('班次配置列表:', shiftConfigs.value)
-      // console.log('班次配置列表长度:', shiftConfigs.value.length)
+    const shiftConfigsData = await shiftApi.getShiftConfigList()
+    
+    // 确保数据是数组
+    if (Array.isArray(shiftConfigsData)) {
+      shiftConfigs.value = shiftConfigsData
+      
       // 保存班次名称
       shiftConfigs.value.forEach(config => {
-        // console.log('保存班次名称:', config.id, config.shiftName)
         saveShiftName(config.id, config.shiftName)
       })
-      // console.log('班次配置获取完成，shiftNames.value:', shiftNames.value)
     } else {
-      // console.error('获取班次配置失败，响应码:', response.code)
+      shiftConfigs.value = []
     }
   } catch (error) {
-      // console.error('获取班次配置失败:', error)
-      ElMessage.error('获取班次配置失败')
-      // 移除模拟数据，始终使用后端接口获取
-      shiftConfigs.value = []
-    } finally {
+    ElMessage.error('获取班次配置失败')
+    shiftConfigs.value = []
+  } finally {
     shiftConfigsLoaded.value = true
-    // console.log('班次配置加载完成，shiftConfigsLoaded.value:', shiftConfigsLoaded.value)
   }
 }
 
@@ -1652,117 +1679,140 @@ const handleDateChange = async (date) => {
       await fetchShiftConfigs()
       
       // 直接调用后端API获取值班表下的所有值班安排
-      const response = await getAssignmentsByScheduleId(createForm.scheduleId)
-      if (response.code === 200) {
-        // console.log('后端返回的所有值班安排:', response.data)
-        
-        // 过滤出该日期下的当前用户的值班安排
-        const userEmployeeId = parseInt(userStore.employeeId) || 0
-        const dateAssignments = response.data.filter(assignment => {
-          const assignmentDate = formatDate(assignment.dutyDate)
-          const assignmentEmployeeId = parseInt(assignment.employeeId) || 0
-          return assignmentDate === dateStr && assignmentEmployeeId === userEmployeeId
+      const assignments = await getAssignmentsByScheduleId(createForm.scheduleId)
+      
+      // 过滤出该日期下的当前用户的值班安排
+      const userEmployeeId = parseInt(userStore.employeeId) || 0
+      const dateAssignments = assignments.filter(assignment => {
+        const assignmentDate = formatDate(assignment.dutyDate)
+        const assignmentEmployeeId = parseInt(assignment.employeeId) || 0
+        return assignmentDate === dateStr && assignmentEmployeeId === userEmployeeId
+      })
+      
+      // 打印每个值班安排的详细信息，检查字段名
+      dateAssignments.forEach((assignment, index) => {
+        console.log(`值班安排 ${index + 1}:`, {
+          id: assignment.id,
+          dutyDate: assignment.dutyDate,
+          employeeId: assignment.employeeId,
+          dutyShift: assignment.dutyShift,
+          shiftConfigId: assignment.shiftConfigId,
+          isOvertime: assignment.isOvertime,
+          shiftName: assignment.shiftName
         })
-        // console.log('该日期下的所有值班安排:', dateAssignments)
-        
-        // 打印每个值班安排的详细信息，检查字段名
-        dateAssignments.forEach((assignment, index) => {
-          // console.log(`值班安排 ${index + 1}:`, {
-          //   id: assignment.id,
-          //   dutyDate: assignment.dutyDate,
-          //   employeeId: assignment.employeeId,
-          //   dutyShift: assignment.dutyShift,
-          //   shiftConfigId: assignment.shiftConfigId,
-          //   isOvertime: assignment.isOvertime,
-          //   shiftName: assignment.shiftName,
-          //   // 打印所有字段
-          //   ...assignment
-          // })
-        })
-        
-        // 转换为班次选项格式
-        availableShifts.value = []
-        if (dateAssignments.length > 0) {
-          // 去重，确保每个班次只显示一次
-          const shiftMap = new Map()
-          dateAssignments.forEach(assignment => {
-            // 检查是否是加班班次
-            let isOvertime = false
-            
-            // 打印调试信息
-            // console.log('处理值班安排:', {
-            //   id: assignment.id,
-            //   dutyDate: assignment.dutyDate,
-            //   employeeId: assignment.employeeId,
-            //   dutyShift: assignment.dutyShift,
-            //   shiftConfigId: assignment.shiftConfigId,
-            //   shiftName: assignment.shiftName
-            // })
-            
-            // 优先使用shiftConfigId查找班次配置
-            if (assignment.shiftConfigId) {
-              const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
-              // console.log('使用shiftConfigId查找班次配置:', assignment.shiftConfigId, '找到:', shiftConfig)
+      })
+      
+      // 转换为班次选项格式
+      availableShifts.value = []
+      if (dateAssignments.length > 0) {
+        // 去重，确保每个班次只显示一次
+        const shiftMap = new Map()
+        dateAssignments.forEach(assignment => {
+          // 检查是否是加班班次
+          let isOvertime = false
+          
+          // 打印调试信息
+          console.log('处理值班安排:', {
+            id: assignment.id,
+            dutyDate: assignment.dutyDate,
+            employeeId: assignment.employeeId,
+            dutyShift: assignment.dutyShift,
+            shiftConfigId: assignment.shiftConfigId,
+            shiftName: assignment.shiftName
+          })
+          
+          // 优先使用shiftConfigId查找班次配置
+          if (assignment.shiftConfigId) {
+            const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
+            console.log('使用shiftConfigId查找班次配置:', assignment.shiftConfigId, '找到:', shiftConfig)
+            if (shiftConfig) {
+              // 正确处理isOvertimeShift字段（整数类型0或1）
+              isOvertime = parseInt(shiftConfig.isOvertimeShift) === 1
+              console.log('班次是否为加班:', isOvertime)
+            }
+          } else if (assignment.dutyShift) {
+            // 如果没有shiftConfigId，使用dutyShift查找班次配置
+            const shift = parseInt(assignment.dutyShift) || 0
+            console.log('使用dutyShift查找班次配置:', shift)
+            if (shift > 0) {
+              const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
+              console.log('找到班次配置:', shiftConfig)
               if (shiftConfig) {
-                // 根据开发文档，班次配置表中的is_overtime_shift字段表示是否为加班班次
-                isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
-                // 检查是否为字符串类型的"是"/"否"
-                if (typeof isOvertime === 'string') {
-                  isOvertime = isOvertime === '是'
-                }
-                // console.log('班次是否为加班:', isOvertime)
+                // 正确处理isOvertimeShift字段（整数类型0或1）
+                isOvertime = parseInt(shiftConfig.isOvertimeShift) === 1
+                console.log('班次是否为加班:', isOvertime)
               }
-            } else if (assignment.dutyShift) {
-              // 如果没有shiftConfigId，使用dutyShift查找班次配置
-              const shift = parseInt(assignment.dutyShift) || 0
-              // console.log('使用dutyShift查找班次配置:', shift)
-              if (shift > 0) {
-                const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
-                // console.log('找到班次配置:', shiftConfig)
-                if (shiftConfig) {
-                  // 根据开发文档，班次配置表中的is_overtime_shift字段表示是否为加班班次
-                  isOvertime = shiftConfig.isOvertime || shiftConfig.isOvertimeShift || false
-                  // 检查是否为字符串类型的"是"/"否"
-                  if (typeof isOvertime === 'string') {
-                    isOvertime = isOvertime === '是'
-                  }
-                  // console.log('班次是否为加班:', isOvertime)
-                }
+            }
+          }
+          
+          // 如果从班次配置中没有找到，尝试从值班安排中获取
+          if (!isOvertime && assignment.isOvertime !== undefined) {
+            // 处理值班安排中的isOvertime字段
+            if (typeof assignment.isOvertime === 'string') {
+              isOvertime = assignment.isOvertime === '是'
+            } else if (typeof assignment.isOvertime === 'number') {
+              isOvertime = assignment.isOvertime === 1
+            } else {
+              isOvertime = Boolean(assignment.isOvertime)
+            }
+            console.log('从值班安排中获取是否为加班:', isOvertime)
+          }
+          
+          console.log('最终判断班次是否为加班:', isOvertime)
+          
+          // 只处理加班班次
+          if (!isOvertime) {
+            return
+          }
+          
+          // 优先使用shiftConfigId获取班次名称
+          if (assignment.shiftConfigId) {
+            const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
+            let shiftName = '未知班次'
+            
+            if (shiftConfig) {
+              shiftName = shiftConfig.shiftName || getShiftName(assignment.shiftConfigId)
+            } else {
+              // 如果班次配置不存在，尝试从其他值班安排中查找
+              const otherAssignment = dateAssignments.find(a => a.shiftConfigId === assignment.shiftConfigId && a.shiftName)
+              if (otherAssignment && otherAssignment.shiftName) {
+                shiftName = otherAssignment.shiftName
+              } else {
+                shiftName = getShiftName(assignment.shiftConfigId)
               }
             }
             
-            // 如果从班次配置中没有找到，尝试从值班安排中获取
-            if (!isOvertime && assignment.isOvertime !== undefined) {
-              isOvertime = assignment.isOvertime
-              // 检查是否为字符串类型的"是"/"否"
-              if (typeof isOvertime === 'string') {
-                isOvertime = isOvertime === '是'
-              }
-              // console.log('从值班安排中获取是否为加班:', isOvertime)
+            // 标记为加班班次
+            shiftName += '(加班)'
+            
+            // 去重
+            if (!shiftMap.has(assignment.shiftConfigId)) {
+              shiftMap.set(assignment.shiftConfigId, {
+                label: shiftName,
+                value: assignment.shiftConfigId,
+                isOvertime: true
+              })
+              // 保存班次名称
+              saveShiftName(assignment.shiftConfigId, shiftConfig ? shiftConfig.shiftName : `班次${assignment.shiftConfigId}`)
             }
-            
-            // 打印班次配置列表
-            // console.log('所有班次配置:', shiftConfigs.value)
-            
-            // 只处理加班班次
-            if (!isOvertime) {
-              return
-            }
-            
-            // 优先使用shiftConfigId获取班次名称
-            if (assignment.shiftConfigId) {
-              const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
+          } else if (assignment.dutyShift) {
+            // 如果没有shiftConfigId，使用dutyShift
+            const shift = parseInt(assignment.dutyShift) || 0
+            // 只有当班次值大于0时才添加
+            if (shift > 0) {
+              // 尝试从班次配置中查找
+              const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
               let shiftName = '未知班次'
               
               if (shiftConfig) {
-                shiftName = shiftConfig.shiftName || getShiftName(assignment.shiftConfigId)
+                shiftName = shiftConfig.shiftName
               } else {
                 // 如果班次配置不存在，尝试从其他值班安排中查找
-                const otherAssignment = dateAssignments.find(a => a.shiftConfigId === assignment.shiftConfigId && a.shiftName)
+                const otherAssignment = dateAssignments.find(a => a.dutyShift === shift && a.shiftName)
                 if (otherAssignment && otherAssignment.shiftName) {
                   shiftName = otherAssignment.shiftName
                 } else {
-                  shiftName = getShiftName(assignment.shiftConfigId)
+                  shiftName = getShiftName(shift)
                 }
               }
               
@@ -1770,69 +1820,32 @@ const handleDateChange = async (date) => {
               shiftName += '(加班)'
               
               // 去重
-              if (!shiftMap.has(assignment.shiftConfigId)) {
-                shiftMap.set(assignment.shiftConfigId, {
+              if (!shiftMap.has(shift)) {
+                shiftMap.set(shift, {
                   label: shiftName,
-                  value: assignment.shiftConfigId,
+                  value: shift,
                   isOvertime: true
                 })
                 // 保存班次名称
-                saveShiftName(assignment.shiftConfigId, shiftConfig ? shiftConfig.shiftName : `班次${assignment.shiftConfigId}`)
-              }
-            } else if (assignment.dutyShift) {
-              // 如果没有shiftConfigId，使用dutyShift
-              const shift = parseInt(assignment.dutyShift) || 0
-              // 只有当班次值大于0时才添加
-              if (shift > 0) {
-                // 尝试从班次配置中查找
-                const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
-                let shiftName = '未知班次'
-                
-                if (shiftConfig) {
-                  shiftName = shiftConfig.shiftName
-                } else {
-                  // 如果班次配置不存在，尝试从其他值班安排中查找
-                  const otherAssignment = dateAssignments.find(a => a.dutyShift === shift && a.shiftName)
-                  if (otherAssignment && otherAssignment.shiftName) {
-                    shiftName = otherAssignment.shiftName
-                  } else {
-                    shiftName = getShiftName(shift)
-                  }
-                }
-                
-                // 标记为加班班次
-                shiftName += '(加班)'
-                
-                // 去重
-                if (!shiftMap.has(shift)) {
-                  shiftMap.set(shift, {
-                    label: shiftName,
-                    value: shift,
-                    isOvertime: true
-                  })
-                  // 保存班次名称
-                  saveShiftName(shift, shiftConfig ? shiftConfig.shiftName : `班次${shift}`)
-                }
+                saveShiftName(shift, shiftConfig ? shiftConfig.shiftName : `班次${shift}`)
               }
             }
-          })
-          
-          // 将Map转换为数组
-          availableShifts.value = Array.from(shiftMap.values())
-        }
+          }
+        })
         
-        // 如果没有找到对应的值班安排，保持为空
-        if (availableShifts.value.length === 0) {
-          // console.log('没有找到该日期下的加班班次')
-          availableShifts.value = []
-        }
-        
-        // console.log('可用班次:', availableShifts.value)
-        
-        // 重置班次选择
-        createForm.dutyShift = null
-        createForm.isOvertime = false
+        // 将Map转换为数组
+        availableShifts.value = Array.from(shiftMap.values())
       }
+      
+      // 如果没有找到对应的值班安排，保持为空
+      if (availableShifts.value.length === 0) {
+        console.log('没有找到该日期下的加班班次')
+        availableShifts.value = []
+      }
+      
+      // 重置班次选择
+      createForm.dutyShift = null
+      createForm.isOvertime = false
     } catch (error) {
       // console.error('获取值班安排失败:', error)
       ElMessage.error('获取值班安排失败')
