@@ -95,8 +95,8 @@ const refreshToken = async () => {
 // 请求拦截器
 request.interceptors.request.use(
   config => {
-    // 显示加载状态（除非明确禁用）
-    if (config.loading !== false) {
+    // 显示加载状态（默认情况下所有请求都不会显示加载状态，只有在明确需要显示加载状态的请求中，通过设置 loading: true 来启用）
+    if (config.loading === true) {
       showLoading()
     }
     
