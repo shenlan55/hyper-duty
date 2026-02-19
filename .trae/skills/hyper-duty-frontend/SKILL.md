@@ -17,6 +17,9 @@ This skill specializes in developing and maintaining frontend components for the
 - **Form Validation**: Implement client-side form validation
 - **Error Handling**: Create unified error handling mechanisms
 - **Performance Optimization**: Optimize frontend performance and loading times
+- **Component Reusability**: Use and extend BaseTable and VirtualList components for consistent UI
+- **Security**: Implement XSS protection using xssUtil.js
+- **Code Quality**: Ensure consistent code style and best practices
 
 ## Key Files and Directories
 
@@ -25,6 +28,11 @@ This skill specializes in developing and maintaining frontend components for the
 - `frontend/src/router/index.js` - Route configurations
 - `frontend/src/stores/index.js` - Pinia store setup
 - `frontend/src/utils/request.js` - Axios interceptor configuration
+- `frontend/src/utils/xssUtil.js` - XSS protection utilities
+
+### Reusable Components
+- `frontend/src/components/BaseTable.vue` - Unified table component with pagination and sorting
+- `frontend/src/components/VirtualList.vue` - Virtual scroll component for long lists
 
 ### View Components
 - `frontend/src/views/` - Main page components

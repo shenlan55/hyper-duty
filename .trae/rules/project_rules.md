@@ -27,6 +27,11 @@
   - 前端 API 响应处理：使用响应拦截器模式，成功响应时直接返回 `data.data` 部分，简化前端代码
   - 错误处理应统一，避免在每个 API 调用处重复处理
   - 日志记录应完整，包括关键操作、错误信息和性能指标
+  - 前端表格应使用 `BaseTable` 组件，统一表格样式和功能
+  - 前端长列表应使用 `VirtualList` 组件，优化性能
+  - 前端处理用户输入时应使用 `xssUtil` 工具，防止 XSS 攻击
+  - 后端热点数据应使用 `@Cacheable` 注解，利用 Redis 缓存提升性能
+  - 后端敏感接口应使用 `@RateLimit` 注解，防止恶意请求和 DDoS 攻击
 - **API 调用规范**：
   - 前端调用 API 时，直接使用返回的数据，不再检查 `response.code`
   - 示例：`const data = await apiFunction(); data.value = data || [];`

@@ -18,6 +18,9 @@ This skill specializes in developing and maintaining backend services for the Hy
 - **Performance Optimization**: Optimize database queries and service methods
 - **Scheduled Tasks**: Configure and maintain Spring Scheduling tasks
 - **Batch Operations**: Implement batch processing for large datasets
+- **Cache Management**: Implement Redis caching for hot data using @Cacheable
+- **Rate Limiting**: Implement API rate limiting using @RateLimit annotation
+- **Security Hardening**: Implement XSS protection and other security measures
 
 ## Key Files and Directories
 
@@ -28,11 +31,17 @@ This skill specializes in developing and maintaining backend services for the Hy
   - `ThreadPoolConfig.java` - Thread pool configuration
   - `ScheduleConfig.java` - Scheduled task configuration
   - `PasswordEncoderConfig.java` - Password encoder configuration
+  - `RedisConfig.java` - Redis cache configuration
 
-### Security
+### Security and Rate Limiting
 - `src/main/java/com/lasu/hyperduty/security/` - Security components
   - `SecurityConfig.java` - Spring Security configuration
   - `JwtAuthenticationFilter.java` - JWT authentication filter
+- `src/main/java/com/lasu/hyperduty/annotation/` - Custom annotations
+  - `RateLimit.java` - API rate limiting annotation
+- `src/main/java/com/lasu/hyperduty/aspect/` - AOP aspects
+  - `RateLimitAspect.java` - Rate limiting aspect
+  - `OperationLogAspect.java` - Operation logging aspect
 
 ### Controllers
 - `src/main/java/com/lasu/hyperduty/controller/` - REST controllers
