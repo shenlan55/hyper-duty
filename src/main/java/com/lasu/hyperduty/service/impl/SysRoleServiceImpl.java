@@ -8,6 +8,7 @@ import com.lasu.hyperduty.mapper.SysRoleMapper;
 import com.lasu.hyperduty.mapper.SysRoleMenuMapper;
 import com.lasu.hyperduty.service.SysRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     private SysRoleMenuMapper sysRoleMenuMapper;
 
     @Override
+    @Cacheable(value = "role", key = "'menu_ids_' + #roleId")
     public List<Long> getMenuIdsByRoleId(Long roleId) {
         return baseMapper.selectMenuIdsByRoleId(roleId);
     }
@@ -49,6 +51,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     }
     
     @Override
+    @Cacheable(value = "role", key = "'user_ids_' + #roleId")
     public List<Long> getUserIdsByRoleId(Long roleId) {
         return baseMapper.selectUserIdsByRoleId(roleId);
     }

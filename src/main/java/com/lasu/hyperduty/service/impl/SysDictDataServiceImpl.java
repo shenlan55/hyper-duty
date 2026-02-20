@@ -5,6 +5,7 @@ import com.lasu.hyperduty.entity.SysDictData;
 import com.lasu.hyperduty.mapper.SysDictDataMapper;
 import com.lasu.hyperduty.service.SysDictDataService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,6 +17,7 @@ public class SysDictDataServiceImpl extends ServiceImpl<SysDictDataMapper, SysDi
     private SysDictDataMapper sysDictDataMapper;
 
     @Override
+    @Cacheable(value = "dict", key = "'data_' + #dictTypeId")
     public List<SysDictData> getByDictTypeId(Long dictTypeId) {
         return sysDictDataMapper.selectByDictTypeId(dictTypeId);
     }

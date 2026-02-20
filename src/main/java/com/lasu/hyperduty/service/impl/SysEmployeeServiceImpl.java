@@ -7,6 +7,7 @@ import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.mapper.SysEmployeeMapper;
 import com.lasu.hyperduty.service.SysEmployeeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -19,11 +20,13 @@ public class SysEmployeeServiceImpl extends ServiceImpl<SysEmployeeMapper, SysEm
     private PasswordEncoder passwordEncoder;
 
     @Override
+    @Cacheable(value = "employee", key = "'allEmployees'")
     public List<SysEmployee> getAllEmployees() {
         return list();
     }
 
     @Override
+    @Cacheable(value = "employee", key = "#deptId")
     public List<SysEmployee> getEmployeesByDeptId(Long deptId) {
         LambdaQueryWrapper<SysEmployee> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysEmployee::getDeptId, deptId);

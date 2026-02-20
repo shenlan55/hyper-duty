@@ -1,35 +1,38 @@
 <template>
   <div class="leave-approval-container">
-    <div class="page-header">
-      <h2>请假审批</h2>
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>请假审批</span>
+          <div class="header-actions">
+            <el-select
+              v-model="selectedScheduleId"
+              placeholder="选择值班表"
+              clearable
+              class="schedule-select"
+              @change="handleScheduleChange"
+              style="width: 250px; margin-right: 10px"
+            >
+              <el-option
+                v-for="schedule in scheduleList"
+                :key="schedule.id"
+                :label="schedule.scheduleName"
+                :value="schedule.id"
+              />
+            </el-select>
+            <el-button type="primary" @click="refreshList">
+              <el-icon><Refresh /></el-icon>
+              刷新列表
+            </el-button>
+          </div>
+        </div>
+      </template>
+      
       <el-tabs v-model="activeTab" @tab-click="handleTabClick" style="margin-bottom: 20px">
         <el-tab-pane label="待审批" name="pending"></el-tab-pane>
         <el-tab-pane label="已审批" name="approved"></el-tab-pane>
       </el-tabs>
-      <div class="header-actions">
-        <el-select
-          v-model="selectedScheduleId"
-          placeholder="选择值班表"
-          clearable
-          class="schedule-select"
-          @change="handleScheduleChange"
-          style="width: 250px; margin-right: 10px"
-        >
-          <el-option
-            v-for="schedule in scheduleList"
-            :key="schedule.id"
-            :label="schedule.scheduleName"
-            :value="schedule.id"
-          />
-        </el-select>
-        <el-button type="primary" @click="refreshList">
-          <el-icon><Refresh /></el-icon>
-          刷新列表
-        </el-button>
-      </div>
-    </div>
-
-    <el-card shadow="hover" class="content-card">
+      
       <div class="filter-container">
         <el-form :inline="true" :model="filterForm" class="demo-form-inline">
           <el-form-item label="请假类型">
@@ -66,71 +69,55 @@
         </el-form>
       </div>
 
-      <el-table
+      <BaseTable
         v-loading="loading"
         :data="requestList"
-        style="width: 100%"
-        row-key="id"
+        :columns="approvalColumns"
+        :show-pagination="true"
+        :pagination="pagination"
+        :show-search="true"
+        :search-placeholder="'请输入申请编号或申请人'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        @search="handleSearch"
+        @export="handleExport"
       >
-        <el-table-column prop="requestNo" label="申请编号" width="180" />
-        <el-table-column prop="employeeName" label="申请人" width="120">
-          <template #default="scope">
-            {{ getEmployeeName(scope.row.employeeId) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="leaveType" label="请假类型" width="100">
-          <template #default="scope">
-            <el-tag :type="getLeaveTypeColor(scope.row.leaveType)">
-              {{ getLeaveTypeName(scope.row.leaveType) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="请假时间" width="250">
-          <template #default="scope">
-            {{ formatDate(scope.row.startDate) }} {{ scope.row.startTime || '' }} - {{ formatDate(scope.row.endDate) }} {{ scope.row.endTime || '' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="totalHours" label="请假时长(小时)" width="130" />
-        <el-table-column prop="approvalStatus" label="审批状态" width="100">
-          <template #default="scope">
-            <el-tag :type="getApprovalStatusColor(scope.row.approvalStatus)">
-              {{ getApprovalStatusName(scope.row.approvalStatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="申请时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="scope">
-            <el-button
-              v-if="scope.row.approvalStatus === 'pending'"
-              type="success"
-              size="small"
-              @click="openApproveDialog(scope.row)"
-            >
-              审批
-            </el-button>
-            <el-button type="primary" size="small" @click="openViewDialog(scope.row)">
-              查看
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="pagination.page"
-          v-model:page-size="pagination.size"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="pagination.total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
+        <template #employeeName="{ row }">
+          {{ getEmployeeName(row.employeeId) }}
+        </template>
+        <template #leaveType="{ row }">
+          <el-tag :type="getLeaveTypeColor(row.leaveType)">
+            {{ getLeaveTypeName(row.leaveType) }}
+          </el-tag>
+        </template>
+        <template #leaveTime="{ row }">
+          {{ formatDate(row.startDate) }} {{ row.startTime || '' }} - {{ formatDate(row.endDate) }} {{ row.endTime || '' }}
+        </template>
+        <template #approvalStatus="{ row }">
+          <el-tag :type="getApprovalStatusColor(row.approvalStatus)">
+            {{ getApprovalStatusName(row.approvalStatus) }}
+          </el-tag>
+        </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
+        <template #operation="{ row }">
+          <el-button
+            v-if="row.approvalStatus === 'pending'"
+            type="success"
+            size="small"
+            @click="openApproveDialog(row)"
+          >
+            审批
+          </el-button>
+          <el-button type="primary" size="small" @click="openViewDialog(row)">
+            查看
+          </el-button>
+        </template>
+      </BaseTable>
     </el-card>
 
     <el-dialog
@@ -308,6 +295,7 @@ import {
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
+import BaseTable from '../../components/BaseTable.vue'
 
 const userStore = useUserStore()
 
@@ -408,6 +396,50 @@ const approvalStatusColorMap = {
   'approved': 'success',
   'rejected': 'danger',
   'cancelled': 'info'
+}
+
+// 表格列配置
+const approvalColumns = [
+  { prop: 'requestNo', label: '申请编号', width: '180' },
+  { prop: 'employeeName', label: '申请人', width: '120', slotName: 'employeeName' },
+  { prop: 'leaveType', label: '请假类型', width: '100', slotName: 'leaveType' },
+  { label: '请假时间', width: '250', slotName: 'leaveTime' },
+  { prop: 'totalHours', label: '请假时长(小时)', width: '130' },
+  { prop: 'approvalStatus', label: '审批状态', width: '100', slotName: 'approvalStatus' },
+  { prop: 'createTime', label: '申请时间', width: '180', slotName: 'createTime' },
+  { label: '操作', width: '200', fixed: 'right', slotName: 'operation' }
+]
+
+// 导出处理
+const handleExport = () => {
+  // 导出逻辑
+  const exportData = requestList.value
+  const headers = ['申请编号', '申请人', '请假类型', '请假时间', '请假时长(小时)', '审批状态', '申请时间']
+  const rows = exportData.map(item => [
+    item.requestNo,
+    getEmployeeName(item.employeeId),
+    getLeaveTypeName(item.leaveType),
+    `${formatDate(item.startDate)} ${item.startTime || ''} - ${formatDate(item.endDate)} ${item.endTime || ''}`,
+    item.totalHours,
+    getApprovalStatusName(item.approvalStatus),
+    formatDateTime(item.createTime)
+  ])
+  
+  // 这里可以使用xlsx库或其他方式导出，暂时使用简单的CSV导出
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n')
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `请假审批_${new Date().getTime()}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 const getLeaveTypeName = (type) => {
@@ -835,20 +867,13 @@ onMounted(async () => {
 
 <style scoped>
 .leave-approval-container {
-  padding: 10px;
+  padding: 20px;
 }
 
-.page-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
 }
 
 .header-actions {
@@ -859,10 +884,6 @@ onMounted(async () => {
 
 .schedule-select {
   width: 250px;
-}
-
-.content-card {
-  margin-bottom: 10px;
 }
 
 .filter-container {

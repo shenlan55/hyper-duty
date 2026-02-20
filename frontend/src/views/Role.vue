@@ -4,46 +4,43 @@
       <template #header>
         <div class="card-header">
           <span>角色管理</span>
-          <el-button type="primary" @click="handleAdd">添加角色</el-button>
+          <el-button type="primary" @click="handleAdd">
+            <el-icon><Plus /></el-icon>
+            添加角色
+          </el-button>
         </div>
       </template>
       
       <!-- 角色列表 -->
-      <el-table :data="roleList" stripe style="width: 100%">
-        <el-table-column prop="id" label="角色ID" width="80" align="center"></el-table-column>
-        <el-table-column prop="roleName" label="角色名称" width="180"></el-table-column>
-        <el-table-column prop="roleCode" label="角色编码" width="180"></el-table-column>
-        <el-table-column prop="description" label="角色描述"></el-table-column>
-        <el-table-column prop="status" label="状态" width="100" align="center">
-          <template #default="scope">
-            <el-switch v-model="scope.row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(scope.row)"></el-switch>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" align="center">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="320" align="center">
-          <template #default="scope">
-            <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="success" size="small" @click="handleMenuAuth(scope.row)">菜单授权</el-button>
-            <el-button type="warning" size="small" @click="handleUserBind(scope.row)">用户绑定</el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      
-      <!-- 分页 -->
-      <div class="pagination-container">
-        <el-pagination
-          layout="prev, pager, next"
-          :total="total"
-          :page-size="pageSize"
-          :current-page="currentPage"
-          @current-change="handleCurrentChange"
-        ></el-pagination>
-      </div>
+      <BaseTable
+        v-loading="loading"
+        :data="roleList"
+        :columns="columns"
+        :show-pagination="true"
+        :pagination="pagination"
+        :show-search="true"
+        :search-placeholder="'请输入角色名称或编码'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        @search="handleSearch"
+        @export="handleExport"
+      >
+        <template #status="{ row }">
+          <el-switch v-model="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)"></el-switch>
+        </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
+        <template #operation="{ row }">
+          <el-button type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button type="success" size="small" @click="handleMenuAuth(row)">菜单授权</el-button>
+          <el-button type="warning" size="small" @click="handleUserBind(row)">用户绑定</el-button>
+          <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+        </template>
+      </BaseTable>
     </el-card>
     
     <!-- 角色表单对话框 -->
@@ -129,12 +126,49 @@ import { listRole, addRole, updateRole, deleteRole, getRoleMenu, saveRoleMenu, g
 import { getMenuList } from '../api/menu'
 import { getUserList } from '../api/user'
 import { formatDateTime } from '../utils/dateUtils'
+import { safeInput } from '../utils/xssUtil'
+import BaseTable from '../components/BaseTable.vue'
 
 // 角色列表数据
 const roleList = ref([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
+const loading = ref(false)
+
+// 表格列配置
+const columns = [
+  { prop: 'id', label: '角色ID', width: '80', align: 'center' },
+  { prop: 'roleName', label: '角色名称', width: '180' },
+  { prop: 'roleCode', label: '角色编码', width: '180' },
+  { prop: 'description', label: '角色描述' },
+  {
+    label: '状态',
+    width: '100',
+    align: 'center',
+    slotName: 'status'
+  },
+  {
+    label: '创建时间',
+    width: '180',
+    align: 'center',
+    slotName: 'createTime'
+  },
+  {
+    label: '操作',
+    width: '320',
+    align: 'center',
+    slotName: 'operation'
+  }
+]
+
+// 分页配置
+const pagination = reactive({
+  currentPage: 1,
+  pageSize: 10,
+  pageSizes: [10, 20, 50, 100],
+  total: 0
+})
 
 // 表单数据
 const form = reactive({
@@ -179,6 +213,7 @@ const userLoading = ref(false)
 
 // 加载角色列表
 const loadRoleList = async () => {
+  loading.value = true
   try {
     const data = await listRole({
       pageNum: currentPage.value,
@@ -186,8 +221,11 @@ const loadRoleList = async () => {
     })
     roleList.value = data.records || []
     total.value = data.total || 0
+    pagination.total = data.total || 0
   } catch (error) {
     ElMessage.error('获取角色列表失败：' + error.message)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -232,12 +270,20 @@ const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       try {
+        // 添加XSS防护
+        const safeForm = {
+          ...form,
+          roleName: safeInput(form.roleName),
+          roleCode: safeInput(form.roleCode),
+          description: safeInput(form.description)
+        }
+        
         if (form.id) {
           // 更新角色
-          await updateRole(form)
+          await updateRole(safeForm)
         } else {
           // 添加角色
-          await addRole(form)
+          await addRole(safeForm)
         }
         ElMessage.success(form.id ? '更新成功' : '添加成功')
         dialogVisible.value = false
@@ -366,7 +412,56 @@ const handleUserBindSubmit = async () => {
 // 分页变更
 const handleCurrentChange = (page) => {
   currentPage.value = page
+  pagination.currentPage = page
   loadRoleList()
+}
+
+// 分页大小变更
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  pagination.pageSize = size
+  currentPage.value = 1
+  pagination.currentPage = 1
+  loadRoleList()
+}
+
+// 表格搜索
+const handleSearch = (query) => {
+  // 这里需要根据后端API支持的搜索参数进行调整
+  // 目前我们假设后端API支持按角色名称和编码搜索
+  currentPage.value = 1
+  loadRoleList()
+}
+
+// 导出角色列表
+const handleExport = () => {
+  // 导出逻辑
+  const exportData = roleList.value
+  const headers = ['角色ID', '角色名称', '角色编码', '角色描述', '状态', '创建时间']
+  const rows = exportData.map(row => [
+    row.id,
+    row.roleName,
+    row.roleCode,
+    row.description || '',
+    row.status === 1 ? '启用' : '禁用',
+    formatDateTime(row.createTime)
+  ])
+  
+  // CSV导出实现
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n')
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `角色列表_${new Date().getTime()}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 // 页面挂载时加载角色列表

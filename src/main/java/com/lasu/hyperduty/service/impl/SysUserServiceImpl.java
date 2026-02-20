@@ -9,6 +9,7 @@ import com.lasu.hyperduty.mapper.SysUserMapper;
 import com.lasu.hyperduty.service.SysEmployeeService;
 import com.lasu.hyperduty.service.SysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -65,6 +66,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     @Override
+    @Cacheable(value = "user", key = "'allUsers'")
     public List<UserVO> getAllUsers() {
         // 获取所有人员
         List<SysEmployee> employees = sysEmployeeService.getAllEmployees();

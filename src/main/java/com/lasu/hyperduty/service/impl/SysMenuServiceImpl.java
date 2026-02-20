@@ -5,6 +5,7 @@ import com.lasu.hyperduty.entity.SysMenu;
 import com.lasu.hyperduty.mapper.SysMenuMapper;
 import com.lasu.hyperduty.service.SysMenuService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 菜单列表
      */
     @Override
+    @Cacheable(value = "menu", key = "'user_' + #userId")
     public List<SysMenu> getMenusByUserId(Long userId) {
         List<SysMenu> menus = sysMenuMapper.selectMenusByUserId(userId);
         return buildMenuTree(menus);
@@ -36,6 +38,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 菜单列表
      */
     @Override
+    @Cacheable(value = "menu", key = "'role_' + #roleId")
     public List<SysMenu> getMenusByRoleId(Long roleId) {
         return sysMenuMapper.selectMenusByRoleId(roleId);
     }
@@ -45,6 +48,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 菜单列表
      */
     @Override
+    @Cacheable(value = "menu", key = "'all'")
     public List<SysMenu> getAllMenus() {
         List<SysMenu> menus = sysMenuMapper.selectAllMenus();
         return buildMenuTree(menus);

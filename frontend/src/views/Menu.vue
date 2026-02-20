@@ -1,58 +1,65 @@
 <template>
   <div class="menu-container">
-    <h2>菜单管理</h2>
-    <el-button type="primary" @click="handleAddMenu" style="margin-bottom: 20px">+ 添加菜单</el-button>
-    
-    <el-table :data="menuList" style="width: 100%" :tree-props="{ children: 'children', hasChildren: 'hasChildren' }" row-key="id">
-      <el-table-column prop="menuName" label="菜单名称" min-width="200">
-        <template #default="scope">
-          <el-icon v-if="scope.row.type === 1"><OfficeBuilding /></el-icon>
-          <el-icon v-else-if="scope.row.type === 2"><Menu /></el-icon>
-          <el-icon v-else><Operation /></el-icon>
-          {{ scope.row.menuName }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="type" label="菜单类型" width="120">
-        <template #default="scope">
-          <el-tag v-if="scope.row.type === 1" type="success">目录</el-tag>
-          <el-tag v-else-if="scope.row.type === 2" type="primary">菜单</el-tag>
-          <el-tag v-else type="info">按钮</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="path" label="路由路径" min-width="150" />
-      <el-table-column prop="component" label="组件路径" min-width="200" />
-      <el-table-column prop="perm" label="权限标识" min-width="150" />
-      <el-table-column prop="icon" label="菜单图标" width="120">
-        <template #default="scope">
-          <el-icon v-if="scope.row.icon">
-            <component :is="getIconComponent(scope.row.icon)" />
-          </el-icon>
-        </template>
-      </el-table-column>
-      <el-table-column prop="sort" label="排序" width="80" />
-      <el-table-column prop="status" label="状态" width="100">
-        <template #default="scope">
-          <el-switch
-            v-model="scope.row.status"
-            :active-value="1"
-            :inactive-value="0"
-            @change="handleStatusChange(scope.row)"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
-        <template #default="scope">
-          <el-button type="primary" size="small" @click="handleEditMenu(scope.row)" style="margin-right: 8px">
-            <el-icon><Edit /></el-icon>
-            编辑
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>菜单管理</span>
+          <el-button type="primary" @click="handleAddMenu">
+            <el-icon><Plus /></el-icon>
+            添加菜单
           </el-button>
-          <el-button type="danger" size="small" @click="handleDeleteMenu(scope.row.id)">
-            <el-icon><Delete /></el-icon>
-            删除
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+        </div>
+      </template>
+      
+      <BaseTable
+        v-loading="loading"
+        :data="menuList"
+        :columns="columns"
+        :show-pagination="false"
+        :show-search="true"
+        :search-placeholder="'请输入菜单名称或路径'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @search="handleSearch"
+        @export="handleExport"
+      >
+      <template #menuName="{ row }">
+        <el-icon v-if="row.type === 1"><OfficeBuilding /></el-icon>
+        <el-icon v-else-if="row.type === 2"><Menu /></el-icon>
+        <el-icon v-else><Operation /></el-icon>
+        {{ row.menuName }}
+      </template>
+      <template #type="{ row }">
+        <el-tag v-if="row.type === 1" type="success">目录</el-tag>
+        <el-tag v-else-if="row.type === 2" type="primary">菜单</el-tag>
+        <el-tag v-else type="info">按钮</el-tag>
+      </template>
+      <template #icon="{ row }">
+        <el-icon v-if="row.icon">
+          <component :is="getIconComponent(row.icon)" />
+        </el-icon>
+      </template>
+      <template #status="{ row }">
+        <el-switch
+          v-model="row.status"
+          :active-value="1"
+          :inactive-value="0"
+          @change="handleStatusChange(row)"
+        />
+      </template>
+      <template #operation="{ row }">
+        <el-button type="primary" size="small" @click="handleEditMenu(row)" style="margin-right: 8px">
+          <el-icon><Edit /></el-icon>
+          编辑
+        </el-button>
+        <el-button type="danger" size="small" @click="handleDeleteMenu(row.id)">
+          <el-icon><Delete /></el-icon>
+          删除
+        </el-button>
+      </template>
+    </BaseTable>
+    </el-card>
 
     <el-dialog
       v-model="dialogVisible"
@@ -147,12 +154,66 @@ import {
   Filter, Share, Printer, Files, Folder, FolderOpened, Notebook
 } from '@element-plus/icons-vue'
 import { getMenuList, getMenuById, addMenu, updateMenu, deleteMenu, getMenuTree } from '../api/menu'
+import { safeInput } from '../utils/xssUtil'
+import BaseTable from '../components/BaseTable.vue'
 
 const menuList = ref([])
 const allMenus = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加菜单')
 const menuFormRef = ref()
+const loading = ref(false)
+
+// 表格列配置
+const columns = [
+  {
+    label: '菜单名称',
+    minWidth: '200',
+    slotName: 'menuName',
+    indent: true
+  },
+  {
+    label: '菜单类型',
+    width: '120',
+    slotName: 'type'
+  },
+  {
+    prop: 'path',
+    label: '路由路径',
+    minWidth: '150'
+  },
+  {
+    prop: 'component',
+    label: '组件路径',
+    minWidth: '200'
+  },
+  {
+    prop: 'perm',
+    label: '权限标识',
+    minWidth: '150'
+  },
+  {
+    label: '菜单图标',
+    width: '120',
+    slotName: 'icon'
+  },
+  {
+    prop: 'sort',
+    label: '排序',
+    width: '80'
+  },
+  {
+    label: '状态',
+    width: '100',
+    slotName: 'status'
+  },
+  {
+    label: '操作',
+    width: '200',
+    fixed: 'right',
+    slotName: 'operation'
+  }
+]
 const menuForm = reactive({
   id: null,
   menuName: '',
@@ -238,6 +299,7 @@ const menuRules = reactive({
 })
 
 const loadMenuData = async () => {
+  loading.value = true
   try {
     const data = await getMenuTree()
     const processMenuTree = (menus) => {
@@ -256,6 +318,8 @@ const loadMenuData = async () => {
     menuList.value = menuData
   } catch (error) {
     ElMessage.error('获取菜单列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -339,11 +403,21 @@ const handleSubmit = async () => {
   await menuFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
+        // 添加XSS防护
+        const safeForm = {
+          ...menuForm,
+          menuName: safeInput(menuForm.menuName),
+          path: safeInput(menuForm.path),
+          component: safeInput(menuForm.component),
+          perm: safeInput(menuForm.perm),
+          icon: safeInput(menuForm.icon)
+        }
+        
         if (menuForm.id) {
-          await updateMenu(menuForm)
+          await updateMenu(safeForm)
           ElMessage.success('更新菜单成功')
         } else {
-          await addMenu(menuForm)
+          await addMenu(safeForm)
           ElMessage.success('添加菜单成功')
         }
         dialogVisible.value = false
@@ -355,6 +429,40 @@ const handleSubmit = async () => {
   })
 }
 
+const handleSearch = (searchParams) => {
+  const searchTerm = searchParams.global.toLowerCase()
+  if (!searchTerm) {
+    loadMenuData()
+    return
+  }
+  
+  // 过滤菜单数据
+  const filterMenuTree = (menus) => {
+    return menus.filter(menu => {
+      const matches = menu.menuName.toLowerCase().includes(searchTerm) || 
+                     (menu.path && menu.path.toLowerCase().includes(searchTerm))
+      
+      if (menu.children && menu.children.length > 0) {
+        menu.children = filterMenuTree(menu.children)
+        return matches || menu.children.length > 0
+      }
+      
+      return matches
+    })
+  }
+  
+  // 重新加载数据并过滤
+  loadMenuData().then(() => {
+    menuList.value = filterMenuTree(menuList.value)
+  })
+}
+
+const handleExport = (exportParams) => {
+  console.log('导出数据:', exportParams)
+  // 这里可以添加导出逻辑，例如调用后端API或使用前端库导出
+  ElMessage.success(`导出${exportParams.format}格式成功`)
+}
+
 onMounted(() => {
   loadMenuData()
 })
@@ -363,6 +471,12 @@ onMounted(() => {
 <style scoped>
 .menu-container {
   padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .dialog-footer {

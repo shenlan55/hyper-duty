@@ -1,78 +1,74 @@
 <template>
   <div class="shift-config-container">
-    <div class="page-header">
-      <h2>班次配置</h2>
-      <el-button type="primary" @click="openAddDialog">
-        <el-icon><Plus /></el-icon>
-        添加班次
-      </el-button>
-    </div>
-
-    <el-card shadow="hover" class="content-card">
-      <el-table
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>班次配置</span>
+          <el-button type="primary" @click="openAddDialog">
+            <el-icon><Plus /></el-icon>
+            添加班次
+          </el-button>
+        </div>
+      </template>
+      
+      <BaseTable
         v-loading="loading"
         :data="shiftConfigList"
-        style="width: 100%"
-        row-key="id"
+        :columns="columns"
+        :show-pagination="true"
+        :pagination="pagination"
+        :show-search="true"
+        :search-placeholder="'请输入班次名称或编码'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        @search="handleSearch"
+        @export="handleExport"
       >
-        <el-table-column prop="shiftName" label="班次名称" width="150" />
-        <el-table-column prop="shiftCode" label="班次编码" width="120" />
-        <el-table-column prop="shiftType" label="班次类型" width="100">
-          <template #default="scope">
-            <el-tag :type="getShiftTypeColor(scope.row.shiftType)">
-              {{ getShiftTypeName(scope.row.shiftType) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="startTime" label="上班时间" width="120" />
-        <el-table-column prop="endTime" label="下班时间" width="120">
-          <template #default="scope">
-            {{ scope.row.endTime }}<span v-if="scope.row.isCrossDay" style="color: #F56C6C; margin-left: 5px;">(次日)</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="durationHours" label="时长(小时)" width="120" />
-        <el-table-column prop="breakHours" label="休息时长(小时)" width="140" />
-        <el-table-column prop="isOvertimeShift" label="是否加班班次" width="120">
-          <template #default="scope">
-            <el-tag :type="scope.row.isOvertimeShift === 1 ? 'warning' : 'info'">
-              {{ scope.row.isOvertimeShift === 1 ? '是' : '否' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
-              {{ scope.row.status === 1 ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="remark" label="备注" min-width="200" show-overflow-tooltip />
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="scope">
-            <el-button
-              type="primary"
-              size="small"
-              @click="openEditDialog(scope.row)"
-            >
-              编辑
-            </el-button>
-            <el-button
-              :type="scope.row.status === 1 ? 'warning' : 'success'"
-              size="small"
-              @click="toggleStatus(scope.row)"
-            >
-              {{ scope.row.status === 1 ? '禁用' : '启用' }}
-            </el-button>
-            <el-button
-              type="danger"
-              size="small"
-              @click="handleDelete(scope.row.id)"
-            >
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+        <template #shiftType="{ row }">
+          <el-tag :type="getShiftTypeColor(row.shiftType)">
+            {{ getShiftTypeName(row.shiftType) }}
+          </el-tag>
+        </template>
+        <template #endTime="{ row }">
+          {{ row.endTime }}<span v-if="row.isCrossDay" style="color: #F56C6C; margin-left: 5px;">(次日)</span>
+        </template>
+        <template #isOvertimeShift="{ row }">
+          <el-tag :type="row.isOvertimeShift === 1 ? 'warning' : 'info'">
+            {{ row.isOvertimeShift === 1 ? '是' : '否' }}
+          </el-tag>
+        </template>
+        <template #status="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+            {{ row.status === 1 ? '启用' : '禁用' }}
+          </el-tag>
+        </template>
+        <template #operation="{ row }">
+          <el-button
+            type="primary"
+            size="small"
+            @click="openEditDialog(row)"
+          >
+            编辑
+          </el-button>
+          <el-button
+            :type="row.status === 1 ? 'warning' : 'success'"
+            size="small"
+            @click="toggleStatus(row)"
+          >
+            {{ row.status === 1 ? '禁用' : '启用' }}
+          </el-button>
+          <el-button
+            type="danger"
+            size="small"
+            @click="handleDelete(row.id)"
+          >
+            删除
+          </el-button>
+        </template>
+      </BaseTable>
     </el-card>
 
     <el-dialog
@@ -230,10 +226,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
+import BaseTable from '@/components/BaseTable.vue'
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
 
 const shiftApi = shiftConfigApi()
 
@@ -243,6 +242,9 @@ const dialogLoading = ref(false)
 const dialogTitle = ref('添加班次')
 const formRef = ref()
 const shiftConfigList = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
+const searchQuery = ref('')
 
 const form = reactive({
   id: null,
@@ -258,6 +260,30 @@ const form = reactive({
   status: 1,
   remark: '',
   mutexShiftIds: []
+})
+
+const columns = [
+  { prop: 'id', label: 'ID', width: '80' },
+  { prop: 'shiftName', label: '班次名称', width: '150' },
+  { prop: 'shiftCode', label: '班次编码', width: '120' },
+  { prop: 'shiftType', label: '班次类型', width: '100' },
+  { prop: 'startTime', label: '上班时间', width: '120' },
+  { prop: 'endTime', label: '下班时间', width: '120' },
+  { prop: 'durationHours', label: '时长(小时)', width: '120' },
+  { prop: 'breakHours', label: '休息时长(小时)', width: '140' },
+  { prop: 'isOvertimeShift', label: '是否加班班次', width: '120' },
+  { prop: 'status', label: '状态', width: '100' },
+  { prop: 'remark', label: '备注', minWidth: '200' },
+  { type: 'operation', label: '操作', width: '200', fixed: 'right' }
+]
+
+const pagination = computed(() => {
+  return {
+    currentPage: currentPage.value,
+    pageSize: pageSize.value,
+    pageSizes: [10, 20, 50, 100],
+    total: shiftConfigList.value.length
+  }
 })
 
 const rules = {
@@ -419,6 +445,60 @@ const handleDelete = async (id) => {
   }
 }
 
+// 分页处理
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (current) => {
+  currentPage.value = current
+}
+
+// 搜索处理
+const handleSearch = (query) => {
+  searchQuery.value = query
+  currentPage.value = 1
+}
+
+// 导出处理
+const handleExport = () => {
+  try {
+    // 准备导出数据
+    const exportData = shiftConfigList.value.map(item => ({
+      'ID': item.id,
+      '班次名称': item.shiftName,
+      '班次编码': item.shiftCode,
+      '班次类型': getShiftTypeName(item.shiftType),
+      '上班时间': item.startTime,
+      '下班时间': item.endTime + (item.isCrossDay ? ' (次日)' : ''),
+      '时长(小时)': item.durationHours,
+      '休息时长(小时)': item.breakHours,
+      '是否加班班次': item.isOvertimeShift === 1 ? '是' : '否',
+      '状态': item.status === 1 ? '启用' : '禁用',
+      '备注': item.remark
+    }))
+    
+    // 创建工作表
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    
+    // 创建工作簿
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, '班次配置')
+    
+    // 生成Excel文件
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+    const dataBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    
+    // 保存文件
+    saveAs(dataBlob, `班次配置_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    
+    ElMessage.success('导出成功')
+  } catch (error) {
+    ElMessage.error('导出失败')
+  }
+}
+
 onMounted(() => {
   fetchShiftConfigList()
 })
@@ -426,23 +506,12 @@ onMounted(() => {
 
 <style scoped>
 .shift-config-container {
-  padding: 10px;
+  padding: 20px;
 }
 
-.page-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
-}
-
-.content-card {
-  margin-bottom: 10px;
 }
 </style>

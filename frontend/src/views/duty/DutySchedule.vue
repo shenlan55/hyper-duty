@@ -1,77 +1,55 @@
 <template>
   <div class="schedule-container">
-    <div class="page-header">
-      <h2>值班表管理</h2>
-      <el-button type="primary" @click="openAddDialog">
-        <el-icon><Plus /></el-icon>
-        添加值班表
-      </el-button>
-    </div>
-
-    <el-card shadow="hover" class="content-card">
-      <div class="table-toolbar">
-        <el-input
-          v-model="searchQuery"
-          placeholder="请输入值班表名称"
-          prefix-icon="Search"
-          clearable
-          class="search-input"
-          @input="handleSearch"
-        />
-      </div>
-
-      <el-table
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>值班表管理</span>
+          <el-button type="primary" @click="openAddDialog">
+            <el-icon><Plus /></el-icon>
+            添加值班表
+          </el-button>
+        </div>
+      </template>
+      
+      <BaseTable
         v-loading="loading"
-        :data="pagedScheduleList"
-        style="width: 100%"
-        row-key="id"
+        :data="scheduleList"
+        :columns="columns"
+        :show-pagination="true"
+        :pagination="pagination"
+        :show-search="true"
+        :search-placeholder="'请输入值班表名称'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        @search="handleSearch"
+        @export="handleExport"
       >
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="scheduleName" label="值班表名称" min-width="150" />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="startDate" label="开始日期" width="150">
-          <template #default="scope">
-            {{ formatDate(scope.row.startDate) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="endDate" label="结束日期" width="150">
-          <template #default="scope">
-            {{ formatDate(scope.row.endDate) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
-              {{ scope.row.status === 1 ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="240" fixed="right">
-          <template #default="scope">
-            <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
-              编辑
-            </el-button>
-            <el-button type="success" size="small" @click="openEmployeeDialog(scope.row)">
-              人员
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="filteredScheduleList.length"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
+        <template #startDate="{ row }">
+          {{ formatDate(row.startDate) }}
+        </template>
+        <template #endDate="{ row }">
+          {{ formatDate(row.endDate) }}
+        </template>
+        <template #status="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+            {{ row.status === 1 ? '启用' : '禁用' }}
+          </el-tag>
+        </template>
+        <template #operation="{ row }">
+          <el-button type="primary" size="small" @click="openEditDialog(row)">
+            编辑
+          </el-button>
+          <el-button type="success" size="small" @click="openEmployeeDialog(row)">
+            人员
+          </el-button>
+          <el-button type="danger" size="small" @click="handleDelete(row.id)">
+            删除
+          </el-button>
+        </template>
+      </BaseTable>
     </el-card>
 
     <el-dialog
@@ -210,6 +188,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import BaseTable from '../../components/BaseTable.vue'
 import {
   getScheduleList,
   getScheduleById,
@@ -227,6 +206,7 @@ import {
 import { getEmployeeList } from '../../api/employee'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
+import { safeInput } from '../../utils/xssUtil'
 
 const searchQuery = ref('')
 const loading = ref(false)
@@ -285,11 +265,24 @@ const filteredScheduleList = computed(() => {
   return list
 })
 
-const pagedScheduleList = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filteredScheduleList.value.slice(start, end)
+const pagination = computed(() => {
+  return {
+    currentPage: currentPage.value,
+    pageSize: pageSize.value,
+    pageSizes: [10, 20, 50, 100],
+    total: filteredScheduleList.value.length
+  }
 })
+
+const columns = [
+  { prop: 'id', label: 'ID', width: '80' },
+  { prop: 'scheduleName', label: '值班表名称', minWidth: '150' },
+  { prop: 'description', label: '描述', minWidth: '200' },
+  { prop: 'startDate', label: '开始日期', width: '150' },
+  { prop: 'endDate', label: '结束日期', width: '150' },
+  { prop: 'status', label: '状态', width: '100' },
+  { type: 'operation', label: '操作', width: '240', fixed: 'right' }
+]
 
 const getEmployeeName = (employeeId) => {
   const employee = allEmployeeList.value.find(e => e.key === employeeId)
@@ -339,8 +332,14 @@ const fetchShiftList = async () => {
   }
 }
 
-const handleSearch = () => {
+const handleSearch = (searchParams) => {
+  searchQuery.value = searchParams.global
   currentPage.value = 1
+}
+
+const handleExport = (exportParams) => {
+  // 这里可以添加导出逻辑，例如调用后端API或使用前端库导出
+  ElMessage.success(`导出${exportParams.format}格式成功`)
 }
 
 const handleSizeChange = (size) => {
@@ -383,13 +382,20 @@ const handleSave = async () => {
     await scheduleFormRef.value.validate()
     dialogLoading.value = true
     
-    if (scheduleForm.id) {
-      await updateSchedule(scheduleForm)
-    } else {
-      await addSchedule(scheduleForm)
+    // 处理用户输入，防止XSS攻击
+    const safeForm = {
+      ...scheduleForm,
+      scheduleName: safeInput(scheduleForm.scheduleName),
+      description: safeInput(scheduleForm.description)
     }
     
-    ElMessage.success(scheduleForm.id ? '编辑值班表成功' : '添加值班表成功')
+    if (safeForm.id) {
+      await updateSchedule(safeForm)
+    } else {
+      await addSchedule(safeForm)
+    }
+    
+    ElMessage.success(safeForm.id ? '编辑值班表成功' : '添加值班表成功')
     dialogVisible.value = false
     fetchScheduleList()
   } catch (error) {
@@ -463,24 +469,13 @@ onMounted(async () => {
 
 <style scoped>
 .schedule-container {
-  padding: 10px;
+  padding: 20px;
 }
 
-.page-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
-}
-
-.content-card {
-  margin-bottom: 10px;
 }
 
 .table-toolbar {

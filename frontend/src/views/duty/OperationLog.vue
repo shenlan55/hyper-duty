@@ -1,14 +1,11 @@
 <template>
   <div class="operation-log-container">
-    <div class="page-header">
-      <h2>操作日志</h2>
-      <el-button type="primary" @click="exportLogs">
-        <el-icon><Download /></el-icon>
-        导出日志
-      </el-button>
-    </div>
-
-    <el-card shadow="hover" class="content-card">
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>操作日志</span>
+        </div>
+      </template>
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="操作人">
           <el-input v-model="searchForm.operatorName" placeholder="请输入操作人" clearable />
@@ -55,7 +52,7 @@
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">
+          <el-button type="primary" @click="handleFormSearch">
             <el-icon><Search /></el-icon>
             搜索
           </el-button>
@@ -66,56 +63,41 @@
         </el-form-item>
       </el-form>
 
-      <el-table
+      <BaseTable
         v-loading="loading"
         :data="logList"
-        style="width: 100%"
-        row-key="id"
+        :columns="columns"
+        :show-pagination="true"
+        :pagination="pagination"
+        :show-search="true"
+        :search-placeholder="'请输入操作人或操作描述'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        @search="handleSearch"
+        @export="handleExport"
       >
-        <el-table-column prop="operatorName" label="操作人" width="120" />
-        <el-table-column prop="operationType" label="操作类型" width="100" />
-        <el-table-column prop="operationModule" label="操作模块" width="120" />
-        <el-table-column prop="operationDesc" label="操作描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="requestMethod" label="请求方法" width="100" />
-        <el-table-column prop="ipAddress" label="IP地址" width="130" />
-        <el-table-column prop="executionTime" label="执行时间(ms)" width="120" />
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
-              {{ scope.row.status === 1 ? '成功' : '失败' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="scope">
-            <el-space>
-              <el-button type="primary" size="small" @click="openViewDialog(scope.row)">
-                查看
-              </el-button>
-              <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
-                删除
-              </el-button>
-            </el-space>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
+        <template #status="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+            {{ row.status === 1 ? '成功' : '失败' }}
+          </el-tag>
+        </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
+        <template #operation="{ row }">
+          <el-space>
+            <el-button type="primary" size="small" @click="openViewDialog(row)">
+              查看
+            </el-button>
+            <el-button type="danger" size="small" @click="handleDelete(row.id)">
+              删除
+            </el-button>
+          </el-space>
+        </template>
+      </BaseTable>
     </el-card>
 
     <el-dialog
@@ -153,6 +135,9 @@ import {
   getOperationLogList,
   deleteOperationLog
 } from '../../api/duty/operationLog'
+import { safeInput } from '../../utils/xssUtil'
+import BaseTable from '../../components/BaseTable.vue'
+import { formatDateTime } from '../../utils/dateUtils'
 
 const loading = ref(false)
 const viewDialogVisible = ref(false)
@@ -174,9 +159,9 @@ const fetchLogList = async () => {
   try {
     // 构建搜索参数
     const params = {
-      operatorName: searchForm.operatorName,
-      operationType: searchForm.operationType,
-      operationModule: searchForm.operationModule,
+      operatorName: safeInput(searchForm.operatorName),
+      operationType: safeInput(searchForm.operationType),
+      operationModule: safeInput(searchForm.operationModule),
       page: currentPage.value,
       pageSize: pageSize.value
     }
@@ -191,6 +176,7 @@ const fetchLogList = async () => {
     // 后端返回的是PageResult对象，包含data和total字段
     logList.value = data.data || []
     total.value = data.total || 0
+    pagination.total = data.total || 0
   } catch (error) {
     console.error('获取操作日志列表失败:', error)
     ElMessage.error('获取操作日志列表失败')
@@ -199,7 +185,7 @@ const fetchLogList = async () => {
   }
 }
 
-const handleSearch = () => {
+const handleFormSearch = () => {
   currentPage.value = 1
   fetchLogList()
 }
@@ -217,12 +203,15 @@ const handleReset = () => {
 
 const handleSizeChange = (size) => {
   pageSize.value = size
+  pagination.pageSize = size
   currentPage.value = 1
+  pagination.currentPage = 1
   fetchLogList()
 }
 
 const handleCurrentChange = (page) => {
   currentPage.value = page
+  pagination.currentPage = page
   fetchLogList()
 }
 
@@ -250,22 +239,83 @@ const handleDelete = async (id) => {
   }
 }
 
+const handleSearch = (query) => {
+  searchForm.operatorName = query
+  currentPage.value = 1
+  fetchLogList()
+}
+
+const handleExport = () => {
+  // 导出逻辑
+  const exportData = logList.value
+  const headers = ['操作人', '操作类型', '操作模块', '操作描述', '请求方法', 'IP地址', '执行时间(ms)', '状态', '操作时间']
+  const rows = exportData.map(row => [
+    row.operatorName,
+    row.operationType,
+    row.operationModule,
+    row.operationDesc,
+    row.requestMethod,
+    row.ipAddress,
+    row.executionTime,
+    row.status === 1 ? '成功' : '失败',
+    formatDateTime(row.createTime)
+  ])
+  
+  // CSV导出实现
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n')
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `操作日志_${new Date().getTime()}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
 const exportLogs = () => {
   ElMessage.success('日志导出功能待实现')
 }
 
-// 格式化日期时间
-const formatDateTime = (dateTime) => {
-  if (!dateTime) return ''
-  const date = new Date(dateTime)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
+// 表格列配置
+const columns = [
+  { prop: 'operatorName', label: '操作人', width: '120' },
+  { prop: 'operationType', label: '操作类型', width: '100' },
+  { prop: 'operationModule', label: '操作模块', width: '120' },
+  { prop: 'operationDesc', label: '操作描述', minWidth: '200', showOverflowTooltip: true },
+  { prop: 'requestMethod', label: '请求方法', width: '100' },
+  { prop: 'ipAddress', label: 'IP地址', width: '130' },
+  { prop: 'executionTime', label: '执行时间(ms)', width: '120' },
+  {
+    label: '状态',
+    width: '100',
+    slotName: 'status'
+  },
+  {
+    label: '操作时间',
+    width: '180',
+    slotName: 'createTime'
+  },
+  {
+    label: '操作',
+    width: '180',
+    fixed: 'right',
+    slotName: 'operation'
+  }
+]
+
+// 分页配置
+const pagination = reactive({
+  currentPage: 1,
+  pageSize: 10,
+  pageSizes: [10, 20, 50, 100],
+  total: 0
+})
 
 onMounted(() => {
   fetchLogList()
@@ -274,24 +324,13 @@ onMounted(() => {
 
 <style scoped>
 .operation-log-container {
-  padding: 10px;
+  padding: 20px;
 }
 
-.page-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
-}
-
-.content-card {
-  margin-bottom: 10px;
 }
 
 .search-form {

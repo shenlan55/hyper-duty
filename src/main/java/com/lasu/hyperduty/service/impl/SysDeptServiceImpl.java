@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.SysDept;
 import com.lasu.hyperduty.mapper.SysDeptMapper;
 import com.lasu.hyperduty.service.SysDeptService;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -14,11 +15,13 @@ import java.util.stream.Collectors;
 public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> implements SysDeptService {
 
     @Override
+    @Cacheable(value = "dept", key = "'allDepts'")
     public List<SysDept> getAllDepts() {
         return list();
     }
 
     @Override
+    @Cacheable(value = "dept", key = "'deptTree'")
     public List<SysDept> getDeptTree() {
         // 获取所有部门
         List<SysDept> allDepts = list();

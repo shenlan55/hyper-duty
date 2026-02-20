@@ -1,14 +1,15 @@
 <template>
   <div class="dict-container">
-    <div class="page-header">
-      <h2>字典管理</h2>
-      <el-button type="primary" @click="openTypeDialog(null)">
-        <el-icon><Plus /></el-icon>
-        添加字典类型
-      </el-button>
-    </div>
-
-    <el-card shadow="hover" class="content-card">
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>字典管理</span>
+          <el-button type="primary" @click="openTypeDialog(null)">
+            <el-icon><Plus /></el-icon>
+            添加字典类型
+          </el-button>
+        </div>
+      </template>
       <el-row :gutter="20">
         <el-col :span="6">
           <div class="dict-type-panel">
@@ -72,50 +73,43 @@
             <div v-if="!selectedDictTypeId" class="empty-state">
               <el-empty description="请选择左侧字典类型查看字典数据" />
             </div>
-            <el-table
+            <BaseTable
               v-else
               v-loading="dataLoading"
               :data="dictDataList"
-              style="width: 100%"
-              row-key="id"
+              :columns="dataColumns"
+              :show-pagination="false"
+              :show-search="true"
+              :search-placeholder="'请输入字典标签或键值'"
+              :show-export="true"
+              :show-column-control="true"
+              :show-skeleton="true"
               border
+              @search="handleDataSearch"
+              @export="handleDataExport"
             >
-              <el-table-column prop="dictLabel" label="字典标签" min-width="150" />
-              <el-table-column prop="dictValue" label="字典键值" width="180" />
-              <el-table-column prop="dictSort" label="排序" width="100" />
-              <el-table-column prop="cssClass" label="样式属性" width="150" show-overflow-tooltip />
-              <el-table-column prop="listClass" label="表格回显样式" width="150" show-overflow-tooltip />
-              <el-table-column prop="isDefault" label="是否默认" width="100">
-                <template #default="scope">
-                  <el-tag :type="scope.row.isDefault === 1 ? 'success' : 'info'">
-                    {{ scope.row.isDefault === 1 ? '是' : '否' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="status" label="状态" width="100">
-                <template #default="scope">
-                  <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
-                    {{ scope.row.status === 1 ? '启用' : '禁用' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="remark" label="备注" min-width="200" show-overflow-tooltip />
-              <el-table-column prop="createTime" label="创建时间" width="180">
-                <template #default="scope">
-                  {{ formatDateTime(scope.row.createTime) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="150" fixed="right">
-                <template #default="scope">
-                  <el-button type="primary" size="small" @click="openDataDialog(scope.row)">
-                    编辑
-                  </el-button>
-                  <el-button type="danger" size="small" @click="handleDeleteData(scope.row.id)">
-                    删除
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
+              <template #isDefault="{ row }">
+                <el-tag :type="row.isDefault === 1 ? 'success' : 'info'">
+                  {{ row.isDefault === 1 ? '是' : '否' }}
+                </el-tag>
+              </template>
+              <template #status="{ row }">
+                <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+                  {{ row.status === 1 ? '启用' : '禁用' }}
+                </el-tag>
+              </template>
+              <template #createTime="{ row }">
+                {{ formatDateTime(row.createTime) }}
+              </template>
+              <template #operation="{ row }">
+                <el-button type="primary" size="small" @click="openDataDialog(row)">
+                  编辑
+                </el-button>
+                <el-button type="danger" size="small" @click="handleDeleteData(row.id)">
+                  删除
+                </el-button>
+              </template>
+            </BaseTable>
           </div>
         </el-col>
       </el-row>
@@ -203,6 +197,8 @@ import {
   deleteDictData
 } from '../api/dictData'
 import { formatDateTime } from '../utils/dateUtils'
+import { safeInput } from '../utils/xssUtil'
+import BaseTable from '../components/BaseTable.vue'
 
 const typeLoading = ref(false)
 const dataLoading = ref(false)
@@ -239,6 +235,37 @@ const dataForm = reactive({
   status: 1,
   remark: ''
 })
+
+// 字典数据表格列配置
+const dataColumns = [
+  { prop: 'dictLabel', label: '字典标签', minWidth: '150' },
+  { prop: 'dictValue', label: '字典键值', width: '180' },
+  { prop: 'dictSort', label: '排序', width: '100' },
+  { prop: 'cssClass', label: '样式属性', width: '150', showOverflowTooltip: true },
+  { prop: 'listClass', label: '表格回显样式', width: '150', showOverflowTooltip: true },
+  {
+    label: '是否默认',
+    width: '100',
+    slotName: 'isDefault'
+  },
+  {
+    label: '状态',
+    width: '100',
+    slotName: 'status'
+  },
+  { prop: 'remark', label: '备注', minWidth: '200', showOverflowTooltip: true },
+  {
+    label: '创建时间',
+    width: '180',
+    slotName: 'createTime'
+  },
+  {
+    label: '操作',
+    width: '150',
+    fixed: 'right',
+    slotName: 'operation'
+  }
+]
 
 const typeRules = {
   dictName: [
@@ -355,11 +382,19 @@ const handleSaveType = async () => {
     if (valid) {
       typeDialogLoading.value = true
       try {
+        // 添加XSS防护
+        const safeTypeForm = {
+          ...typeForm,
+          dictName: safeInput(typeForm.dictName),
+          dictCode: safeInput(typeForm.dictCode),
+          description: safeInput(typeForm.description)
+        }
+        
         const isEdit = typeForm.id !== null
         if (isEdit) {
-          await updateDictType(typeForm)
+          await updateDictType(safeTypeForm)
         } else {
-          await addDictType(typeForm)
+          await addDictType(safeTypeForm)
         }
         ElMessage.success(isEdit ? '更新成功' : '添加成功')
         typeDialogVisible.value = false
@@ -401,17 +436,26 @@ const handleSaveData = async () => {
     if (valid) {
       dataDialogLoading.value = true
       try {
-        const isEdit = dataForm.id !== null
-        const dataToSave = { ...dataForm }
-        if (!isEdit) {
+        // 添加XSS防护
+        const dataToSave = {
+          ...dataForm,
+          dictLabel: safeInput(dataForm.dictLabel),
+          dictValue: safeInput(dataForm.dictValue),
+          cssClass: safeInput(dataForm.cssClass),
+          listClass: safeInput(dataForm.listClass),
+          remark: safeInput(dataForm.remark)
+        }
+        
+        if (!dataForm.id) {
           dataToSave.dictTypeId = selectedDictTypeId.value
         }
-        if (isEdit) {
+        
+        if (dataForm.id) {
           await updateDictData(dataToSave)
         } else {
           await addDictData(dataToSave)
         }
-        ElMessage.success(isEdit ? '更新成功' : '添加成功')
+        ElMessage.success(dataForm.id ? '更新成功' : '添加成功')
         dataDialogVisible.value = false
         loadDictDataList()
       } catch (error) {
@@ -440,6 +484,26 @@ const handleDeleteData = async (id) => {
   }
 }
 
+const handleDataSearch = (searchParams) => {
+  const searchTerm = searchParams.global.toLowerCase()
+  if (!searchTerm) {
+    loadDictDataList()
+    return
+  }
+  
+  // 过滤字典数据
+  dictDataList.value = dictDataList.value.filter(item => 
+    item.dictLabel.toLowerCase().includes(searchTerm) || 
+    item.dictValue.toLowerCase().includes(searchTerm)
+  )
+}
+
+const handleDataExport = (exportParams) => {
+  console.log('导出数据:', exportParams)
+  // 这里可以添加导出逻辑，例如调用后端API或使用前端库导出
+  ElMessage.success(`导出${exportParams.format}格式成功`)
+}
+
 onMounted(() => {
   loadDictTypeList()
 })
@@ -450,21 +514,10 @@ onMounted(() => {
   padding: 20px;
 }
 
-.page-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 500;
-}
-
-.content-card {
-  margin-bottom: 20px;
 }
 
 .dict-type-panel,

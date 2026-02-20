@@ -1,14 +1,17 @@
 <template>
   <div class="statistics-container">
-    <div class="page-header">
-      <h2>排班统计</h2>
-      <el-button type="primary" @click="exportExcel" :loading="exportLoading">
-        <el-icon><Download /></el-icon>
-        导出Excel
-      </el-button>
-    </div>
-
-    <el-row :gutter="20">
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>排班统计</span>
+          <el-button type="primary" @click="exportExcel" :loading="exportLoading">
+            <el-icon><Download /></el-icon>
+            导出Excel
+          </el-button>
+        </div>
+      </template>
+      
+      <el-row :gutter="20">
       <el-col :span="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-title">排班概览</div>
@@ -101,25 +104,30 @@
           </el-button>
         </div>
       </div>
-      <el-table :data="employeeStatistics" border stripe v-loading="employeeLoading">
-          <el-table-column prop="employeeName" label="员工姓名" width="120" />
-          <el-table-column label="年月" width="100">
-            <template #default="scope">
-              {{ scope.row.year }}年{{ scope.row.month }}月
-            </template>
-          </el-table-column>
-          <el-table-column prop="plannedHours" label="计划工时(小时)" width="150" />
-          <el-table-column prop="actualHours" label="实际工时(小时)" width="150" />
-          <el-table-column prop="actualDays" label="实际天数" width="120" />
-          <el-table-column prop="overtimeHours" label="加班工时(小时)" width="150" />
-          <el-table-column prop="compensatoryHours" label="可调休工时(小时)" width="150" />
-          <el-table-column prop="usedCompensatoryHours" label="已调休工时(小时)" width="150" />
-          <el-table-column label="完成率" width="120">
-            <template #default="scope">
-              {{ getCompletionRate(scope.row) }}%
-            </template>
-          </el-table-column>
-        </el-table>
+      <BaseTable
+        :data="employeeStatistics"
+        :columns="employeeColumns"
+        :show-pagination="true"
+        :pagination="employeePagination"
+        :show-search="true"
+        :search-placeholder="'请输入员工姓名'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        v-loading="employeeLoading"
+        @size-change="handleEmployeeSizeChange"
+        @current-change="handleEmployeeCurrentChange"
+        @search="handleEmployeeSearch"
+        @export="handleEmployeeExport"
+      >
+        <template #yearMonth="{ row }">
+          {{ row.year }}年{{ row.month }}月
+        </template>
+        <template #completionRate="{ row }">
+          {{ getCompletionRate(row) }}%
+        </template>
+      </BaseTable>
+    </el-card>
     </el-card>
   </div>
 </template>
@@ -130,6 +138,9 @@ import { Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { getAllStatistics, exportStatisticsExcel, getEmployeeStatistics } from '@/api/duty/statistics'
+import BaseTable from '@/components/BaseTable.vue'
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
 
 const loading = ref(false)
 const exportLoading = ref(false)
@@ -149,6 +160,32 @@ const employeeStatistics = ref([])
 const currentDate = new Date()
 const formattedMonth = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0')
 const selectedDate = ref(formattedMonth)
+
+// 员工统计表格配置
+const employeeCurrentPage = ref(1)
+const employeePageSize = ref(10)
+const employeeSearchQuery = ref('')
+
+const employeeColumns = [
+  { prop: 'employeeName', label: '员工姓名', width: '120' },
+  { prop: 'yearMonth', label: '年月', width: '100' },
+  { prop: 'plannedHours', label: '计划工时(小时)', width: '150' },
+  { prop: 'actualHours', label: '实际工时(小时)', width: '150' },
+  { prop: 'actualDays', label: '实际天数', width: '120' },
+  { prop: 'overtimeHours', label: '加班工时(小时)', width: '150' },
+  { prop: 'compensatoryHours', label: '可调休工时(小时)', width: '150' },
+  { prop: 'usedCompensatoryHours', label: '已调休工时(小时)', width: '150' },
+  { prop: 'completionRate', label: '完成率', width: '120' }
+]
+
+const employeePagination = computed(() => {
+  return {
+    currentPage: employeeCurrentPage.value,
+    pageSize: employeePageSize.value,
+    pageSizes: [10, 20, 50, 100],
+    total: employeeStatistics.value.length
+  }
+})
 
 const getTotalAssignments = computed(() => {
   return statistics.dept.reduce((sum, dept) => sum + (dept.assignmentCount || 0), 0)
@@ -332,6 +369,30 @@ const fetchEmployeeStatistics = async () => {
   }
 }
 
+// 员工统计表格方法
+const handleEmployeeSizeChange = (size) => {
+  employeePageSize.value = size
+  fetchEmployeeStatistics()
+}
+
+const handleEmployeeCurrentChange = (current) => {
+  employeeCurrentPage.value = current
+  fetchEmployeeStatistics()
+}
+
+const handleEmployeeSearch = (searchParams) => {
+  // 这里可以添加搜索逻辑
+  console.log('Employee search:', searchParams)
+  // 由于我们使用的是前端过滤，这里不需要重新请求数据
+}
+
+const handleEmployeeExport = (exportParams) => {
+  // 这里可以添加导出逻辑
+  console.log('Employee export:', exportParams)
+  // 调用现有的导出方法
+  exportExcel()
+}
+
 onMounted(async () => {
   await fetchStatistics()
   await fetchEmployeeStatistics()
@@ -343,17 +404,10 @@ onMounted(async () => {
   padding: 10px;
 }
 
-.page-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
 }
 
 .stat-card {

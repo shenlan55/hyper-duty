@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.dto.LoginDTO;
 import com.lasu.hyperduty.entity.SysUser;
@@ -41,6 +42,7 @@ public class AuthController {
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
+    @RateLimit(window = 60, max = 10, message = "登录尝试过于频繁，请60秒后再试")
     public ResponseResult<Map<String, Object>> login(@Validated @RequestBody LoginDTO loginDTO) {
         // 进行认证
         Authentication authentication = authenticationManager.authenticate(

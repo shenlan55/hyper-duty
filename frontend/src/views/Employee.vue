@@ -1,116 +1,87 @@
 <template>
   <div class="employee-container">
-    <div class="page-header">
-      <h2>人员管理</h2>
-      <el-button type="primary" @click="openAddDialog">
-        <el-icon><Plus /></el-icon>
-        添加人员
-      </el-button>
-    </div>
-
-    <el-card shadow="hover" class="content-card">
-      <div class="table-toolbar">
-        <el-input
-          v-model="searchQuery"
-          placeholder="请输入人员姓名或编码"
-          prefix-icon="Search"
-          clearable
-          class="search-input"
-          @input="handleSearch"
-        />
-        <el-select
-          v-model="deptFilter"
-          placeholder="按部门筛选"
-          clearable
-          class="dept-filter"
-          @change="handleDeptFilter"
-          filterable
-        >
-          <el-option label="全部部门" value="" />
-          <el-option
-            v-for="dept in deptList"
-            :key="dept.id"
-            :label="dept.deptName"
-            :value="dept.id"
-          />
-        </el-select>
-      </div>
-
-      <el-table
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>人员管理</span>
+          <el-button type="primary" @click="openAddDialog">
+            <el-icon><Plus /></el-icon>
+            添加人员
+          </el-button>
+        </div>
+      </template>
+      
+      <BaseTable
         v-loading="loading"
-        :data="pagedEmployeeList"
-        style="width: 100%"
-        row-key="id"
+        :data="filteredEmployeeList"
+        :columns="columns"
+        :show-pagination="true"
+        :pagination="pagination"
+        :show-search="true"
+        :search-placeholder="'请输入人员姓名或编码'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        @search="handleSearch"
+        @export="handleExport"
       >
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="employeeName" label="人员姓名" min-width="150" />
-        <el-table-column prop="employeeCode" label="人员编码" width="150" />
-        <el-table-column prop="username" label="用户名" min-width="150" />
-        <el-table-column prop="deptId" label="所属部门" min-width="180">
-          <template #default="scope">
-            {{ getDeptName(scope.row.deptId) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="phone" label="手机号码" width="150" />
-        <el-table-column prop="email" label="邮箱" min-width="200" />
-        <el-table-column prop="gender" label="性别" width="100">
-          <template #default="scope">
-            <el-tag 
-              :class="scope.row.gender === 1 ? 'gender-tag-male' : scope.row.gender === 2 ? 'gender-tag-female' : 'gender-tag-unknown'"
-              size="small"
-            >
-              {{ scope.row.gender === 1 ? '男' : scope.row.gender === 2 ? '女' : '未知' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="dictTypeId" label="字典类型" min-width="150">
-          <template #default="scope">
-            {{ getDictTypeName(scope.row.dictTypeId) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="dictDataId" label="字典数据" min-width="150">
-          <template #default="scope">
-            {{ getDictDataLabel(scope.row.dictDataId, scope.row.dictTypeId) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
-              {{ scope.row.status === 1 ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="scope">
-            <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
-              编辑
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="filteredEmployeeList.length"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
+        <template #toolbar>
+          <el-select
+            v-model="deptFilter"
+            placeholder="按部门筛选"
+            clearable
+            class="dept-filter"
+            @change="handleDeptFilter"
+            filterable
+          >
+            <el-option label="全部部门" value="" />
+            <el-option
+              v-for="dept in deptList"
+              :key="dept.id"
+              :label="dept.deptName"
+              :value="dept.id"
+            />
+          </el-select>
+        </template>
+        <template #deptId="{ row }">
+          {{ getDeptName(row.deptId) }}
+        </template>
+        <template #gender="{ row }">
+          <el-tag 
+            :class="row.gender === 1 ? 'gender-tag-male' : row.gender === 2 ? 'gender-tag-female' : 'gender-tag-unknown'"
+            size="small"
+          >
+            {{ row.gender === 1 ? '男' : row.gender === 2 ? '女' : '未知' }}
+          </el-tag>
+        </template>
+        <template #dictTypeId="{ row }">
+          {{ getDictTypeName(row.dictTypeId) }}
+        </template>
+        <template #dictDataId="{ row }">
+          {{ getDictDataLabel(row.dictDataId, row.dictTypeId) }}
+        </template>
+        <template #status="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+            {{ row.status === 1 ? '启用' : '禁用' }}
+          </el-tag>
+        </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
+        <template #operation="{ row }">
+          <el-button type="primary" size="small" @click="openEditDialog(row)">
+            编辑
+          </el-button>
+          <el-button type="danger" size="small" @click="handleDelete(row.id)">
+            删除
+          </el-button>
+        </template>
+    </BaseTable>
     </el-card>
 
-    <!-- 添加/编辑人员对话框 -->
+    <!-- 新增/编辑对话框 -->
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
@@ -279,6 +250,8 @@ import { getDeptList } from '../api/dept'
 import { listDictType } from '../api/dictType'
 import { getDictDataByType } from '../api/dictData'
 import { formatDateTime } from '../utils/dateUtils'
+import { safeInput } from '../utils/xssUtil'
+import BaseTable from '../components/BaseTable.vue'
 
 // 响应式数据
 const searchQuery = ref('')
@@ -292,6 +265,33 @@ const employeeFormRef = ref()
 // 分页数据
 const currentPage = ref(1)
 const pageSize = ref(10)
+
+// 表格列配置
+const columns = [
+  { prop: 'id', label: 'ID', width: '80' },
+  { prop: 'employeeName', label: '人员姓名', minWidth: '150' },
+  { prop: 'employeeCode', label: '人员编码', width: '150' },
+  { prop: 'username', label: '用户名', minWidth: '150' },
+  { prop: 'deptId', label: '所属部门', minWidth: '180' },
+  { prop: 'phone', label: '手机号码', width: '150' },
+  { prop: 'email', label: '邮箱', minWidth: '200' },
+  { prop: 'gender', label: '性别', width: '100' },
+  { prop: 'dictTypeId', label: '字典类型', minWidth: '150' },
+  { prop: 'dictDataId', label: '字典数据', minWidth: '150' },
+  { prop: 'status', label: '状态', width: '100' },
+  { prop: 'createTime', label: '创建时间', width: '180' },
+  { type: 'operation', label: '操作', width: '180', fixed: 'right' }
+]
+
+// 分页配置
+const pagination = computed(() => {
+  return {
+    currentPage: currentPage.value,
+    pageSize: pageSize.value,
+    pageSizes: [10, 20, 50, 100],
+    total: filteredEmployeeList.value.length
+  }
+})
 
 // 部门数据
 const deptList = ref([])
@@ -381,12 +381,7 @@ const filteredEmployeeList = computed(() => {
   return list
 })
 
-// 分页后的人员列表
-const pagedEmployeeList = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filteredEmployeeList.value.slice(start, end)
-})
+
 
 // 获取部门名称
 const getDeptName = (deptId) => {
@@ -549,13 +544,23 @@ const handleSave = async () => {
     await employeeFormRef.value.validate()
     dialogLoading.value = true
     
+    // 处理用户输入，防止XSS攻击
+    const safeForm = {
+      ...employeeForm,
+      employeeName: safeInput(employeeForm.employeeName),
+      employeeCode: safeInput(employeeForm.employeeCode),
+      username: safeInput(employeeForm.username),
+      phone: safeInput(employeeForm.phone),
+      email: safeInput(employeeForm.email)
+    }
+    
     if (employeeForm.id) {
       // 编辑人员
-      await updateEmployee(employeeForm)
+      await updateEmployee(safeForm)
       ElMessage.success('编辑人员成功')
     } else {
       // 添加人员
-      await addEmployee(employeeForm)
+      await addEmployee(safeForm)
       ElMessage.success('添加人员成功')
     }
     
@@ -589,6 +594,48 @@ const handleDelete = async (id) => {
   }
 }
 
+// 表格搜索
+const handleTableSearch = (query) => {
+  searchQuery.value = query
+  currentPage.value = 1
+}
+
+// 导出人员列表
+const handleExport = () => {
+  // 导出逻辑
+  const exportData = filteredEmployeeList.value
+  const headers = ['人员姓名', '人员编码', '用户名', '所属部门', '手机号码', '邮箱', '性别', '字典类型', '字典数据', '状态', '创建时间']
+  const rows = exportData.map(row => [
+    row.employeeName,
+    row.employeeCode,
+    row.username,
+    getDeptName(row.deptId),
+    row.phone,
+    row.email,
+    row.gender === 1 ? '男' : row.gender === 2 ? '女' : '未知',
+    getDictTypeName(row.dictTypeId),
+    getDictDataLabel(row.dictDataId, row.dictTypeId),
+    row.status === 1 ? '启用' : '禁用',
+    formatDateTime(row.createTime)
+  ])
+  
+  // CSV导出实现
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n')
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `人员列表_${new Date().getTime()}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
 // 生命周期钩子
 onMounted(async () => {
   await fetchDeptList()
@@ -599,24 +646,13 @@ onMounted(async () => {
 
 <style scoped>
 .employee-container {
-  padding: 10px;
+  padding: 20px;
 }
 
-.page-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
-}
-
-.content-card {
-  margin-bottom: 10px;
 }
 
 .table-toolbar {

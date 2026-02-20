@@ -1,77 +1,55 @@
 <template>
   <div class="dept-container">
-    <div class="page-header">
-      <h2>部门管理</h2>
-      <el-button type="primary" @click="openAddDialog">
-        <el-icon><Plus /></el-icon>
-        添加部门
-      </el-button>
-    </div>
-
     <el-tabs v-model="activeTab" class="dept-tabs">
       <!-- 部门列表 -->
       <el-tab-pane label="部门列表" name="list">
-        <el-card shadow="hover" class="content-card">
-          <div class="table-toolbar">
-            <el-input
-              v-model="searchQuery"
-              placeholder="请输入部门名称或编码"
-              prefix-icon="Search"
-              clearable
-              class="search-input"
-              @input="handleSearch"
-            />
-          </div>
-          <el-table
+        <el-card shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <span>部门管理</span>
+              <el-button type="primary" @click="openAddDialog">
+                <el-icon><Plus /></el-icon>
+                添加部门
+              </el-button>
+            </div>
+          </template>
+          
+          <BaseTable
             v-loading="loading"
             :data="deptTreeData"
-            style="width: 100%"
-            row-key="id"
-            :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
-            default-expand-all
+            :columns="columns"
+            :show-pagination="true"
+            :pagination="pagination"
+            :show-search="true"
+            :search-placeholder="'请输入部门名称或编码'"
+            :show-export="true"
+            :show-column-control="true"
+            :show-skeleton="true"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            @search="handleSearch"
+            @export="handleExport"
           >
-            <el-table-column prop="deptName" label="部门名称" min-width="180" />
-            <el-table-column prop="deptCode" label="部门编码" width="150" />
-            <el-table-column label="上级部门编码" width="120">
-              <template #default="scope">
-                {{ getParentDeptCode(scope.row.parentId) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="sort" label="排序" width="100" />
-            <el-table-column prop="status" label="状态" width="100">
-              <template #default="scope">
-                <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
-                  {{ scope.row.status === 1 ? '启用' : '禁用' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="createTime" label="创建时间" width="180">
-              <template #default="scope">
-                {{ formatDateTime(scope.row.createTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="180" fixed="right">
-              <template #default="scope">
-                <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
-                  编辑
-                </el-button>
-                <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div class="pagination-container">
-            <el-pagination
-              v-model:current-page="currentPage"
-              v-model:page-size="pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              layout="total, sizes, prev, pager, next, jumper"
-              :total="filteredDeptList.length"
-              @size-change="handleSizeChange"
-              @current-change="handleCurrentChange"
-            />
-          </div>
+            <template #parentDeptCode="{ row }">
+              {{ getParentDeptCode(row.parentId) }}
+            </template>
+            <template #status="{ row }">
+              <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+                {{ row.status === 1 ? '启用' : '禁用' }}
+              </el-tag>
+            </template>
+            <template #createTime="{ row }">
+              {{ formatDateTime(row.createTime) }}
+            </template>
+            <template #operation="{ row }">
+              <el-button type="primary" size="small" @click="openEditDialog(row)">
+                编辑
+              </el-button>
+              <el-button type="danger" size="small" @click="handleDelete(row.id)">
+                删除
+              </el-button>
+            </template>
+          </BaseTable>
         </el-card>
       </el-tab-pane>
 
@@ -183,6 +161,8 @@ import {
   deleteDept
 } from '../api/dept'
 import { formatDateTime } from '../utils/dateUtils'
+import { safeInput } from '../utils/xssUtil'
+import BaseTable from '../components/BaseTable.vue'
 
 // 响应式数据
 const activeTab = ref('list')
@@ -233,6 +213,42 @@ const treeProps = {
   label: 'deptName'
 }
 
+// 表格列配置
+const columns = [
+  { prop: 'deptName', label: '部门名称', minWidth: '180', indent: true },
+  { prop: 'deptCode', label: '部门编码', width: '150' },
+  { 
+    label: '上级部门编码', 
+    width: '120',
+    slotName: 'parentDeptCode'
+  },
+  { prop: 'sort', label: '排序', width: '100' },
+  { 
+    label: '状态', 
+    width: '100',
+    slotName: 'status'
+  },
+  { 
+    label: '创建时间', 
+    width: '180',
+    slotName: 'createTime'
+  },
+  { 
+    label: '操作', 
+    width: '180', 
+    fixed: 'right',
+    slotName: 'operation'
+  }
+]
+
+// 分页配置
+const pagination = reactive({
+  currentPage: 1,
+  pageSize: 10,
+  pageSizes: [10, 20, 50, 100],
+  total: 0
+})
+
 // 带缩进的部门选项
 const indentedDeptOptions = ref([])
 
@@ -253,6 +269,8 @@ const fetchDeptList = async () => {
   try {
     const data = await getDeptList()
     deptList.value = data || []
+    // 更新分页总数
+    pagination.total = deptList.value.length
     // 构建树结构数据
     buildDeptTree(data || [])
     // 生成带缩进的部门选项
@@ -336,14 +354,21 @@ const generateIndentedOptions = () => {
 }
 
 // 搜索
-const handleSearch = () => {
+const handleSearch = (searchParams) => {
+  searchQuery.value = searchParams.global
   currentPage.value = 1
   filterDeptTree()
 }
 
+const handleExport = (exportParams) => {
+  console.log('导出数据:', exportParams)
+  // 这里可以添加导出逻辑，例如调用后端API或使用前端库导出
+  ElMessage.success(`导出${exportParams.format}格式成功`)
+}
+
 // 监听搜索输入变化，实现实时搜索
 watch(searchQuery, () => {
-  handleSearch()
+  filterDeptTree()
 })
 
 // 过滤部门树
@@ -391,12 +416,12 @@ const findAllAncestors = (parentId, idSet) => {
 
 // 分页处理
 const handleSizeChange = (size) => {
-  pageSize.value = size
-  currentPage.value = 1
+  pagination.pageSize = size
+  pagination.currentPage = 1
 }
 
 const handleCurrentChange = (page) => {
-  currentPage.value = page
+  pagination.currentPage = page
 }
 
 // 打开添加对话框
@@ -434,13 +459,20 @@ const handleSave = async () => {
     await deptFormRef.value.validate()
     dialogLoading.value = true
     
+    // 添加XSS防护
+    const safeForm = {
+      ...deptForm,
+      deptName: safeInput(deptForm.deptName),
+      deptCode: safeInput(deptForm.deptCode)
+    }
+    
     if (deptForm.id) {
       // 编辑部门
-      await updateDept(deptForm)
+      await updateDept(safeForm)
       ElMessage.success('编辑部门成功')
     } else {
       // 添加部门
-      await addDept(deptForm)
+      await addDept(safeForm)
       ElMessage.success('添加部门成功')
     }
     
@@ -485,25 +517,14 @@ onMounted(() => {
   padding: 10px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
-}
-
 .dept-tabs {
   margin-bottom: 10px;
 }
 
-.content-card {
-  margin-bottom: 10px;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .table-toolbar {

@@ -1,39 +1,41 @@
 <template>
   <div class="assignment-container">
-    <div class="page-header">
-      <h2>值班安排</h2>
-      <div class="header-actions">
-        <el-select
-          v-model="selectedScheduleId"
-          placeholder="选择值班表"
-          clearable
-          class="schedule-select"
-          @change="handleScheduleChange"
-          style="width: 250px; margin-right: 10px"
-        >
-          <el-option
-            v-for="schedule in scheduleList"
-            :key="schedule.id"
-            :label="schedule.scheduleName"
-            :value="schedule.id"
-          />
-        </el-select>
-        <el-button type="primary" @click="openBatchDialog" :disabled="!selectedScheduleId || !isLeader">
-          <el-icon><Plus /></el-icon>
-          批量排班
-        </el-button>
-        <el-button type="danger" @click="openClearDialog" :disabled="!selectedScheduleId || !isLeader">
-          <el-icon><Delete /></el-icon>
-          批量清空
-        </el-button>
-        <el-button @click="openExportDialog" :disabled="!selectedScheduleId">
-          <el-icon><Download /></el-icon>
-          导出
-        </el-button>
-      </div>
-    </div>
-
-    <el-card shadow="hover" class="content-card">
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>值班安排</span>
+          <div class="header-actions">
+            <el-select
+              v-model="selectedScheduleId"
+              placeholder="选择值班表"
+              clearable
+              class="schedule-select"
+              @change="handleScheduleChange"
+              style="width: 250px; margin-right: 10px"
+            >
+              <el-option
+                v-for="schedule in scheduleList"
+                :key="schedule.id"
+                :label="schedule.scheduleName"
+                :value="schedule.id"
+              />
+            </el-select>
+            <el-button type="primary" @click="openBatchDialog" :disabled="!selectedScheduleId || !isLeader">
+              <el-icon><Plus /></el-icon>
+              批量排班
+            </el-button>
+            <el-button type="danger" @click="openClearDialog" :disabled="!selectedScheduleId || !isLeader">
+              <el-icon><Delete /></el-icon>
+              批量清空
+            </el-button>
+            <el-button @click="openExportDialog" :disabled="!selectedScheduleId">
+              <el-icon><Download /></el-icon>
+              导出
+            </el-button>
+          </div>
+        </div>
+      </template>
+      
       <el-calendar v-model="currentDate">
         <template #date-cell="{ data }">
           <div class="calendar-cell" :class="getCalendarCellClass(data.day)" @click="handleCellClick(data.day)" style="cursor: pointer;">
@@ -358,33 +360,31 @@
       <div v-if="selectedDateAssignments.length > 0">
         <el-tabs type="border-card">
           <el-tab-pane label="值班详情">
-            <el-table :data="selectedDateAssignments" border stripe>
-              <el-table-column prop="shiftName" label="班次" width="120">
-                <template #default="scope">
-                  <el-tag :type="getShiftTypeColor(scope.row.dutyShift)" size="small">
-                    {{ scope.row.shiftName }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="employeeName" label="值班人员" width="150" />
-              <el-table-column prop="deptName" label="所在部门" width="150" />
-              <el-table-column prop="phone" label="联系电话" width="150" />
-              <el-table-column prop="status" label="状态" width="100">
-                <template #default="scope">
-                  <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'" size="small">
-                    {{ scope.row.status === 1 ? '有效' : '无效' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="remark" label="备注" />
-              <el-table-column label="操作" width="100" v-if="isLeader">
-                <template #default="scope">
-                  <el-button size="small" type="primary" @click="openEditDetailDialog(scope.row)">
-                    修改
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
+            <BaseTable
+              :data="selectedDateAssignments"
+              :columns="detailColumns"
+              :show-pagination="false"
+              :show-export="true"
+              :show-column-control="true"
+              :show-skeleton="true"
+              @export="handleDetailExport"
+            >
+              <template #shiftName="{ row }">
+                <el-tag :type="getShiftTypeColor(row.dutyShift)" size="small">
+                  {{ row.shiftName }}
+                </el-tag>
+              </template>
+              <template #status="{ row }">
+                <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+                  {{ row.status === 1 ? '有效' : '无效' }}
+                </el-tag>
+              </template>
+              <template #operation="{ row }" v-if="isLeader">
+                <el-button size="small" type="primary" @click="openEditDetailDialog(row)">
+                  修改
+                </el-button>
+              </template>
+            </BaseTable>
           </el-tab-pane>
           <el-tab-pane label="统计信息">
             <el-descriptions :column="2" border>
@@ -510,6 +510,7 @@ import { getEmployeeLeaveInfo as getEmployeeLeaveInfoAPI, getSubstitutesByEmploy
 import dayjs from 'dayjs'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
+import BaseTable from '../../components/BaseTable.vue'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 
@@ -648,6 +649,16 @@ const clearRules = {
     { required: true, message: '请选择日期范围', trigger: 'blur' }
   ]
 }
+
+const detailColumns = [
+  { prop: 'shiftName', label: '班次', width: '120' },
+  { prop: 'employeeName', label: '值班人员', width: '150' },
+  { prop: 'deptName', label: '所在部门', width: '150' },
+  { prop: 'phone', label: '联系电话', width: '150' },
+  { prop: 'status', label: '状态', width: '100' },
+  { prop: 'remark', label: '备注' },
+  { type: 'operation', label: '操作', width: '100' }
+]
 
 const shiftNames = computed(() => {
   const map = {}
@@ -1511,6 +1522,37 @@ const findUserSchedule = async (schedules) => {
   return null
 }
 
+// 导出值班详情
+const handleDetailExport = () => {
+  // 导出逻辑
+  const exportData = selectedDateAssignments.value
+  const headers = ['班次', '值班人员', '所在部门', '联系电话', '状态', '备注']
+  const rows = exportData.map(row => [
+    row.shiftName,
+    row.employeeName,
+    row.deptName,
+    row.phone,
+    row.status === 1 ? '有效' : '无效',
+    row.remark || ''
+  ])
+  
+  // CSV导出实现
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n')
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `值班详情_${selectedDetailDate.value}_${new Date().getTime()}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
 onMounted(async () => {
   await fetchScheduleList()
   await fetchEmployeeList()
@@ -1539,20 +1581,13 @@ onMounted(async () => {
 
 <style scoped>
 .assignment-container {
-  padding: 10px;
+  padding: 20px;
 }
 
-.page-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
 }
 
 .header-actions {
@@ -1561,9 +1596,7 @@ onMounted(async () => {
   gap: 10px;
 }
 
-.content-card {
-  margin-bottom: 10px;
-}
+
 
 .calendar-cell {
   height: 100%;

@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.SysDept;
 import com.lasu.hyperduty.service.SysDeptService;
@@ -38,6 +39,7 @@ public class SysDeptController {
      * 添加部门
      */
     @PostMapping
+    @RateLimit(window = 60, max = 20, message = "添加部门操作过于频繁，请60秒后再试")
     public ResponseResult<Void> addDept(@Validated @RequestBody SysDept sysDept) {
         sysDeptService.save(sysDept);
         return ResponseResult.success();
@@ -47,6 +49,7 @@ public class SysDeptController {
      * 修改部门
      */
     @PutMapping
+    @RateLimit(window = 60, max = 20, message = "修改部门操作过于频繁，请60秒后再试")
     public ResponseResult<Void> updateDept(@Validated @RequestBody SysDept sysDept) {
         sysDeptService.updateById(sysDept);
         return ResponseResult.success();
@@ -56,6 +59,7 @@ public class SysDeptController {
      * 删除部门
      */
     @DeleteMapping("/{id}")
+    @RateLimit(window = 60, max = 20, message = "删除部门操作过于频繁，请60秒后再试")
     public ResponseResult<Void> deleteDept(@PathVariable Long id) {
         sysDeptService.removeById(id);
         return ResponseResult.success();

@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.SysMenu;
 import com.lasu.hyperduty.service.SysMenuService;
@@ -49,6 +50,7 @@ public class SysMenuController {
      * @return 是否保存成功
      */
     @PostMapping
+    @RateLimit(window = 60, max = 20, message = "保存菜单操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> saveMenu(@RequestBody SysMenu sysMenu) {
         boolean result = sysMenuService.saveMenu(sysMenu);
         return ResponseResult.success(result);
@@ -60,6 +62,7 @@ public class SysMenuController {
      * @return 是否更新成功
      */
     @PutMapping
+    @RateLimit(window = 60, max = 20, message = "更新菜单操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> updateMenu(@RequestBody SysMenu sysMenu) {
         boolean result = sysMenuService.updateMenu(sysMenu);
         return ResponseResult.success(result);
@@ -71,6 +74,7 @@ public class SysMenuController {
      * @return 是否删除成功
      */
     @DeleteMapping("/{id}")
+    @RateLimit(window = 60, max = 20, message = "删除菜单操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> deleteMenu(@PathVariable Long id) {
         boolean result = sysMenuService.deleteMenu(id);
         return ResponseResult.success(result);

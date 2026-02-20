@@ -25,59 +25,44 @@
     </div>
 
     <el-card shadow="hover" class="content-card">
-      <el-table
+      <BaseTable
         v-loading="loading"
-        :data="pagedDictDataList"
-        style="width: 100%"
-        row-key="id"
+        :data="dictDataList"
+        :columns="columns"
+        :show-pagination="true"
+        :pagination="pagination"
+        :show-search="true"
+        :search-placeholder="'请输入字典标签或键值'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        @search="handleSearch"
+        @export="handleExport"
       >
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="dictLabel" label="字典标签" min-width="150" />
-        <el-table-column prop="dictValue" label="字典键值" width="180" />
-        <el-table-column prop="dictSort" label="排序" width="100" />
-        <el-table-column prop="cssClass" label="样式属性" width="150" show-overflow-tooltip />
-        <el-table-column prop="listClass" label="表格回显样式" width="150" show-overflow-tooltip />
-        <el-table-column prop="isDefault" label="是否默认" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.isDefault === 1 ? 'success' : 'info'">
-              {{ scope.row.isDefault === 1 ? '是' : '否' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
-              {{ scope.row.status === 1 ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="remark" label="备注" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="createTime" label="创建时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
-          <template #default="scope">
-            <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
-              编辑
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-container">
-        <el-pagination
-          layout="prev, pager, next"
-          :total="total"
-          :page-size="pageSize"
-          :current-page="currentPage"
-          @current-change="handleCurrentChange"
-        ></el-pagination>
-      </div>
+        <template #isDefault="{ row }">
+          <el-tag :type="row.isDefault === 1 ? 'success' : 'info'">
+            {{ row.isDefault === 1 ? '是' : '否' }}
+          </el-tag>
+        </template>
+        <template #status="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+            {{ row.status === 1 ? '启用' : '禁用' }}
+          </el-tag>
+        </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
+        <template #operation="{ row }">
+          <el-button type="primary" size="small" @click="openEditDialog(row)">
+            编辑
+          </el-button>
+          <el-button type="danger" size="small" @click="handleDelete(row.id)">
+            删除
+          </el-button>
+        </template>
+      </BaseTable>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
@@ -132,6 +117,7 @@ import {
 } from '../api/dictData'
 import { listDictType } from '../api/dictType'
 import { formatDateTime } from '../utils/dateUtils'
+import BaseTable from '../components/BaseTable.vue'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -143,6 +129,7 @@ const dictDataList = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const searchQuery = ref('')
 const formRef = ref(null)
 
 const form = reactive({
@@ -172,10 +159,29 @@ const rules = {
   ]
 }
 
-const pagedDictDataList = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return dictDataList.value.slice(start, end)
+// 表格列配置
+const columns = [
+  { prop: 'id', label: 'ID', width: '80' },
+  { prop: 'dictLabel', label: '字典标签', minWidth: '150' },
+  { prop: 'dictValue', label: '字典键值', width: '180' },
+  { prop: 'dictSort', label: '排序', width: '100' },
+  { prop: 'cssClass', label: '样式属性', width: '150' },
+  { prop: 'listClass', label: '表格回显样式', width: '150' },
+  { prop: 'isDefault', label: '是否默认', width: '100', slotName: 'isDefault' },
+  { prop: 'status', label: '状态', width: '100', slotName: 'status' },
+  { prop: 'remark', label: '备注', minWidth: '200' },
+  { prop: 'createTime', label: '创建时间', width: '180', slotName: 'createTime' },
+  { label: '操作', width: '150', fixed: 'right', slotName: 'operation' }
+]
+
+// 分页配置
+const pagination = computed(() => {
+  return {
+    currentPage: currentPage.value,
+    pageSize: pageSize.value,
+    pageSizes: [10, 20, 50, 100],
+    total: total.value
+  }
 })
 
 const loadDictTypeList = async () => {
@@ -197,8 +203,19 @@ const loadDictDataList = async () => {
   loading.value = true
   try {
     const data = await getDictDataByType(selectedDictTypeId.value)
-    dictDataList.value = data || []
-    total.value = data ? data.length : 0
+    let filteredData = data || []
+    
+    // 根据搜索查询过滤数据
+    if (searchQuery.value) {
+      const query = searchQuery.value.toLowerCase()
+      filteredData = filteredData.filter(item => 
+        item.dictLabel.toLowerCase().includes(query) || 
+        item.dictValue.toLowerCase().includes(query)
+      )
+    }
+    
+    dictDataList.value = filteredData
+    total.value = filteredData.length
   } catch (error) {
     ElMessage.error('加载字典数据列表失败')
   } finally {
@@ -208,7 +225,52 @@ const loadDictDataList = async () => {
 
 const handleDictTypeChange = () => {
   currentPage.value = 1
+  searchQuery.value = ''
   loadDictDataList()
+}
+
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+}
+
+const handleSearch = (query) => {
+  searchQuery.value = query
+  currentPage.value = 1
+}
+
+const handleExport = () => {
+  // 导出逻辑
+  const exportData = dictDataList.value
+  const headers = ['ID', '字典标签', '字典键值', '排序', '样式属性', '表格回显样式', '是否默认', '状态', '备注', '创建时间']
+  const rows = exportData.map(item => [
+    item.id,
+    item.dictLabel,
+    item.dictValue,
+    item.dictSort,
+    item.cssClass,
+    item.listClass,
+    item.isDefault === 1 ? '是' : '否',
+    item.status === 1 ? '启用' : '禁用',
+    item.remark || '',
+    formatDateTime(item.createTime)
+  ])
+  
+  // 这里可以使用xlsx库或其他方式导出，暂时使用简单的CSV导出
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n')
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `字典数据_${new Date().getTime()}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 const openAddDialog = () => {

@@ -160,10 +160,6 @@ const loadTodoList = async () => {
       const scheduleData = await getScheduleList()
       if (Array.isArray(scheduleData)) {
         schedules = scheduleData
-        // 打印值班表数据结构，用于调试
-        if (schedules.length > 0) {
-          console.log('值班表数据结构:', schedules[0])
-        }
       }
     } catch (error) {
       console.error('获取值班表失败:', error)
@@ -183,10 +179,6 @@ const loadTodoList = async () => {
       // 获取待审批的请假申请
       const leaveData = await getPendingApprovals(employeeId)
       if (Array.isArray(leaveData)) {
-        // 打印第一个请假申请的数据结构，用于调试
-        if (leaveData.length > 0) {
-          console.log('请假申请数据结构:', leaveData[0])
-        }
         leaveTodos = leaveData
           // 只显示待审批的请假申请
           .filter(item => item.approvalStatus === '待审批' || item.approvalStatus === 'pending')
@@ -257,10 +249,6 @@ const loadTodoList = async () => {
       // 获取待审批的加班申请
       const overtimeData = await getPendingOvertimeApprovals(employeeId)
       if (Array.isArray(overtimeData)) {
-        // 打印第一个加班申请的数据结构，用于调试
-        if (overtimeData.length > 0) {
-          console.log('加班申请数据结构:', overtimeData[0])
-        }
         overtimeTodos = overtimeData.map(item => {
           // 根据assignmentId找到对应的值班安排
           const assignment = assignments.find(a => a.id === item.assignmentId)

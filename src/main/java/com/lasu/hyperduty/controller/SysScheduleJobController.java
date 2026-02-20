@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.SysScheduleJob;
 import com.lasu.hyperduty.service.SysScheduleJobService;
@@ -50,6 +51,7 @@ public class SysScheduleJobController {
      * @return 新增结果
      */
     @PostMapping("/job/add")
+    @RateLimit(window = 60, max = 20, message = "新增定时任务操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> addJob(@RequestBody SysScheduleJob job) {
         boolean result = scheduleJobService.saveJob(job);
         return ResponseResult.success(result);
@@ -61,6 +63,7 @@ public class SysScheduleJobController {
      * @return 更新结果
      */
     @PutMapping("/job/update")
+    @RateLimit(window = 60, max = 20, message = "更新定时任务操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> updateJob(@RequestBody SysScheduleJob job) {
         boolean result = scheduleJobService.updateJob(job);
         return ResponseResult.success(result);
@@ -72,6 +75,7 @@ public class SysScheduleJobController {
      * @return 删除结果
      */
     @DeleteMapping("/job/delete/{jobId}")
+    @RateLimit(window = 60, max = 20, message = "删除定时任务操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> deleteJob(@PathVariable Long jobId) {
         boolean result = scheduleJobService.deleteJob(jobId);
         return ResponseResult.success(result);
@@ -83,6 +87,7 @@ public class SysScheduleJobController {
      * @return 暂停结果
      */
     @PostMapping("/job/pause/{jobId}")
+    @RateLimit(window = 60, max = 20, message = "暂停定时任务操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> pauseJob(@PathVariable Long jobId) {
         boolean result = scheduleJobService.pauseJob(jobId);
         return ResponseResult.success(result);
@@ -94,6 +99,7 @@ public class SysScheduleJobController {
      * @return 恢复结果
      */
     @PostMapping("/job/resume/{jobId}")
+    @RateLimit(window = 60, max = 20, message = "恢复定时任务操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> resumeJob(@PathVariable Long jobId) {
         boolean result = scheduleJobService.resumeJob(jobId);
         return ResponseResult.success(result);
@@ -105,6 +111,7 @@ public class SysScheduleJobController {
      * @return 执行结果
      */
     @PostMapping("/job/run/{jobId}")
+    @RateLimit(window = 60, max = 20, message = "立即执行定时任务操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> runJob(@PathVariable Long jobId) {
         boolean result = scheduleJobService.runJob(jobId);
         return ResponseResult.success(result);
@@ -133,6 +140,7 @@ public class SysScheduleJobController {
      * @return 删除的记录数
      */
     @PostMapping("/log/clean")
+    @RateLimit(window = 60, max = 10, message = "清理定时任务日志操作过于频繁，请60秒后再试")
     public ResponseResult<Integer> cleanLogs(@RequestParam int days) {
         int count = scheduleLogService.cleanLogs(days);
         return ResponseResult.success(count);

@@ -1,6 +1,7 @@
 package com.lasu.hyperduty.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.SysRole;
 import com.lasu.hyperduty.service.SysRoleService;
@@ -52,6 +53,7 @@ public class SysRoleController {
      * @return 是否保存成功
      */
     @PostMapping
+    @RateLimit(window = 60, max = 20, message = "保存角色操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> saveRole(@RequestBody SysRole sysRole) {
         boolean result = sysRoleService.save(sysRole);
         return ResponseResult.success(result);
@@ -63,6 +65,7 @@ public class SysRoleController {
      * @return 是否更新成功
      */
     @PutMapping
+    @RateLimit(window = 60, max = 20, message = "更新角色操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> updateRole(@RequestBody SysRole sysRole) {
         boolean result = sysRoleService.updateById(sysRole);
         return ResponseResult.success(result);
@@ -74,6 +77,7 @@ public class SysRoleController {
      * @return 是否删除成功
      */
     @DeleteMapping("/{id}")
+    @RateLimit(window = 60, max = 20, message = "删除角色操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> deleteRole(@PathVariable Long id) {
         boolean result = sysRoleService.removeById(id);
         return ResponseResult.success(result);
@@ -96,6 +100,7 @@ public class SysRoleController {
      * @return 是否保存成功
      */
     @PostMapping("/menu")
+    @RateLimit(window = 60, max = 20, message = "保存角色菜单操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> saveRoleMenu(@RequestBody Map<String, Object> request) {
         Long roleId = Long.parseLong(request.get("roleId").toString());
         List<Long> menuIds = ((List<?>) request.get("menuIds")).stream()
@@ -122,6 +127,7 @@ public class SysRoleController {
      * @return 是否保存成功
      */
     @PostMapping("/user")
+    @RateLimit(window = 60, max = 20, message = "保存角色用户操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> saveRoleUser(@RequestBody Map<String, Object> request) {
         Long roleId = Long.parseLong(request.get("roleId").toString());
         List<Long> userIds = ((List<?>) request.get("userIds")).stream()

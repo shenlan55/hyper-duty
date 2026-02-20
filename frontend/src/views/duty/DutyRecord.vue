@@ -1,30 +1,32 @@
 <template>
   <div class="record-container">
-    <div class="page-header">
-      <h2>加班记录</h2>
-      <div class="header-actions">
-        <el-select
-          v-model="selectedScheduleId"
-          placeholder="选择值班表"
-          clearable
-          class="schedule-select"
-          @change="handleScheduleChange"
-          style="width: 250px; margin-right: 10px"
-        >
-          <el-option
-            v-for="schedule in scheduleList"
-            :key="schedule.id"
-            :label="schedule.scheduleName"
-            :value="schedule.id"
-          />
-        </el-select>
-        <el-button type="primary" @click="openCreateDialog">
-          新建加班记录
-        </el-button>
-      </div>
-    </div>
-
-    <el-card shadow="hover" class="content-card">
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>加班记录</span>
+          <div class="header-actions">
+            <el-select
+              v-model="selectedScheduleId"
+              placeholder="选择值班表"
+              clearable
+              class="schedule-select"
+              @change="handleScheduleChange"
+              style="width: 250px; margin-right: 10px"
+            >
+              <el-option
+                v-for="schedule in scheduleList"
+                :key="schedule.id"
+                :label="schedule.scheduleName"
+                :value="schedule.id"
+              />
+            </el-select>
+            <el-button type="primary" @click="openCreateDialog">
+              新建加班记录
+            </el-button>
+          </div>
+        </div>
+      </template>
+      
       <!-- 标签页组件 -->
       <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="mb-4">
         <el-tab-pane label="加班人员记录" name="record">
@@ -39,119 +41,87 @@
             />
           </div>
 
-          <el-table
+          <BaseTable
             v-loading="loading || !shiftConfigsLoaded"
-            :data="pagedRecordList"
-            style="width: 100%"
-            row-key="id"
+            :data="filteredRecordList"
+            :columns="recordColumns"
+            :show-pagination="true"
+            :pagination="pagination"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
           >
-            <el-table-column prop="id" label="ID" width="80" />
-            <el-table-column label="值班表" min-width="150">
-              <template #default="scope">
-                {{ scope.row.scheduleName || '未知值班表' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="dutyDate" label="值班日期" width="150">
-              <template #default="scope">
-                {{ formatDate(scope.row.dutyDate) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="班次" width="100">
-              <template #default="scope">
-                <el-tag :type="'info'">
-                  {{ getShiftName(scope.row.dutyShift) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="employeeId" label="值班人员" min-width="150">
-              <template #default="scope">
-                {{ getEmployeeName(scope.row.employeeId) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="checkInTime" label="签到时间" width="180">
-              <template #default="scope">
-                {{ formatDateTime(scope.row.checkInTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="checkOutTime" label="签退时间" width="180">
-              <template #default="scope">
-                {{ formatDateTime(scope.row.checkOutTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="dutyStatus" label="值班状态" width="120">
-              <template #default="scope">
-                <el-tag
-                  :type="getStatusType(scope.row.dutyStatus)"
-                >
-                  {{ getStatusName(scope.row.dutyStatus) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="checkInRemark" label="签到备注" min-width="150" show-overflow-tooltip />
-            <el-table-column prop="checkOutRemark" label="签退备注" min-width="150" show-overflow-tooltip />
-            <el-table-column prop="overtimeHours" label="加班时长" width="100">
-              <template #default="scope">
-                {{ scope.row.overtimeHours || 0 }}小时
-              </template>
-            </el-table-column>
-            <el-table-column prop="approvalStatus" label="审批状态" width="120">
-              <template #default="scope">
-                <el-tag
-                  :type="getApprovalType(scope.row.approvalStatus)"
-                >
-                  {{ scope.row.approvalStatus || '待审批' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="240" fixed="right">
-              <template #default="scope">
-                <el-button
-                  v-if="scope.row.dutyStatus === 0 || !scope.row.dutyStatus"
-                  type="success" 
-                  size="small" 
-                  @click="openCheckInDialog(scope.row)"
-                >
-                  签到
-                </el-button>
-                <el-button
-                  v-else-if="scope.row.dutyStatus === 1"
-                  type="primary" 
-                  size="small" 
-                  @click="openCheckOutDialog(scope.row)"
-                >
-                  签退
-                </el-button>
-                <el-button 
-                  v-if="scope.row.approvalStatus !== '已批准'"
-                  type="warning" 
-                  size="small" 
-                  @click="openEditDialog(scope.row)"
-                >
-                  编辑
-                </el-button>
-                <el-button 
-                  v-if="scope.row.approvalStatus !== '已批准'"
-                  type="danger" 
-                  size="small" 
-                  @click="handleDelete(scope.row.id)"
-                >
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <div class="pagination-container">
-            <el-pagination
-              v-model:current-page="currentPage"
-              v-model:page-size="pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              layout="total, sizes, prev, pager, next, jumper"
-              :total="filteredRecordList.length"
-              @size-change="handleSizeChange"
-              @current-change="handleCurrentChange"
-            />
-          </div>
+            <template #scheduleName="{ row }">
+              {{ row.scheduleName || '未知值班表' }}
+            </template>
+            <template #dutyDate="{ row }">
+              {{ formatDate(row.dutyDate) }}
+            </template>
+            <template #dutyShift="{ row }">
+              <el-tag :type="'info'">
+                {{ getShiftName(row.dutyShift) }}
+              </el-tag>
+            </template>
+            <template #employeeId="{ row }">
+              {{ getEmployeeName(row.employeeId) }}
+            </template>
+            <template #checkInTime="{ row }">
+              {{ formatDateTime(row.checkInTime) }}
+            </template>
+            <template #checkOutTime="{ row }">
+              {{ formatDateTime(row.checkOutTime) }}
+            </template>
+            <template #dutyStatus="{ row }">
+              <el-tag
+                :type="getStatusType(row.dutyStatus)"
+              >
+                {{ getStatusName(row.dutyStatus) }}
+              </el-tag>
+            </template>
+            <template #overtimeHours="{ row }">
+              {{ row.overtimeHours || 0 }}小时
+            </template>
+            <template #approvalStatus="{ row }">
+              <el-tag
+                :type="getApprovalType(row.approvalStatus)"
+              >
+                {{ row.approvalStatus || '待审批' }}
+              </el-tag>
+            </template>
+            <template #operation="{ row }">
+              <el-button
+                v-if="row.dutyStatus === 0 || !row.dutyStatus"
+                type="success" 
+                size="small" 
+                @click="openCheckInDialog(row)"
+              >
+                签到
+              </el-button>
+              <el-button
+                v-else-if="row.dutyStatus === 1"
+                type="primary" 
+                size="small" 
+                @click="openCheckOutDialog(row)"
+              >
+                签退
+              </el-button>
+              <el-button 
+                v-if="row.approvalStatus !== '已批准'"
+                type="warning" 
+                size="small" 
+                @click="openEditDialog(row)"
+              >
+                编辑
+              </el-button>
+              <el-button 
+                v-if="row.approvalStatus !== '已批准'"
+                type="danger" 
+                size="small" 
+                @click="handleDelete(row.id)"
+              >
+                删除
+              </el-button>
+            </template>
+          </BaseTable>
         </el-tab-pane>
         <el-tab-pane label="加班审批" name="approval" :disabled="!isDutyManager">
           <div class="table-toolbar">
@@ -165,101 +135,71 @@
             />
           </div>
 
-          <el-table
+          <BaseTable
             v-loading="approvalLoading || !shiftConfigsLoaded"
-            :data="pagedApprovalList"
-            style="width: 100%"
-            row-key="id"
+            :data="filteredApprovalList"
+            :columns="approvalColumns"
+            :show-pagination="true"
+            :pagination="approvalPagination"
+            @size-change="handleApprovalSizeChange"
+            @current-change="handleApprovalCurrentChange"
           >
-            <el-table-column prop="id" label="ID" width="80" />
-            <el-table-column label="值班表" min-width="150">
-              <template #default="scope">
-                {{ scope.row.scheduleName || '未知值班表' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="dutyDate" label="值班日期" width="150">
-              <template #default="scope">
-                {{ formatDate(scope.row.dutyDate) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="班次" width="100">
-              <template #default="scope">
-                <el-tag :type="'info'">
-                  {{ getShiftName(scope.row.dutyShift) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="employeeId" label="值班人员" min-width="150">
-              <template #default="scope">
-                {{ getEmployeeName(scope.row.employeeId) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="checkInTime" label="签到时间" width="180">
-              <template #default="scope">
-                {{ formatDateTime(scope.row.checkInTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="checkOutTime" label="签退时间" width="180">
-              <template #default="scope">
-                {{ formatDateTime(scope.row.checkOutTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="dutyStatus" label="值班状态" width="120">
-              <template #default="scope">
-                <el-tag
-                  :type="getStatusType(scope.row.dutyStatus)"
-                >
-                  {{ getStatusName(scope.row.dutyStatus) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="overtimeHours" label="加班时长" width="100">
-              <template #default="scope">
-                {{ scope.row.overtimeHours || 0 }}小时
-              </template>
-            </el-table-column>
-            <el-table-column prop="approvalStatus" label="审批状态" width="120">
-              <template #default="scope">
-                <el-tag
-                  :type="getApprovalType(scope.row.approvalStatus)"
-                >
-                  {{ scope.row.approvalStatus || '待审批' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="160" fixed="right">
-              <template #default="scope">
-                <el-button 
-                  v-if="isDutyManager && scope.row.approvalStatus !== '已批准'"
-                  type="warning" 
-                  size="small" 
-                  @click="openEditDialog(scope.row)"
-                >
-                  审批
-                </el-button>
-                <el-button 
-                  v-if="scope.row.approvalStatus !== '已批准'"
-                  type="danger" 
-                  size="small" 
-                  @click="handleDelete(scope.row.id)"
-                >
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <div class="pagination-container">
-            <el-pagination
-              v-model:current-page="approvalCurrentPage"
-              v-model:page-size="approvalPageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              layout="total, sizes, prev, pager, next, jumper"
-              :total="filteredApprovalList.length"
-              @size-change="handleApprovalSizeChange"
-              @current-change="handleApprovalCurrentChange"
-            />
-          </div>
+            <template #scheduleName="{ row }">
+              {{ row.scheduleName || '未知值班表' }}
+            </template>
+            <template #dutyDate="{ row }">
+              {{ formatDate(row.dutyDate) }}
+            </template>
+            <template #dutyShift="{ row }">
+              <el-tag :type="'info'">
+                {{ getShiftName(row.dutyShift) }}
+              </el-tag>
+            </template>
+            <template #employeeId="{ row }">
+              {{ getEmployeeName(row.employeeId) }}
+            </template>
+            <template #checkInTime="{ row }">
+              {{ formatDateTime(row.checkInTime) }}
+            </template>
+            <template #checkOutTime="{ row }">
+              {{ formatDateTime(row.checkOutTime) }}
+            </template>
+            <template #dutyStatus="{ row }">
+              <el-tag
+                :type="getStatusType(row.dutyStatus)"
+              >
+                {{ getStatusName(row.dutyStatus) }}
+              </el-tag>
+            </template>
+            <template #overtimeHours="{ row }">
+              {{ row.overtimeHours || 0 }}小时
+            </template>
+            <template #approvalStatus="{ row }">
+              <el-tag
+                :type="getApprovalType(row.approvalStatus)"
+              >
+                {{ row.approvalStatus || '待审批' }}
+              </el-tag>
+            </template>
+            <template #operation="{ row }">
+              <el-button 
+                v-if="isDutyManager && row.approvalStatus !== '已批准'"
+                type="warning" 
+                size="small" 
+                @click="openEditDialog(row)"
+              >
+                审批
+              </el-button>
+              <el-button 
+                v-if="row.approvalStatus !== '已批准'"
+                type="danger" 
+                size="small" 
+                @click="handleDelete(row.id)"
+              >
+                删除
+              </el-button>
+            </template>
+          </BaseTable>
         </el-tab-pane>
       </el-tabs>
     </el-card>
@@ -598,6 +538,8 @@ import { getScheduleList, getScheduleLeaders } from '../../api/duty/schedule'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
+import BaseTable from '../../components/BaseTable.vue'
+import { safeInput } from '../../utils/xssUtil'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -716,6 +658,56 @@ const currentRecordCheckInTime = ref('')
 // 分页数据
 const currentPage = ref(1)
 const pageSize = ref(10)
+
+// 表格列配置
+const recordColumns = [
+  { prop: 'id', label: 'ID', width: '80' },
+  { prop: 'scheduleName', label: '值班表', minWidth: '150' },
+  { prop: 'dutyDate', label: '值班日期', width: '150' },
+  { prop: 'dutyShift', label: '班次', width: '100' },
+  { prop: 'employeeId', label: '值班人员', minWidth: '150' },
+  { prop: 'checkInTime', label: '签到时间', width: '180' },
+  { prop: 'checkOutTime', label: '签退时间', width: '180' },
+  { prop: 'dutyStatus', label: '值班状态', width: '120' },
+  { prop: 'checkInRemark', label: '签到备注', minWidth: '150' },
+  { prop: 'checkOutRemark', label: '签退备注', minWidth: '150' },
+  { prop: 'overtimeHours', label: '加班时长', width: '100' },
+  { prop: 'approvalStatus', label: '审批状态', width: '120' },
+  { type: 'operation', label: '操作', width: '240', fixed: 'right' }
+]
+
+const approvalColumns = [
+  { prop: 'id', label: 'ID', width: '80' },
+  { prop: 'scheduleName', label: '值班表', minWidth: '150' },
+  { prop: 'dutyDate', label: '值班日期', width: '150' },
+  { prop: 'dutyShift', label: '班次', width: '100' },
+  { prop: 'employeeId', label: '值班人员', minWidth: '150' },
+  { prop: 'checkInTime', label: '签到时间', width: '180' },
+  { prop: 'checkOutTime', label: '签退时间', width: '180' },
+  { prop: 'dutyStatus', label: '值班状态', width: '120' },
+  { prop: 'overtimeHours', label: '加班时长', width: '100' },
+  { prop: 'approvalStatus', label: '审批状态', width: '120' },
+  { type: 'operation', label: '操作', width: '160', fixed: 'right' }
+]
+
+// 分页配置
+const pagination = computed(() => {
+  return {
+    currentPage: currentPage.value,
+    pageSize: pageSize.value,
+    pageSizes: [10, 20, 50, 100],
+    total: filteredRecordList.value.length
+  }
+})
+
+const approvalPagination = computed(() => {
+  return {
+    currentPage: approvalCurrentPage.value,
+    pageSize: approvalPageSize.value,
+    pageSizes: [10, 20, 50, 100],
+    total: filteredApprovalList.value.length
+  }
+})
 
 // 数据列表
 const employeeList = ref([])
@@ -921,13 +913,6 @@ const filteredRecordList = computed(() => {
   return list
 })
 
-// 分页后的值班记录列表
-const pagedRecordList = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filteredRecordList.value.slice(start, end)
-})
-
 // 审批页面过滤后的值班记录列表
 const filteredApprovalList = computed(() => {
   let list = recordList.value
@@ -945,13 +930,6 @@ const filteredApprovalList = computed(() => {
   }
   
   return list
-})
-
-// 审批页面分页后的值班记录列表
-const pagedApprovalList = computed(() => {
-  const start = (approvalCurrentPage.value - 1) * approvalPageSize.value
-  const end = start + approvalPageSize.value
-  return filteredApprovalList.value.slice(start, end)
 })
 
 // 获取员工列表
@@ -1365,7 +1343,7 @@ const handleCheckIn = async () => {
     await checkIn(currentRecord.value.assignmentId, {
       employeeId: currentRecord.value.employeeId,
       checkInTime: checkInForm.checkInTime,
-      checkInRemark: checkInForm.checkInRemark
+      checkInRemark: safeInput(checkInForm.checkInRemark)
     })
     
     ElMessage.success('签到成功')
@@ -1387,7 +1365,7 @@ const handleCheckOut = async () => {
     
     await checkOut(currentRecord.value.id, {
       checkOutTime: checkOutForm.checkOutTime,
-      checkOutRemark: checkOutForm.checkOutRemark,
+      checkOutRemark: safeInput(checkOutForm.checkOutRemark),
       overtimeHours: checkOutForm.overtimeHours
     })
     
@@ -1410,7 +1388,15 @@ const handleEditSave = async () => {
     
     editForm.substituteType = substituteType.value
     
-    await updateRecord(editForm)
+    // 处理用户输入，防止XSS攻击
+    const safeForm = {
+      ...editForm,
+      checkInRemark: safeInput(editForm.checkInRemark),
+      checkOutRemark: safeInput(editForm.checkOutRemark),
+      managerRemark: safeInput(editForm.managerRemark)
+    }
+    
+    await updateRecord(safeForm)
     
     ElMessage.success('编辑值班记录成功')
     editDialogVisible.value = false
@@ -1689,19 +1675,6 @@ const handleDateChange = async (date) => {
         return assignmentDate === dateStr && assignmentEmployeeId === userEmployeeId
       })
       
-      // 打印每个值班安排的详细信息，检查字段名
-      dateAssignments.forEach((assignment, index) => {
-        console.log(`值班安排 ${index + 1}:`, {
-          id: assignment.id,
-          dutyDate: assignment.dutyDate,
-          employeeId: assignment.employeeId,
-          dutyShift: assignment.dutyShift,
-          shiftConfigId: assignment.shiftConfigId,
-          isOvertime: assignment.isOvertime,
-          shiftName: assignment.shiftName
-        })
-      })
-      
       // 转换为班次选项格式
       availableShifts.value = []
       if (dateAssignments.length > 0) {
@@ -1711,36 +1684,21 @@ const handleDateChange = async (date) => {
           // 检查是否是加班班次
           let isOvertime = false
           
-          // 打印调试信息
-          console.log('处理值班安排:', {
-            id: assignment.id,
-            dutyDate: assignment.dutyDate,
-            employeeId: assignment.employeeId,
-            dutyShift: assignment.dutyShift,
-            shiftConfigId: assignment.shiftConfigId,
-            shiftName: assignment.shiftName
-          })
-          
           // 优先使用shiftConfigId查找班次配置
           if (assignment.shiftConfigId) {
             const shiftConfig = shiftConfigs.value.find(config => config.id === assignment.shiftConfigId)
-            console.log('使用shiftConfigId查找班次配置:', assignment.shiftConfigId, '找到:', shiftConfig)
             if (shiftConfig) {
               // 正确处理isOvertimeShift字段（整数类型0或1）
               isOvertime = parseInt(shiftConfig.isOvertimeShift) === 1
-              console.log('班次是否为加班:', isOvertime)
             }
           } else if (assignment.dutyShift) {
             // 如果没有shiftConfigId，使用dutyShift查找班次配置
             const shift = parseInt(assignment.dutyShift) || 0
-            console.log('使用dutyShift查找班次配置:', shift)
             if (shift > 0) {
               const shiftConfig = shiftConfigs.value.find(config => config.id === shift)
-              console.log('找到班次配置:', shiftConfig)
               if (shiftConfig) {
                 // 正确处理isOvertimeShift字段（整数类型0或1）
                 isOvertime = parseInt(shiftConfig.isOvertimeShift) === 1
-                console.log('班次是否为加班:', isOvertime)
               }
             }
           }
@@ -1755,10 +1713,7 @@ const handleDateChange = async (date) => {
             } else {
               isOvertime = Boolean(assignment.isOvertime)
             }
-            console.log('从值班安排中获取是否为加班:', isOvertime)
           }
-          
-          console.log('最终判断班次是否为加班:', isOvertime)
           
           // 只处理加班班次
           if (!isOvertime) {
@@ -1839,7 +1794,6 @@ const handleDateChange = async (date) => {
       
       // 如果没有找到对应的值班安排，保持为空
       if (availableShifts.value.length === 0) {
-        console.log('没有找到该日期下的加班班次')
         availableShifts.value = []
       }
       
@@ -1943,11 +1897,11 @@ const handleCreate = async () => {
         assignmentId: assignment.id,
         employeeId: userStore.employeeId,
         dutyStatus: createForm.dutyStatus,
-        checkInRemark: createForm.remark,
-        checkOutRemark: createForm.checkOutRemark,
+        checkInRemark: safeInput(createForm.remark),
+        checkOutRemark: safeInput(createForm.checkOutRemark),
         overtimeHours: createForm.isOvertime ? createForm.overtimeHours : 0,
         approvalStatus: createForm.approvalStatus,
-        managerRemark: createForm.managerRemark,
+        managerRemark: safeInput(createForm.managerRemark),
         substituteEmployeeId: createForm.substituteEmployeeId,
         substituteType: createForm.substituteType
       }
@@ -1986,11 +1940,11 @@ const handleCreate = async () => {
       const recordData = {
         id: createForm.id,
         dutyStatus: createForm.dutyStatus,
-        checkInRemark: createForm.checkInRemark,
-        checkOutRemark: createForm.checkOutRemark,
+        checkInRemark: safeInput(createForm.checkInRemark),
+        checkOutRemark: safeInput(createForm.checkOutRemark),
         overtimeHours: createForm.overtimeHours,
         approvalStatus: createForm.approvalStatus,
-        managerRemark: createForm.managerRemark,
+        managerRemark: safeInput(createForm.managerRemark),
         substituteEmployeeId: createForm.substituteEmployeeId,
         substituteType: createForm.substituteType
       }
@@ -2099,20 +2053,13 @@ onMounted(async () => {
 
 <style scoped>
 .record-container {
-  padding: 10px;
+  padding: 20px;
 }
 
-.page-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
 }
 
 .header-actions {
@@ -2123,10 +2070,6 @@ onMounted(async () => {
 
 .schedule-select {
   min-width: 250px;
-}
-
-.content-card {
-  margin-bottom: 10px;
 }
 
 .table-toolbar {

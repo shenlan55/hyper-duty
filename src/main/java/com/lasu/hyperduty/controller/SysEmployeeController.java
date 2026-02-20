@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.service.SysEmployeeService;
@@ -38,6 +39,7 @@ public class SysEmployeeController {
      * 添加人员
      */
     @PostMapping
+    @RateLimit(window = 60, max = 20, message = "添加人员操作过于频繁，请60秒后再试")
     public ResponseResult<Void> addEmployee(@Validated @RequestBody SysEmployee sysEmployee) {
         sysEmployeeService.save(sysEmployee);
         return ResponseResult.success();
@@ -47,6 +49,7 @@ public class SysEmployeeController {
      * 修改人员
      */
     @PutMapping
+    @RateLimit(window = 60, max = 20, message = "修改人员操作过于频繁，请60秒后再试")
     public ResponseResult<Void> updateEmployee(@Validated @RequestBody SysEmployee sysEmployee) {
         sysEmployeeService.updateById(sysEmployee);
         return ResponseResult.success();
@@ -56,6 +59,7 @@ public class SysEmployeeController {
      * 删除人员
      */
     @DeleteMapping("/{id}")
+    @RateLimit(window = 60, max = 20, message = "删除人员操作过于频繁，请60秒后再试")
     public ResponseResult<Void> deleteEmployee(@PathVariable Long id) {
         sysEmployeeService.removeById(id);
         return ResponseResult.success();

@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.DutySchedule;
 import com.lasu.hyperduty.service.DutyScheduleService;
@@ -58,24 +59,28 @@ public class DutyScheduleController {
     }
 
     @PostMapping
+    @RateLimit(window = 60, max = 20, message = "添加值班表操作过于频繁，请60秒后再试")
     public ResponseResult<Void> addSchedule(@Validated @RequestBody DutySchedule dutySchedule) {
         dutyScheduleService.save(dutySchedule);
         return ResponseResult.success();
     }
 
     @PutMapping
+    @RateLimit(window = 60, max = 20, message = "修改值班表操作过于频繁，请60秒后再试")
     public ResponseResult<Void> updateSchedule(@Validated @RequestBody DutySchedule dutySchedule) {
         dutyScheduleService.updateById(dutySchedule);
         return ResponseResult.success();
     }
 
     @PutMapping("/{id}/employees")
+    @RateLimit(window = 60, max = 20, message = "更新值班表员工操作过于频繁，请60秒后再试")
     public ResponseResult<Void> updateScheduleEmployees(@PathVariable Long id, @RequestBody List<Long> employeeIds) {
         dutyScheduleService.updateEmployees(id, employeeIds);
         return ResponseResult.success();
     }
 
     @PutMapping("/{id}/employees-and-leaders")
+    @RateLimit(window = 60, max = 20, message = "更新值班表员工和领导操作过于频繁，请60秒后再试")
     public ResponseResult<Void> updateScheduleEmployeesAndLeaders(@PathVariable Long id, @RequestBody Map<String, List<Long>> params) {
         List<Long> employeeIds = params.get("employeeIds");
         List<Long> leaderIds = params.get("leaderIds");
@@ -84,18 +89,21 @@ public class DutyScheduleController {
     }
 
     @PutMapping("/{id}/leaders")
+    @RateLimit(window = 60, max = 20, message = "更新值班表领导操作过于频繁，请60秒后再试")
     public ResponseResult<Void> updateScheduleLeaders(@PathVariable Long id, @RequestBody List<Long> leaderIds) {
         dutyScheduleService.updateLeaders(id, leaderIds);
         return ResponseResult.success();
     }
 
     @PutMapping("/{id}/shifts")
+    @RateLimit(window = 60, max = 20, message = "更新值班表班次操作过于频繁，请60秒后再试")
     public ResponseResult<Void> updateScheduleShifts(@PathVariable Long id, @RequestBody List<Long> shiftConfigIds) {
         dutyScheduleShiftService.saveScheduleShifts(id, shiftConfigIds);
         return ResponseResult.success();
     }
 
     @DeleteMapping("/{id}")
+    @RateLimit(window = 60, max = 20, message = "删除值班表操作过于频繁，请60秒后再试")
     public ResponseResult<Void> deleteSchedule(@PathVariable Long id) {
         dutyScheduleService.removeById(id);
         return ResponseResult.success();

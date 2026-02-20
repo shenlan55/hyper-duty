@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.dto.UserVO;
 import com.lasu.hyperduty.entity.SysUser;
@@ -30,6 +31,7 @@ public class SysUserController {
      * 添加用户
      */
     @PostMapping
+    @RateLimit(window = 60, max = 20, message = "添加用户操作过于频繁，请60秒后再试")
     public ResponseResult<Void> addUser(@Validated @RequestBody SysUser sysUser) {
         sysUserService.save(sysUser);
         return ResponseResult.success();
@@ -39,6 +41,7 @@ public class SysUserController {
      * 修改用户
      */
     @PutMapping
+    @RateLimit(window = 60, max = 20, message = "修改用户操作过于频繁，请60秒后再试")
     public ResponseResult<Void> updateUser(@Validated @RequestBody SysUser sysUser) {
         sysUserService.updateById(sysUser);
         return ResponseResult.success();
@@ -48,6 +51,7 @@ public class SysUserController {
      * 删除用户
      */
     @DeleteMapping("/{id}")
+    @RateLimit(window = 60, max = 20, message = "删除用户操作过于频繁，请60秒后再试")
     public ResponseResult<Void> deleteUser(@PathVariable Long id) {
         sysUserService.removeById(id);
         return ResponseResult.success();

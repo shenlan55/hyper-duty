@@ -8,52 +8,44 @@
         </div>
       </template>
       
-      <el-table v-loading="loading" :data="modeList" style="width: 100%">
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="modeName" label="排班模式名称" min-width="150" />
-        <el-table-column prop="modeCode" label="编码" width="120" />
-        <el-table-column prop="modeType" label="类型" width="100">
-          <template #default="scope">
-            <el-tag :type="getModeTypeTagType(scope.row.modeType)">
-              {{ getModeTypeName(scope.row.modeType) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="80">
-          <template #default="scope">
-            <el-switch
-              v-model="scope.row.status"
-              active-value="1"
-              inactive-value="0"
-              @change="handleStatusChange(scope.row)"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column prop="sort" label="排序" width="80" />
-        <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="scope">
-            <el-button type="primary" size="small" @click="handleEdit(scope.row)">
-              编辑
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
+      <BaseTable
+        v-loading="loading"
+        :data="modeList"
+        :columns="columns"
+        :show-pagination="true"
+        :pagination="pagination"
+        :show-search="true"
+        :search-placeholder="'请输入模式名称或编码'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        @search="handleSearch"
+        @export="handleExport"
+      >
+        <template #modeType="{ row }">
+          <el-tag :type="getModeTypeTagType(row.modeType)">
+            {{ getModeTypeName(row.modeType) }}
+          </el-tag>
+        </template>
+        <template #status="{ row }">
+          <el-switch
+            v-model="row.status"
+            active-value="1"
+            inactive-value="0"
+            @change="handleStatusChange(row)"
+          />
+        </template>
+        <template #operation="{ row }">
+          <el-button type="primary" size="small" @click="handleEdit(row)">
+            编辑
+          </el-button>
+          <el-button type="danger" size="small" @click="handleDelete(row.id)">
+            删除
+          </el-button>
+        </template>
+      </BaseTable>
     </el-card>
     
     <!-- 编辑对话框 -->
@@ -77,18 +69,42 @@ import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import ScheduleModeEdit from './components/ScheduleModeEdit.vue'
 import { scheduleModeApi } from '@/api/duty/scheduleMode'
+import BaseTable from '@/components/BaseTable.vue'
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
 
 const loading = ref(false)
 const modeList = ref([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
+const searchQuery = ref('')
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const currentModeId = ref(null)
 
 const modeApi = scheduleModeApi()
+
+const columns = [
+  { prop: 'id', label: 'ID', width: '80' },
+  { prop: 'modeName', label: '排班模式名称', minWidth: '150' },
+  { prop: 'modeCode', label: '编码', width: '120' },
+  { prop: 'modeType', label: '类型', width: '100' },
+  { prop: 'status', label: '状态', width: '80' },
+  { prop: 'sort', label: '排序', width: '80' },
+  { prop: 'createTime', label: '创建时间', width: '180' },
+  { type: 'operation', label: '操作', width: '180', fixed: 'right' }
+]
+
+const pagination = computed(() => {
+  return {
+    currentPage: currentPage.value,
+    pageSize: pageSize.value,
+    pageSizes: [10, 20, 50, 100],
+    total: total.value
+  }
+})
 
 // 获取排班模式列表
 const fetchModeList = async () => {
@@ -168,6 +184,46 @@ const handleCurrentChange = (current) => {
   currentPage.value = current
 }
 
+// 搜索处理
+const handleSearch = (query) => {
+  searchQuery.value = query
+  currentPage.value = 1
+}
+
+// 导出处理
+const handleExport = () => {
+  try {
+    // 准备导出数据
+    const exportData = modeList.value.map(item => ({
+      'ID': item.id,
+      '排班模式名称': item.modeName,
+      '编码': item.modeCode,
+      '类型': getModeTypeName(item.modeType),
+      '状态': item.status === '1' ? '启用' : '禁用',
+      '排序': item.sort,
+      '创建时间': item.createTime
+    }))
+    
+    // 创建工作表
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    
+    // 创建工作簿
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, '排班模式')
+    
+    // 生成Excel文件
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+    const dataBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    
+    // 保存文件
+    saveAs(dataBlob, `排班模式_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    
+    ElMessage.success('导出成功')
+  } catch (error) {
+    ElMessage.error('导出失败')
+  }
+}
+
 // 获取排班模式类型名称
 const getModeTypeName = (type) => {
   const typeMap = {
@@ -205,11 +261,5 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.pagination-container {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
 }
 </style>

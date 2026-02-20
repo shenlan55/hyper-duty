@@ -11,68 +11,54 @@
       </template>
 
       <!-- 任务列表 -->
-      <el-table v-loading="loading" :data="jobList" style="width: 100%">
-        <el-table-column prop="id" label="任务ID" width="80" />
-        <el-table-column prop="jobName" label="任务名称" />
-        <el-table-column prop="jobGroup" label="任务分组" width="120" />
-        <el-table-column prop="jobCode" label="任务编码" width="150" />
-        <el-table-column prop="cronExpression" label="Cron表达式" width="180" />
-        <el-table-column prop="beanName" label="Bean名称" />
-        <el-table-column prop="methodName" label="方法名称" width="120" />
-        <el-table-column prop="status" label="状态" width="80">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'warning'">
-              {{ scope.row.status === 1 ? '启用' : '暂停' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="concurrent" label="并发" width="80">
-          <template #default="scope">
-            <el-tag :type="scope.row.concurrent === 1 ? 'info' : 'warning'">
-              {{ scope.row.concurrent === 1 ? '允许' : '禁止' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="description" label="任务描述" />
-        <el-table-column prop="createTime" label="创建时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="350" fixed="right">
-          <template #default="scope">
-            <el-button size="small" @click="openEditDialog(scope.row)">
-              编辑
-            </el-button>
-            <el-button
-              size="small"
-              :type="scope.row.status === 1 ? 'warning' : 'success'"
-              @click="handleStatusChange(scope.row)"
-            >
-              {{ scope.row.status === 1 ? '暂停' : '恢复' }}
-            </el-button>
-            <el-button size="small" type="primary" @click="handleRunJob(scope.row.id)">
-              立即执行
-            </el-button>
-            <el-button size="small" type="danger" @click="handleDeleteJob(scope.row.id)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <!-- 分页 -->
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
+      <BaseTable
+        v-loading="loading"
+        :data="jobList"
+        :columns="jobColumns"
+        :show-pagination="true"
+        :pagination="pagination"
+        :show-search="true"
+        :search-placeholder="'请输入任务名称或编码'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        @search="handleSearch"
+        @export="handleJobExport"
+      >
+        <template #status="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'warning'">
+            {{ row.status === 1 ? '启用' : '暂停' }}
+          </el-tag>
+        </template>
+        <template #concurrent="{ row }">
+          <el-tag :type="row.concurrent === 1 ? 'info' : 'warning'">
+            {{ row.concurrent === 1 ? '允许' : '禁止' }}
+          </el-tag>
+        </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
+        <template #operation="{ row }">
+          <el-button size="small" @click="openEditDialog(row)">
+            编辑
+          </el-button>
+          <el-button
+            size="small"
+            :type="row.status === 1 ? 'warning' : 'success'"
+            @click="handleStatusChange(row)"
+          >
+            {{ row.status === 1 ? '暂停' : '恢复' }}
+          </el-button>
+          <el-button size="small" type="primary" @click="handleRunJob(row.id)">
+            立即执行
+          </el-button>
+          <el-button size="small" type="danger" @click="handleDeleteJob(row.id)">
+            删除
+          </el-button>
+        </template>
+      </BaseTable>
     </el-card>
 
     <!-- 任务日志 -->
@@ -87,32 +73,31 @@
       </template>
 
       <!-- 日志列表 -->
-      <el-table v-loading="logLoading" :data="logList" style="width: 100%">
-        <el-table-column prop="id" label="日志ID" width="80" />
-        <el-table-column prop="jobId" label="任务ID" width="80" />
-        <el-table-column prop="jobName" label="任务名称" />
-        <el-table-column prop="jobGroup" label="任务分组" width="120" />
-        <el-table-column prop="jobCode" label="任务编码" width="150" />
-        <el-table-column prop="status" label="执行状态" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
-              {{ scope.row.status === 1 ? '成功' : '失败' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="executeTime" label="执行时间(ms)" width="120" />
-        <el-table-column prop="startTime" label="开始时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.startTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="endTime" label="结束时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.endTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="errorMsg" label="错误信息" show-overflow-tooltip />
-      </el-table>
+      <BaseTable
+        v-loading="logLoading"
+        :data="logList"
+        :columns="logColumns"
+        :show-pagination="false"
+        :show-search="true"
+        :search-placeholder="'请输入任务名称或状态'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @search="handleLogSearch"
+        @export="handleLogExport"
+      >
+        <template #status="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+            {{ row.status === 1 ? '成功' : '失败' }}
+          </el-tag>
+        </template>
+        <template #startTime="{ row }">
+          {{ formatDateTime(row.startTime) }}
+        </template>
+        <template #endTime="{ row }">
+          {{ formatDateTime(row.endTime) }}
+        </template>
+      </BaseTable>
     </el-card>
 
     <!-- 新增/编辑任务对话框 -->
@@ -253,6 +238,8 @@ import { Plus, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { scheduleJobApi } from '../../api/system/scheduleJob'
 import { formatDateTime } from '../../utils/dateUtils'
+import { safeInput } from '../../utils/xssUtil'
+import BaseTable from '../../components/BaseTable.vue'
 
 const scheduleApi = scheduleJobApi()
 
@@ -266,6 +253,73 @@ const total = ref(0)
 // 日志列表
 const logList = ref([])
 const logLoading = ref(false)
+
+// 任务表格列配置
+const jobColumns = [
+  { prop: 'id', label: '任务ID', width: '80' },
+  { prop: 'jobName', label: '任务名称' },
+  { prop: 'jobGroup', label: '任务分组', width: '120' },
+  { prop: 'jobCode', label: '任务编码', width: '150' },
+  { prop: 'cronExpression', label: 'Cron表达式', width: '180' },
+  { prop: 'beanName', label: 'Bean名称' },
+  { prop: 'methodName', label: '方法名称', width: '120' },
+  {
+    label: '状态',
+    width: '80',
+    slotName: 'status'
+  },
+  {
+    label: '并发',
+    width: '80',
+    slotName: 'concurrent'
+  },
+  { prop: 'description', label: '任务描述' },
+  {
+    label: '创建时间',
+    width: '180',
+    slotName: 'createTime'
+  },
+  {
+    label: '操作',
+    width: '350',
+    fixed: 'right',
+    slotName: 'operation'
+  }
+]
+
+// 日志表格列配置
+const logColumns = [
+  { prop: 'id', label: '日志ID', width: '80' },
+  { prop: 'jobId', label: '任务ID', width: '80' },
+  { prop: 'jobName', label: '任务名称' },
+  { prop: 'jobGroup', label: '任务分组', width: '120' },
+  { prop: 'jobCode', label: '任务编码', width: '150' },
+  {
+    label: '执行状态',
+    width: '100',
+    slotName: 'status'
+  },
+  { prop: 'executeTime', label: '执行时间(ms)', width: '120' },
+  {
+    label: '开始时间',
+    width: '180',
+    slotName: 'startTime'
+  },
+  {
+    label: '结束时间',
+    width: '180',
+    slotName: 'endTime'
+  },
+  { prop: 'errorMsg', label: '错误信息', showOverflowTooltip: true }
+]
+
+// 分页配置
+const pagination = reactive({
+  currentPage: 1,
+  pageSize: 10,
+  pageSizes: [10, 20, 50, 100],
+  total: 0
+})
 
 // 对话框
 const dialogVisible = ref(false)
@@ -331,6 +385,7 @@ const fetchJobList = async () => {
     const data = await scheduleApi.getJobList()
     jobList.value = data || []
     total.value = data ? data.length : 0
+    pagination.total = data ? data.length : 0
   } catch (error) {
     console.error('获取任务列表失败:', error)
     ElMessage.error('获取任务列表失败')
@@ -408,9 +463,17 @@ const openEditDialog = (job) => {
 const handleSaveJob = async () => {
   try {
     await jobFormRef.value.validate()
-    // 创建提交数据的副本并转换类型
+    // 创建提交数据的副本并转换类型，添加XSS防护
     const submitData = {
       ...jobForm,
+      jobName: safeInput(jobForm.jobName),
+      jobGroup: safeInput(jobForm.jobGroup),
+      jobCode: safeInput(jobForm.jobCode),
+      cronExpression: safeInput(jobForm.cronExpression),
+      beanName: safeInput(jobForm.beanName),
+      methodName: safeInput(jobForm.methodName),
+      params: safeInput(jobForm.params),
+      description: safeInput(jobForm.description),
       status: parseInt(jobForm.status),
       concurrent: parseInt(jobForm.concurrent)
     }
@@ -511,12 +574,100 @@ const handleCleanLogs = async () => {
 // 分页处理
 const handleSizeChange = (size) => {
   pageSize.value = size
+  pagination.pageSize = size
   fetchJobList()
 }
 
 const handleCurrentChange = (current) => {
   currentPage.value = current
+  pagination.currentPage = current
   fetchJobList()
+}
+
+// 任务搜索
+const handleSearch = (query) => {
+  // 这里需要根据后端API支持的搜索参数进行调整
+  // 目前我们假设后端API支持按任务名称和编码搜索
+  currentPage.value = 1
+  fetchJobList()
+}
+
+// 日志搜索
+const handleLogSearch = (query) => {
+  // 这里需要根据后端API支持的搜索参数进行调整
+  // 目前我们假设后端API支持按任务名称和状态搜索
+  fetchLogList()
+}
+
+// 导出任务列表
+const handleJobExport = () => {
+  // 导出逻辑
+  const exportData = jobList.value
+  const headers = ['任务ID', '任务名称', '任务分组', '任务编码', 'Cron表达式', 'Bean名称', '方法名称', '状态', '并发', '任务描述', '创建时间']
+  const rows = exportData.map(row => [
+    row.id,
+    row.jobName,
+    row.jobGroup,
+    row.jobCode,
+    row.cronExpression,
+    row.beanName,
+    row.methodName,
+    row.status === 1 ? '启用' : '暂停',
+    row.concurrent === 1 ? '允许' : '禁止',
+    row.description || '',
+    formatDateTime(row.createTime)
+  ])
+  
+  // CSV导出实现
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n')
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `定时任务列表_${new Date().getTime()}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+// 导出日志列表
+const handleLogExport = () => {
+  // 导出逻辑
+  const exportData = logList.value
+  const headers = ['日志ID', '任务ID', '任务名称', '任务分组', '任务编码', '执行状态', '执行时间(ms)', '开始时间', '结束时间', '错误信息']
+  const rows = exportData.map(row => [
+    row.id,
+    row.jobId,
+    row.jobName,
+    row.jobGroup,
+    row.jobCode,
+    row.status === 1 ? '成功' : '失败',
+    row.executeTime,
+    formatDateTime(row.startTime),
+    formatDateTime(row.endTime),
+    row.errorMsg || ''
+  ])
+  
+  // CSV导出实现
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n')
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `任务执行日志_${new Date().getTime()}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 // 初始化

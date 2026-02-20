@@ -9,63 +9,42 @@
     </div>
 
     <el-card shadow="hover" class="content-card">
-      <div class="table-toolbar">
-        <el-input
-          v-model="searchQuery"
-          placeholder="请输入字典名称或编码"
-          prefix-icon="Search"
-          clearable
-          class="search-input"
-          @input="handleSearch"
-        />
-      </div>
-
-      <el-table
+      <BaseTable
         v-loading="loading"
-        :data="pagedDictTypeList"
-        style="width: 100%"
-        row-key="id"
+        :data="dictTypeList"
+        :columns="columns"
+        :show-pagination="true"
+        :pagination="pagination"
+        :show-search="true"
+        :search-placeholder="'请输入字典名称或编码'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        @search="handleSearch"
+        @export="handleExport"
       >
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="dictName" label="字典名称" min-width="150" />
-        <el-table-column prop="dictCode" label="字典编码" width="180" />
-        <el-table-column prop="description" label="字典描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
-              {{ scope.row.status === 1 ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="scope">
-            <el-button type="primary" size="small" @click="openEditDialog(scope.row)">
-              编辑
-            </el-button>
-            <el-button type="info" size="small" @click="handleViewData(scope.row)">
-              字典数据
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-container">
-        <el-pagination
-          layout="prev, pager, next"
-          :total="total"
-          :page-size="pageSize"
-          :current-page="currentPage"
-          @current-change="handleCurrentChange"
-        ></el-pagination>
-      </div>
+        <template #status="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+            {{ row.status === 1 ? '启用' : '禁用' }}
+          </el-tag>
+        </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
+        <template #operation="{ row }">
+          <el-button type="primary" size="small" @click="openEditDialog(row)">
+            编辑
+          </el-button>
+          <el-button type="info" size="small" @click="handleViewData(row)">
+            字典数据
+          </el-button>
+          <el-button type="danger" size="small" @click="handleDelete(row.id)">
+            删除
+          </el-button>
+        </template>
+      </BaseTable>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
@@ -106,6 +85,7 @@ import {
   deleteDictType
 } from '../api/dictType'
 import { formatDateTime } from '../utils/dateUtils'
+import BaseTable from '../components/BaseTable.vue'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -137,18 +117,44 @@ const rules = {
   ]
 }
 
-const pagedDictTypeList = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return dictTypeList.value.slice(start, end)
+// 表格列配置
+const columns = [
+  { prop: 'id', label: 'ID', width: '80' },
+  { prop: 'dictName', label: '字典名称', minWidth: '150' },
+  { prop: 'dictCode', label: '字典编码', width: '180' },
+  { prop: 'description', label: '字典描述', minWidth: '200' },
+  { prop: 'status', label: '状态', width: '100', slotName: 'status' },
+  { prop: 'createTime', label: '创建时间', width: '180', slotName: 'createTime' },
+  { label: '操作', width: '200', fixed: 'right', slotName: 'operation' }
+]
+
+// 分页配置
+const pagination = computed(() => {
+  return {
+    currentPage: currentPage.value,
+    pageSize: pageSize.value,
+    pageSizes: [10, 20, 50, 100],
+    total: total.value
+  }
 })
 
 const loadDictTypeList = async () => {
   loading.value = true
   try {
     const data = await listDictType({ pageNum: 1, pageSize: 1000 })
-    dictTypeList.value = data.records || []
-    total.value = data.total || 0
+    let filteredData = data.records || []
+    
+    // 根据搜索查询过滤数据
+    if (searchQuery.value) {
+      const query = searchQuery.value.toLowerCase()
+      filteredData = filteredData.filter(item => 
+        item.dictName.toLowerCase().includes(query) || 
+        item.dictCode.toLowerCase().includes(query)
+      )
+    }
+    
+    dictTypeList.value = filteredData
+    total.value = filteredData.length
   } catch (error) {
     ElMessage.error('加载字典类型列表失败')
   } finally {
@@ -156,8 +162,45 @@ const loadDictTypeList = async () => {
   }
 }
 
-const handleSearch = () => {
+const handleSearch = (query) => {
+  searchQuery.value = query
   currentPage.value = 1
+  loadDictTypeList()
+}
+
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+}
+
+const handleExport = () => {
+  // 导出逻辑
+  const exportData = dictTypeList.value
+  const headers = ['ID', '字典名称', '字典编码', '字典描述', '状态', '创建时间']
+  const rows = exportData.map(item => [
+    item.id,
+    item.dictName,
+    item.dictCode,
+    item.description || '',
+    item.status === 1 ? '启用' : '禁用',
+    formatDateTime(item.createTime)
+  ])
+  
+  // 这里可以使用xlsx库或其他方式导出，暂时使用简单的CSV导出
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n')
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `字典类型_${new Date().getTime()}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 const openAddDialog = () => {

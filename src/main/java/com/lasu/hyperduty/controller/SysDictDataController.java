@@ -1,6 +1,7 @@
 package com.lasu.hyperduty.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.SysDictData;
 import com.lasu.hyperduty.service.SysDictDataService;
@@ -37,18 +38,21 @@ public class SysDictDataController {
     }
 
     @PostMapping
+    @RateLimit(window = 60, max = 20, message = "保存字典数据操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> save(@RequestBody SysDictData sysDictData) {
         boolean result = sysDictDataService.save(sysDictData);
         return ResponseResult.success(result);
     }
 
     @PutMapping
+    @RateLimit(window = 60, max = 20, message = "更新字典数据操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> update(@RequestBody SysDictData sysDictData) {
         boolean result = sysDictDataService.updateById(sysDictData);
         return ResponseResult.success(result);
     }
 
     @DeleteMapping("/{id}")
+    @RateLimit(window = 60, max = 20, message = "删除字典数据操作过于频繁，请60秒后再试")
     public ResponseResult<Boolean> delete(@PathVariable Long id) {
         boolean result = sysDictDataService.removeById(id);
         return ResponseResult.success(result);

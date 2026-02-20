@@ -1,14 +1,16 @@
 <template>
   <div class="swap-request-container">
-    <div class="page-header">
-      <h2>调班管理</h2>
-      <el-button type="primary" @click="openAddDialog">
-        <el-icon><Plus /></el-icon>
-        申请调班
-      </el-button>
-    </div>
-
-    <el-card shadow="hover" class="content-card">
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>调班管理</span>
+          <el-button type="primary" @click="openAddDialog">
+            <el-icon><Plus /></el-icon>
+            申请调班
+          </el-button>
+        </div>
+      </template>
+      
       <div class="filter-form">
         <el-form :inline="true" :model="filterForm" class="mb-4">
           <el-form-item label="审批状态">
@@ -980,24 +982,13 @@ onMounted(async () => {
 
 <style scoped>
 .swap-request-container {
-  padding: 10px;
+  padding: 20px;
 }
 
-.page-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
-}
-
-.content-card {
-  margin-bottom: 10px;
 }
 
 .swap-detail-item {
