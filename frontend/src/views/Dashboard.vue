@@ -415,10 +415,6 @@ h1 {
   margin-bottom: 15px;
 }
 
-.stat-card {
-  height: 120px;
-}
-
 .stat-content {
   display: flex;
   justify-content: space-between;
@@ -429,18 +425,6 @@ h1 {
 
 .stat-info {
   flex: 1;
-}
-
-.stat-number {
-  font-size: 32px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 8px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #606266;
 }
 
 .stat-icon {

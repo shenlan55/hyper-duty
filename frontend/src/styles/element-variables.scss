@@ -1,0 +1,37 @@
+// Element Plus 主题变量
+
+// 主色调
+$--color-primary: #409EFF;
+$--color-success: #67C23A;
+$--color-warning: #E6A23C;
+$--color-danger: #F56C6C;
+$--color-info: #909399;
+
+// 边框圆角
+$--border-radius-base: 4px;
+$--border-radius-small: 2px;
+$--border-radius-round: 20px;
+$--border-radius-circle: 100%;
+
+// 字体
+$--font-size-extra-large: 20px;
+$--font-size-large: 18px;
+$--font-size-medium: 16px;
+$--font-size-base: 14px;
+$--font-size-small: 13px;
+$--font-size-extra-small: 12px;
+
+// 间距
+$--spacing-extra-large: 32px;
+$--spacing-large: 24px;
+$--spacing-medium: 16px;
+$--spacing-base: 12px;
+$--spacing-small: 8px;
+$--spacing-extra-small: 4px;
+
+// 阴影
+$--box-shadow-base: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+$--box-shadow-dark: 0 2px 12px 0 rgba(0, 0, 0, 0.15);
+
+// 引入Element Plus的样式
+@import "element-plus/theme-chalk/src/index.scss";

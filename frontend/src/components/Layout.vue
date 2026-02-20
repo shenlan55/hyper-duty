@@ -710,10 +710,7 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-.top-menu :deep(.el-menu-item.is-active) {
-  color: #1890ff;
-  background-color: #ecf5ff;
-}
+
 
 .top-menu :deep(.el-menu) {
   height: 60px;
@@ -846,7 +843,6 @@ onMounted(async () => {
 }
 
 .sidebar-menu :deep(.el-menu-item) {
-  color: #303133;
   height: 50px;
   line-height: 50px;
 }
@@ -855,15 +851,6 @@ onMounted(async () => {
   font-size: 18px;
   width: 20px;
   text-align: center;
-}
-
-.sidebar-menu :deep(.el-menu-item:hover) {
-  background-color: rgba(17, 119, 187, 0.1);
-}
-
-.sidebar-menu :deep(.el-menu-item.is-active) {
-  background-color: rgba(17, 119, 187, 0.2);
-  color: #1177BB;
 }
 
 /* 自定义图标样式，确保与Element Plus图标大小对齐 */

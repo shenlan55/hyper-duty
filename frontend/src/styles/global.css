@@ -1,0 +1,176 @@
+/* 全局样式 */
+
+/* 卡片样式优化 */
+.el-card {
+  border-radius: 6px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.el-card:hover {
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.12);
+}
+
+/* 导航栏样式优化 */
+.el-menu-item.is-active {
+  background-color: #ecf5ff !important;
+  color: #409EFF !important;
+  font-weight: 500;
+}
+
+.el-menu-item:hover {
+  background-color: #f5f7fa !important;
+}
+
+/* 数据表格样式优化 */
+.el-table__row:hover {
+  background-color: #f5f7fa !important;
+}
+
+.el-table__header-wrapper th {
+  background-color: #fafafa !important;
+  font-weight: 500;
+}
+
+/* 表单样式优化 */
+.el-form-item__label {
+  font-weight: 500;
+  color: #606266;
+}
+
+.el-input__wrapper {
+  border-radius: 4px;
+}
+
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px #409EFF inset !important;
+}
+
+/* 骨架屏样式 */
+.skeleton-container {
+  padding: 16px;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.skeleton-item {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-id {
+  width: 60px;
+  height: 20px;
+}
+
+.skeleton-name {
+  width: 120px;
+  height: 20px;
+}
+
+.skeleton-code {
+  width: 100px;
+  height: 20px;
+}
+
+.skeleton-desc {
+  flex: 1;
+  height: 20px;
+}
+
+.skeleton-status {
+  width: 80px;
+  height: 20px;
+}
+
+.skeleton-actions {
+  width: 180px;
+  height: 32px;
+}
+
+/* 首页仪表盘样式 */
+.stat-card {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+  transition: transform 0.3s ease;
+  padding: 20px;
+  text-align: center;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: bold;
+  color: #409EFF;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #606266;
+}
+
+/* 响应式布局 */
+@media screen and (max-width: 1024px) {
+  .table-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .toolbar-left,
+  .toolbar-right {
+    width: 100%;
+    justify-content: flex-start;
+    margin-bottom: 10px;
+  }
+}
+
+/* 移动设备 */
+@media screen and (max-width: 768px) {
+  .role-container,
+  .employee-container,
+  .dept-container,
+  .record-container,
+  .shift-config-container {
+    padding: 10px;
+  }
+  
+  .el-card {
+    padding: 10px;
+  }
+  
+  .el-button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

@@ -4,7 +4,8 @@ import router from './router'
 import pinia from './stores'
 import ElementPlus from 'element-plus'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
-import 'element-plus/dist/index.css'
+import './styles/element-variables.scss'
+import './styles/global.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 const app = createApp(App)
