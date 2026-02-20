@@ -982,7 +982,7 @@ onMounted(async () => {
 
 <style scoped>
 .swap-request-container {
-  padding: 20px;
+  padding: 10px;
 }
 
 .card-header {

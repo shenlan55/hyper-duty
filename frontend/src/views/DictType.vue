@@ -278,7 +278,7 @@ onMounted(() => {
 
 <style scoped>
 .dict-type-container {
-  padding: 20px;
+  padding: 10px;
 }
 
 .page-header {

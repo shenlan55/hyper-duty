@@ -969,7 +969,7 @@ onMounted(async () => {
 
 <style scoped>
 .leave-request-container {
-  padding: 20px;
+  padding: 10px;
 }
 
 .card-header {

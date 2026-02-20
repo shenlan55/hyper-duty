@@ -254,7 +254,7 @@ onMounted(() => {
 
 <style scoped>
 .schedule-mode-container {
-  padding: 20px;
+  padding: 10px;
 }
 
 .card-header {

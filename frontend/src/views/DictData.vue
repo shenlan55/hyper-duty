@@ -349,7 +349,7 @@ onMounted(() => {
 
 <style scoped>
 .dict-data-container {
-  padding: 20px;
+  padding: 10px;
 }
 
 .page-header {

@@ -2053,7 +2053,7 @@ onMounted(async () => {
 
 <style scoped>
 .record-container {
-  padding: 20px;
+  padding: 10px;
 }
 
 .card-header {

@@ -679,7 +679,7 @@ onMounted(() => {
 
 <style scoped>
 .schedule-job-container {
-  padding: 20px;
+  padding: 10px;
 }
 
 .card-header {

@@ -469,7 +469,7 @@ onMounted(() => {
 
 <style scoped>
 .menu-container {
-  padding: 20px;
+  padding: 10px;
 }
 
 .card-header {
