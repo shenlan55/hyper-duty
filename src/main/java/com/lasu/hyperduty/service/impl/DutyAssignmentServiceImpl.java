@@ -11,6 +11,7 @@ import com.lasu.hyperduty.mapper.LeaveRequestMapper;
 import com.lasu.hyperduty.mapper.LeaveSubstituteMapper;
 import com.lasu.hyperduty.service.DutyAssignmentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -98,6 +99,7 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
     }
 
     @Override
+    @Cacheable(value = "dutyAssignment", key = "'employee_dates_' + #scheduleId + '_' + #employeeId")
     public List<String> getEmployeeDutyDates(Long scheduleId, Long employeeId) {
         // 查询指定值班表和员工的所有排班记录
         LambdaQueryWrapper<DutyAssignment> wrapper = new LambdaQueryWrapper<>();
@@ -115,6 +117,7 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
     }
 
     @Override
+    @Cacheable(value = "dutyAssignment", key = "'employee_shifts_' + #scheduleId + '_' + #employeeId + '_' + #date")
     public List<Integer> getEmployeeDutyShifts(Long scheduleId, Long employeeId, String date) {
         // 查询指定值班表、员工和日期的所有排班班次
         LambdaQueryWrapper<DutyAssignment> wrapper = new LambdaQueryWrapper<>();

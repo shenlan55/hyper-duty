@@ -10,6 +10,7 @@ import com.lasu.hyperduty.service.DutyRecordService;
 import com.lasu.hyperduty.service.DutyScheduleService;
 import com.lasu.hyperduty.service.SysEmployeeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -44,6 +45,7 @@ public class DutyRecordServiceImpl extends ServiceImpl<DutyRecordMapper, DutyRec
     }
 
     @Override
+    @Cacheable(value = "dutyRecord", key = "'available_substitutes_' + #employeeId + '_' + #dutyDate + '_' + #dutyShift")
     public List<SysEmployee> getAvailableSubstitutes(Long employeeId, LocalDate dutyDate, Integer dutyShift) {
         SysEmployee currentEmployee = sysEmployeeService.getById(employeeId);
         if (currentEmployee == null) {
@@ -81,18 +83,13 @@ public class DutyRecordServiceImpl extends ServiceImpl<DutyRecordMapper, DutyRec
     }
 
     @Override
+    @Cacheable(value = "dutyRecord", key = "'pending_approvals_' + #employeeId")
     public List<DutyRecord> getPendingApprovals(Long employeeId) {
         // 查询审批状态为待审批的加班记录
         List<DutyRecord> allPendingRecords = lambdaQuery()
                 .eq(DutyRecord::getApprovalStatus, "待审批")
                 .orderByDesc(DutyRecord::getCreateTime)
                 .list();
-        
-        // 打印查询结果，用于调试
-        System.out.println("查询到的待审批加班记录数量: " + allPendingRecords.size());
-        for (DutyRecord record : allPendingRecords) {
-            System.out.println("加班记录ID: " + record.getId() + ", 审批状态: " + record.getApprovalStatus());
-        }
         
         // 过滤出当前用户有权审批的加班记录
         List<DutyRecord> authorizedRecords = allPendingRecords.stream()
@@ -106,25 +103,17 @@ public class DutyRecordServiceImpl extends ServiceImpl<DutyRecordMapper, DutyRec
                             if (scheduleId != null) {
                                 // 查询该值班表的值班长列表
                                 List<Long> leaderIds = dutyScheduleService.getLeaderIdsByScheduleId(scheduleId);
-                                System.out.println("值班表ID: " + scheduleId + " 的值班长列表: " + leaderIds);
                                 // 检查当前用户是否是值班长
                                 boolean isLeader = leaderIds.contains(employeeId);
-                                System.out.println("用户ID: " + employeeId + " 是否是值班长: " + isLeader);
                                 return isLeader;
                             }
                         }
                         return false;
                     } catch (Exception e) {
-                        System.err.println("处理加班记录ID: " + record.getId() + " 时出错: " + e.getMessage());
                         return false;
                     }
                 })
                 .collect(java.util.stream.Collectors.toList());
-        
-        System.out.println("过滤后的加班记录数量: " + authorizedRecords.size());
-        for (DutyRecord record : authorizedRecords) {
-            System.out.println("授权的加班记录ID: " + record.getId());
-        }
         
         return authorizedRecords;
     }

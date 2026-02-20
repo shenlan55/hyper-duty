@@ -382,13 +382,11 @@ const handleEmployeeCurrentChange = (current) => {
 
 const handleEmployeeSearch = (searchParams) => {
   // 这里可以添加搜索逻辑
-  console.log('Employee search:', searchParams)
   // 由于我们使用的是前端过滤，这里不需要重新请求数据
 }
 
 const handleEmployeeExport = (exportParams) => {
   // 这里可以添加导出逻辑
-  console.log('Employee export:', exportParams)
   // 调用现有的导出方法
   exportExcel()
 }

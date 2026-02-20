@@ -105,6 +105,7 @@ import { Plus } from '@element-plus/icons-vue'
 import { getEmployeeList } from '../api/employee'
 import { getUserList, addUser, updateUser, deleteUser } from '../api/user'
 import { formatDateTime } from '../utils/dateUtils'
+import { safeInput } from '../utils/xssUtil'
 import BaseTable from '../components/BaseTable.vue'
 
 // 搜索查询
@@ -294,13 +295,19 @@ const handleSave = async () => {
     await userFormRef.value.validate()
     dialogLoading.value = true
     
+    // 添加XSS防护
+    const safeUserForm = {
+      ...userForm,
+      username: safeInput(userForm.username)
+    }
+    
     if (userForm.id) {
       // 编辑用户
-      await updateUser(userForm)
+      await updateUser(safeUserForm)
       ElMessage.success('编辑用户成功')
     } else {
       // 添加用户
-      await addUser(userForm)
+      await addUser(safeUserForm)
       ElMessage.success('添加用户成功')
     }
     

@@ -361,7 +361,6 @@ const handleSearch = (searchParams) => {
 }
 
 const handleExport = (exportParams) => {
-  console.log('导出数据:', exportParams)
   // 这里可以添加导出逻辑，例如调用后端API或使用前端库导出
   ElMessage.success(`导出${exportParams.format}格式成功`)
 }

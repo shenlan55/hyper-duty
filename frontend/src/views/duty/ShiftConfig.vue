@@ -233,6 +233,7 @@ import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import BaseTable from '@/components/BaseTable.vue'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
+import { safeInput } from '../../utils/xssUtil'
 
 const shiftApi = shiftConfigApi()
 
@@ -392,15 +393,20 @@ const handleSave = async () => {
     await formRef.value.validate()
     dialogLoading.value = true
     
-    const formData = {
+    // 添加XSS防护
+    const safeFormData = {
       ...form,
+      shiftName: safeInput(form.shiftName),
+      shiftCode: safeInput(form.shiftCode),
+      restDayRule: safeInput(form.restDayRule),
+      remark: safeInput(form.remark),
       isCrossDay: form.isCrossDay ? 1 : 0
     }
     
     if (form.id) {
-      await shiftApi.updateShiftConfig(formData)
+      await shiftApi.updateShiftConfig(safeFormData)
     } else {
-      await shiftApi.addShiftConfig(formData)
+      await shiftApi.addShiftConfig(safeFormData)
     }
     
     ElMessage.success(form.id ? '编辑班次成功' : '添加班次成功')

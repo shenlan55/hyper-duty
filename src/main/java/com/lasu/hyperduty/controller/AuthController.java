@@ -95,6 +95,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh-token")
+    @RateLimit(window = 60, max = 5, message = "令牌刷新过于频繁，请60秒后再试")
     public ResponseResult<Map<String, Object>> refreshToken(@RequestBody Map<String, String> refreshTokenInfo) {
         String refreshToken = refreshTokenInfo.get("refreshToken");
         String employeeIdStr = refreshTokenInfo.get("employeeId");
@@ -125,6 +126,7 @@ public class AuthController {
     }
 
     @PostMapping("/change-password")
+    @RateLimit(window = 60, max = 3, message = "密码修改过于频繁，请60秒后再试")
     public ResponseResult<String> changePassword(@RequestBody Map<String, String> passwordInfo) {
         String oldPassword = passwordInfo.get("oldPassword");
         String newPassword = passwordInfo.get("newPassword");

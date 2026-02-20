@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.DutyRecord;
 import com.lasu.hyperduty.entity.SysEmployee;
@@ -62,6 +63,7 @@ public class DutyRecordController {
      * @return 操作结果
      */
     @PostMapping
+    @RateLimit(window = 60, max = 20, message = "添加加班记录过于频繁，请60秒后再试")
     public ResponseResult<Void> addRecord(@Validated @RequestBody DutyRecord dutyRecord) {
         dutyRecordService.save(dutyRecord);
         return ResponseResult.success();
@@ -74,6 +76,7 @@ public class DutyRecordController {
      * @return 操作结果
      */
     @PostMapping("/check-in/{assignmentId}")
+    @RateLimit(window = 60, max = 10, message = "签到操作过于频繁，请60秒后再试")
     public ResponseResult<Void> checkIn(@PathVariable Long assignmentId, @RequestBody DutyRecord dutyRecord) {
         // 检查是否已经存在该assignmentId的记录
         DutyRecord existingRecord = dutyRecordService.lambdaQuery()
@@ -112,6 +115,7 @@ public class DutyRecordController {
      * @return 操作结果
      */
     @PostMapping("/check-out/{id}")
+    @RateLimit(window = 60, max = 10, message = "签退操作过于频繁，请60秒后再试")
     public ResponseResult<Void> checkOut(@PathVariable Long id, @RequestBody DutyRecord dutyRecord) {
         DutyRecord existingRecord = dutyRecordService.getById(id);
         if (existingRecord != null) {
@@ -135,6 +139,7 @@ public class DutyRecordController {
      * @return 操作结果
      */
     @PutMapping
+    @RateLimit(window = 60, max = 20, message = "更新加班记录过于频繁，请60秒后再试")
     public ResponseResult<Void> updateRecord(@Validated @RequestBody DutyRecord dutyRecord) {
         dutyRecordService.updateById(dutyRecord);
         return ResponseResult.success();
@@ -146,6 +151,7 @@ public class DutyRecordController {
      * @return 操作结果
      */
     @DeleteMapping("/{id}")
+    @RateLimit(window = 60, max = 20, message = "删除加班记录过于频繁，请60秒后再试")
     public ResponseResult<Void> deleteRecord(@PathVariable Long id) {
         dutyRecordService.removeById(id);
         return ResponseResult.success();
