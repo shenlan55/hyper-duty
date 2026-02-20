@@ -6,8 +6,8 @@ import com.lasu.hyperduty.entity.DutyShiftConfig;
 import com.lasu.hyperduty.mapper.DutyShiftConfigMapper;
 import com.lasu.hyperduty.service.DutyShiftConfigService;
 import com.lasu.hyperduty.service.DutyShiftMutexService;
+import com.lasu.hyperduty.utils.CacheUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class DutyShiftConfigServiceImpl extends ServiceImpl<DutyShiftConfigMapper, DutyShiftConfig> implements DutyShiftConfigService {
+public class DutyShiftConfigServiceImpl extends CacheableServiceImpl<DutyShiftConfigMapper, DutyShiftConfig> implements DutyShiftConfigService {
 
     @Autowired
     private DutyShiftMutexService dutyShiftMutexService;
@@ -113,14 +113,32 @@ public class DutyShiftConfigServiceImpl extends ServiceImpl<DutyShiftConfigMappe
     }
 
     /**
+     * 清除所有班次配置缓存
+     */
+    private void clearAllShiftConfigCache() {
+        // 清除所有班次配置缓存
+        CacheUtil.deleteByPattern("shiftConfig::*");
+    }
+
+    @Override
+    protected void clearCache(DutyShiftConfig entity) {
+        // 清除所有班次配置缓存
+        clearAllShiftConfigCache();
+    }
+
+    /**
      * 保存班次配置
      * @param entity 班次配置实体
      * @return 是否保存成功
      */
     @Override
-    @CacheEvict(value = "shiftConfig", allEntries = true)
     public boolean save(DutyShiftConfig entity) {
-        return super.save(entity);
+        boolean result = super.save(entity);
+        if (result) {
+            // 清除所有班次配置缓存
+            clearAllShiftConfigCache();
+        }
+        return result;
     }
 
     /**
@@ -129,9 +147,13 @@ public class DutyShiftConfigServiceImpl extends ServiceImpl<DutyShiftConfigMappe
      * @return 是否更新成功
      */
     @Override
-    @CacheEvict(value = "shiftConfig", allEntries = true)
     public boolean updateById(DutyShiftConfig entity) {
-        return super.updateById(entity);
+        boolean result = super.updateById(entity);
+        if (result) {
+            // 清除所有班次配置缓存
+            clearAllShiftConfigCache();
+        }
+        return result;
     }
 
     /**
@@ -139,9 +161,23 @@ public class DutyShiftConfigServiceImpl extends ServiceImpl<DutyShiftConfigMappe
      * @param id 班次配置ID
      * @return 是否删除成功
      */
-    @CacheEvict(value = "shiftConfig", allEntries = true)
+    @Override
+    public boolean removeById(java.io.Serializable id) {
+        boolean result = super.removeById(id);
+        if (result) {
+            // 清除所有班次配置缓存
+            clearAllShiftConfigCache();
+        }
+        return result;
+    }
+
+    /**
+     * 重载removeById方法，接收Long类型参数
+     * @param id 班次配置ID
+     * @return 是否删除成功
+     */
     public boolean removeById(Long id) {
-        return super.removeById(id);
+        return removeById((java.io.Serializable) id);
     }
 
 }

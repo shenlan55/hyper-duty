@@ -18,7 +18,7 @@ This skill specializes in developing and maintaining backend services for the Hy
 - **Performance Optimization**: Optimize database queries and service methods
 - **Scheduled Tasks**: Configure and maintain Spring Scheduling tasks
 - **Batch Operations**: Implement batch processing for large datasets
-- **Cache Management**: Implement Redis caching for hot data using @Cacheable
+- **Cache Management**: Implement Redis caching for hot data using @Cacheable, CacheableServiceImpl base class, and CacheUtil utility class
 - **Rate Limiting**: Implement API rate limiting using @RateLimit annotation
 - **Security Hardening**: Implement XSS protection and other security measures
 
@@ -69,6 +69,10 @@ This skill specializes in developing and maintaining backend services for the Hy
   - `ResponseUtil.java` - Response utility methods
   - `PageResult.java` - Pagination result structure
 
+### Cache Management
+- `src/main/java/com/lasu/hyperduty/service/impl/CacheableServiceImpl.java` - Base service class for cache management
+- `src/main/java/com/lasu/hyperduty/utils/CacheUtil.java` - Utility class for cache operations
+
 ## Development Guidelines
 
 1. **API Design**: Follow RESTful API design principles
@@ -95,6 +99,16 @@ This skill specializes in developing and maintaining backend services for the Hy
    - Use connection pooling for database operations
    - Implement caching for frequently accessed data
    - Optimize service methods with proper indexing
+
+6. **Cache Management**:
+   - **Cache Key Design**: Use `{module}::{key}_{params}` format for cache keys
+   - **Cache Clear Mechanisms**:
+     - Simple scenarios: Use @CacheEvict annotation
+     - Complex scenarios: Extend CacheableServiceImpl and implement clearCache method
+     - Special scenarios: Use CacheUtil utility class
+   - **Serialization Configuration**: Ensure Redis serialization supports Java 8 date/time types
+   - **Cache Consistency**: Always clear related caches after create/update/delete operations
+   - **Cache Monitoring**: Regularly check Redis cache usage to avoid cache bloat
 
 ## Common Issues and Solutions
 

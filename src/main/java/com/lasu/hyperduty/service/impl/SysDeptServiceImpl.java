@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.SysDept;
 import com.lasu.hyperduty.mapper.SysDeptMapper;
 import com.lasu.hyperduty.service.SysDeptService;
+import com.lasu.hyperduty.utils.CacheUtil;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> implements SysDeptService {
+public class SysDeptServiceImpl extends CacheableServiceImpl<SysDeptMapper, SysDept> implements SysDeptService {
 
     @Override
     @Cacheable(value = "dept", key = "'allDepts'")
@@ -45,6 +46,51 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         return children.stream()
                 .sorted((d1, d2) -> d1.getSort().compareTo(d2.getSort()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 清除所有部门缓存
+     */
+    private void clearAllDeptCache() {
+        // 清除所有部门缓存
+        CacheUtil.delete("dept::allDepts");
+        CacheUtil.delete("dept::deptTree");
+    }
+
+    @Override
+    protected void clearCache(SysDept entity) {
+        // 清除所有部门缓存
+        clearAllDeptCache();
+    }
+
+    @Override
+    public boolean save(SysDept entity) {
+        boolean result = super.save(entity);
+        if (result) {
+            // 清除所有部门缓存
+            clearAllDeptCache();
+        }
+        return result;
+    }
+
+    @Override
+    public boolean updateById(SysDept entity) {
+        boolean result = super.updateById(entity);
+        if (result) {
+            // 清除所有部门缓存
+            clearAllDeptCache();
+        }
+        return result;
+    }
+
+    @Override
+    public boolean removeById(java.io.Serializable id) {
+        boolean result = super.removeById(id);
+        if (result) {
+            // 清除所有部门缓存
+            clearAllDeptCache();
+        }
+        return result;
     }
 
 }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.SysMenu;
 import com.lasu.hyperduty.mapper.SysMenuMapper;
 import com.lasu.hyperduty.service.SysMenuService;
+import com.lasu.hyperduty.utils.CacheUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,7 @@ import java.util.List;
  * 菜单Service实现类
  */
 @Service
-public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> implements SysMenuService {
+public class SysMenuServiceImpl extends CacheableServiceImpl<SysMenuMapper, SysMenu> implements SysMenuService {
 
     @Autowired
     private SysMenuMapper sysMenuMapper;
@@ -110,7 +111,12 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      */
     @Override
     public boolean saveMenu(SysMenu sysMenu) {
-        return super.save(sysMenu);
+        boolean result = super.save(sysMenu);
+        if (result) {
+            // 清除所有菜单缓存
+            clearAllMenuCache();
+        }
+        return result;
     }
 
     /**
@@ -120,7 +126,12 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      */
     @Override
     public boolean updateMenu(SysMenu sysMenu) {
-        return super.updateById(sysMenu);
+        boolean result = super.updateById(sysMenu);
+        if (result) {
+            // 清除所有菜单缓存
+            clearAllMenuCache();
+        }
+        return result;
     }
 
     /**
@@ -138,6 +149,26 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
                 return false;
             }
         }
-        return super.removeById(menuId);
+        boolean result = super.removeById(menuId);
+        if (result) {
+            // 清除所有菜单缓存
+            clearAllMenuCache();
+        }
+        return result;
     }
+
+    /**
+     * 清除所有菜单缓存
+     */
+    private void clearAllMenuCache() {
+        // 清除所有菜单缓存
+        CacheUtil.deleteByPattern("menu::*");
+    }
+
+    @Override
+    protected void clearCache(SysMenu entity) {
+        // 清除所有菜单缓存
+        clearAllMenuCache();
+    }
+
 }

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.mapper.SysEmployeeMapper;
 import com.lasu.hyperduty.service.SysEmployeeService;
+import com.lasu.hyperduty.utils.CacheUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class SysEmployeeServiceImpl extends ServiceImpl<SysEmployeeMapper, SysEmployee> implements SysEmployeeService {
+public class SysEmployeeServiceImpl extends CacheableServiceImpl<SysEmployeeMapper, SysEmployee> implements SysEmployeeService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -39,7 +40,12 @@ public class SysEmployeeServiceImpl extends ServiceImpl<SysEmployeeMapper, SysEm
         if (sysEmployee.getPassword() != null && !sysEmployee.getPassword().isEmpty()) {
             sysEmployee.setPassword(passwordEncoder.encode(sysEmployee.getPassword()));
         }
-        return super.save(sysEmployee);
+        boolean result = super.save(sysEmployee);
+        if (result) {
+            // 清除员工相关的缓存
+            clearEmployeeCache(sysEmployee);
+        }
+        return result;
     }
 
     @Override
@@ -64,7 +70,31 @@ public class SysEmployeeServiceImpl extends ServiceImpl<SysEmployeeMapper, SysEm
             updateWrapper.set(SysEmployee::getPassword, passwordEncoder.encode(sysEmployee.getPassword()));
         }
         
-        return update(updateWrapper);
+        boolean result = update(updateWrapper);
+        if (result) {
+            // 清除员工相关的缓存
+            clearEmployeeCache(sysEmployee);
+        }
+        return result;
+    }
+
+    /**
+     * 清除员工相关的缓存
+     * @param sysEmployee 员工信息
+     */
+    private void clearEmployeeCache(SysEmployee sysEmployee) {
+        // 清除所有员工缓存
+        CacheUtil.delete("employee::allEmployees");
+        // 如果员工有部门ID，清除对应部门的员工缓存
+        if (sysEmployee != null && sysEmployee.getDeptId() != null) {
+            CacheUtil.delete("employee::" + sysEmployee.getDeptId());
+        }
+    }
+
+    @Override
+    protected void clearCache(SysEmployee entity) {
+        // 清除员工相关的缓存
+        clearEmployeeCache(entity);
     }
 
 }

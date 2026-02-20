@@ -7,6 +7,7 @@ import com.lasu.hyperduty.entity.SysUserRole;
 import com.lasu.hyperduty.mapper.SysRoleMapper;
 import com.lasu.hyperduty.mapper.SysRoleMenuMapper;
 import com.lasu.hyperduty.service.SysRoleService;
+import com.lasu.hyperduty.utils.CacheUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -18,7 +19,7 @@ import java.util.List;
  * 角色服务实现类
  */
 @Service
-public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> implements SysRoleService {
+public class SysRoleServiceImpl extends CacheableServiceImpl<SysRoleMapper, SysRole> implements SysRoleService {
 
     @Autowired
     private SysRoleMenuMapper sysRoleMenuMapper;
@@ -44,10 +45,27 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                 return roleMenu;
             }).collect(java.util.stream.Collectors.toList());
             
-            return sysRoleMenuMapper.batchInsert(roleMenuList) > 0;
+            boolean result = sysRoleMenuMapper.batchInsert(roleMenuList) > 0;
+            if (result) {
+                // 清除缓存
+                CacheUtil.delete("role::menu_ids_" + roleId);
+                // 清除与该角色相关联的所有用户的菜单缓存
+                List<Long> userIds = baseMapper.selectUserIdsByRoleId(roleId);
+                for (Long userId : userIds) {
+                    CacheUtil.delete("menu::user_" + userId);
+                }
+            }
+            return result;
+        } else {
+            // 清除缓存
+            CacheUtil.delete("role::menu_ids_" + roleId);
+            // 清除与该角色相关联的所有用户的菜单缓存
+            List<Long> userIds = baseMapper.selectUserIdsByRoleId(roleId);
+            for (Long userId : userIds) {
+                CacheUtil.delete("menu::user_" + userId);
+            }
+            return true;
         }
-        
-        return true;
     }
     
     @Override
@@ -71,10 +89,24 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                 return userRole;
             }).collect(java.util.stream.Collectors.toList());
             
-            return baseMapper.batchInsertUserRoles(userRoleList) > 0;
+            boolean result = baseMapper.batchInsertUserRoles(userRoleList) > 0;
+            if (result) {
+                // 清除缓存
+                CacheUtil.delete("role::user_ids_" + roleId);
+            }
+            return result;
         }
         
         return true;
+    }
+
+    @Override
+    protected void clearCache(SysRole entity) {
+        // 清除角色相关的所有缓存
+        if (entity != null && entity.getId() != null) {
+            CacheUtil.delete("role::menu_ids_" + entity.getId());
+            CacheUtil.delete("role::user_ids_" + entity.getId());
+        }
     }
 
 }

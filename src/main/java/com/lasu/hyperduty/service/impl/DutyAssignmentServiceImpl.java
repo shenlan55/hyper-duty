@@ -11,7 +11,6 @@ import com.lasu.hyperduty.mapper.LeaveRequestMapper;
 import com.lasu.hyperduty.mapper.LeaveSubstituteMapper;
 import com.lasu.hyperduty.service.DutyAssignmentService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -19,7 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
-public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper, DutyAssignment> implements DutyAssignmentService {
+public class DutyAssignmentServiceImpl extends CacheableServiceImpl<DutyAssignmentMapper, DutyAssignment> implements DutyAssignmentService {
 
     @Autowired
     private LeaveRequestMapper leaveRequestMapper;
@@ -99,7 +98,6 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
     }
 
     @Override
-    @Cacheable(value = "dutyAssignment", key = "'employee_dates_' + #scheduleId + '_' + #employeeId")
     public List<String> getEmployeeDutyDates(Long scheduleId, Long employeeId) {
         // 查询指定值班表和员工的所有排班记录
         LambdaQueryWrapper<DutyAssignment> wrapper = new LambdaQueryWrapper<>();
@@ -117,7 +115,6 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
     }
 
     @Override
-    @Cacheable(value = "dutyAssignment", key = "'employee_shifts_' + #scheduleId + '_' + #employeeId + '_' + #date")
     public List<Integer> getEmployeeDutyShifts(Long scheduleId, Long employeeId, String date) {
         // 查询指定值班表、员工和日期的所有排班班次
         LambdaQueryWrapper<DutyAssignment> wrapper = new LambdaQueryWrapper<>();
@@ -300,4 +297,22 @@ public class DutyAssignmentServiceImpl extends ServiceImpl<DutyAssignmentMapper,
         
         return !substitutes.isEmpty();
     }
+
+
+
+    @Override
+    public boolean save(DutyAssignment entity) {
+        return super.save(entity);
+    }
+
+    @Override
+    public boolean updateById(DutyAssignment entity) {
+        return super.updateById(entity);
+    }
+
+    @Override
+    public boolean removeById(java.io.Serializable id) {
+        return super.removeById(id);
+    }
+
 }

@@ -8,6 +8,7 @@ import com.lasu.hyperduty.entity.SysUser;
 import com.lasu.hyperduty.mapper.SysUserMapper;
 import com.lasu.hyperduty.service.SysEmployeeService;
 import com.lasu.hyperduty.service.SysUserService;
+import com.lasu.hyperduty.utils.CacheUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -22,7 +23,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements SysUserService {
+public class SysUserServiceImpl extends CacheableServiceImpl<SysUserMapper, SysUser> implements SysUserService {
 
     private final SysUserMapper sysUserMapper;
     private final SysEmployeeService sysEmployeeService;
@@ -140,6 +141,12 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
 
         return new User(sysUser.getUsername(), sysUser.getPassword(), authorities);
+    }
+
+    @Override
+    protected void clearCache(SysUser entity) {
+        // 清除用户相关的缓存
+        CacheUtil.delete("user::allUsers");
     }
 
 }

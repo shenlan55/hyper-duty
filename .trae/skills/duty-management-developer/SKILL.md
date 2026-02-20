@@ -15,6 +15,7 @@ This skill specializes in developing and maintaining the duty management module 
 - **Statistics Reporting**: Create and maintain duty statistics and overtime calculations
 - **Holiday Management**: Handle holiday recognition in scheduling logic
 - **Batch Operations**: Support batch scheduling and mass updates
+- **Cache Management**: Implement and maintain Redis caching for duty-related hot data
 
 ## Key Files and Components
 
@@ -32,6 +33,14 @@ This skill specializes in developing and maintaining the duty management module 
 - `src/main/java/com/lasu/hyperduty/service/SwapRequestService.java` - Shift swap management
 - `src/main/java/com/lasu/hyperduty/service/DutyStatisticsService.java` - Duty statistics
 - `src/main/java/com/lasu/hyperduty/service/AutoScheduleService.java` - Automatic scheduling
+- `src/main/java/com/lasu/hyperduty/service/DutyHolidayService.java` - Holiday management with caching
+- `src/main/java/com/lasu/hyperduty/service/DutyRecordService.java` - Overtime records with caching
+- `src/main/java/com/lasu/hyperduty/service/DutyScheduleModeService.java` - Schedule modes with caching
+- `src/main/java/com/lasu/hyperduty/service/DutyShiftConfigService.java` - Shift configurations with caching
+
+### Cache Management
+- `src/main/java/com/lasu/hyperduty/service/impl/CacheableServiceImpl.java` - Base service class for cache management
+- `src/main/java/com/lasu/hyperduty/utils/CacheUtil.java` - Utility class for cache operations
 
 ### Controllers
 - `src/main/java/com/lasu/hyperduty/controller/DutyAssignmentController.java`
@@ -47,6 +56,14 @@ This skill specializes in developing and maintaining the duty management module 
 3. **Data Validation**: Validate all user inputs and API parameters
 4. **Performance Optimization**: Optimize database queries and avoid N+1 problems
 5. **Security**: Follow Spring Security best practices and JWT token management
+6. **Cache Management**:
+   - **Cache Key Design**: Use `duty::{key}_{params}` format for duty-related cache keys
+   - **Cache Clear Mechanisms**:
+     - Simple scenarios: Use @CacheEvict annotation
+     - Complex scenarios: Extend CacheableServiceImpl and implement clearCache method
+     - Special scenarios: Use CacheUtil utility class
+   - **Cache Consistency**: Always clear related caches after create/update/delete operations
+   - **Cache Monitoring**: Regularly check Redis cache usage to avoid cache bloat
 
 ## Common Issues and Solutions
 

@@ -7,8 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lasu.hyperduty.entity.DutyScheduleMode;
 import com.lasu.hyperduty.mapper.DutyScheduleModeMapper;
 import com.lasu.hyperduty.service.DutyScheduleModeService;
+import com.lasu.hyperduty.utils.CacheUtil;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,7 +18,7 @@ import java.util.Map;
  * 排班模式服务实现类
  */
 @Service
-public class DutyScheduleModeServiceImpl extends ServiceImpl<DutyScheduleModeMapper, DutyScheduleMode> 
+public class DutyScheduleModeServiceImpl extends CacheableServiceImpl<DutyScheduleModeMapper, DutyScheduleMode> 
         implements DutyScheduleModeService {
 
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -64,7 +64,6 @@ public class DutyScheduleModeServiceImpl extends ServiceImpl<DutyScheduleModeMap
     }
 
     @Override
-    @CacheEvict(value = "scheduleMode", allEntries = true)
     public boolean saveModeConfig(Long modeId, Map<String, Object> configParams) {
         DutyScheduleMode mode = this.getById(modeId);
         if (mode == null) {
@@ -74,9 +73,59 @@ public class DutyScheduleModeServiceImpl extends ServiceImpl<DutyScheduleModeMap
         try {
             String configJson = objectMapper.writeValueAsString(configParams);
             mode.setConfigJson(configJson);
-            return this.updateById(mode);
+            boolean result = this.updateById(mode);
+            if (result) {
+                // 清除所有排班模式缓存
+                clearAllScheduleModeCache();
+            }
+            return result;
         } catch (JsonProcessingException e) {
             return false;
         }
     }
+
+    /**
+     * 清除所有排班模式缓存
+     */
+    private void clearAllScheduleModeCache() {
+        // 清除所有排班模式缓存
+        CacheUtil.deleteByPattern("scheduleMode::*");
+    }
+
+    @Override
+    protected void clearCache(DutyScheduleMode entity) {
+        // 清除所有排班模式缓存
+        clearAllScheduleModeCache();
+    }
+
+    @Override
+    public boolean save(DutyScheduleMode entity) {
+        boolean result = super.save(entity);
+        if (result) {
+            // 清除所有排班模式缓存
+            clearAllScheduleModeCache();
+        }
+        return result;
+    }
+
+    @Override
+    public boolean updateById(DutyScheduleMode entity) {
+        boolean result = super.updateById(entity);
+        if (result) {
+            // 清除所有排班模式缓存
+            clearAllScheduleModeCache();
+        }
+        return result;
+    }
+
+    @Override
+    public boolean removeById(java.io.Serializable id) {
+        boolean result = super.removeById(id);
+        if (result) {
+            // 清除所有排班模式缓存
+            clearAllScheduleModeCache();
+        }
+        return result;
+    }
+
 }

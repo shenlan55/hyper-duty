@@ -9,6 +9,7 @@ import com.lasu.hyperduty.service.DutyAssignmentService;
 import com.lasu.hyperduty.service.DutyRecordService;
 import com.lasu.hyperduty.service.DutyScheduleService;
 import com.lasu.hyperduty.service.SysEmployeeService;
+import com.lasu.hyperduty.utils.CacheUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -18,7 +19,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class DutyRecordServiceImpl extends ServiceImpl<DutyRecordMapper, DutyRecord> implements DutyRecordService {
+public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper, DutyRecord> implements DutyRecordService {
 
     @Autowired
     private SysEmployeeService sysEmployeeService;
@@ -45,7 +46,6 @@ public class DutyRecordServiceImpl extends ServiceImpl<DutyRecordMapper, DutyRec
     }
 
     @Override
-    @Cacheable(value = "dutyRecord", key = "'available_substitutes_' + #employeeId + '_' + #dutyDate + '_' + #dutyShift")
     public List<SysEmployee> getAvailableSubstitutes(Long employeeId, LocalDate dutyDate, Integer dutyShift) {
         SysEmployee currentEmployee = sysEmployeeService.getById(employeeId);
         if (currentEmployee == null) {
@@ -83,7 +83,6 @@ public class DutyRecordServiceImpl extends ServiceImpl<DutyRecordMapper, DutyRec
     }
 
     @Override
-    @Cacheable(value = "dutyRecord", key = "'pending_approvals_' + #employeeId")
     public List<DutyRecord> getPendingApprovals(Long employeeId) {
         // 查询审批状态为待审批的加班记录
         List<DutyRecord> allPendingRecords = lambdaQuery()
@@ -117,4 +116,25 @@ public class DutyRecordServiceImpl extends ServiceImpl<DutyRecordMapper, DutyRec
         
         return authorizedRecords;
     }
+
+    @Override
+    protected void clearCache(DutyRecord entity) {
+        // 由于不再使用缓存，此方法为空实现
+    }
+
+    @Override
+    public boolean save(DutyRecord entity) {
+        return super.save(entity);
+    }
+
+    @Override
+    public boolean updateById(DutyRecord entity) {
+        return super.updateById(entity);
+    }
+
+    @Override
+    public boolean removeById(java.io.Serializable id) {
+        return super.removeById(id);
+    }
+
 }

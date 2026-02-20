@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.DutyHoliday;
 import com.lasu.hyperduty.mapper.DutyHolidayMapper;
 import com.lasu.hyperduty.service.DutyHolidayService;
-import org.springframework.cache.annotation.CacheEvict;
+import com.lasu.hyperduty.utils.CacheUtil;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * 节假日服务实现类
  */
 @Service
-public class DutyHolidayServiceImpl extends ServiceImpl<DutyHolidayMapper, DutyHoliday> implements DutyHolidayService {
+public class DutyHolidayServiceImpl extends CacheableServiceImpl<DutyHolidayMapper, DutyHoliday> implements DutyHolidayService {
 
     @Override
     @Cacheable(value = "holiday", key = "'isHoliday_' + #date")
@@ -121,7 +121,6 @@ public class DutyHolidayServiceImpl extends ServiceImpl<DutyHolidayMapper, DutyH
     }
 
     @Override
-    @CacheEvict(value = "holiday", allEntries = true)
     public boolean importHolidays(List<DutyHoliday> holidays) {
         // 批量导入前先删除已存在的同日期数据
         List<LocalDate> dates = holidays.stream()
@@ -135,6 +134,56 @@ public class DutyHolidayServiceImpl extends ServiceImpl<DutyHolidayMapper, DutyH
         }
         
         // 批量插入新数据
-        return this.saveBatch(holidays);
+        boolean result = this.saveBatch(holidays);
+        if (result) {
+            // 清除所有节假日缓存
+            clearAllHolidayCache();
+        }
+        return result;
     }
+
+    /**
+     * 清除所有节假日缓存
+     */
+    private void clearAllHolidayCache() {
+        // 清除所有节假日缓存
+        CacheUtil.deleteByPattern("holiday::*");
+    }
+
+    @Override
+    protected void clearCache(DutyHoliday entity) {
+        // 清除所有节假日缓存
+        clearAllHolidayCache();
+    }
+
+    @Override
+    public boolean save(DutyHoliday entity) {
+        boolean result = super.save(entity);
+        if (result) {
+            // 清除所有节假日缓存
+            clearAllHolidayCache();
+        }
+        return result;
+    }
+
+    @Override
+    public boolean updateById(DutyHoliday entity) {
+        boolean result = super.updateById(entity);
+        if (result) {
+            // 清除所有节假日缓存
+            clearAllHolidayCache();
+        }
+        return result;
+    }
+
+    @Override
+    public boolean removeById(java.io.Serializable id) {
+        boolean result = super.removeById(id);
+        if (result) {
+            // 清除所有节假日缓存
+            clearAllHolidayCache();
+        }
+        return result;
+    }
+
 }
