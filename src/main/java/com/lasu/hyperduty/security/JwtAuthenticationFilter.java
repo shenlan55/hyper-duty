@@ -1,7 +1,7 @@
 package com.lasu.hyperduty.security;
 
 import com.lasu.hyperduty.common.ResponseUtil;
-import com.lasu.hyperduty.service.SysUserService;
+import com.lasu.hyperduty.security.EmployeeUserDetailsService;
 import com.lasu.hyperduty.utils.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -28,7 +28,7 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final SysUserService sysUserService;
+    private final EmployeeUserDetailsService employeeUserDetailsService;
     private final AntPathMatcher pathMatcher;
     
     // 不需要认证的路径列表
@@ -36,9 +36,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     // 使用构造函数注入
     @Autowired
-    public JwtAuthenticationFilter(JwtUtil jwtUtil, SysUserService sysUserService) {
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, EmployeeUserDetailsService employeeUserDetailsService) {
         this.jwtUtil = jwtUtil;
-        this.sysUserService = sysUserService;
+        this.employeeUserDetailsService = employeeUserDetailsService;
         this.pathMatcher = new AntPathMatcher();
         
         // 初始化不需要认证的路径列表
@@ -155,7 +155,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 如果用户未认证
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
-                UserDetails userDetails = this.sysUserService.loadUserByUsername(username);
+                UserDetails userDetails = this.employeeUserDetailsService.loadUserByUsername(username);
                 
                 // 验证令牌有效性
                 if (jwtUtil.validateAccessToken(jwt, userDetails.getUsername())) {

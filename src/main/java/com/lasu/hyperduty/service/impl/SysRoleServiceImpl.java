@@ -85,7 +85,7 @@ public class SysRoleServiceImpl extends CacheableServiceImpl<SysRoleMapper, SysR
             List<SysUserRole> userRoleList = userIds.stream().map(userId -> {
                 SysUserRole userRole = new SysUserRole();
                 userRole.setRoleId(roleId);
-                userRole.setUserId(userId);
+                userRole.setEmployeeId(userId);
                 return userRole;
             }).collect(java.util.stream.Collectors.toList());
             

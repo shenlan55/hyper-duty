@@ -4,13 +4,13 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.ApprovalRecord;
 import com.lasu.hyperduty.entity.LeaveRequest;
 import com.lasu.hyperduty.entity.SysRole;
-import com.lasu.hyperduty.entity.SysUser;
+import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.entity.SysUserRole;
 import com.lasu.hyperduty.mapper.ApprovalRecordMapper;
 import com.lasu.hyperduty.service.ApprovalRecordService;
 import com.lasu.hyperduty.service.LeaveRequestService;
 import com.lasu.hyperduty.service.SysRoleService;
-import com.lasu.hyperduty.service.SysUserService;
+import com.lasu.hyperduty.service.SysEmployeeService;
 import com.lasu.hyperduty.service.SysUserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ public class ApprovalRecordServiceImpl extends ServiceImpl<ApprovalRecordMapper,
     private LeaveRequestService leaveRequestService;
 
     @Autowired
-    private SysUserService sysUserService;
+    private SysEmployeeService sysEmployeeService;
 
     @Autowired
     private SysUserRoleService sysUserRoleService;
@@ -65,13 +65,13 @@ public class ApprovalRecordServiceImpl extends ServiceImpl<ApprovalRecordMapper,
             return false;
         }
 
-        SysUser user = sysUserService.getById(approverId);
-        if (user == null) {
+        SysEmployee employee = sysEmployeeService.getById(approverId);
+        if (employee == null) {
             return false;
         }
 
         List<SysUserRole> userRoles = sysUserRoleService.lambdaQuery()
-                .eq(SysUserRole::getUserId, approverId)
+                .eq(SysUserRole::getEmployeeId, approverId)
                 .list();
 
         for (SysUserRole userRole : userRoles) {

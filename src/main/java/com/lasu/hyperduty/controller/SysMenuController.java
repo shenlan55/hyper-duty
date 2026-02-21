@@ -3,8 +3,10 @@ package com.lasu.hyperduty.controller;
 import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.SysMenu;
+import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.service.SysMenuService;
-import com.lasu.hyperduty.service.SysUserService;
+import com.lasu.hyperduty.service.SysEmployeeService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,7 +23,7 @@ public class SysMenuController {
     private SysMenuService sysMenuService;
     
     @Autowired
-    private SysUserService sysUserService;
+    private SysEmployeeService sysEmployeeService;
 
     /**
      * 获取所有菜单列表（树形结构）
@@ -118,12 +120,14 @@ public class SysMenuController {
         }
         
         // 从数据库中根据用户名查询用户ID
-        com.lasu.hyperduty.entity.SysUser sysUser = sysUserService.getByUsername(username);
-        if (sysUser == null) {
+        LambdaQueryWrapper<SysEmployee> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysEmployee::getUsername, username);
+        SysEmployee employee = sysEmployeeService.getOne(queryWrapper);
+        if (employee == null) {
             return ResponseResult.error("用户不存在");
         }
         
-        Long userId = sysUser.getId();
+        Long userId = employee.getId();
         List<SysMenu> menus = sysMenuService.getMenusByUserId(userId);
         return ResponseResult.success(menus);
     }

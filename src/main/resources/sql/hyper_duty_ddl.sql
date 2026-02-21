@@ -101,13 +101,13 @@ CREATE TABLE IF NOT EXISTS sys_role (
 -- 用户角色关联表
 CREATE TABLE IF NOT EXISTS sys_user_role (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
-    user_id BIGINT NOT NULL COMMENT '用户ID',
+    employee_id BIGINT NOT NULL COMMENT '人员ID',
     role_id BIGINT NOT NULL COMMENT '角色ID',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    UNIQUE KEY uk_user_role (user_id, role_id),
-    INDEX idx_user_id (user_id),
+    UNIQUE KEY uk_user_role (employee_id, role_id),
+    INDEX idx_employee_id (employee_id),
     INDEX idx_role_id (role_id),
-    FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE,
+    FOREIGN KEY (employee_id) REFERENCES sys_employee(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES sys_role(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关联表';
 

@@ -3,7 +3,6 @@ package com.lasu.hyperduty.controller;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.service.SysDeptService;
 import com.lasu.hyperduty.service.SysEmployeeService;
-import com.lasu.hyperduty.service.SysUserService;
 import com.lasu.hyperduty.service.OperationLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;

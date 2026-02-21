@@ -124,7 +124,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listRole, addRole, updateRole, deleteRole, getRoleMenu, saveRoleMenu, getRoleUser, saveRoleUser } from '../api/role'
 import { getMenuList } from '../api/menu'
-import { getUserList } from '../api/user'
+import { getEmployeeList } from '../api/employee'
 import { formatDateTime } from '../utils/dateUtils'
 import { safeInput } from '../utils/xssUtil'
 import BaseTable from '../components/BaseTable.vue'
@@ -356,9 +356,9 @@ const handleMenuAuthSubmit = async () => {
 const remoteUserSearch = (query) => {
   if (userList.value.length === 0) {
     userLoading.value = true
-    getUserList().then(data => {
-      // 过滤掉禁用的用户（status为0）
-      userList.value = data.filter(user => user.status === 1)
+    getEmployeeList(1, 1000, '').then(data => {
+      // 过滤掉禁用的用户（status为0）和没有用户名的人员
+      userList.value = data.records.filter(emp => emp.status === 1 && emp.username)
     }).catch(error => {
       ElMessage.error('获取用户列表失败：' + error.message)
     }).finally(() => {
@@ -377,9 +377,9 @@ const handleUserBind = async (row) => {
   if (userList.value.length === 0) {
     try {
       userLoading.value = true
-      const userData = await getUserList()
-      // 过滤掉禁用的用户（status为0）
-      userList.value = userData.filter(user => user.status === 1)
+      const userData = await getEmployeeList(1, 1000, '')
+      // 过滤掉禁用的用户（status为0）和没有用户名的人员
+      userList.value = userData.records.filter(emp => emp.status === 1 && emp.username)
     } catch (error) {
       ElMessage.error('获取用户列表失败：' + error.message)
     } finally {

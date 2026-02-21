@@ -17,7 +17,7 @@
     <insert id="batchInsertUserRoles" parameterType="java.util.List">
         INSERT INTO sys_user_role (employee_id, role_id) VALUES
         <foreach collection="list" item="userRole" separator=",">
-            (#{userRole.userId}, #{userRole.roleId})
+            (#{userRole.employeeId}, #{userRole.roleId})
         </foreach>
     </insert>
 

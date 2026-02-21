@@ -41,7 +41,7 @@ INSERT IGNORE INTO sys_menu (menu_name, parent_id, path, component, perm, type, 
 ('系统管理', 0, '', '', '', 1, 'Setting', 2, 1),
 ('部门管理', 2, '/dept', 'views/Dept.vue', 'sys:dept:list', 2, 'OfficeBuilding', 1, 1),
 ('人员管理', 2, '/employee', 'views/Employee.vue', 'sys:employee:list', 2, 'User', 2, 1),
-('用户管理', 2, '/user', 'views/User.vue', 'sys:user:list', 2, 'Avatar', 3, 1),
+
 ('菜单管理', 2, '/menu', 'views/Menu.vue', 'sys:menu:list', 2, 'Menu', 4, 1),
 ('角色管理', 2, '/role', 'views/Role.vue', 'sys:role:list', 2, 'DocumentCopy', 5, 1),
 ('字典管理', 2, '/dict', 'views/Dict.vue', 'sys:dict:list', 2, 'List', 6, 1),
@@ -66,7 +66,7 @@ INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES
 (2, 2), -- 系统管理
 (2, 3), -- 部门管理
 (2, 4), -- 人员管理
-(2, 5), -- 用户管理
+
 (2, 8), -- 值班管理
 (2, 9), -- 值班表管理
 (2, 10), -- 值班安排
@@ -125,7 +125,7 @@ INSERT IGNORE INTO duty_schedule_mode (mode_name, mode_code, mode_type, algorith
 UPDATE sys_menu SET path = '/system' WHERE menu_name = '系统管理' AND parent_id = 0;
 UPDATE sys_menu SET path = '/system/dept' WHERE menu_name = '部门管理';
 UPDATE sys_menu SET path = '/system/employee' WHERE menu_name = '人员管理';
-UPDATE sys_menu SET path = '/system/user' WHERE menu_name = '用户管理';
+
 UPDATE sys_menu SET path = '/system/menu' WHERE menu_name = '菜单管理';
 UPDATE sys_menu SET path = '/system/role' WHERE menu_name = '角色管理';
 UPDATE sys_menu SET path = '/system/dict' WHERE menu_name = '字典管理';

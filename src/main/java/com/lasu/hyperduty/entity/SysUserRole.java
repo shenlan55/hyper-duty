@@ -20,9 +20,9 @@ public class SysUserRole implements Serializable {
     private Long id;
 
     /**
-     * 用户ID
+     * 人员ID
      */
-    private Long userId;
+    private Long employeeId;
 
     /**
      * 角色ID

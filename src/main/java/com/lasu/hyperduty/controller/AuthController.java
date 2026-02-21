@@ -3,8 +3,6 @@ package com.lasu.hyperduty.controller;
 import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.dto.LoginDTO;
-import com.lasu.hyperduty.entity.SysUser;
-import com.lasu.hyperduty.service.SysUserService;
 import com.lasu.hyperduty.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,9 +29,6 @@ public class AuthController {
 
     @Autowired
     private JwtUtil jwtUtil;
-
-    @Autowired
-    private SysUserService sysUserService;
 
     @Autowired
     private com.lasu.hyperduty.service.SysEmployeeService sysEmployeeService;
