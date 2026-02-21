@@ -168,8 +168,8 @@ const loadTodoList = async () => {
     try {
       // 获取所有员工信息
       const employeeData = await getEmployeeList()
-      if (Array.isArray(employeeData)) {
-        employees = employeeData
+      if (employeeData?.records && Array.isArray(employeeData.records)) {
+        employees = employeeData.records
       }
     } catch (error) {
       console.error('获取员工信息失败:', error)

@@ -349,6 +349,29 @@ const columnFilters = ref({})
 // 选择状态管理
 const selectedRows = ref([])
 
+// 分页状态管理
+const pagination = ref({
+  currentPage: 1,
+  pageSize: 10,
+  pageSizes: [10, 20, 50, 100],
+  total: 0
+})
+
+// 监听props.pagination变化，更新本地状态
+import { watch } from 'vue'
+watch(
+  () => props.pagination,
+  (newPagination) => {
+    if (newPagination) {
+      pagination.value = {
+        ...pagination.value,
+        ...newPagination
+      }
+    }
+  },
+  { immediate: true, deep: true }
+)
+
 // 列显示/隐藏状态管理
 const visibleColumns = ref({})
 
@@ -431,17 +454,15 @@ const handleSelectAll = (selection) => {
   emit('select-all', selection)
 }
 
-// 处理分页大小变化
+// 分页方法
 const handleSizeChange = (size) => {
   emit('size-change', size)
 }
 
-// 处理当前页码变化
 const handleCurrentChange = (current) => {
   emit('current-change', current)
 }
 
-// 处理排序变化
 const handleSortChange = (sort) => {
   emit('sort-change', sort)
 }

@@ -305,7 +305,7 @@ const fetchScheduleList = async () => {
 const fetchEmployeeList = async () => {
   try {
     const data = await getEmployeeList()
-    allEmployeeList.value = (data || []).map(emp => ({
+    allEmployeeList.value = (data?.records || []).map(emp => ({
       key: emp.id,
       label: emp.employeeName,
       disabled: emp.status !== 1

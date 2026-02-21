@@ -13,7 +13,7 @@
       
       <BaseTable
         v-loading="loading"
-        :data="filteredEmployeeList"
+        :data="employeeList"
         :columns="columns"
         :show-pagination="true"
         :pagination="pagination"
@@ -251,20 +251,16 @@ import { listDictType } from '../api/dictType'
 import { getDictDataByType } from '../api/dictData'
 import { formatDateTime } from '../utils/dateUtils'
 import { safeInput } from '../utils/xssUtil'
+import { useSearchPagination } from '../hooks/usePagination'
 import BaseTable from '../components/BaseTable.vue'
 
 // 响应式数据
-const searchQuery = ref('')
 const deptFilter = ref('')
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogLoading = ref(false)
 const dialogTitle = ref('添加人员')
 const employeeFormRef = ref()
-
-// 分页数据
-const currentPage = ref(1)
-const pageSize = ref(10)
 
 // 表格列配置
 const columns = [
@@ -284,14 +280,32 @@ const columns = [
 ]
 
 // 分页配置
-const pagination = computed(() => {
-  return {
-    currentPage: currentPage.value,
-    pageSize: pageSize.value,
-    pageSizes: [10, 20, 50, 100],
-    total: filteredEmployeeList.value.length
-  }
-})
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch,
+  resetSearch
+} = useSearchPagination()
+
+// 处理页码变化
+const handleCurrentChange = (val) => {
+  originalHandleCurrentChange(val)
+  fetchEmployeeList()
+}
+
+// 处理每页大小变化
+const handleSizeChange = (val) => {
+  originalHandleSizeChange(val)
+  fetchEmployeeList()
+}
+
+// 人员列表
+const employeeList = ref([])
 
 // 部门数据
 const deptList = ref([])
@@ -304,9 +318,6 @@ const dictDataMap = ref(new Map())
 
 // 字典数据（用于表单下拉框）
 const dictDataList = ref([])
-
-// 人员数据
-const employeeList = ref([])
 
 // 表单数据
 const employeeForm = reactive({
@@ -465,8 +476,13 @@ const handleDictTypeChange = (dictTypeId) => {
 const fetchEmployeeList = async () => {
   loading.value = true
   try {
-    const data = await getEmployeeList()
-    employeeList.value = data || []
+    const deptId = deptFilter.value || null
+    const data = await getEmployeeList(currentPage.value, pageSize.value, searchQuery.value, deptId)
+    console.log('Data received:', data)
+    employeeList.value = data.records || []
+    total.value = data.total || 0
+    pagination.total = data.total || 0 // 更新pagination.total
+    console.log('Total value:', total.value)
   } catch (error) {
     console.error('获取人员列表失败:', error)
     ElMessage.error('获取人员列表失败')
@@ -475,24 +491,10 @@ const fetchEmployeeList = async () => {
   }
 }
 
-// 搜索
-const handleSearch = () => {
-  currentPage.value = 1
-}
-
 // 按部门筛选
 const handleDeptFilter = () => {
   currentPage.value = 1
-}
-
-// 分页处理
-const handleSizeChange = (size) => {
-  pageSize.value = size
-  currentPage.value = 1
-}
-
-const handleCurrentChange = (page) => {
-  currentPage.value = page
+  fetchEmployeeList()
 }
 
 // 打开添加对话框
@@ -598,12 +600,13 @@ const handleDelete = async (id) => {
 const handleTableSearch = (query) => {
   searchQuery.value = query
   currentPage.value = 1
+  fetchEmployeeList()
 }
 
 // 导出人员列表
 const handleExport = () => {
   // 导出逻辑
-  const exportData = filteredEmployeeList.value
+  const exportData = employeeList.value
   const headers = ['人员姓名', '人员编码', '用户名', '所属部门', '手机号码', '邮箱', '性别', '字典类型', '字典数据', '状态', '创建时间']
   const rows = exportData.map(row => [
     row.employeeName,

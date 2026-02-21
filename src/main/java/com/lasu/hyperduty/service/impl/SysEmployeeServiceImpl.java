@@ -2,7 +2,10 @@ package com.lasu.hyperduty.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.lasu.hyperduty.dto.PageRequestDTO;
+import com.lasu.hyperduty.dto.PageResponseDTO;
 import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.mapper.SysEmployeeMapper;
 import com.lasu.hyperduty.service.SysEmployeeService;
@@ -13,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class SysEmployeeServiceImpl extends CacheableServiceImpl<SysEmployeeMapper, SysEmployee> implements SysEmployeeService {
@@ -89,6 +93,43 @@ public class SysEmployeeServiceImpl extends CacheableServiceImpl<SysEmployeeMapp
         if (sysEmployee != null && sysEmployee.getDeptId() != null) {
             CacheUtil.delete("employee::" + sysEmployee.getDeptId());
         }
+    }
+
+    @Override
+    public Page<SysEmployee> page(Page<SysEmployee> page, String keyword, Long deptId) {
+        LambdaQueryWrapper<SysEmployee> queryWrapper = new LambdaQueryWrapper<>();
+        
+        // 关键字搜索
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.like(SysEmployee::getEmployeeName, keyword)
+                    .or()
+                    .like(SysEmployee::getEmployeeCode, keyword)
+                    .or()
+                    .like(SysEmployee::getUsername, keyword);
+        }
+        
+        // 部门筛选
+        if (deptId != null) {
+            queryWrapper.eq(SysEmployee::getDeptId, deptId);
+        }
+        
+        return baseMapper.selectPage(page, queryWrapper);
+    }
+
+    @Override
+    public PageResponseDTO<SysEmployee> page(PageRequestDTO pageRequestDTO, Map<String, Object> params) {
+        // 创建MyBatis Plus的Page对象
+        Page<SysEmployee> page = createPage(pageRequestDTO);
+        
+        // 从params中获取查询参数
+        String keyword = pageRequestDTO.getKeyword();
+        Long deptId = params != null ? (Long) params.get("deptId") : null;
+        
+        // 调用现有的page方法进行分页查询
+        Page<SysEmployee> resultPage = page(page, keyword, deptId);
+        
+        // 转换为PageResponseDTO
+        return toPageResponse(resultPage);
     }
 
     @Override

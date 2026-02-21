@@ -775,7 +775,7 @@ const fetchScheduleList = async () => {
 const fetchEmployeeList = async () => {
   try {
     const data = await getEmployeeList()
-    allEmployeeList.value = data || []
+    allEmployeeList.value = data?.records || []
   } catch (error) {
     // console.error('获取员工列表失败:', error)
     ElMessage.error('获取员工列表失败')

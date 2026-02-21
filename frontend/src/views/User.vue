@@ -11,7 +11,7 @@
     <el-card shadow="hover" class="content-card">
       <BaseTable
         v-loading="loading"
-        :data="filteredUserList"
+        :data="userList"
         :columns="columns"
         :show-pagination="true"
         :pagination="pagination"
@@ -106,14 +106,8 @@ import { getEmployeeList } from '../api/employee'
 import { getUserList, addUser, updateUser, deleteUser } from '../api/user'
 import { formatDateTime } from '../utils/dateUtils'
 import { safeInput } from '../utils/xssUtil'
+import { useSearchPagination } from '../hooks/usePagination'
 import BaseTable from '../components/BaseTable.vue'
-
-// 搜索查询
-const searchQuery = ref('')
-
-// 分页数据
-const currentPage = ref(1)
-const pageSize = ref(10)
 
 // 加载状态
 const loading = ref(false)
@@ -123,6 +117,31 @@ const dialogLoading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const userFormRef = ref(null)
+
+// 分页配置
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch,
+  resetSearch
+} = useSearchPagination()
+
+// 处理页码变化
+const handleCurrentChange = (val) => {
+  originalHandleCurrentChange(val)
+  fetchUserList()
+}
+
+// 处理每页大小变化
+const handleSizeChange = (val) => {
+  originalHandleSizeChange(val)
+  fetchUserList()
+}
 
 // 人员列表（用于关联选择）
 const employeeList = ref([])
@@ -154,22 +173,6 @@ const userRules = {
   ]
 }
 
-// 过滤后的用户列表
-const filteredUserList = computed(() => {
-  let list = userList.value
-  
-  // 按搜索词过滤
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    list = list.filter(user => 
-      user.username.toLowerCase().includes(query) || 
-      (user.employeeName && user.employeeName.toLowerCase().includes(query))
-    )
-  }
-  
-  return list
-})
-
 // 表格列配置
 const columns = [
   { prop: 'id', label: 'ID', width: '80' },
@@ -180,21 +183,11 @@ const columns = [
   { label: '操作', width: '150', fixed: 'right', slotName: 'operation' }
 ]
 
-// 分页配置
-const pagination = computed(() => {
-  return {
-    currentPage: currentPage.value,
-    pageSize: pageSize.value,
-    pageSizes: [10, 20, 50, 100],
-    total: filteredUserList.value.length
-  }
-})
-
 // 获取人员列表
 const fetchEmployeeList = async () => {
   try {
     const data = await getEmployeeList()
-    employeeList.value = data || []
+    employeeList.value = data?.records || []
   } catch (error) {
     console.error('获取人员列表失败:', error)
     ElMessage.error('获取人员列表失败')
@@ -205,8 +198,10 @@ const fetchEmployeeList = async () => {
 const fetchUserList = async () => {
   loading.value = true
   try {
-    const data = await getUserList()
-    userList.value = data || []
+    const data = await getUserList(currentPage.value, pageSize.value, searchQuery.value)
+    userList.value = data?.records || []
+    total.value = data?.total || 0
+    pagination.total = data?.total || 0 // 更新pagination.total
   } catch (error) {
     console.error('获取用户列表失败:', error)
     ElMessage.error('获取用户列表失败')
@@ -215,16 +210,10 @@ const fetchUserList = async () => {
   }
 }
 
-// 搜索
-const handleSearch = (query) => {
-  searchQuery.value = query
-  currentPage.value = 1
-}
-
 // 导出
 const handleExport = () => {
   // 导出逻辑
-  const exportData = filteredUserList.value
+  const exportData = userList.value
   const headers = ['ID', '用户名', '关联人员', '状态', '创建时间']
   const rows = exportData.map(item => [
     item.id,
@@ -249,16 +238,6 @@ const handleExport = () => {
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
-}
-
-// 分页处理
-const handleSizeChange = (size) => {
-  pageSize.value = size
-  currentPage.value = 1
-}
-
-const handleCurrentChange = (page) => {
-  currentPage.value = page
 }
 
 // 打开添加对话框

@@ -3,12 +3,16 @@ package com.lasu.hyperduty.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.dto.UserVO;
+import com.lasu.hyperduty.dto.PageRequestDTO;
+import com.lasu.hyperduty.dto.PageResponseDTO;
 import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.entity.SysUser;
 import com.lasu.hyperduty.mapper.SysUserMapper;
 import com.lasu.hyperduty.service.SysEmployeeService;
 import com.lasu.hyperduty.service.SysUserService;
 import com.lasu.hyperduty.utils.CacheUtil;
+
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -141,6 +145,87 @@ public class SysUserServiceImpl extends CacheableServiceImpl<SysUserMapper, SysU
         }
 
         return new User(sysUser.getUsername(), sysUser.getPassword(), authorities);
+    }
+
+    @Override
+    public PageResponseDTO<SysUser> page(PageRequestDTO pageRequestDTO, Map<String, Object> params) {
+        // 创建MyBatis Plus的Page对象
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<SysEmployee> page = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageRequestDTO.getPageNum(), pageRequestDTO.getPageSize());
+        
+        // 从params中获取查询参数
+        String keyword = pageRequestDTO.getKeyword();
+        Long deptId = params != null ? (Long) params.get("deptId") : null;
+        
+        // 获取分页数据
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<SysEmployee> employeePage = sysEmployeeService.page(page, keyword, deptId);
+        
+        // 转换为SysUser列表
+        List<SysUser> userList = employeePage.getRecords().stream()
+                .filter(emp -> emp.getUsername() != null && !emp.getUsername().isEmpty())
+                .map(emp -> {
+                    SysUser sysUser = new SysUser();
+                    sysUser.setId(emp.getId());
+                    sysUser.setUsername(emp.getUsername());
+                    sysUser.setPassword(emp.getPassword());
+                    sysUser.setEmployeeId(emp.getId());
+                    sysUser.setStatus(emp.getStatus());
+                    sysUser.setCreateTime(emp.getCreateTime());
+                    sysUser.setUpdateTime(emp.getUpdateTime());
+                    return sysUser;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        
+        // 创建新的Page对象，设置数据
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<SysUser> userPage = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>();
+        userPage.setRecords(userList);
+        userPage.setTotal(employeePage.getTotal());
+        userPage.setCurrent(employeePage.getCurrent());
+        userPage.setSize(employeePage.getSize());
+        userPage.setPages(employeePage.getPages());
+        
+        // 转换为PageResponseDTO
+        return toPageResponse(userPage);
+    }
+
+    @Override
+    public PageResponseDTO<UserVO> pageUserVO(PageRequestDTO pageRequestDTO, Map<String, Object> params) {
+        // 创建MyBatis Plus的Page对象
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<SysEmployee> page = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageRequestDTO.getPageNum(), pageRequestDTO.getPageSize());
+        
+        // 从params中获取查询参数
+        String keyword = pageRequestDTO.getKeyword();
+        Long deptId = params != null ? (Long) params.get("deptId") : null;
+        
+        // 获取分页数据
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<SysEmployee> employeePage = sysEmployeeService.page(page, keyword, deptId);
+        
+        // 转换为UserVO列表
+        List<UserVO> userVOList = employeePage.getRecords().stream()
+                .filter(emp -> emp.getUsername() != null && !emp.getUsername().isEmpty())
+                .map(emp -> {
+                    UserVO userVO = new UserVO();
+                    userVO.setId(emp.getId());
+                    userVO.setUsername(emp.getUsername());
+                    userVO.setPassword(emp.getPassword());
+                    userVO.setEmployeeId(emp.getId());
+                    userVO.setEmployeeName(emp.getEmployeeName());
+                    userVO.setStatus(emp.getStatus());
+                    userVO.setCreateTime(emp.getCreateTime());
+                    userVO.setUpdateTime(emp.getUpdateTime());
+                    return userVO;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        
+        // 创建新的Page对象，设置数据
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<UserVO> userVOPage = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>();
+        userVOPage.setRecords(userVOList);
+        userVOPage.setTotal(employeePage.getTotal());
+        userVOPage.setCurrent(employeePage.getCurrent());
+        userVOPage.setSize(employeePage.getSize());
+        userVOPage.setPages(employeePage.getPages());
+        
+        // 转换为PageResponseDTO
+        return PageResponseDTO.fromPage(userVOPage);
     }
 
     @Override

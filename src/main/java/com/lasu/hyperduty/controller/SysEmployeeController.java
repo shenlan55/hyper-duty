@@ -2,13 +2,17 @@ package com.lasu.hyperduty.controller;
 
 import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
+import com.lasu.hyperduty.dto.PageRequestDTO;
+import com.lasu.hyperduty.dto.PageResponseDTO;
 import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.service.SysEmployeeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/employee")
@@ -18,12 +22,20 @@ public class SysEmployeeController {
     private SysEmployeeService sysEmployeeService;
 
     /**
-     * 获取所有人员列表
+     * 获取所有人员列表（分页）
      */
     @GetMapping("/list")
-    public ResponseResult<List<SysEmployee>> getAllEmployees() {
-        List<SysEmployee> employeeList = sysEmployeeService.getAllEmployees();
-        return ResponseResult.success(employeeList);
+    public ResponseResult<PageResponseDTO<SysEmployee>> getAllEmployees(@ModelAttribute PageRequestDTO pageRequestDTO, 
+                                                                      @RequestParam(required = false) Long deptId) {
+        // 构建查询参数
+        Map<String, Object> params = new HashMap<>();
+        if (deptId != null) {
+            params.put("deptId", deptId);
+        }
+        
+        // 调用服务方法进行分页查询
+        PageResponseDTO<SysEmployee> employeePage = sysEmployeeService.page(pageRequestDTO, params);
+        return ResponseResult.success(employeePage);
     }
 
     /**

@@ -562,7 +562,7 @@ const filterEmployee = (query) => {
 const fetchEmployeeList = async () => {
   try {
     const data = await getEmployeeList()
-    employeeList.value = (data || []).filter(emp => emp.status === 1)
+    employeeList.value = (data?.records || []).filter(emp => emp.status === 1)
   } catch (error) {
     console.error('获取员工列表失败:', error)
   }
