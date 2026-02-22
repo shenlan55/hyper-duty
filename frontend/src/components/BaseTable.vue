@@ -358,19 +358,27 @@ const columnFilters = ref({})
 // 选择状态管理
 const selectedRows = ref([])
 
-// 监听props.data变化，重新初始化默认展开的节点
-watch(
-  () => props.data,
-  (newData) => {
-    if (newData && newData.length > 0) {
-      // 清空之前的展开状态
-      expandedRows.clear()
-      // 重新初始化默认展开的节点
-      initDefaultExpandedNodes()
-    }
-  },
-  { immediate: true, deep: true }
-)
+// 初始化默认展开的节点
+const initDefaultExpandedNodes = () => {
+  // 默认展开到第三级（level < 3）
+  const expandToLevel = 3
+  
+  const traverseTree = (tree, currentLevel = 0) => {
+    if (!Array.isArray(tree)) return
+    
+    tree.forEach(node => {
+      if (currentLevel < expandToLevel && node.id) {
+        expandedRows.add(node.id)
+      }
+      
+      if (node[props.treeProps.children] && Array.isArray(node[props.treeProps.children])) {
+        traverseTree(node[props.treeProps.children], currentLevel + 1)
+      }
+    })
+  }
+  
+  traverseTree(props.data)
+}
 
 // 列显示/隐藏状态管理
 const visibleColumns = ref({})
@@ -425,27 +433,19 @@ const handleExport = (format) => {
   })
 }
 
-// 初始化默认展开的节点
-const initDefaultExpandedNodes = () => {
-  // 默认展开到第三级（level < 3）
-  const expandToLevel = 3
-  
-  const traverseTree = (tree, currentLevel = 0) => {
-    if (!Array.isArray(tree)) return
-    
-    tree.forEach(node => {
-      if (currentLevel < expandToLevel && node.id) {
-        expandedRows.add(node.id)
-      }
-      
-      if (node[props.treeProps.children] && Array.isArray(node[props.treeProps.children])) {
-        traverseTree(node[props.treeProps.children], currentLevel + 1)
-      }
-    })
-  }
-  
-  traverseTree(props.data)
-}
+// 监听props.data变化，重新初始化默认展开的节点
+watch(
+  () => props.data,
+  (newData) => {
+    if (newData && newData.length > 0) {
+      // 清空之前的展开状态
+      expandedRows.clear()
+      // 重新初始化默认展开的节点
+      initDefaultExpandedNodes()
+    }
+  },
+  { immediate: true, deep: true }
+)
 
 // 初始化
 initVisibleColumns()
