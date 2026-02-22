@@ -304,7 +304,6 @@ const fetchScheduleList = async () => {
     total.value = data.total || 0
     pagination.total = data.total || 0
   } catch (error) {
-    console.error('获取值班表列表失败:', error)
     ElMessage.error('获取值班表列表失败')
   } finally {
     loading.value = false
@@ -320,7 +319,6 @@ const fetchEmployeeList = async () => {
       disabled: emp.status !== 1
     }))
   } catch (error) {
-    console.error('获取员工列表失败:', error)
     ElMessage.error('获取员工列表失败')
   }
 }
@@ -340,7 +338,6 @@ const fetchShiftList = async () => {
       disabled: shift.status !== 1
     }))
   } catch (error) {
-    console.error('获取班次列表失败:', error)
     ElMessage.error('获取班次列表失败')
   }
 }
@@ -414,7 +411,6 @@ const handleSave = async () => {
     dialogVisible.value = false
     fetchScheduleList()
   } catch (error) {
-    console.error('保存值班表失败:', error)
     ElMessage.error('保存值班表失败')
   } finally {
     dialogLoading.value = false
@@ -434,7 +430,6 @@ const handleDelete = async (id) => {
     fetchScheduleList()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除值班表失败:', error)
       ElMessage.error('删除值班表失败')
     }
   }
@@ -452,7 +447,6 @@ const openEmployeeDialog = async (schedule) => {
     selectedLeaderList.value = leaderData || []
     selectedShiftList.value = shiftData || []
   } catch (error) {
-    console.error('获取值班信息失败:', error)
     ElMessage.error('获取值班信息失败')
   }
   employeeDialogVisible.value = true
@@ -468,7 +462,6 @@ const handleSaveEmployees = async () => {
     ElMessage.success('保存值班信息成功')
     employeeDialogVisible.value = false
   } catch (error) {
-    console.error('保存值班信息失败:', error)
     ElMessage.error('保存值班信息失败')
   } finally {
     employeeDialogLoading.value = false

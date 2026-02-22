@@ -210,7 +210,6 @@ const fetchStatistics = async () => {
     await nextTick()
     initCharts()
   } catch (error) {
-    console.error('获取统计数据失败:', error)
     ElMessage.error('获取统计数据失败')
   } finally {
     loading.value = false
@@ -337,7 +336,6 @@ const exportExcel = async () => {
     
     ElMessage.success('导出成功')
   } catch (error) {
-    console.error('导出失败:', error)
     ElMessage.error('导出失败')
   } finally {
     exportLoading.value = false
@@ -372,7 +370,6 @@ const fetchEmployeeStatistics = async () => {
     
     employeeStatistics.value = statistics
   } catch (error) {
-    console.error('获取员工统计数据失败:', error)
     ElMessage.error('获取员工统计数据失败')
   } finally {
     employeeLoading.value = false
@@ -429,7 +426,6 @@ const handleEmployeeExport = (exportParams) => {
     
     ElMessage.success('导出成功')
   } catch (error) {
-    console.error('导出失败:', error)
     ElMessage.error('导出失败')
   }
 }

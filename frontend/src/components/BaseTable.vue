@@ -503,7 +503,6 @@ watch(
   (newPagination) => {
     if (newPagination) {
       // 当pagination变化时，更新内部状态
-      console.log('BaseTable: pagination updated:', newPagination)
     }
   },
   { deep: true }

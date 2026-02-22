@@ -393,7 +393,6 @@ const getUserInfoNow = () => {
         }).join(''));
         return JSON.parse(jsonPayload);
       } catch (error) {
-        console.error('JWT解码失败:', error);
         return null;
       }
     };
@@ -419,7 +418,6 @@ const getUserInfoNow = () => {
       roles: ['值班长']
     };
   } catch (error) {
-    console.error('获取用户信息失败:', error);
     // 发生异常时，返回默认值，而不是null
     return {
       employeeId: 1,
@@ -558,7 +556,6 @@ const fetchEmployeeList = async () => {
     const data = await getEmployeeList()
     employeeList.value = (data?.records || []).filter(emp => emp.status === 1)
   } catch (error) {
-    console.error('获取员工列表失败:', error)
   }
 }
 
@@ -570,7 +567,6 @@ const fetchShiftConfigList = async () => {
     const filteredData = Array.isArray(shiftConfigs) ? shiftConfigs.filter(config => config.status === 1) : []
     shiftConfigList.value = filteredData
   } catch (error) {
-    console.error('获取班次配置列表失败:', error)
   }
 }
 
@@ -592,7 +588,6 @@ if (currentEmployeeId.value) {
         userSchedules.push(schedule)
       }
     } catch (error) {
-      console.error('获取值班表员工失败:', error)
     }
   }
 }
@@ -610,7 +605,6 @@ if (currentEmployeeId.value) {
       filterForm.scheduleId = scheduleList.value[0].id
     }
   } catch (error) {
-    console.error('获取值班表列表失败:', error)
   }
 }
 
@@ -683,7 +677,6 @@ const fetchAvailableEmployees = async (scheduleId) => {
       availableEmployeeList.value = []
     }
   } catch (error) {
-    console.error('获取值班表人员失败:', error)
   }
 }
 
@@ -698,7 +691,6 @@ const fetchEmployeeDutyDates = async (scheduleId, employeeId) => {
     }
     return []
   } catch (error) {
-    console.error('获取值班人员排班日期失败:', error)
     return []
   }
 }
@@ -715,7 +707,6 @@ const fetchEmployeeDutyShifts = async (scheduleId, employeeId, date) => {
     }
     return []
   } catch (error) {
-    console.error('获取值班人员排班班次失败:', error)
     return []
   }
 }
@@ -885,7 +876,6 @@ const handleScheduleChange = async (scheduleId) => {
       const shiftIds = await getScheduleShifts(scheduleId)
       availableShiftIds.value = shiftIds || []
     } catch (error) {
-      console.error('获取值班表班次失败:', error)
       ElMessage.error('获取值班表班次失败')
       availableShiftIds.value = []
     }
@@ -1027,7 +1017,6 @@ const handleSave = async () => {
     dialogVisible.value = false
     fetchMySwapRequests()
   } catch (error) {
-    console.error('提交调班申请失败:', error)
     ElMessage.error('调班申请提交失败')
   } finally {
     dialogLoading.value = false
@@ -1048,7 +1037,6 @@ const handleConfirm = async () => {
     confirmDialogVisible.value = false
     fetchMySwapRequests()
   } catch (error) {
-    console.error('调班确认失败:', error)
     ElMessage.error('调班确认失败')
   } finally {
     confirmLoading.value = false
@@ -1068,7 +1056,6 @@ const handleDelete = async (id) => {
     fetchMySwapRequests()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('撤销调班申请失败:', error)
       ElMessage.error('撤销调班申请失败')
     }
   }

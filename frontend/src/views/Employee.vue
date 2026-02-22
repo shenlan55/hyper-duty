@@ -479,11 +479,9 @@ const fetchEmployeeList = async () => {
   try {
     const deptId = deptFilter.value || null
     const data = await getEmployeeList(currentPage.value, pageSize.value, searchQuery.value, deptId)
-    console.log('Data received:', data)
     employeeList.value = data.records || []
     total.value = data.total || 0
     pagination.total = data.total || 0 // 更新pagination.total
-    console.log('Total value:', total.value)
   } catch (error) {
     console.error('获取人员列表失败:', error)
     ElMessage.error('获取人员列表失败')

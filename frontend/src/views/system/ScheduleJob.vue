@@ -414,7 +414,6 @@ const fetchJobList = async () => {
     total.value = data.total || 0
     pagination.total = data.total || 0
   } catch (error) {
-    console.error('获取任务列表失败:', error)
     ElMessage.error('获取任务列表失败')
   } finally {
     loading.value = false
@@ -425,38 +424,28 @@ const fetchJobList = async () => {
 const fetchLogList = async (keyword = '') => {
   logLoading.value = true
   try {
-    console.log('开始获取日志列表，参数:', {
-      pageNum: logCurrentPage.value,
-      pageSize: logPageSize.value,
-      keyword: keyword || logSearchQuery.value
-    })
     const data = await scheduleApi.getLogList({
       pageNum: logCurrentPage.value,
       pageSize: logPageSize.value,
       keyword: keyword || logSearchQuery.value
     })
-    console.log('获取日志列表成功，数据:', data)
     // 检查data的结构
     if (data && data.records) {
       logList.value = data.records || []
       logTotal.value = data.total || 0
       logPagination.value.total = data.total || 0
-      console.log('使用新格式数据，records长度:', data.records.length, 'total:', data.total)
     } else if (Array.isArray(data)) {
       // 如果data是数组，说明后端返回的是旧格式
       logList.value = data || []
       logTotal.value = data ? data.length : 0
       logPagination.value.total = data ? data.length : 0
-      console.log('使用旧格式数据，长度:', data.length)
     } else {
       // 其他情况
       logList.value = []
       logTotal.value = 0
       logPagination.value.total = 0
-      console.log('数据格式异常:', data)
     }
   } catch (error) {
-    console.error('获取日志列表失败:', error)
     ElMessage.error('获取日志列表失败')
     logList.value = []
     logTotal.value = 0
@@ -568,7 +557,6 @@ const handleSaveJob = async () => {
     dialogVisible.value = false
     fetchJobList()
   } catch (error) {
-    console.error('保存任务失败:', error)
     ElMessage.error('保存任务失败')
   }
 }
@@ -585,7 +573,6 @@ const handleStatusChange = async (job) => {
     }
     fetchJobList()
   } catch (error) {
-    console.error('变更任务状态失败:', error)
     ElMessage.error('变更任务状态失败')
   }
 }
@@ -600,7 +587,6 @@ const handleRunJob = async (jobId) => {
       fetchLogList()
     }, 1000)
   } catch (error) {
-    console.error('执行任务失败:', error)
     ElMessage.error('执行任务失败')
   }
 }
@@ -622,7 +608,6 @@ const handleDeleteJob = async (jobId) => {
     fetchJobList()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除任务失败:', error)
       ElMessage.error('删除任务失败')
     }
   }
@@ -647,7 +632,6 @@ const handleCleanLogs = async () => {
     cleanLogDialogVisible.value = false
     fetchLogList()
   } catch (error) {
-    console.error('清理日志失败:', error)
     ElMessage.error('清理日志失败')
   }
 }

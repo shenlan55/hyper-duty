@@ -1035,23 +1035,12 @@ const fetchRecordList = async () => {
           }
       
       // 处理分页数据
-        console.log('处理分页数据:', {
-          allRecords: allRecords,
-          hasRecords: allRecords && allRecords.records,
-          recordCount: allRecords && allRecords.records ? allRecords.records.length : 0,
-          total: allRecords && allRecords.total ? allRecords.total : 0
-        })
-        
         if (allRecords && allRecords.records) {
           recordList.value = allRecords.records || []
           // 更新分页总数
           if (activeTab.value === 'record') {
             total.value = allRecords.total || 0
             pagination.total = allRecords.total || 0
-            console.log('更新分页总数:', {
-              total: total.value,
-              paginationTotal: pagination.total
-            })
           } else {
             approvalTotal.value = allRecords.total || 0
             approvalPagination.total = allRecords.total || 0
@@ -1063,25 +1052,12 @@ const fetchRecordList = async () => {
             if (activeTab.value === 'record') {
               total.value = allRecords.length
               pagination.total = allRecords.length
-              console.log('更新分页总数（数组长度）:', {
-                total: total.value,
-                paginationTotal: pagination.total
-              })
             } else {
               approvalTotal.value = allRecords.length
               approvalPagination.total = allRecords.length
             }
           }
         }
-      
-      // 调试：打印分页信息
-        console.log('分页信息:', JSON.stringify({
-          currentPage: pagination.currentPage,
-          pageSize: pagination.pageSize,
-          total: total.value,
-          paginationTotal: pagination.total,
-          recordListLength: recordList.value.length
-        }))
       
       // 遍历值班记录，获取值班安排详情
       recordList.value.forEach(record => {
@@ -1138,7 +1114,6 @@ const fetchRecordList = async () => {
 
 // 标签页切换处理
 const handleTabChange = (tabName) => {
-  // console.log('标签页切换到:', tabName)
   // 切换标签页时重置相关状态并重新加载数据
   if (tabName === 'record') {
     currentPage.value = 1
@@ -1658,9 +1633,6 @@ const fetchShiftConfigs = async () => {
 const handleDateChange = async (date) => {
   if (date && createForm.scheduleId) {
     const dateStr = formatDate(date)
-    // console.log('选择的日期:', dateStr)
-    // console.log('值班表ID:', createForm.scheduleId)
-    // console.log('用户ID:', userStore.employeeId)
     
     try {
       // 先获取班次配置列表
@@ -1854,10 +1826,6 @@ const handleCreate = async () => {
     if (!createForm.id) {
       // 查找对应的值班安排
       const dateStr = formatDate(createForm.dutyDate)
-      // console.log('创建值班记录 - 日期:', dateStr)
-      // console.log('创建值班记录 - 值班表ID:', createForm.scheduleId)
-      // console.log('创建值班记录 - 班次:', createForm.dutyShift)
-      // console.log('创建值班记录 - 用户ID:', userStore.employeeId)
       
       // 获取值班表下的所有值班安排
       const assignments = await getAssignmentsByScheduleId(createForm.scheduleId)

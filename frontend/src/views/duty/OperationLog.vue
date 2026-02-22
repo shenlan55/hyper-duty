@@ -189,7 +189,6 @@ const fetchLogList = async () => {
     total.value = data.total || 0
     pagination.total = data.total || 0
   } catch (error) {
-    console.error('获取操作日志列表失败:', error)
     ElMessage.error('获取操作日志列表失败')
   } finally {
     loading.value = false
@@ -240,7 +239,6 @@ const handleDelete = async (id) => {
     fetchLogList()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除操作日志失败:', error)
       ElMessage.error('删除操作日志失败')
     }
   }

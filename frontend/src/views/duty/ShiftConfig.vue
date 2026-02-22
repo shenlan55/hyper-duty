@@ -348,7 +348,6 @@ const fetchShiftConfigList = async () => {
     total.value = data.total || 0
     pagination.total = data.total || 0
   } catch (error) {
-    console.error('获取班次配置列表失败:', error)
     ElMessage.error('获取班次配置列表失败')
   } finally {
     loading.value = false
@@ -421,7 +420,6 @@ const handleSave = async () => {
     dialogVisible.value = false
     fetchShiftConfigList()
   } catch (error) {
-    console.error('保存班次配置失败:', error)
     ElMessage.error('保存班次配置失败')
   } finally {
     dialogLoading.value = false
@@ -435,7 +433,6 @@ const toggleStatus = async (row) => {
     ElMessage.success('状态更新成功')
     fetchShiftConfigList()
   } catch (error) {
-    console.error('更新状态失败:', error)
     ElMessage.error('更新状态失败')
   }
 }
@@ -453,7 +450,6 @@ const handleDelete = async (id) => {
     fetchShiftConfigList()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除班次配置失败:', error)
       ElMessage.error('删除班次配置失败')
     }
   }

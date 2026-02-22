@@ -222,7 +222,6 @@ const submitPasswordChange = async () => {
       ElMessage.error(response.message || '密码修改失败')
     }
   } catch (error) {
-    console.error('修改密码失败:', error)
     if (error.response && error.response.data && error.response.data.message) {
       ElMessage.error(error.response.data.message || '密码修改失败')
     } else {
@@ -310,11 +309,8 @@ const routeNameMap = ref({
 const fetchUserMenus = async () => {
   loading.value = true
   try {
-    // console.log('开始获取用户菜单...')
     // 调用后端API获取用户的实际菜单权限
     const backendMenus = await getUserMenus()
-    
-    // console.log('获取用户菜单响应：', backendMenus)
     
     if (backendMenus && Array.isArray(backendMenus) && backendMenus.length > 0) {
       // 转换后端菜单数据为前端需要的格式
@@ -353,18 +349,13 @@ const fetchUserMenus = async () => {
       })
       routeNameMap.value = newRouteNameMap
       
-      // console.log('转换后的菜单数据：', topMenus.value)
-      // console.log('更新后的路由名称映射：', routeNameMap.value)
-      
       // 始终设置首页为默认激活
       activeTopMenu.value = 'dashboard'
     } else {
       // 后端返回的菜单数据为空或格式不正确，使用默认菜单数据
-      console.warn('后端返回的菜单数据为空或格式不正确，使用默认菜单数据')
       useDefaultMenus()
     }
   } catch (error) {
-    console.error('获取菜单失败：', error)
     ElMessage.error('获取菜单失败：' + (error.message || '未知错误'))
     
     // 获取菜单失败时，使用默认菜单数据
@@ -619,7 +610,6 @@ const handleLogout = async () => {
     router.push('/login')
     ElMessage.success('退出登录成功')
   } catch (error) {
-    console.error('退出登录失败:', error)
     // 即使API调用失败，也要清除本地数据并跳转到登录页
     userStore.logout()
     router.push('/login')
