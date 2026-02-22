@@ -1,6 +1,7 @@
 package com.lasu.hyperduty.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.SysScheduleJob;
 import com.lasu.hyperduty.mapper.SysScheduleJobMapper;
@@ -133,4 +134,29 @@ public class SysScheduleJobServiceImpl extends ServiceImpl<SysScheduleJobMapper,
         }
     }
 
+    @Override
+    public Page<SysScheduleJob> getJobList(Integer pageNum, Integer pageSize, String keyword) {
+        // 创建分页对象
+        Page<SysScheduleJob> pagination = new Page<>(pageNum, pageSize);
+        
+        // 构建查询条件
+        QueryWrapper<SysScheduleJob> queryWrapper = new QueryWrapper<>();
+        
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.and(wrapper -> 
+                wrapper.like("job_name", keyword)
+                       .or().like("job_group", keyword)
+                       .or().like("job_code", keyword)
+                       .or().like("cron_expression", keyword)
+                       .or().like("bean_name", keyword)
+                       .or().like("method_name", keyword)
+            );
+        }
+        
+        // 按创建时间倒序排序
+        queryWrapper.orderByDesc("create_time");
+        
+        // 执行分页查询
+        return baseMapper.selectPage(pagination, queryWrapper);
+    }
 }

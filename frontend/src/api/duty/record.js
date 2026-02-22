@@ -2,18 +2,46 @@ import request from '../../utils/request'
 
 // 加班记录API
 
-export function getRecordList() {
-  return request({
-    url: '/duty/record/list',
-    method: 'get'
-  })
+export function getRecordList(params) {
+  if (typeof params === 'object' && params !== null) {
+    return request({
+      url: '/duty/record/list',
+      method: 'get',
+      params: {
+        pageNum: params.pageNum,
+        pageSize: params.pageSize,
+        keyword: params.keyword,
+        scheduleId: params.scheduleId,
+        date: params.date
+      }
+    })
+  } else {
+    return request({
+      url: '/duty/record/list',
+      method: 'get'
+    })
+  }
 }
 
-export function getRecordsByEmployeeId(employeeId) {
-  return request({
-    url: `/duty/record/list/employee/${employeeId}`,
-    method: 'get'
-  })
+export function getRecordsByEmployeeId(params) {
+  if (typeof params === 'object' && params !== null) {
+    return request({
+      url: `/duty/record/list/employee/${params.employeeId}`,
+      method: 'get',
+      params: {
+        pageNum: params.pageNum,
+        pageSize: params.pageSize,
+        keyword: params.keyword,
+        scheduleId: params.scheduleId,
+        date: params.date
+      }
+    })
+  } else {
+    return request({
+      url: `/duty/record/list/employee/${params}`,
+      method: 'get'
+    })
+  }
 }
 
 export function getAvailableSubstitutes(recordId) {

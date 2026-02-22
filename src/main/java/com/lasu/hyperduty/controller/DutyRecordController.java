@@ -2,6 +2,8 @@ package com.lasu.hyperduty.controller;
 
 import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
+import com.lasu.hyperduty.dto.PageRequestDTO;
+import com.lasu.hyperduty.dto.PageResponseDTO;
 import com.lasu.hyperduty.entity.DutyRecord;
 import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.service.DutyRecordService;
@@ -10,7 +12,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 加班记录控制器
@@ -35,26 +39,66 @@ public class DutyRecordController {
     }
 
     /**
-     * 获取所有加班记录
-     * @return 加班记录列表
+     * 获取所有加班记录（支持分页和筛选）
+     * @param pageRequestDTO 分页参数
+     * @param scheduleId 值班表ID
+     * @param keyword 搜索关键词
+     * @param date 值班日期
+     * @return 加班记录分页列表
      */
     @GetMapping("/list")
-    public ResponseResult<List<DutyRecord>> getAllRecords() {
-        List<DutyRecord> recordList = dutyRecordService.list();
-        return ResponseResult.success(recordList);
+    public ResponseResult<PageResponseDTO<DutyRecord>> getAllRecords(@ModelAttribute PageRequestDTO pageRequestDTO,
+                                                                     @RequestParam(required = false) Long scheduleId,
+                                                                     @RequestParam(required = false) String keyword,
+                                                                     @RequestParam(required = false) String date) {
+        // 构建查询参数
+        Map<String, Object> params = new HashMap<>();
+        if (scheduleId != null) {
+            params.put("scheduleId", scheduleId);
+        }
+        if (keyword != null && !keyword.isEmpty()) {
+            params.put("keyword", keyword);
+        }
+        if (date != null && !date.isEmpty()) {
+            params.put("date", date);
+        }
+        
+        // 调用服务方法进行分页查询
+        PageResponseDTO<DutyRecord> recordPage = dutyRecordService.page(pageRequestDTO, params);
+        return ResponseResult.success(recordPage);
     }
 
     /**
-     * 根据员工ID获取加班记录
+     * 根据员工ID获取加班记录（支持分页和筛选）
      * @param employeeId 员工ID
-     * @return 加班记录列表
+     * @param pageRequestDTO 分页参数
+     * @param scheduleId 值班表ID
+     * @param keyword 搜索关键词
+     * @param date 值班日期
+     * @return 加班记录分页列表
      */
     @GetMapping("/list/employee/{employeeId}")
-    public ResponseResult<List<DutyRecord>> getRecordsByEmployeeId(@PathVariable Long employeeId) {
-        List<DutyRecord> recordList = dutyRecordService.lambdaQuery()
-                .eq(DutyRecord::getEmployeeId, employeeId)
-                .list();
-        return ResponseResult.success(recordList);
+    public ResponseResult<PageResponseDTO<DutyRecord>> getRecordsByEmployeeId(@PathVariable Long employeeId,
+                                                                              @ModelAttribute PageRequestDTO pageRequestDTO,
+                                                                              @RequestParam(required = false) Long scheduleId,
+                                                                              @RequestParam(required = false) String keyword,
+                                                                              @RequestParam(required = false) String date) {
+        // 构建查询参数
+        Map<String, Object> params = new HashMap<>();
+        params.put("employeeId", employeeId);
+        if (scheduleId != null) {
+            params.put("scheduleId", scheduleId);
+        }
+        if (keyword != null && !keyword.isEmpty()) {
+            params.put("keyword", keyword);
+        }
+        if (date != null && !date.isEmpty()) {
+            params.put("date", date);
+        }
+        
+        // 调用服务方法进行分页查询
+        PageResponseDTO<DutyRecord> recordPage = dutyRecordService.page(pageRequestDTO, params);
+        return ResponseResult.success(recordPage);
     }
 
     /**

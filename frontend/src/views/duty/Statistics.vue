@@ -360,7 +360,17 @@ const fetchEmployeeStatistics = async () => {
     }
     
     const data = await getEmployeeStatistics(year, month)
-    employeeStatistics.value = data || []
+    let statistics = data || []
+    
+    // 如果有关键词，进行过滤
+    if (employeeSearchQuery.value) {
+      const keyword = employeeSearchQuery.value.toLowerCase()
+      statistics = statistics.filter(item => 
+        item.employeeName.toLowerCase().includes(keyword)
+      )
+    }
+    
+    employeeStatistics.value = statistics
   } catch (error) {
     console.error('获取员工统计数据失败:', error)
     ElMessage.error('获取员工统计数据失败')
@@ -381,14 +391,47 @@ const handleEmployeeCurrentChange = (current) => {
 }
 
 const handleEmployeeSearch = (searchParams) => {
-  // 这里可以添加搜索逻辑
-  // 由于我们使用的是前端过滤，这里不需要重新请求数据
+  const keyword = searchParams?.global || ''
+  employeeSearchQuery.value = keyword
+  // 重置页码
+  employeeCurrentPage.value = 1
+  fetchEmployeeStatistics()
 }
 
 const handleEmployeeExport = (exportParams) => {
-  // 这里可以添加导出逻辑
-  // 调用现有的导出方法
-  exportExcel()
+  try {
+    // 准备导出数据
+    const exportData = employeeStatistics.value.map(item => ({
+      '员工姓名': item.employeeName,
+      '年月': `${item.year}年${item.month}月`,
+      '计划工时(小时)': item.plannedHours,
+      '实际工时(小时)': item.actualHours,
+      '实际天数': item.actualDays,
+      '加班工时(小时)': item.overtimeHours,
+      '可调休工时(小时)': item.compensatoryHours,
+      '已调休工时(小时)': item.usedCompensatoryHours,
+      '完成率': getCompletionRate(item) + '%'
+    }))
+    
+    // 创建工作表
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    
+    // 创建工作簿
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, '员工排班统计')
+    
+    // 生成Excel文件
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+    const dataBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    
+    // 保存文件
+    saveAs(dataBlob, `员工排班统计_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
+  }
 }
 
 onMounted(async () => {

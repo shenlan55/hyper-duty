@@ -131,6 +131,12 @@ request.interceptors.response.use(
     
     // 统一处理响应数据
     const data = response.data
+    
+    // 对于blob类型的响应，直接返回data
+    if (response.config.responseType === 'blob') {
+      return data
+    }
+    
     if (data.code === 200) {
       return data.data
     } else {

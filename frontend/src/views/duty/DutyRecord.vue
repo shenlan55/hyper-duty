@@ -30,25 +30,26 @@
       <!-- 标签页组件 -->
       <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="mb-4">
         <el-tab-pane label="加班人员记录" name="record">
-          <div class="table-toolbar">
-            <el-input
-              v-model="searchQuery"
-              placeholder="请输入值班日期"
-              prefix-icon="Search"
-              clearable
-              class="search-input"
-              @input="handleSearch"
-            />
-          </div>
-
           <BaseTable
             v-loading="loading || !shiftConfigsLoaded"
-            :data="filteredRecordList"
+            :data="recordList"
             :columns="recordColumns"
             :show-pagination="true"
-            :pagination="pagination"
+            :pagination="{
+              currentPage: pagination.currentPage,
+              pageSize: pagination.pageSize,
+              pageSizes: pagination.pageSizes,
+              total: pagination.total
+            }"
+            :backend-pagination="true"
+            :show-search="true"
+            :search-placeholder="'请输入值班日期'"
+            :show-column-control="true"
+            :show-export="true"
             @size-change="handleSizeChange"
             @current-change="handleCurrentChange"
+            @search="handleTableSearch"
+            @export="handleExport"
           >
             <template #scheduleName="{ row }">
               {{ row.scheduleName || '未知值班表' }}
@@ -124,25 +125,20 @@
           </BaseTable>
         </el-tab-pane>
         <el-tab-pane label="加班审批" name="approval" :disabled="!isDutyManager">
-          <div class="table-toolbar">
-            <el-input
-              v-model="approvalSearchQuery"
-              placeholder="请输入值班日期"
-              prefix-icon="Search"
-              clearable
-              class="search-input"
-              @input="handleApprovalSearch"
-            />
-          </div>
-
           <BaseTable
             v-loading="approvalLoading || !shiftConfigsLoaded"
             :data="filteredApprovalList"
             :columns="approvalColumns"
             :show-pagination="true"
-            :pagination="approvalPagination"
+            :pagination="{...approvalPagination, total: filteredApprovalTotal}"
+            :show-search="true"
+            :search-placeholder="'请输入值班日期'"
+            :show-column-control="true"
+            :show-export="true"
             @size-change="handleApprovalSizeChange"
             @current-change="handleApprovalCurrentChange"
+            @search="handleApprovalTableSearch"
+            @export="handleApprovalExport"
           >
             <template #scheduleName="{ row }">
               {{ row.scheduleName || '未知值班表' }}
@@ -534,19 +530,18 @@ import {
 import { getEmployeeList } from '../../api/employee'
 import { getAssignmentList, getAssignmentsByScheduleId } from '../../api/duty/assignment'
 import { getDeptList } from '../../api/dept'
-import { getScheduleList, getScheduleLeaders } from '../../api/duty/schedule'
+import { getAllSchedules, getScheduleLeaders, getScheduleEmployees } from '../../api/duty/schedule'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 import BaseTable from '../../components/BaseTable.vue'
 import { safeInput } from '../../utils/xssUtil'
 import { useRoute } from 'vue-router'
+import { useSearchPagination } from '../../hooks/usePagination'
 
 const route = useRoute()
 
 // 响应式数据
-const searchQuery = ref('')
-const approvalSearchQuery = ref('')
 const loading = ref(false)
 const approvalLoading = ref(false)
 const checkInDialogVisible = ref(false)
@@ -564,10 +559,6 @@ const createFormRef = ref()
 
 // 标签页相关
 const activeTab = ref('record')
-
-// 审批页面分页数据
-const approvalCurrentPage = ref(1)
-const approvalPageSize = ref(10)
 
 // 合并后的弹窗状态
 const combinedDialogVisible = ref(false)
@@ -595,6 +586,30 @@ const selectedScheduleId = ref(null)
 
 // 值班长列表
 const scheduleLeaders = ref({})
+
+// 分页配置 - 记录页
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch
+} = useSearchPagination()
+
+// 分页配置 - 审批页
+const {
+  currentPage: approvalCurrentPage,
+  pageSize: approvalPageSize,
+  total: approvalTotal,
+  pagination: approvalPagination,
+  handleCurrentChange: originalApprovalHandleCurrentChange,
+  handleSizeChange: originalApprovalHandleSizeChange,
+  searchQuery: approvalSearchQuery,
+  handleSearch: handleApprovalSearch
+} = useSearchPagination()
 
 // 获取值班表的值班长列表
 const fetchScheduleLeaders = async (scheduleId) => {
@@ -643,10 +658,22 @@ const isDutyManager = computed(() => {
 
 // 班次选项
 const shiftOptions = [
-  { label: '早班', value: 1 },
-  { label: '中班', value: 2 },
-  { label: '晚班', value: 3 },
-  { label: '全天', value: 4 }
+  {
+    label: '早班',
+    value: 1
+  },
+  {
+    label: '中班',
+    value: 2
+  },
+  {
+    label: '晚班',
+    value: 3
+  },
+  {
+    label: '全天',
+    value: 4
+  }
 ]
 
 // 当前记录信息
@@ -654,10 +681,6 @@ const currentRecord = ref(null)
 const currentRecordEmployeeName = ref('')
 const currentRecordDutyDate = ref('')
 const currentRecordCheckInTime = ref('')
-
-// 分页数据
-const currentPage = ref(1)
-const pageSize = ref(10)
 
 // 表格列配置
 const recordColumns = [
@@ -690,24 +713,50 @@ const approvalColumns = [
   { type: 'operation', label: '操作', width: '160', fixed: 'right' }
 ]
 
-// 分页配置
-const pagination = computed(() => {
-  return {
-    currentPage: currentPage.value,
-    pageSize: pageSize.value,
-    pageSizes: [10, 20, 50, 100],
-    total: filteredRecordList.value.length
-  }
+// 分页变更处理
+const handleCurrentChange = (val) => {
+  originalHandleCurrentChange(val)
+  fetchRecordList()
+}
+
+const handleSizeChange = (val) => {
+  originalHandleSizeChange(val)
+  fetchRecordList()
+}
+
+// 审批页面分页变更处理
+const handleApprovalCurrentChange = (val) => {
+  originalApprovalHandleCurrentChange(val)
+  fetchRecordList()
+}
+
+const handleApprovalSizeChange = (val) => {
+  originalApprovalHandleSizeChange(val)
+  fetchRecordList()
+}
+
+// 计算过滤后的记录总数
+const filteredRecordTotal = computed(() => {
+  return filteredRecordList.value.length
 })
 
-const approvalPagination = computed(() => {
-  return {
-    currentPage: approvalCurrentPage.value,
-    pageSize: approvalPageSize.value,
-    pageSizes: [10, 20, 50, 100],
-    total: filteredApprovalList.value.length
-  }
+const filteredApprovalTotal = computed(() => {
+  return filteredApprovalList.value.length
 })
+
+// 表格搜索处理
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  handleSearch(keyword)
+  fetchRecordList()
+}
+
+// 审批表格搜索处理
+const handleApprovalTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  handleApprovalSearch(keyword)
+  fetchRecordList()
+}
 
 // 数据列表
 const employeeList = ref([])
@@ -897,37 +946,12 @@ const getEmployeeDeptName = (deptId) => {
   return dept ? dept.deptName : '未知部门'
 }
 
-// 过滤后的值班记录列表
-const filteredRecordList = computed(() => {
-  let list = recordList.value
-  
-  // 按搜索词过滤（现在按值班日期过滤）
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    list = list.filter(record => {
-      const dutyDate = record.dutyDate.toLowerCase()
-      return dutyDate.includes(query)
-    })
-  }
-  
-  return list
-})
-
 // 审批页面过滤后的值班记录列表
 const filteredApprovalList = computed(() => {
   let list = recordList.value
   
   // 只显示审批状态为待审批的记录
   list = list.filter(record => record.approvalStatus === '待审批')
-  
-  // 按搜索词过滤（现在按值班日期过滤）
-  if (approvalSearchQuery.value) {
-    const query = approvalSearchQuery.value.toLowerCase()
-    list = list.filter(record => {
-      const dutyDate = record.dutyDate.toLowerCase()
-      return dutyDate.includes(query)
-    })
-  }
   
   return list
 })
@@ -987,33 +1011,77 @@ const fetchRecordList = async () => {
     }
     
     // 值班长获取所有记录，普通用户只获取自己的记录
-    let allRecords = []
-    if (userStore.employeeId) {
-      if (isDutyManager.value) {
-        // 值班长获取所有记录
-        allRecords = await getRecordList()
-      } else {
-        // 普通用户获取自己的记录
-        allRecords = await getRecordsByEmployeeId(userStore.employeeId)
-      }
-      
-      // 根据选择的值班表过滤记录
-      if (selectedScheduleId.value) {
-        // 从值班安排中获取该值班表的所有assignmentId
-        const scheduleAssignmentIds = new Set()
-        allAssignments.forEach(assignment => {
-          if (assignment.scheduleId === selectedScheduleId.value) {
-            scheduleAssignmentIds.add(assignment.id)
+        let allRecords = []
+        if (userStore.employeeId) {
+          if (isDutyManager.value) {
+            // 值班长获取所有记录，支持分页
+            allRecords = await getRecordList({
+              pageNum: activeTab.value === 'record' ? currentPage.value : approvalCurrentPage.value,
+              pageSize: activeTab.value === 'record' ? pageSize.value : approvalPageSize.value,
+              keyword: activeTab.value === 'record' ? searchQuery.value : approvalSearchQuery.value,
+              scheduleId: selectedScheduleId.value,
+              date: activeTab.value === 'record' ? searchQuery.value : approvalSearchQuery.value
+            })
+          } else {
+            // 普通用户获取自己的记录，支持分页
+            allRecords = await getRecordsByEmployeeId({
+              employeeId: userStore.employeeId,
+              pageNum: activeTab.value === 'record' ? currentPage.value : approvalCurrentPage.value,
+              pageSize: activeTab.value === 'record' ? pageSize.value : approvalPageSize.value,
+              keyword: activeTab.value === 'record' ? searchQuery.value : approvalSearchQuery.value,
+              scheduleId: selectedScheduleId.value,
+              date: activeTab.value === 'record' ? searchQuery.value : approvalSearchQuery.value
+            })
           }
+      
+      // 处理分页数据
+        console.log('处理分页数据:', {
+          allRecords: allRecords,
+          hasRecords: allRecords && allRecords.records,
+          recordCount: allRecords && allRecords.records ? allRecords.records.length : 0,
+          total: allRecords && allRecords.total ? allRecords.total : 0
         })
         
-        // 过滤出属于该值班表的记录
-        allRecords = allRecords.filter(record => {
-          return record.assignmentId && scheduleAssignmentIds.has(record.assignmentId)
-        })
-      }
+        if (allRecords && allRecords.records) {
+          recordList.value = allRecords.records || []
+          // 更新分页总数
+          if (activeTab.value === 'record') {
+            total.value = allRecords.total || 0
+            pagination.total = allRecords.total || 0
+            console.log('更新分页总数:', {
+              total: total.value,
+              paginationTotal: pagination.total
+            })
+          } else {
+            approvalTotal.value = allRecords.total || 0
+            approvalPagination.total = allRecords.total || 0
+          }
+        } else {
+          recordList.value = allRecords || []
+          // 当没有records属性时，使用数组长度作为总记录数
+          if (Array.isArray(allRecords)) {
+            if (activeTab.value === 'record') {
+              total.value = allRecords.length
+              pagination.total = allRecords.length
+              console.log('更新分页总数（数组长度）:', {
+                total: total.value,
+                paginationTotal: pagination.total
+              })
+            } else {
+              approvalTotal.value = allRecords.length
+              approvalPagination.total = allRecords.length
+            }
+          }
+        }
       
-      recordList.value = allRecords || []
+      // 调试：打印分页信息
+        console.log('分页信息:', JSON.stringify({
+          currentPage: pagination.currentPage,
+          pageSize: pagination.pageSize,
+          total: total.value,
+          paginationTotal: pagination.total,
+          recordListLength: recordList.value.length
+        }))
       
       // 遍历值班记录，获取值班安排详情
       recordList.value.forEach(record => {
@@ -1053,58 +1121,12 @@ const fetchRecordList = async () => {
         }
       })
     } else {
-      allRecords = await getRecordList()
-      
-      // 根据选择的值班表过滤记录
-      if (selectedScheduleId.value) {
-        // 从值班安排中获取该值班表的所有assignmentId
-        const scheduleAssignmentIds = new Set()
-        allAssignments.forEach(assignment => {
-          if (assignment.scheduleId === selectedScheduleId.value) {
-            scheduleAssignmentIds.add(assignment.id)
-          }
-        })
-        
-        // 过滤出属于该值班表的记录
-        allRecords = allRecords.filter(record => {
-          return record.assignmentId && scheduleAssignmentIds.has(record.assignmentId)
-        })
-      }
-      
-      recordList.value = allRecords || []
-      
-      // 保存班次名称
-      recordList.value.forEach(record => {
-        if (record.assignmentId) {
-          // 从所有值班安排中查找对应的值班安排
-          const assignment = allAssignments.find(a => a.id === record.assignmentId)
-          if (assignment) {
-            // 设置值班表信息
-            record.scheduleId = assignment.scheduleId
-            const schedule = scheduleList.value.find(s => s.id === assignment.scheduleId)
-            record.scheduleName = schedule ? schedule.scheduleName : '未知值班表'
-          } else {
-            record.scheduleName = '未知值班表'
-          }
-        } else {
-          record.scheduleName = '未知值班表'
-        }
-        
-        if (record.dutyShift) {
-          // 尝试从班次配置中查找
-          const shiftConfig = shiftConfigs.value.find(config => config.id === record.dutyShift)
-          if (shiftConfig && shiftConfig.shiftName) {
-            saveShiftName(record.dutyShift, shiftConfig.shiftName)
-          } else {
-            // 使用默认格式，确保能够处理所有班次值
-            saveShiftName(record.dutyShift, `班次${record.dutyShift}`)
-          }
-        } else if (record.assignmentId) {
-          // 这里我们可以尝试从值班安排中获取班次信息
-          // 但由于需要异步调用API，我们暂时先保存一个默认值
-          saveShiftName(record.assignmentId, `班次${record.assignmentId}`)
-        }
-      })
+      // 用户未登录，使用空数据
+      recordList.value = []
+      total.value = 0
+      pagination.total = 0
+      approvalTotal.value = 0
+      approvalPagination.total = 0
     }
   } catch (error) {
     // console.error('获取值班记录列表失败:', error)
@@ -1117,43 +1139,19 @@ const fetchRecordList = async () => {
 // 标签页切换处理
 const handleTabChange = (tabName) => {
   // console.log('标签页切换到:', tabName)
-  // 切换标签页时重置相关状态
+  // 切换标签页时重置相关状态并重新加载数据
   if (tabName === 'record') {
     currentPage.value = 1
+    pagination.currentPage = 1
   } else if (tabName === 'approval') {
     approvalCurrentPage.value = 1
+    approvalPagination.currentPage = 1
   }
+  // 重新加载数据
+  fetchRecordList()
 }
 
-// 搜索
-const handleSearch = () => {
-  currentPage.value = 1
-}
 
-// 审批页面搜索
-const handleApprovalSearch = () => {
-  approvalCurrentPage.value = 1
-}
-
-// 分页处理
-const handleSizeChange = (size) => {
-  pageSize.value = size
-  currentPage.value = 1
-}
-
-const handleCurrentChange = (page) => {
-  currentPage.value = page
-}
-
-// 审批页面分页处理
-const handleApprovalSizeChange = (size) => {
-  approvalPageSize.value = size
-  approvalCurrentPage.value = 1
-}
-
-const handleApprovalCurrentChange = (page) => {
-  approvalCurrentPage.value = page
-}
 
 // 打开签到对话框
 const openCheckInDialog = (record) => {
@@ -1522,13 +1520,13 @@ const handleScheduleChange = async (scheduleId) => {
       // 直接设置availableDates数组
       availableDates.value = Array.from(dates)
       
-      // 如果没有找到加班班次，给出提示
-      const availableDatesLength = availableDates.value && Array.isArray(availableDates.value) ? availableDates.value.length : 0
-      if (availableDatesLength === 0) {
-        ElMessage.info('当前值班表中没有您的加班班次安排')
-      } else {
-        ElMessage.success(`找到 ${availableDatesLength} 个加班班次日期`)
-      }
+      // 如果没有找到加班班次，不给出提示
+      // const availableDatesLength = availableDates.value && Array.isArray(availableDates.value) ? availableDates.value.length : 0
+      // if (availableDatesLength === 0) {
+      //   ElMessage.info('当前值班表中没有您的加班班次安排')
+      // } else {
+      //   ElMessage.success(`找到 ${availableDatesLength} 个加班班次日期`)
+      // }
       
       // 重置日期和班次选择
       createForm.dutyDate = null
@@ -1631,11 +1629,15 @@ const fetchAssignmentDetail = async (assignmentId) => {
 // 获取班次配置列表
 const fetchShiftConfigs = async () => {
   try {
-    const shiftConfigsData = await shiftApi.getShiftConfigList()
+    const shiftConfigsData = await shiftApi.getShiftConfigList({
+      pageNum: 1,
+      pageSize: 100, // 加载足够多的班次配置
+      keyword: ''
+    })
     
-    // 确保数据是数组
-    if (Array.isArray(shiftConfigsData)) {
-      shiftConfigs.value = shiftConfigsData
+    // 确保数据是分页对象
+    if (shiftConfigsData && shiftConfigsData.records) {
+      shiftConfigs.value = shiftConfigsData.records
       
       // 保存班次名称
       shiftConfigs.value.forEach(config => {
@@ -1998,17 +2000,136 @@ const fetchDeptList = async () => {
 // 获取值班表列表
 const fetchScheduleList = async () => {
   try {
-    const data = await getScheduleList()
-    scheduleList.value = data || []
+    const data = await getAllSchedules()
+    
+    // 过滤出用户所在的值班表
+    let userSchedules = []
+    if (userStore.employeeId) {
+      for (const schedule of data || []) {
+        try {
+          // 检查用户是否在值班表中
+          const employees = await getScheduleEmployees(schedule.id)
+          if (employees && employees.includes(userStore.employeeId)) {
+            userSchedules.push(schedule)
+          }
+        } catch (error) {
+          console.error('获取值班表员工失败:', error)
+        }
+      }
+    }
+    
+    // 如果没有找到用户所在的值班表，或者用户未登录，使用所有值班表
+    if (userSchedules.length === 0) {
+      userSchedules = data || []
+    }
+    
+    // 获取值班表列表（后端已经按id排序）
+    scheduleList.value = userSchedules
+    
     // 如果有值班表，默认选择第一个
     if (scheduleList.value.length > 0 && !selectedScheduleId.value) {
       selectedScheduleId.value = scheduleList.value[0].id
       // 获取默认值班表的值班长列表
       await fetchScheduleLeaders(selectedScheduleId.value)
+      // 获取默认值班表的记录列表
+      await fetchRecordList()
     }
   } catch (error) {
     // console.error('获取值班表列表失败:', error)
     ElMessage.error('获取值班表列表失败')
+  }
+}
+
+// 处理导出
+const handleExport = async () => {
+  try {
+    loading.value = true
+    
+    // 获取所有记录（不分页）
+    let allRecords = []
+    if (userStore.employeeId) {
+      if (isDutyManager.value) {
+        // 值班长获取所有记录
+        allRecords = await getRecordList({ pageNum: 1, pageSize: 1000, scheduleId: selectedScheduleId.value })
+      } else {
+        // 普通用户获取自己的记录
+        allRecords = await getRecordsByEmployeeId({ employeeId: userStore.employeeId, pageNum: 1, pageSize: 1000, scheduleId: selectedScheduleId.value })
+      }
+    } else {
+      // 无员工ID时获取所有记录
+      allRecords = await getRecordList({ pageNum: 1, pageSize: 1000, scheduleId: selectedScheduleId.value })
+    }
+    
+    const records = allRecords.records || []
+    
+    // 转换数据格式
+    const exportData = records.map(record => {
+      return {
+        '值班表': record.scheduleName || '未知值班表',
+        '值班日期': formatDate(record.dutyDate),
+        '班次': getShiftName(record.dutyShift),
+        '值班人员': getEmployeeName(record.employeeId),
+        '签到时间': formatDateTime(record.checkInTime),
+        '签退时间': formatDateTime(record.checkOutTime),
+        '值班状态': getStatusName(record.dutyStatus),
+        '加班时长': `${record.overtimeHours || 0}小时`,
+        '审批状态': record.approvalStatus || '待审批'
+      }
+    })
+    
+    // 导出为Excel
+    import('xlsx').then(XLSX => {
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, '加班记录')
+      XLSX.writeFile(workbook, `加班记录_${formatDate(new Date())}.xlsx`)
+      ElMessage.success('导出成功')
+    })
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 处理加班审批导出
+const handleApprovalExport = async () => {
+  try {
+    approvalLoading.value = true
+    
+    // 获取所有审批记录（不分页）
+    const allRecords = await getRecordList({ pageNum: 1, pageSize: 1000, scheduleId: selectedScheduleId.value })
+    const records = allRecords.records || []
+    
+    // 转换数据格式
+    const exportData = records.map(record => {
+      return {
+        '值班表': record.scheduleName || '未知值班表',
+        '值班日期': formatDate(record.dutyDate),
+        '班次': getShiftName(record.dutyShift),
+        '值班人员': getEmployeeName(record.employeeId),
+        '签到时间': formatDateTime(record.checkInTime),
+        '签退时间': formatDateTime(record.checkOutTime),
+        '值班状态': getStatusName(record.dutyStatus),
+        '加班时长': `${record.overtimeHours || 0}小时`,
+        '审批状态': record.approvalStatus || '待审批'
+      }
+    })
+    
+    // 导出为Excel
+    import('xlsx').then(XLSX => {
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, '加班审批')
+      XLSX.writeFile(workbook, `加班审批_${formatDate(new Date())}.xlsx`)
+      ElMessage.success('导出成功')
+    })
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
+  } finally {
+    approvalLoading.value = false
   }
 }
 
@@ -2044,10 +2165,8 @@ onMounted(async () => {
   if (routeScheduleId) {
     await fetchScheduleLeaders(routeScheduleId)
     await fetchRecordList()
-  } else {
-    // 最后获取记录列表
-    await fetchRecordList()
   }
+  // 否则，fetchScheduleList会自动设置默认值班表并调用fetchRecordList
 })
 </script>
 

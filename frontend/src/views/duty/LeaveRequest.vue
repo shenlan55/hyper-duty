@@ -43,7 +43,7 @@
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button type="primary" @click="handleFilterSearch">查询</el-button>
             <el-button @click="resetFilter">重置</el-button>
           </el-form-item>
         </el-form>
@@ -55,6 +55,7 @@
         :columns="columns"
         :show-pagination="true"
         :pagination="pagination"
+        :backend-pagination="true"
         :show-search="true"
         :search-placeholder="'请输入申请编号或申请人'"
         :show-export="true"
@@ -62,7 +63,7 @@
         :show-skeleton="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        @search="handleSearch"
+        @search="handleTableSearch"
         @export="handleExport"
       >
         <template #employeeName="{ row }">
@@ -334,12 +335,13 @@ import {
   getApprovalRecords
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
-import { getScheduleList, getScheduleEmployeesWithLeaderInfo, getScheduleShifts } from '../../api/duty/schedule'
+import { getAllSchedules, getScheduleEmployeesWithLeaderInfo, getScheduleShifts } from '../../api/duty/schedule'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { getEmployeeStatistics } from '../../api/duty/statistics'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 import BaseTable from '../../components/BaseTable.vue'
+import { useSearchPagination } from '../../hooks/usePagination'
 
 const userStore = useUserStore()
 
@@ -363,12 +365,17 @@ const availableShiftIds = ref([])
 // 可调休工时
 const compensatoryHours = ref(0)
 
-// 分页相关
-const pagination = reactive({
-  page: 1,
-  size: 10,
-  total: 0
-})
+// 分页配置
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch
+} = useSearchPagination()
 
 // 筛选条件
 const filterForm = reactive({
@@ -524,10 +531,38 @@ const fetchEmployeeList = async () => {
 
 const fetchScheduleList = async () => {
   try {
-    const data = await getScheduleList()
-    scheduleList.value = data || []
+    const data = await getAllSchedules()
+    
+    // 过滤出用户所在的值班表
+    let userSchedules = []
+    if (userStore.employeeId) {
+      for (const schedule of data || []) {
+        try {
+          // 检查用户是否在值班表中
+          const employees = await getScheduleEmployeesWithLeaderInfo(schedule.id)
+          if (employees && employees.find(emp => emp.employeeId === userStore.employeeId)) {
+            userSchedules.push(schedule)
+          }
+        } catch (error) {
+          console.error('获取值班表员工失败:', error)
+        }
+      }
+    }
+    
+    // 如果没有找到用户所在的值班表，或者用户未登录，使用所有值班表
+    if (userSchedules.length === 0) {
+      userSchedules = data || []
+    }
+    
+    // 获取值班表列表（后端已经按id排序）
+    scheduleList.value = userSchedules
+    
+    // 如果有值班表，默认选择第一个
+    if (scheduleList.value.length > 0 && !filterForm.scheduleId) {
+      filterForm.scheduleId = scheduleList.value[0].id
+    }
   } catch (error) {
-    // console.error('获取值班表列表失败:', error)
+    console.error('获取值班表列表失败:', error)
   }
 }
 
@@ -546,14 +581,16 @@ const fetchMyLeaveRequests = async () => {
     const [startDate, endDate] = filterForm.dateRange || [null, null]
     const data = await getMyLeaveRequestsPage(
       userStore.employeeId,
-      pagination.page,
-      pagination.size,
+      currentPage.value,
+      pageSize.value,
       filterForm.leaveType,
       filterForm.approvalStatus || null,
       startDate,
-      endDate
+      endDate,
+      searchQuery.value
     )
     requestList.value = data.records || []
+    total.value = data.total || 0
     pagination.total = data.total || 0
   } catch (error) {
     // console.error('获取请假申请列表失败:', error)
@@ -563,23 +600,32 @@ const fetchMyLeaveRequests = async () => {
   }
 }
 
-// 分页大小变化处理
-const handleSizeChange = (size) => {
-  pagination.size = size
+// 分页变更处理
+const handleCurrentChange = (val) => {
+  originalHandleCurrentChange(val)
   fetchMyLeaveRequests()
 }
 
-// 页码变化处理
-const handleCurrentChange = (current) => {
-  pagination.page = current
+const handleSizeChange = (val) => {
+  originalHandleSizeChange(val)
+  fetchMyLeaveRequests()
+}
+
+// 表格搜索处理
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  searchQuery.value = keyword
+  currentPage.value = 1
+  pagination.currentPage = 1
   fetchMyLeaveRequests()
 }
 
 // 搜索处理
-const handleSearch = (query) => {
-  // 这里可以根据需要处理搜索逻辑
-  // 由于后端API可能不支持搜索，暂时只重置页码
-  pagination.page = 1 // 重置页码
+const handleFilterSearch = () => {
+  // 重置页码
+  currentPage.value = 1
+  pagination.currentPage = 1
+  // 重新获取数据，使用筛选条件
   fetchMyLeaveRequests()
 }
 
@@ -620,7 +666,8 @@ const resetFilter = () => {
   filterForm.leaveType = null
   filterForm.approvalStatus = ''
   filterForm.dateRange = null
-  pagination.page = 1
+  currentPage.value = 1
+  pagination.currentPage = 1
   fetchMyLeaveRequests()
 }
 

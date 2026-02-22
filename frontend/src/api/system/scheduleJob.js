@@ -7,12 +7,17 @@ export function scheduleJobApi() {
   return {
     /**
      * 获取定时任务列表
+     * @param {Object} params - 查询参数
+     * @param {number} params.pageNum - 页码
+     * @param {number} params.pageSize - 每页大小
+     * @param {string} params.keyword - 搜索关键词
      * @returns {Promise}
      */
-    getJobList() {
+    getJobList(params) {
       return request({
         url: '/sys/schedule/job/list',
-        method: 'get'
+        method: 'get',
+        params: params
       })
     },
 
@@ -104,14 +109,18 @@ export function scheduleJobApi() {
 
     /**
      * 获取定时任务日志列表
-     * @param {number} jobId - 任务ID（可选）
+     * @param {Object} params - 查询参数
+     * @param {number} params.jobId - 任务ID（可选）
+     * @param {number} params.pageNum - 页码
+     * @param {number} params.pageSize - 每页大小
+     * @param {string} params.keyword - 搜索关键词
      * @returns {Promise}
      */
-    getLogList(jobId) {
+    getLogList(params) {
       return request({
         url: '/sys/schedule/log/list',
         method: 'get',
-        params: { jobId }
+        params: params
       })
     },
 

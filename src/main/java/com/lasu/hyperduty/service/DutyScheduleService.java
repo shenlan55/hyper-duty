@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.lasu.hyperduty.entity.DutySchedule;
 
@@ -19,4 +20,8 @@ public interface DutyScheduleService extends IService<DutySchedule> {
     boolean updateLeaders(Long scheduleId, List<Long> leaderIds);
  
     boolean updateEmployeesAndLeaders(Long scheduleId, List<Long> employeeIds, List<Long> leaderIds);
+    
+    Page<DutySchedule> getScheduleList(Integer pageNum, Integer pageSize, String keyword);
+
+    List<DutySchedule> getAllSchedules();
 }

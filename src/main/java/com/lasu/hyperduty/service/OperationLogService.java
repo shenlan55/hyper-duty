@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.lasu.hyperduty.entity.OperationLog;
 
@@ -25,6 +26,26 @@ public interface OperationLogService extends IService<OperationLog> {
 
     List<OperationLog> searchLogs(Long operatorId, String operationType, 
                                  String operationModule, LocalDate startDate, LocalDate endDate);
+    
+    /**
+     * 分页搜索日志
+     * @param operatorName 操作人姓名
+     * @param operationType 操作类型
+     * @param operationModule 操作模块
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @return 分页结果
+     */
+    Page<OperationLog> searchLogsPage(
+            String operatorName, 
+            String operationType, 
+            String operationModule, 
+            LocalDate startDate, 
+            LocalDate endDate, 
+            Integer page, 
+            Integer pageSize);
 
     /**
      * 统计今日登录次数

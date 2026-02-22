@@ -43,8 +43,9 @@ public class SwapRequestController {
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) Long scheduleId,
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
-        IPage<SwapRequest> pageInfo = swapRequestService.getMySwapRequestsPage(employeeId, page, size, approvalStatus, scheduleId, startDate, endDate);
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String searchQuery) {
+        IPage<SwapRequest> pageInfo = swapRequestService.getMySwapRequestsPage(employeeId, page, size, approvalStatus, scheduleId, startDate, endDate, searchQuery);
         return ResponseResult.success(pageInfo);
     }
 

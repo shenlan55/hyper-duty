@@ -31,6 +31,7 @@
         :columns="columns"
         :show-pagination="true"
         :pagination="pagination"
+        :backend-pagination="true"
         :show-search="true"
         :search-placeholder="'请输入字典标签或键值'"
         :show-export="true"
@@ -38,7 +39,7 @@
         :show-skeleton="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        @search="handleSearch"
+        @search="handleTableSearch"
         @export="handleExport"
       >
         <template #isDefault="{ row }">
@@ -118,6 +119,7 @@ import {
 import { listDictType } from '../api/dictType'
 import { formatDateTime } from '../utils/dateUtils'
 import BaseTable from '../components/BaseTable.vue'
+import { useSearchPagination } from '../hooks/usePagination'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -126,11 +128,19 @@ const dialogTitle = ref('')
 const selectedDictTypeId = ref('')
 const dictTypeList = ref([])
 const dictDataList = ref([])
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
-const searchQuery = ref('')
 const formRef = ref(null)
+
+// 分页配置
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch
+} = useSearchPagination()
 
 const form = reactive({
   id: null,
@@ -174,15 +184,7 @@ const columns = [
   { label: '操作', width: '150', fixed: 'right', slotName: 'operation' }
 ]
 
-// 分页配置
-const pagination = computed(() => {
-  return {
-    currentPage: currentPage.value,
-    pageSize: pageSize.value,
-    pageSizes: [10, 20, 50, 100],
-    total: total.value
-  }
-})
+
 
 const loadDictTypeList = async () => {
   try {
@@ -197,25 +199,21 @@ const loadDictDataList = async () => {
   if (!selectedDictTypeId.value) {
     dictDataList.value = []
     total.value = 0
+    pagination.total = 0
     return
   }
 
   loading.value = true
   try {
-    const data = await getDictDataByType(selectedDictTypeId.value)
-    let filteredData = data || []
-    
-    // 根据搜索查询过滤数据
-    if (searchQuery.value) {
-      const query = searchQuery.value.toLowerCase()
-      filteredData = filteredData.filter(item => 
-        item.dictLabel.toLowerCase().includes(query) || 
-        item.dictValue.toLowerCase().includes(query)
-      )
-    }
-    
-    dictDataList.value = filteredData
-    total.value = filteredData.length
+    const data = await listDictData({ 
+      dictTypeId: selectedDictTypeId.value,
+      pageNum: currentPage.value,
+      pageSize: pageSize.value,
+      keyword: searchQuery.value
+    })
+    dictDataList.value = data.records || []
+    total.value = data.total || 0
+    pagination.total = data.total || 0
   } catch (error) {
     ElMessage.error('加载字典数据列表失败')
   } finally {
@@ -225,18 +223,25 @@ const loadDictDataList = async () => {
 
 const handleDictTypeChange = () => {
   currentPage.value = 1
+  pagination.currentPage = 1
   searchQuery.value = ''
   loadDictDataList()
 }
 
 const handleSizeChange = (size) => {
-  pageSize.value = size
-  currentPage.value = 1
+  originalHandleSizeChange(size)
+  loadDictDataList()
 }
 
-const handleSearch = (query) => {
-  searchQuery.value = query
-  currentPage.value = 1
+const handleCurrentChange = (current) => {
+  originalHandleCurrentChange(current)
+  loadDictDataList()
+}
+
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  handleSearch(keyword)
+  loadDictDataList()
 }
 
 const handleExport = () => {
@@ -336,10 +341,6 @@ const handleDelete = async (id) => {
       ElMessage.error('删除失败')
     }
   }
-}
-
-const handleCurrentChange = (page) => {
-  currentPage.value = page
 }
 
 onMounted(() => {

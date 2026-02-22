@@ -501,7 +501,7 @@ import {
   deleteBatchAssignments,
   batchSchedule
 } from '../../api/duty/assignment'
-import { getScheduleList, getScheduleEmployees, getScheduleLeaders, getScheduleShifts, getScheduleModeList, generateScheduleByMode } from '../../api/duty/schedule'
+import { getAllSchedules, getScheduleEmployees, getScheduleLeaders, getScheduleShifts, getScheduleModeList, generateScheduleByMode } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
 import { getDeptList } from '../../api/dept'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
@@ -764,8 +764,39 @@ const hasAssignment = (date) => {
 
 const fetchScheduleList = async () => {
   try {
-    const data = await getScheduleList()
-    scheduleList.value = data || []
+    const data = await getAllSchedules()
+    // 获取用户信息
+    const userStore = useUserStore()
+    const currentEmployeeId = userStore.employeeId
+    
+    // 过滤出用户所在的值班表
+    let userSchedules = []
+    if (currentEmployeeId) {
+      for (const schedule of data || []) {
+        try {
+          // 检查用户是否在值班表中
+          const employees = await getScheduleEmployees(schedule.id)
+          if (employees && employees.includes(currentEmployeeId)) {
+            userSchedules.push(schedule)
+          }
+        } catch (error) {
+          console.error('获取值班表员工失败:', error)
+        }
+      }
+    }
+    
+    // 如果没有找到用户所在的值班表，或者用户未登录，使用所有值班表
+    if (userSchedules.length === 0) {
+      userSchedules = data || []
+    }
+    
+    // 获取值班表列表（后端已经按id排序）
+    scheduleList.value = userSchedules
+    
+    // 如果有值班表，默认选择第一个
+    if (scheduleList.value.length > 0 && !selectedScheduleId.value) {
+      selectedScheduleId.value = scheduleList.value[0].id
+    }
   } catch (error) {
     // console.error('获取值班表列表失败:', error)
     ElMessage.error('获取值班表列表失败')
@@ -801,8 +832,12 @@ const holidayMap = ref({})
 
 const fetchShiftConfigList = async () => {
   try {
-    const data = await shiftApi.getShiftConfigList()
-    shiftConfigList.value = (data || []).filter(shift => shift.status === 1)
+    const data = await shiftApi.getShiftConfigList({
+      pageNum: 1,
+      pageSize: 100, // 加载足够多的班次配置
+      keyword: ''
+    })
+    shiftConfigList.value = (data?.records || []).filter(shift => shift.status === 1)
   } catch (error) {
     // console.error('获取班次配置列表失败:', error)
     ElMessage.error('获取班次配置列表失败')

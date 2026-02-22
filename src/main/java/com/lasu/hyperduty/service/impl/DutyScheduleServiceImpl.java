@@ -1,5 +1,7 @@
 package com.lasu.hyperduty.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.DutySchedule;
 import com.lasu.hyperduty.entity.DutyScheduleEmployee;
@@ -63,5 +65,39 @@ public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, Dut
         
         scheduleEmployeeService.deleteByScheduleId(scheduleId);
         return scheduleEmployeeService.saveBatch(employees);
+    }
+
+    @Override
+    public Page<DutySchedule> getScheduleList(Integer pageNum, Integer pageSize, String keyword) {
+        // 创建分页对象
+        Page<DutySchedule> pagination = new Page<>(pageNum, pageSize);
+        
+        // 构建查询条件
+        LambdaQueryWrapper<DutySchedule> queryWrapper = new LambdaQueryWrapper<>();
+        
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.and(wrapper -> 
+                wrapper.like(DutySchedule::getScheduleName, keyword)
+                       .or().like(DutySchedule::getDescription, keyword)
+            );
+        }
+        
+        // 按创建时间倒序排序
+        queryWrapper.orderByDesc(DutySchedule::getCreateTime);
+        
+        // 执行分页查询
+        return baseMapper.selectPage(pagination, queryWrapper);
+    }
+
+    @Override
+    public List<DutySchedule> getAllSchedules() {
+        // 构建查询条件
+        LambdaQueryWrapper<DutySchedule> queryWrapper = new LambdaQueryWrapper<>();
+        
+        // 按ID升序排序
+        queryWrapper.orderByAsc(DutySchedule::getId);
+        
+        // 执行查询
+        return baseMapper.selectList(queryWrapper);
     }
 }

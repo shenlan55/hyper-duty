@@ -18,15 +18,12 @@
             v-loading="loading"
             :data="deptTreeData"
             :columns="columns"
-            :show-pagination="true"
-            :pagination="pagination"
+            :show-pagination="false"
             :show-search="true"
             :search-placeholder="'请输入部门名称或编码'"
             :show-export="true"
             :show-column-control="true"
             :show-skeleton="true"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
             @search="handleSearch"
             @export="handleExport"
           >
@@ -174,9 +171,6 @@ const dialogTitle = ref('添加部门')
 const deptFormRef = ref()
 const deptTree = ref()
 
-// 分页数据
-const currentPage = ref(1)
-const pageSize = ref(10)
 
 // 表单数据
 const deptForm = reactive({
@@ -241,13 +235,7 @@ const columns = [
   }
 ]
 
-// 分页配置
-const pagination = reactive({
-  currentPage: 1,
-  pageSize: 10,
-  pageSizes: [10, 20, 50, 100],
-  total: 0
-})
+
 
 // 带缩进的部门选项
 const indentedDeptOptions = ref([])
@@ -269,8 +257,6 @@ const fetchDeptList = async () => {
   try {
     const data = await getDeptList()
     deptList.value = data || []
-    // 更新分页总数
-    pagination.total = deptList.value.length
     // 构建树结构数据
     buildDeptTree(data || [])
     // 生成带缩进的部门选项
@@ -355,8 +341,7 @@ const generateIndentedOptions = () => {
 
 // 搜索
 const handleSearch = (searchParams) => {
-  searchQuery.value = searchParams.global
-  currentPage.value = 1
+  searchQuery.value = searchParams?.global || ''
   filterDeptTree()
 }
 
@@ -413,15 +398,7 @@ const findAllAncestors = (parentId, idSet) => {
   }
 }
 
-// 分页处理
-const handleSizeChange = (size) => {
-  pagination.pageSize = size
-  pagination.currentPage = 1
-}
 
-const handleCurrentChange = (page) => {
-  pagination.currentPage = page
-}
 
 // 打开添加对话框
 const openAddDialog = () => {

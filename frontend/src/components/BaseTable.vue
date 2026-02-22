@@ -11,8 +11,11 @@
             :placeholder="searchPlaceholder"
             prefix-icon="Search"
             clearable
-            @input="handleSearch"
-          />
+            @input="(value) => handleSearch(value)"
+            @clear="handleSearch('')"
+            @keyup.enter="handleSearch(searchQuery)"
+          >
+          </el-input>
         </div>
         
         <!-- 自定义工具栏内容 -->
@@ -169,22 +172,23 @@
     </el-table>
     
     <!-- 分页 -->
-    <div class="pagination-container" v-if="showPagination">
+    <div class="pagination-container" v-if="showPagination && props.pagination">
       <el-pagination
-        v-model:current-page="pagination.currentPage"
-        v-model:page-size="pagination.pageSize"
-        :page-sizes="pagination.pageSizes"
+        v-model:current-page="props.pagination.currentPage"
+        v-model:page-size="props.pagination.pageSize"
+        :page-sizes="props.pagination.pageSizes"
         layout="total, sizes, prev, pager, next, jumper"
-        :total="pagination.total"
+        :total="props.pagination.total || 0"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
+        background
       />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { ArrowRight, ArrowDown, Search, Setting, Download, Document, Files, WarningFilled } from '@element-plus/icons-vue'
 
 // Props
@@ -297,6 +301,11 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  // 是否是后端分页
+  backendPagination: {
+    type: Boolean,
+    default: false
+  },
   // 导出按钮文本
   exportText: {
     type: String,
@@ -349,24 +358,15 @@ const columnFilters = ref({})
 // 选择状态管理
 const selectedRows = ref([])
 
-// 分页状态管理
-const pagination = ref({
-  currentPage: 1,
-  pageSize: 10,
-  pageSizes: [10, 20, 50, 100],
-  total: 0
-})
-
-// 监听props.pagination变化，更新本地状态
-import { watch } from 'vue'
+// 监听props.data变化，重新初始化默认展开的节点
 watch(
-  () => props.pagination,
-  (newPagination) => {
-    if (newPagination) {
-      pagination.value = {
-        ...pagination.value,
-        ...newPagination
-      }
+  () => props.data,
+  (newData) => {
+    if (newData && newData.length > 0) {
+      // 清空之前的展开状态
+      expandedRows.clear()
+      // 重新初始化默认展开的节点
+      initDefaultExpandedNodes()
     }
   },
   { immediate: true, deep: true }
@@ -425,12 +425,36 @@ const handleExport = (format) => {
   })
 }
 
+// 初始化默认展开的节点
+const initDefaultExpandedNodes = () => {
+  // 默认展开到第三级（level < 3）
+  const expandToLevel = 3
+  
+  const traverseTree = (tree, currentLevel = 0) => {
+    if (!Array.isArray(tree)) return
+    
+    tree.forEach(node => {
+      if (currentLevel < expandToLevel && node.id) {
+        expandedRows.add(node.id)
+      }
+      
+      if (node[props.treeProps.children] && Array.isArray(node[props.treeProps.children])) {
+        traverseTree(node[props.treeProps.children], currentLevel + 1)
+      }
+    })
+  }
+  
+  traverseTree(props.data)
+}
+
 // 初始化
 initVisibleColumns()
+initDefaultExpandedNodes()
 
 // 搜索方法
 const handleSearch = (value) => {
   searchQuery.value = value
+  // 确保传递正确的搜索参数
   emit('search', { global: value, columnFilters: columnFilters.value })
 }
 
@@ -456,16 +480,34 @@ const handleSelectAll = (selection) => {
 
 // 分页方法
 const handleSizeChange = (size) => {
-  emit('size-change', size)
+  if (props.pagination) {
+    props.pagination.pageSize = size
+    emit('size-change', size)
+  }
 }
 
 const handleCurrentChange = (current) => {
-  emit('current-change', current)
+  if (props.pagination) {
+    props.pagination.currentPage = current
+    emit('current-change', current)
+  }
 }
 
 const handleSortChange = (sort) => {
   emit('sort-change', sort)
 }
+
+// 监听pagination属性变化
+watch(
+  () => props.pagination,
+  (newPagination) => {
+    if (newPagination) {
+      // 当pagination变化时，更新内部状态
+      console.log('BaseTable: pagination updated:', newPagination)
+    }
+  },
+  { deep: true }
+)
 
 // 切换展开/收起状态
 const toggleExpand = (row) => {
@@ -512,6 +554,15 @@ const processedData = computed(() => {
   // 检查数据是否为树形结构
   if (props.data.length > 0 && props.data[0].children) {
     return flattenTree(props.data)
+  }
+  
+  // 对数据进行分页处理
+  if (props.showPagination && !props.backendPagination && props.pagination) {
+    const currentPage = props.pagination.currentPage || 1
+    const pageSize = props.pagination.pageSize || 10
+    const startIndex = (currentPage - 1) * pageSize
+    const endIndex = startIndex + pageSize
+    return props.data.slice(startIndex, endIndex)
   }
   
   return props.data

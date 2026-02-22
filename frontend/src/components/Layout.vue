@@ -631,20 +631,19 @@ onMounted(async () => {
   // 获取用户菜单
   await fetchUserMenus()
   
-  // 初始化标签页，只保留首页
-  tabs.value = [
-    {
-      path: '/dashboard',
-      name: '首页'
-    }
-  ]
-  
-  // 刷新页面时，默认回到首页
-  activeTab.value = '/dashboard'
-  
-  // 如果当前路由不是首页，重定向到首页
-  if (route.path !== '/dashboard') {
-    router.push('/dashboard')
+  // 初始化标签页
+  if (route.path === '/dashboard') {
+    // 如果当前是首页，只保留首页标签
+    tabs.value = [
+      {
+        path: '/dashboard',
+        name: '首页'
+      }
+    ]
+    activeTab.value = '/dashboard'
+  } else {
+    // 如果当前不是首页，使用当前路由
+    addTab(route.path)
   }
 })
 </script>

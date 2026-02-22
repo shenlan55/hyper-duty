@@ -29,9 +29,10 @@ public interface SwapRequestService extends IService<SwapRequest> {
      * @param scheduleId 值班表ID（可选）
      * @param startDate 开始日期（可选）
      * @param endDate 结束日期（可选）
+     * @param searchQuery 搜索关键词（可选）
      * @return 分页结果
      */
-    IPage<SwapRequest> getMySwapRequestsPage(Long employeeId, Integer page, Integer size, String approvalStatus, Long scheduleId, String startDate, String endDate);
+    IPage<SwapRequest> getMySwapRequestsPage(Long employeeId, Integer page, Integer size, String approvalStatus, Long scheduleId, String startDate, String endDate, String searchQuery);
 
     /**
      * 分页获取待审批调班申请

@@ -101,7 +101,7 @@ import { getPendingApprovals } from '../api/duty/leaveRequest'
 import { getMySwapRequests } from '../api/duty/swapRequest'
 import { getPendingOvertimeApprovals } from '../api/duty/overtimeRequest'
 import { getAssignmentList } from '../api/duty/assignment'
-import { getScheduleList } from '../api/duty/schedule'
+import { getAllSchedules } from '../api/duty/schedule'
 import { getEmployeeList } from '../api/employee'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
@@ -157,7 +157,7 @@ const loadTodoList = async () => {
     
     try {
       // 获取所有值班表
-      const scheduleData = await getScheduleList()
+      const scheduleData = await getAllSchedules()
       if (Array.isArray(scheduleData)) {
         schedules = scheduleData
       }

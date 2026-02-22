@@ -1,5 +1,7 @@
 package com.lasu.hyperduty.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.entity.SysDictData;
 import com.lasu.hyperduty.mapper.SysDictDataMapper;
 import com.lasu.hyperduty.service.SysDictDataService;
@@ -41,5 +43,31 @@ public class SysDictDataServiceImpl extends CacheableServiceImpl<SysDictDataMapp
      */
     public boolean removeById(Long id) {
         return removeById((Serializable) id);
+    }
+
+    @Override
+    public Page<SysDictData> page(
+            Page<SysDictData> page, 
+            Long dictTypeId, 
+            String keyword) {
+        QueryWrapper<SysDictData> queryWrapper = new QueryWrapper<>();
+        
+        // 根据字典类型ID过滤
+        if (dictTypeId != null) {
+            queryWrapper.eq("dict_type_id", dictTypeId);
+        }
+        
+        // 根据关键词搜索
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.and(wrapper -> 
+                wrapper.like("dict_label", keyword)
+                       .or().like("dict_value", keyword)
+            );
+        }
+        
+        // 按排序字段排序
+        queryWrapper.orderByAsc("dict_sort");
+        
+        return baseMapper.selectPage(page, queryWrapper);
     }
 }

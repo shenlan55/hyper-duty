@@ -17,6 +17,7 @@
         :columns="columns"
         :show-pagination="true"
         :pagination="pagination"
+        :backend-pagination="true"
         :show-search="true"
         :search-placeholder="'请输入人员姓名或编码'"
         :show-export="true"
@@ -24,7 +25,7 @@
         :show-skeleton="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        @search="handleSearch"
+        @search="handleTableSearch"
         @export="handleExport"
       >
         <template #toolbar>
@@ -597,8 +598,9 @@ const handleDelete = async (id) => {
 }
 
 // 表格搜索
-const handleTableSearch = (query) => {
-  searchQuery.value = query
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  searchQuery.value = keyword
   currentPage.value = 1
   fetchEmployeeList()
 }

@@ -17,6 +17,7 @@
         :columns="jobColumns"
         :show-pagination="true"
         :pagination="pagination"
+        :backend-pagination="true"
         :show-search="true"
         :search-placeholder="'请输入任务名称或编码'"
         :show-export="true"
@@ -24,7 +25,7 @@
         :show-skeleton="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        @search="handleSearch"
+        @search="handleTableSearch"
         @export="handleJobExport"
       >
         <template #status="{ row }">
@@ -77,12 +78,16 @@
         v-loading="logLoading"
         :data="logList"
         :columns="logColumns"
-        :show-pagination="false"
+        :show-pagination="true"
+        :pagination="logPagination"
+        :backend-pagination="true"
         :show-search="true"
         :search-placeholder="'请输入任务名称或状态'"
         :show-export="true"
         :show-column-control="true"
         :show-skeleton="true"
+        @size-change="handleLogSizeChange"
+        @current-change="handleLogCurrentChange"
         @search="handleLogSearch"
         @export="handleLogExport"
       >
@@ -239,6 +244,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { scheduleJobApi } from '../../api/system/scheduleJob'
 import { formatDateTime } from '../../utils/dateUtils'
 import { safeInput } from '../../utils/xssUtil'
+import { useSearchPagination } from '../../hooks/usePagination'
 import BaseTable from '../../components/BaseTable.vue'
 
 const scheduleApi = scheduleJobApi()
@@ -246,13 +252,35 @@ const scheduleApi = scheduleJobApi()
 // 任务列表
 const jobList = ref([])
 const loading = ref(false)
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
+
+// 分页配置
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch
+} = useSearchPagination()
 
 // 日志列表
 const logList = ref([])
 const logLoading = ref(false)
+
+// 日志分页配置
+const logCurrentPage = ref(1)
+const logPageSize = ref(10)
+const logTotal = ref(0)
+const logPagination = ref({
+  currentPage: 1,
+  pageSize: 10,
+  total: 0
+})
+
+// 日志搜索
+const logSearchQuery = ref('')
 
 // 任务表格列配置
 const jobColumns = [
@@ -314,12 +342,7 @@ const logColumns = [
 ]
 
 // 分页配置
-const pagination = reactive({
-  currentPage: 1,
-  pageSize: 10,
-  pageSizes: [10, 20, 50, 100],
-  total: 0
-})
+
 
 // 对话框
 const dialogVisible = ref(false)
@@ -382,10 +405,14 @@ const rules = {
 const fetchJobList = async () => {
   loading.value = true
   try {
-    const data = await scheduleApi.getJobList()
-    jobList.value = data || []
-    total.value = data ? data.length : 0
-    pagination.total = data ? data.length : 0
+    const data = await scheduleApi.getJobList({
+      pageNum: currentPage.value,
+      pageSize: pageSize.value,
+      keyword: searchQuery.value
+    })
+    jobList.value = data.records || []
+    total.value = data.total || 0
+    pagination.total = data.total || 0
   } catch (error) {
     console.error('获取任务列表失败:', error)
     ElMessage.error('获取任务列表失败')
@@ -395,17 +422,71 @@ const fetchJobList = async () => {
 }
 
 // 获取日志列表
-const fetchLogList = async () => {
+const fetchLogList = async (keyword = '') => {
   logLoading.value = true
   try {
-    const data = await scheduleApi.getLogList()
-    logList.value = data || []
+    console.log('开始获取日志列表，参数:', {
+      pageNum: logCurrentPage.value,
+      pageSize: logPageSize.value,
+      keyword: keyword || logSearchQuery.value
+    })
+    const data = await scheduleApi.getLogList({
+      pageNum: logCurrentPage.value,
+      pageSize: logPageSize.value,
+      keyword: keyword || logSearchQuery.value
+    })
+    console.log('获取日志列表成功，数据:', data)
+    // 检查data的结构
+    if (data && data.records) {
+      logList.value = data.records || []
+      logTotal.value = data.total || 0
+      logPagination.value.total = data.total || 0
+      console.log('使用新格式数据，records长度:', data.records.length, 'total:', data.total)
+    } else if (Array.isArray(data)) {
+      // 如果data是数组，说明后端返回的是旧格式
+      logList.value = data || []
+      logTotal.value = data ? data.length : 0
+      logPagination.value.total = data ? data.length : 0
+      console.log('使用旧格式数据，长度:', data.length)
+    } else {
+      // 其他情况
+      logList.value = []
+      logTotal.value = 0
+      logPagination.value.total = 0
+      console.log('数据格式异常:', data)
+    }
   } catch (error) {
     console.error('获取日志列表失败:', error)
     ElMessage.error('获取日志列表失败')
+    logList.value = []
+    logTotal.value = 0
+    logPagination.value.total = 0
   } finally {
     logLoading.value = false
   }
+}
+
+// 处理日志分页大小变化
+const handleLogSizeChange = (val) => {
+  logPageSize.value = val
+  logPagination.value.pageSize = val
+  fetchLogList()
+}
+
+// 处理日志分页当前页码变化
+const handleLogCurrentChange = (val) => {
+  logCurrentPage.value = val
+  logPagination.value.currentPage = val
+  fetchLogList()
+}
+
+// 处理日志搜索
+const handleLogSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  logSearchQuery.value = keyword
+  logCurrentPage.value = 1
+  logPagination.value.currentPage = 1
+  fetchLogList(keyword)
 }
 
 // 打开新增对话框
@@ -572,32 +653,24 @@ const handleCleanLogs = async () => {
 }
 
 // 分页处理
-const handleSizeChange = (size) => {
-  pageSize.value = size
-  pagination.pageSize = size
+const handleSizeChange = (val) => {
+  originalHandleSizeChange(val)
   fetchJobList()
 }
 
-const handleCurrentChange = (current) => {
-  currentPage.value = current
-  pagination.currentPage = current
+const handleCurrentChange = (val) => {
+  originalHandleCurrentChange(val)
   fetchJobList()
 }
 
 // 任务搜索
-const handleSearch = (query) => {
-  // 这里需要根据后端API支持的搜索参数进行调整
-  // 目前我们假设后端API支持按任务名称和编码搜索
-  currentPage.value = 1
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  handleSearch(keyword)
   fetchJobList()
 }
 
-// 日志搜索
-const handleLogSearch = (query) => {
-  // 这里需要根据后端API支持的搜索参数进行调整
-  // 目前我们假设后端API支持按任务名称和状态搜索
-  fetchLogList()
-}
+
 
 // 导出任务列表
 const handleJobExport = () => {

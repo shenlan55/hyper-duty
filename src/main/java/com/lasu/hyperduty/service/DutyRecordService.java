@@ -1,6 +1,5 @@
 package com.lasu.hyperduty.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.lasu.hyperduty.entity.DutyRecord;
 import com.lasu.hyperduty.entity.SysEmployee;
 
@@ -11,7 +10,7 @@ import java.util.List;
  * 加班记录服务
  * 处理加班记录相关的业务逻辑
  */
-public interface DutyRecordService extends IService<DutyRecord> {
+public interface DutyRecordService extends BasePageService<DutyRecord> {
 
     /**
      * 根据加班记录ID获取可用的替补人员列表

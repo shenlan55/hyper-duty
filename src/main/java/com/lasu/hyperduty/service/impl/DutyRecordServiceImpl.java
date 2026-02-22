@@ -1,6 +1,10 @@
 package com.lasu.hyperduty.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.lasu.hyperduty.dto.PageRequestDTO;
+import com.lasu.hyperduty.dto.PageResponseDTO;
 import com.lasu.hyperduty.entity.DutyAssignment;
 import com.lasu.hyperduty.entity.DutyRecord;
 import com.lasu.hyperduty.entity.SysEmployee;
@@ -16,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -135,6 +140,56 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
     @Override
     public boolean removeById(java.io.Serializable id) {
         return super.removeById(id);
+    }
+
+    @Override
+    public PageResponseDTO<DutyRecord> page(PageRequestDTO pageRequestDTO, Map<String, Object> params) {
+        // 创建MyBatis Plus的Page对象
+        Page<DutyRecord> page = new Page<>(pageRequestDTO.getPageNum(), pageRequestDTO.getPageSize());
+        
+        // 构建查询条件
+        LambdaQueryWrapper<DutyRecord> queryWrapper = new LambdaQueryWrapper<>();
+        
+        // 从params中获取查询参数
+        Long employeeId = params != null ? (Long) params.get("employeeId") : null;
+        Long scheduleId = params != null ? (Long) params.get("scheduleId") : null;
+        String keyword = params != null ? (String) params.get("keyword") : null;
+        String date = params != null ? (String) params.get("date") : null;
+        
+        // 员工ID筛选
+        if (employeeId != null) {
+            queryWrapper.eq(DutyRecord::getEmployeeId, employeeId);
+        }
+        
+        // 值班表ID筛选（需要关联查询）
+        if (scheduleId != null) {
+            // 这里需要使用子查询，因为DutyRecord表中没有直接的scheduleId字段
+            // 而是通过assignmentId关联到DutyAssignment表，再关联到scheduleId
+            queryWrapper.inSql(DutyRecord::getAssignmentId, 
+                "SELECT id FROM duty_assignment WHERE schedule_id = " + scheduleId);
+        }
+        
+        // 关键词搜索
+        if (keyword != null && !keyword.isEmpty()) {
+            // 可以根据需要添加搜索字段
+            queryWrapper.like(DutyRecord::getCheckInRemark, keyword)
+                .or().like(DutyRecord::getCheckOutRemark, keyword);
+        }
+        
+        // 值班日期筛选（需要关联查询）
+        if (date != null && !date.isEmpty()) {
+            queryWrapper.inSql(DutyRecord::getAssignmentId, 
+                "SELECT id FROM duty_assignment WHERE duty_date = '" + date + "'");
+        }
+        
+        // 按创建时间倒序排序
+        queryWrapper.orderByDesc(DutyRecord::getCreateTime);
+        
+        // 执行分页查询
+        Page<DutyRecord> resultPage = baseMapper.selectPage(page, queryWrapper);
+        
+        // 转换为PageResponseDTO
+        return PageResponseDTO.fromPage(resultPage);
     }
 
 }

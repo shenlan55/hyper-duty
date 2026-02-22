@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.DutySchedule;
@@ -23,9 +24,18 @@ public class DutyScheduleController {
     private DutyScheduleShiftService dutyScheduleShiftService;
 
     @GetMapping("/list")
+    public ResponseResult<Page<DutySchedule>> getAllSchedules(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword) {
+        Page<DutySchedule> page = dutyScheduleService.getScheduleList(pageNum, pageSize, keyword);
+        return ResponseResult.success(page);
+    }
+
+    @GetMapping("/all")
     public ResponseResult<List<DutySchedule>> getAllSchedules() {
-        List<DutySchedule> scheduleList = dutyScheduleService.list();
-        return ResponseResult.success(scheduleList);
+        List<DutySchedule> schedules = dutyScheduleService.getAllSchedules();
+        return ResponseResult.success(schedules);
     }
 
     @GetMapping("/{id}")

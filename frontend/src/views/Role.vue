@@ -18,6 +18,7 @@
         :columns="columns"
         :show-pagination="true"
         :pagination="pagination"
+        :backend-pagination="true"
         :show-search="true"
         :search-placeholder="'请输入角色名称或编码'"
         :show-export="true"
@@ -25,7 +26,7 @@
         :show-skeleton="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        @search="handleSearch"
+        @search="handleTableSearch"
         @export="handleExport"
       >
         <template #status="{ row }">
@@ -127,14 +128,24 @@ import { getMenuList } from '../api/menu'
 import { getEmployeeList } from '../api/employee'
 import { formatDateTime } from '../utils/dateUtils'
 import { safeInput } from '../utils/xssUtil'
+import { useSearchPagination } from '../hooks/usePagination'
 import BaseTable from '../components/BaseTable.vue'
 
 // 角色列表数据
 const roleList = ref([])
-const total = ref(0)
-const currentPage = ref(1)
-const pageSize = ref(10)
 const loading = ref(false)
+
+// 分页配置
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch
+} = useSearchPagination()
 
 // 表格列配置
 const columns = [
@@ -162,13 +173,7 @@ const columns = [
   }
 ]
 
-// 分页配置
-const pagination = reactive({
-  currentPage: 1,
-  pageSize: 10,
-  pageSizes: [10, 20, 50, 100],
-  total: 0
-})
+
 
 // 表单数据
 const form = reactive({
@@ -217,7 +222,8 @@ const loadRoleList = async () => {
   try {
     const data = await listRole({
       pageNum: currentPage.value,
-      pageSize: pageSize.value
+      pageSize: pageSize.value,
+      keyword: searchQuery.value
     })
     roleList.value = data.records || []
     total.value = data.total || 0
@@ -410,26 +416,21 @@ const handleUserBindSubmit = async () => {
 }
 
 // 分页变更
-const handleCurrentChange = (page) => {
-  currentPage.value = page
-  pagination.currentPage = page
+const handleCurrentChange = (val) => {
+  originalHandleCurrentChange(val)
   loadRoleList()
 }
 
 // 分页大小变更
-const handleSizeChange = (size) => {
-  pageSize.value = size
-  pagination.pageSize = size
-  currentPage.value = 1
-  pagination.currentPage = 1
+const handleSizeChange = (val) => {
+  originalHandleSizeChange(val)
   loadRoleList()
 }
 
 // 表格搜索
-const handleSearch = (query) => {
-  // 这里需要根据后端API支持的搜索参数进行调整
-  // 目前我们假设后端API支持按角色名称和编码搜索
-  currentPage.value = 1
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  handleSearch(keyword)
   loadRoleList()
 }
 

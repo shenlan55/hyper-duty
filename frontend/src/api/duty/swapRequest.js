@@ -30,7 +30,7 @@ export function deleteSwapRequest(id) {
   })
 }
 
-export function getMySwapRequestsPage(employeeId, page, size, approvalStatus, scheduleId, startDate, endDate) {
+export function getMySwapRequestsPage(employeeId, page, size, approvalStatus, scheduleId, startDate, endDate, searchQuery) {
   return request({
     url: `/duty/swap-request/my/page/${employeeId}`,
     method: 'get',
@@ -40,7 +40,8 @@ export function getMySwapRequestsPage(employeeId, page, size, approvalStatus, sc
       approvalStatus,
       scheduleId,
       startDate,
-      endDate
+      endDate,
+      searchQuery
     }
   })
 }

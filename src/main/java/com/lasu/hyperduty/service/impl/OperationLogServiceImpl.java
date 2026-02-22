@@ -1,10 +1,12 @@
 package com.lasu.hyperduty.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.OperationLog;
 import com.lasu.hyperduty.mapper.OperationLogMapper;
 import com.lasu.hyperduty.service.OperationLogService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -129,5 +131,46 @@ public class OperationLogServiceImpl extends ServiceImpl<OperationLogMapper, Ope
         }
         
         return uniqueUsers.size();
+    }
+
+    @Override
+    public Page<OperationLog> searchLogsPage(
+            String operatorName, 
+            String operationType, 
+            String operationModule, 
+            LocalDate startDate, 
+            LocalDate endDate, 
+            Integer page, 
+            Integer pageSize) {
+        Page<OperationLog> pagination = new Page<>(page, pageSize);
+        
+        // 构建查询条件
+        QueryWrapper<OperationLog> queryWrapper = new QueryWrapper<>();
+        
+        if (operatorName != null && !operatorName.isEmpty()) {
+            queryWrapper.like("operator_name", operatorName);
+        }
+        
+        if (operationType != null && !operationType.isEmpty()) {
+            queryWrapper.eq("operation_type", operationType);
+        }
+        
+        if (operationModule != null && !operationModule.isEmpty()) {
+            queryWrapper.eq("operation_module", operationModule);
+        }
+        
+        if (startDate != null) {
+            queryWrapper.ge("create_time", startDate.atStartOfDay());
+        }
+        
+        if (endDate != null) {
+            queryWrapper.le("create_time", endDate.plusDays(1).atStartOfDay().minusSeconds(1));
+        }
+        
+        // 按创建时间倒序排序
+        queryWrapper.orderByDesc("create_time");
+        
+        // 执行分页查询
+        return baseMapper.selectPage(pagination, queryWrapper);
     }
 }

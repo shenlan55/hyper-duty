@@ -1,8 +1,16 @@
 import request from '../../utils/request'
 
-export function getScheduleList() {
+export function getScheduleList(params) {
   return request({
     url: '/duty/schedule/list',
+    method: 'get',
+    params
+  })
+}
+
+export function getAllSchedules() {
+  return request({
+    url: '/duty/schedule/all',
     method: 'get'
   })
 }

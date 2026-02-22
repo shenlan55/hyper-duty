@@ -26,14 +26,16 @@ public class SysRoleController {
      * 获取角色列表（分页）
      * @param pageNum 页码
      * @param pageSize 每页大小
+     * @param keyword 搜索关键词
      * @return 角色列表
      */
     @GetMapping("/list")
-    public ResponseResult<Page<SysRole>> listRole(@RequestParam(defaultValue = "1") Integer pageNum, 
-                                                 @RequestParam(defaultValue = "10") Integer pageSize) {
-        Page<SysRole> page = new Page<>(pageNum, pageSize);
-        Page<SysRole> rolePage = sysRoleService.page(page);
-        return ResponseResult.success(rolePage);
+    public ResponseResult<Page<SysRole>> listRole(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword) {
+        Page<SysRole> page = sysRoleService.getRoleList(pageNum, pageSize, keyword);
+        return ResponseResult.success(page);
     }
 
     /**

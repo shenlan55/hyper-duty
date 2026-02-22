@@ -14,7 +14,10 @@ public interface SysEmployeeService extends BasePageService<SysEmployee> {
 
     List<SysEmployee> getEmployeesByDeptId(Long deptId);
 
-    Page<SysEmployee> page(Page<SysEmployee> page, String keyword, Long deptId);
+    Page<SysEmployee> page(
+            Page<SysEmployee> page, 
+            String keyword, 
+            Long deptId);
 
     @Override
     PageResponseDTO<SysEmployee> page(PageRequestDTO pageRequestDTO, Map<String, Object> params);

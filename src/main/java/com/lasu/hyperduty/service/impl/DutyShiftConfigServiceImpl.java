@@ -1,6 +1,7 @@
 package com.lasu.hyperduty.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.DutyShiftConfig;
 import com.lasu.hyperduty.mapper.DutyShiftConfigMapper;
@@ -72,6 +73,70 @@ public class DutyShiftConfigServiceImpl extends CacheableServiceImpl<DutyShiftCo
         }
 
         return result;
+    }
+
+    /**
+     * 获取带互斥班次信息的班次配置列表（分页）
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param keyword 搜索关键字
+     * @return 带互斥班次信息的班次配置分页列表
+     */
+    @Override
+    public Page<Map<String, Object>> getShiftConfigsWithMutex(Integer pageNum, Integer pageSize, String keyword) {
+        // 创建分页对象
+        Page<DutyShiftConfig> pagination = new Page<>(pageNum, pageSize);
+        
+        // 构建查询条件
+        LambdaQueryWrapper<DutyShiftConfig> queryWrapper = new LambdaQueryWrapper<>();
+        
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.and(wrapper -> 
+                wrapper.like(DutyShiftConfig::getShiftName, keyword)
+                       .or().like(DutyShiftConfig::getShiftCode, keyword)
+                       .or().like(DutyShiftConfig::getRemark, keyword)
+            );
+        }
+        
+        // 按排序字段和创建时间倒序排序
+        queryWrapper.orderByAsc(DutyShiftConfig::getSort)
+                   .orderByDesc(DutyShiftConfig::getCreateTime);
+        
+        // 执行分页查询
+        Page<DutyShiftConfig> pageResult = this.page(pagination, queryWrapper);
+        
+        // 转换为带互斥班次信息的结果
+        Page<Map<String, Object>> resultPage = new Page<>(pageNum, pageSize, pageResult.getTotal());
+        List<Map<String, Object>> records = new ArrayList<>();
+        
+        for (DutyShiftConfig config : pageResult.getRecords()) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", config.getId());
+            map.put("shiftName", config.getShiftName());
+            map.put("shiftCode", config.getShiftCode());
+            map.put("shiftType", config.getShiftType());
+            map.put("startTime", config.getStartTime());
+            map.put("endTime", config.getEndTime());
+            map.put("isCrossDay", config.getIsCrossDay());
+            map.put("durationHours", config.getDurationHours());
+            map.put("breakHours", config.getBreakHours());
+            map.put("restDayRule", config.getRestDayRule());
+            map.put("isOvertimeShift", config.getIsOvertimeShift());
+            map.put("status", config.getStatus());
+            map.put("sort", config.getSort());
+            map.put("remark", config.getRemark());
+            map.put("createTime", config.getCreateTime());
+            map.put("updateTime", config.getUpdateTime());
+
+            // 添加互斥班次ID列表
+            List<Long> mutexShiftIds = dutyShiftMutexService.getMutexShiftIdsByShiftConfigId(config.getId());
+            map.put("mutexShiftIds", mutexShiftIds);
+
+            records.add(map);
+        }
+        
+        resultPage.setRecords(records);
+        return resultPage;
     }
 
     /**

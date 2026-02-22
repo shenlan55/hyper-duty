@@ -16,8 +16,9 @@ public class SysDictTypeController {
     private SysDictTypeService sysDictTypeService;
 
     @GetMapping("/list")
-    public ResponseResult<Page<SysDictType>> list(@RequestParam(defaultValue = "1") Integer pageNum,
-                                                   @RequestParam(defaultValue = "10") Integer pageSize) {
+    public ResponseResult<Page<SysDictType>> list(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
         Page<SysDictType> page = new Page<>(pageNum, pageSize);
         Page<SysDictType> dictTypePage = sysDictTypeService.page(page);
         return ResponseResult.success(dictTypePage);

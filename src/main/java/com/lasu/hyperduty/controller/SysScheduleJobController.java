@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.SysScheduleJob;
@@ -26,12 +27,18 @@ public class SysScheduleJobController {
 
     /**
      * 获取定时任务列表
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param keyword 搜索关键词
      * @return 定时任务列表
      */
     @GetMapping("/job/list")
-    public ResponseResult<List<SysScheduleJob>> getJobList() {
-        List<SysScheduleJob> jobs = scheduleJobService.list();
-        return ResponseResult.success(jobs);
+    public ResponseResult<Page<SysScheduleJob>> getJobList(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword) {
+        Page<SysScheduleJob> page = scheduleJobService.getJobList(pageNum, pageSize, keyword);
+        return ResponseResult.success(page);
     }
 
     /**
@@ -119,19 +126,20 @@ public class SysScheduleJobController {
 
     /**
      * 获取定时任务日志列表
-     * @param jobId 任务ID
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param jobId 任务ID（可选）
+     * @param keyword 搜索关键词（可选）
      * @return 日志列表
      */
     @GetMapping("/log/list")
-    public ResponseResult<List<SysScheduleLog>> getLogList(@RequestParam(required = false) Long jobId) {
-        List<SysScheduleLog> logs;
-        if (jobId != null) {
-            logs = scheduleLogService.list();
-            // 这里可以根据jobId过滤，后续可以扩展
-        } else {
-            logs = scheduleLogService.list();
-        }
-        return ResponseResult.success(logs);
+    public ResponseResult<Page<SysScheduleLog>> getLogList(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) Long jobId,
+            @RequestParam(required = false) String keyword) {
+        Page<SysScheduleLog> page = scheduleLogService.getLogList(pageNum, pageSize, jobId, keyword);
+        return ResponseResult.success(page);
     }
 
     /**

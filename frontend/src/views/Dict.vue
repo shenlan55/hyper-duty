@@ -22,6 +22,7 @@
                 clearable
                 size="small"
                 style="width: 150px"
+                @input="handleTypeSearch"
               />
             </div>
             <div class="type-list">
@@ -78,14 +79,18 @@
               v-loading="dataLoading"
               :data="dictDataList"
               :columns="dataColumns"
-              :show-pagination="false"
+              :show-pagination="true"
+              :pagination="pagination"
+              :backend-pagination="true"
               :show-search="true"
               :search-placeholder="'请输入字典标签或键值'"
               :show-export="true"
               :show-column-control="true"
               :show-skeleton="true"
               border
-              @search="handleDataSearch"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+              @search="handleTableSearch"
               @export="handleDataExport"
             >
               <template #isDefault="{ row }">
@@ -198,6 +203,7 @@ import {
 } from '../api/dictData'
 import { formatDateTime } from '../utils/dateUtils'
 import { safeInput } from '../utils/xssUtil'
+import { useSearchPagination } from '../hooks/usePagination'
 import BaseTable from '../components/BaseTable.vue'
 
 const typeLoading = ref(false)
@@ -211,9 +217,21 @@ const dataDialogTitle = ref('')
 const typeSearchQuery = ref('')
 const dictTypeList = ref([])
 const dictDataList = ref([])
-const selectedDictTypeId = ref('')
+const selectedDictTypeId = ref(null)
 const typeFormRef = ref(null)
 const dataFormRef = ref(null)
+
+// 字典数据分页配置
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch
+} = useSearchPagination()
 
 const typeForm = reactive({
   id: null,
@@ -304,6 +322,12 @@ const filteredDictTypes = computed(() => {
   )
 })
 
+// 字典类型搜索
+const handleTypeSearch = () => {
+  // 搜索逻辑已在computed属性中实现
+  // 这里可以添加额外的搜索处理逻辑
+}
+
 const loadDictTypeList = async () => {
   typeLoading.value = true
   try {
@@ -319,13 +343,22 @@ const loadDictTypeList = async () => {
 const loadDictDataList = async () => {
   if (!selectedDictTypeId.value) {
     dictDataList.value = []
+    total.value = 0
+    pagination.total = 0
     return
   }
 
   dataLoading.value = true
   try {
-    const data = await getDictDataByType(selectedDictTypeId.value)
-    dictDataList.value = data || []
+    const data = await listDictData({
+      dictTypeId: selectedDictTypeId.value,
+      keyword: searchQuery.value,
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    })
+    dictDataList.value = data.records || []
+    total.value = data.total || 0
+    pagination.total = data.total || 0
   } catch (error) {
     ElMessage.error('加载字典数据列表失败')
   } finally {
@@ -335,6 +368,28 @@ const loadDictDataList = async () => {
 
 const selectDictType = (dictType) => {
   selectedDictTypeId.value = dictType.id
+  currentPage.value = 1
+  pagination.currentPage = 1
+  searchQuery.value = ''
+  loadDictDataList()
+}
+
+// 分页变更
+const handleCurrentChange = (val) => {
+  originalHandleCurrentChange(val)
+  loadDictDataList()
+}
+
+// 分页大小变更
+const handleSizeChange = (val) => {
+  originalHandleSizeChange(val)
+  loadDictDataList()
+}
+
+// 表格搜索
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  handleSearch(keyword)
   loadDictDataList()
 }
 
@@ -484,19 +539,7 @@ const handleDeleteData = async (id) => {
   }
 }
 
-const handleDataSearch = (searchParams) => {
-  const searchTerm = searchParams.global.toLowerCase()
-  if (!searchTerm) {
-    loadDictDataList()
-    return
-  }
-  
-  // 过滤字典数据
-  dictDataList.value = dictDataList.value.filter(item => 
-    item.dictLabel.toLowerCase().includes(searchTerm) || 
-    item.dictValue.toLowerCase().includes(searchTerm)
-  )
-}
+
 
 const handleDataExport = (exportParams) => {
   // 这里可以添加导出逻辑，例如调用后端API或使用前端库导出

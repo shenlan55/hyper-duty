@@ -54,72 +54,57 @@
           </el-form-item>
         </el-form>
       </div>
-      <el-table
+      <BaseTable
         v-loading="loading"
         :data="requestList"
-        style="width: 100%"
-        row-key="id"
+        :columns="columns"
+        :show-pagination="true"
+        :pagination="pagination"
+        :backend-pagination="true"
+        :show-search="true"
+        :search-placeholder="'请输入申请编号或调班原因'"
+        :show-export="true"
+        :show-column-control="true"
+        :show-skeleton="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        @search="handleTableSearch"
+        @export="handleExport"
       >
-        <el-table-column prop="requestNo" label="申请编号" width="180" />
-        <el-table-column prop="scheduleName" label="值班表" width="150" show-overflow-tooltip />
-        <el-table-column prop="originalEmployeeName" label="原值班人员" width="120" />
-        <el-table-column prop="targetEmployeeName" label="目标值班人员" width="120" />
-        <el-table-column label="原值班信息" width="200">
-          <template #default="scope">
-            {{ formatDate(scope.row.originalSwapDate) }} {{ getShiftName(scope.row.originalSwapShift) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="目标值班信息" width="200">
-          <template #default="scope">
-            {{ formatDate(scope.row.targetSwapDate) }} {{ getShiftName(scope.row.targetSwapShift) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="reason" label="调班原因" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="approvalStatus" label="审批状态" width="100">
-          <template #default="scope">
-            <el-tag :type="getApprovalStatusColor(scope.row.approvalStatus)">
-              {{ getApprovalStatusName(scope.row.approvalStatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="申请时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="scope">
-            <el-button
-              v-if="scope.row.approvalStatus === 'pending' && scope.row.targetEmployeeId === currentEmployeeId"
-              type="primary"
-              size="small"
-              @click="openConfirmDialog(scope.row)"
-            >
-              确认
-            </el-button>
-            <!-- 对发起人显示"撤销"，对目标值班人员显示"打回" -->
-            <el-button
-              v-if="scope.row.approvalStatus === 'pending'"
-              type="danger"
-              size="small"
-              @click="handleDelete(scope.row.id)"
-            >
-              {{ scope.row.originalEmployeeId === currentEmployeeId ? '撤销' : '打回' }}
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div class="pagination-container" v-if="total > 0">
-        <el-pagination
-          v-model:current-page="pagination.currentPage"
-          v-model:page-size="pagination.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
+        <template #originalSwapInfo="{ row }">
+          {{ formatDate(row.originalSwapDate) }} {{ getShiftName(row.originalSwapShift) }}
+        </template>
+        <template #targetSwapInfo="{ row }">
+          {{ formatDate(row.targetSwapDate) }} {{ getShiftName(row.targetSwapShift) }}
+        </template>
+        <template #approvalStatus="{ row }">
+          <el-tag :type="getApprovalStatusColor(row.approvalStatus)">
+            {{ getApprovalStatusName(row.approvalStatus) }}
+          </el-tag>
+        </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
+        <template #action="{ row }">
+          <el-button
+            v-if="row.approvalStatus === 'pending' && row.targetEmployeeId === currentEmployeeId"
+            type="primary"
+            size="small"
+            @click="openConfirmDialog(row)"
+          >
+            确认
+          </el-button>
+          <!-- 对发起人显示"撤销"，对目标值班人员显示"打回" -->
+          <el-button
+            v-if="row.approvalStatus === 'pending'"
+            type="danger"
+            size="small"
+            @click="handleDelete(row.id)"
+          >
+            {{ row.originalEmployeeId === currentEmployeeId ? '撤销' : '打回' }}
+          </el-button>
+        </template>
+      </BaseTable>
     </el-card>
 
     <el-dialog
@@ -339,11 +324,13 @@ import {
   getMySwapRequestsPage
 } from '../../api/duty/swapRequest'
 import { getEmployeeList } from '../../api/employee'
-import { getScheduleList, getScheduleEmployees, getScheduleShifts } from '../../api/duty/schedule'
+import { getAllSchedules, getScheduleEmployees, getScheduleShifts } from '../../api/duty/schedule'
 import { getEmployeeDutyDates, getEmployeeDutyShifts } from '../../api/duty/assignment'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { getUserInfo } from '../../utils/auth'
+import { useSearchPagination } from '../../hooks/usePagination'
+import BaseTable from '../../components/BaseTable.vue'
 
 const shiftApi = shiftConfigApi()
 
@@ -364,6 +351,18 @@ const availableShiftIds = ref([])
 const currentSwapRequest = ref({})
 const currentEmployeeId = ref(1)
 const isLeader = ref(false)
+
+// 分页配置
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch
+} = useSearchPagination()
 
 // 调班日期和班次限制相关
 const dutyDatesMap = ref(new Map()) // 存储每个员工的排班日期列表
@@ -481,12 +480,7 @@ const filterForm = reactive({
   endDate: null
 })
 
-const pagination = reactive({
-  currentPage: 1,
-  pageSize: 10
-})
 
-const total = ref(0)
 
 const rules = {
   scheduleId: [
@@ -571,7 +565,9 @@ const fetchEmployeeList = async () => {
 const fetchShiftConfigList = async () => {
   try {
     const data = await shiftApi.getShiftConfigList()
-    const filteredData = (data || []).filter(config => config.status === 1)
+    // 处理API返回的不同数据结构
+    const shiftConfigs = data?.records || data || []
+    const filteredData = Array.isArray(shiftConfigs) ? shiftConfigs.filter(config => config.status === 1) : []
     shiftConfigList.value = filteredData
   } catch (error) {
     console.error('获取班次配置列表失败:', error)
@@ -580,12 +576,100 @@ const fetchShiftConfigList = async () => {
 
 const fetchScheduleList = async () => {
   try {
-    const data = await getScheduleList()
-    scheduleList.value = (data || []).filter(schedule => schedule.status === 1)
+    const data = await getAllSchedules()
+    
+    // 过滤出状态为1的值班表
+    const enabledSchedules = (data || []).filter(schedule => schedule.status === 1)
+    
+    // 过滤出用户所在的值班表
+let userSchedules = []
+if (currentEmployeeId.value) {
+  for (const schedule of enabledSchedules) {
+    try {
+      // 检查用户是否在值班表中
+      const employees = await getScheduleEmployees(schedule.id)
+      if (employees && employees.includes(currentEmployeeId.value)) {
+        userSchedules.push(schedule)
+      }
+    } catch (error) {
+      console.error('获取值班表员工失败:', error)
+    }
+  }
+}
+    
+    // 如果没有找到用户所在的值班表，或者用户未登录，使用所有启用的值班表
+    if (userSchedules.length === 0) {
+      userSchedules = enabledSchedules
+    }
+    
+    // 获取值班表列表（后端已经按id排序）
+    scheduleList.value = userSchedules
+    
+    // 如果有值班表，默认选择第一个
+    if (scheduleList.value.length > 0 && !filterForm.scheduleId) {
+      filterForm.scheduleId = scheduleList.value[0].id
+    }
   } catch (error) {
     console.error('获取值班表列表失败:', error)
   }
 }
+
+// 表格列配置
+const columns = [
+  {
+    prop: 'requestNo',
+    label: '申请编号',
+    width: 180
+  },
+  {
+    prop: 'scheduleName',
+    label: '值班表',
+    width: 150
+  },
+  {
+    prop: 'originalEmployeeName',
+    label: '原值班人员',
+    width: 120
+  },
+  {
+    prop: 'targetEmployeeName',
+    label: '目标值班人员',
+    width: 120
+  },
+  {
+    label: '原值班信息',
+    width: 200,
+    slotName: 'originalSwapInfo'
+  },
+  {
+    label: '目标值班信息',
+    width: 200,
+    slotName: 'targetSwapInfo'
+  },
+  {
+    prop: 'reason',
+    label: '调班原因',
+    minWidth: 200
+  },
+  {
+    prop: 'approvalStatus',
+    label: '审批状态',
+    width: 100,
+    slotName: 'approvalStatus'
+  },
+  {
+    prop: 'createTime',
+    label: '申请时间',
+    width: 180,
+    slotName: 'createTime'
+  },
+  {
+    label: '操作',
+    width: 200,
+    fixed: 'right',
+    slotName: 'action'
+  }
+]
 
 const fetchAvailableEmployees = async (scheduleId) => {
   try {
@@ -712,12 +796,13 @@ const fetchMySwapRequests = async () => {
   try {
     const data = await getMySwapRequestsPage(
       currentEmployeeId.value,
-      pagination.currentPage,
-      pagination.pageSize,
+      currentPage.value,
+      pageSize.value,
       filterForm.approvalStatus,
       filterForm.scheduleId,
       filterForm.startDate,
-      filterForm.endDate
+      filterForm.endDate,
+      searchQuery.value
     )
     // 处理调班申请列表，设置员工名称和值班表名称
     requestList.value = (data.records || []).map(item => {
@@ -736,6 +821,7 @@ const fetchMySwapRequests = async () => {
       return item
     })
     total.value = data.total || 0
+    pagination.total = data.total || 0
   } catch (error) {
     console.error('获取调班申请列表失败:', error)
     ElMessage.error('获取调班申请列表失败')
@@ -745,6 +831,7 @@ const fetchMySwapRequests = async () => {
 }
 
 const handleFilter = () => {
+  currentPage.value = 1
   pagination.currentPage = 1
   fetchMySwapRequests()
 }
@@ -754,18 +841,33 @@ const resetFilter = () => {
   filterForm.scheduleId = null
   filterForm.startDate = null
   filterForm.endDate = null
+  currentPage.value = 1
   pagination.currentPage = 1
   fetchMySwapRequests()
 }
 
 const handleSizeChange = (size) => {
-  pagination.pageSize = size
+  originalHandleSizeChange(size)
   fetchMySwapRequests()
 }
 
 const handleCurrentChange = (current) => {
-  pagination.currentPage = current
+  originalHandleCurrentChange(current)
   fetchMySwapRequests()
+}
+
+// 表格搜索处理
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  searchQuery.value = keyword
+  currentPage.value = 1
+  fetchMySwapRequests()
+}
+
+// 导出处理
+const handleExport = () => {
+  // 导出逻辑
+  ElMessage.success('导出成功')
 }
 
 const handleScheduleChange = async (scheduleId) => {

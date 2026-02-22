@@ -17,6 +17,7 @@
         :columns="columns"
         :show-pagination="true"
         :pagination="pagination"
+        :backend-pagination="true"
         :show-search="true"
         :search-placeholder="'请输入班次名称或编码'"
         :show-export="true"
@@ -24,7 +25,7 @@
         :show-skeleton="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        @search="handleSearch"
+        @search="handleTableSearch"
         @export="handleExport"
       >
         <template #shiftType="{ row }">
@@ -226,11 +227,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
-import BaseTable from '@/components/BaseTable.vue'
+import BaseTable from '../../components/BaseTable.vue'
+import { useSearchPagination } from '../../hooks/usePagination'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { safeInput } from '../../utils/xssUtil'
@@ -243,9 +245,18 @@ const dialogLoading = ref(false)
 const dialogTitle = ref('添加班次')
 const formRef = ref()
 const shiftConfigList = ref([])
-const currentPage = ref(1)
-const pageSize = ref(10)
-const searchQuery = ref('')
+
+// 分页配置
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch
+} = useSearchPagination()
 
 const form = reactive({
   id: null,
@@ -277,15 +288,6 @@ const columns = [
   { prop: 'remark', label: '备注', minWidth: '200' },
   { type: 'operation', label: '操作', width: '200', fixed: 'right' }
 ]
-
-const pagination = computed(() => {
-  return {
-    currentPage: currentPage.value,
-    pageSize: pageSize.value,
-    pageSizes: [10, 20, 50, 100],
-    total: shiftConfigList.value.length
-  }
-})
 
 const rules = {
   shiftName: [
@@ -337,8 +339,14 @@ const getShiftTypeColor = (type) => {
 const fetchShiftConfigList = async () => {
   loading.value = true
   try {
-    const data = await shiftApi.getShiftConfigList()
-    shiftConfigList.value = data || []
+    const data = await shiftApi.getShiftConfigList({
+      pageNum: currentPage.value,
+      pageSize: pageSize.value,
+      keyword: searchQuery.value
+    })
+    shiftConfigList.value = data.records || []
+    total.value = data.total || 0
+    pagination.total = data.total || 0
   } catch (error) {
     console.error('获取班次配置列表失败:', error)
     ElMessage.error('获取班次配置列表失败')
@@ -453,18 +461,20 @@ const handleDelete = async (id) => {
 
 // 分页处理
 const handleSizeChange = (size) => {
-  pageSize.value = size
-  currentPage.value = 1
+  originalHandleSizeChange(size)
+  fetchShiftConfigList()
 }
 
 const handleCurrentChange = (current) => {
-  currentPage.value = current
+  originalHandleCurrentChange(current)
+  fetchShiftConfigList()
 }
 
 // 搜索处理
-const handleSearch = (query) => {
-  searchQuery.value = query
-  currentPage.value = 1
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  handleSearch(keyword)
+  fetchShiftConfigList()
 }
 
 // 导出处理

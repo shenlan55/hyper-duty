@@ -18,10 +18,13 @@ public class SysDictDataController {
     private SysDictDataService sysDictDataService;
 
     @GetMapping("/list")
-    public ResponseResult<Page<SysDictData>> list(@RequestParam(defaultValue = "1") Integer pageNum,
-                                                   @RequestParam(defaultValue = "10") Integer pageSize) {
+    public ResponseResult<Page<SysDictData>> list(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) Long dictTypeId,
+            @RequestParam(required = false) String keyword) {
         Page<SysDictData> page = new Page<>(pageNum, pageSize);
-        Page<SysDictData> dictDataPage = sysDictDataService.page(page);
+        Page<SysDictData> dictDataPage = sysDictDataService.page(page, dictTypeId, keyword);
         return ResponseResult.success(dictDataPage);
     }
 

@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.entity.DutyShiftConfig;
 import com.lasu.hyperduty.service.DutyShiftConfigService;
@@ -22,10 +23,13 @@ public class DutyShiftConfigController {
     private DutyShiftMutexService dutyShiftMutexService;
 
     @GetMapping("/list")
-    public ResponseResult<List<Map<String, Object>>> getAllShiftConfigs() {
+    public ResponseResult<Page<Map<String, Object>>> getAllShiftConfigs(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword) {
         try {
-            List<Map<String, Object>> list = dutyShiftConfigService.getShiftConfigsWithMutex();
-            return ResponseResult.success(list);
+            Page<Map<String, Object>> page = dutyShiftConfigService.getShiftConfigsWithMutex(pageNum, pageSize, keyword);
+            return ResponseResult.success(page);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseResult.error("获取班次配置列表失败: " + e.getMessage());

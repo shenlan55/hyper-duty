@@ -69,6 +69,7 @@
         :columns="columns"
         :show-pagination="true"
         :pagination="pagination"
+        :backend-pagination="true"
         :show-search="true"
         :search-placeholder="'请输入操作人或操作描述'"
         :show-export="true"
@@ -76,7 +77,7 @@
         :show-skeleton="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        @search="handleSearch"
+        @search="handleTableSearch"
         @export="handleExport"
       >
         <template #status="{ row }">
@@ -136,16 +137,26 @@ import {
   deleteOperationLog
 } from '../../api/duty/operationLog'
 import { safeInput } from '../../utils/xssUtil'
+import { useSearchPagination } from '../../hooks/usePagination'
 import BaseTable from '../../components/BaseTable.vue'
 import { formatDateTime } from '../../utils/dateUtils'
 
 const loading = ref(false)
 const viewDialogVisible = ref(false)
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
 const logList = ref([])
 const currentLog = ref({})
+
+// 分页配置
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch
+} = useSearchPagination()
 
 const searchForm = reactive({
   operatorName: '',
@@ -159,10 +170,10 @@ const fetchLogList = async () => {
   try {
     // 构建搜索参数
     const params = {
-      operatorName: safeInput(searchForm.operatorName),
+      operatorName: safeInput(searchForm.operatorName || searchQuery.value),
       operationType: safeInput(searchForm.operationType),
       operationModule: safeInput(searchForm.operationModule),
-      page: currentPage.value,
+      pageNum: currentPage.value,
       pageSize: pageSize.value
     }
     
@@ -173,8 +184,8 @@ const fetchLogList = async () => {
     }
     
     const data = await getOperationLogList(params)
-    // 后端返回的是PageResult对象，包含data和total字段
-    logList.value = data.data || []
+    // 后端返回的是MyBatis Plus Page对象，包含records和total字段
+    logList.value = data.records || []
     total.value = data.total || 0
     pagination.total = data.total || 0
   } catch (error) {
@@ -201,17 +212,13 @@ const handleReset = () => {
   fetchLogList()
 }
 
-const handleSizeChange = (size) => {
-  pageSize.value = size
-  pagination.pageSize = size
-  currentPage.value = 1
-  pagination.currentPage = 1
+const handleSizeChange = (val) => {
+  originalHandleSizeChange(val)
   fetchLogList()
 }
 
-const handleCurrentChange = (page) => {
-  currentPage.value = page
-  pagination.currentPage = page
+const handleCurrentChange = (val) => {
+  originalHandleCurrentChange(val)
   fetchLogList()
 }
 
@@ -239,9 +246,9 @@ const handleDelete = async (id) => {
   }
 }
 
-const handleSearch = (query) => {
-  searchForm.operatorName = query
-  currentPage.value = 1
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  handleSearch(keyword)
   fetchLogList()
 }
 
@@ -310,12 +317,7 @@ const columns = [
 ]
 
 // 分页配置
-const pagination = reactive({
-  currentPage: 1,
-  pageSize: 10,
-  pageSizes: [10, 20, 50, 100],
-  total: 0
-})
+
 
 onMounted(() => {
   fetchLogList()

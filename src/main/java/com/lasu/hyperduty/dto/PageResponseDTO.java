@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.dto;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -40,7 +41,7 @@ public class PageResponseDTO<T> implements Serializable {
      * @param <T> 数据类型
      * @return 分页响应DTO
      */
-    public static <T> PageResponseDTO<T> fromPage(com.baomidou.mybatisplus.extension.plugins.pagination.Page<T> page) {
+    public static <T> PageResponseDTO<T> fromPage(Page<T> page) {
         PageResponseDTO<T> response = new PageResponseDTO<>();
         response.setRecords(page.getRecords());
         response.setTotal(page.getTotal());

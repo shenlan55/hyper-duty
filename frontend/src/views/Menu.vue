@@ -430,7 +430,7 @@ const handleSubmit = async () => {
 }
 
 const handleSearch = (searchParams) => {
-  const searchTerm = searchParams.global.toLowerCase()
+  const searchTerm = searchParams?.global?.toLowerCase() || ''
   if (!searchTerm) {
     loadMenuData()
     return

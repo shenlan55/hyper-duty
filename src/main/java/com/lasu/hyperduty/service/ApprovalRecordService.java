@@ -1,10 +1,11 @@
 package com.lasu.hyperduty.service;
 
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.lasu.hyperduty.entity.ApprovalRecord;
 
 import java.util.List;
 
-public interface ApprovalRecordService extends com.baomidou.mybatisplus.extension.service.IService<ApprovalRecord> {
+public interface ApprovalRecordService extends IService<ApprovalRecord> {
 
     void addApprovalRecord(Long requestId, String requestType, Long approverId, 
                          Integer approvalLevel, String approvalStatus, String approvalOpinion);

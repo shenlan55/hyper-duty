@@ -208,7 +208,7 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
     }
 
     @Override
-    public IPage<SwapRequest> getMySwapRequestsPage(Long employeeId, Integer page, Integer size, String approvalStatus, Long scheduleId, String startDate, String endDate) {
+    public IPage<SwapRequest> getMySwapRequestsPage(Long employeeId, Integer page, Integer size, String approvalStatus, Long scheduleId, String startDate, String endDate, String searchQuery) {
         IPage<SwapRequest> pageInfo = new Page<>(page, size);
         return lambdaQuery()
                 .and(wrapper -> wrapper
@@ -219,6 +219,10 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
                 .eq(scheduleId != null, SwapRequest::getScheduleId, scheduleId)
                 .ge(startDate != null && !startDate.isEmpty(), SwapRequest::getCreateTime, startDate)
                 .le(endDate != null && !endDate.isEmpty(), SwapRequest::getCreateTime, endDate)
+                .and(searchQuery != null && !searchQuery.isEmpty(), wrapper -> wrapper
+                        .like(SwapRequest::getRequestNo, searchQuery)
+                        .or()
+                        .like(SwapRequest::getReason, searchQuery))
                 .orderByDesc(SwapRequest::getCreateTime)
                 .page(pageInfo);
     }

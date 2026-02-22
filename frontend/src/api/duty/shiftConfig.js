@@ -7,12 +7,17 @@ export function shiftConfigApi() {
   return {
     /**
      * 获取班次配置列表
+     * @param {Object} params 查询参数
+     * @param {number} params.pageNum 页码
+     * @param {number} params.pageSize 每页大小
+     * @param {string} params.keyword 搜索关键字
      * @returns {Promise}
      */
-    getShiftConfigList() {
+    getShiftConfigList(params) {
       return request({
         url: '/duty/shift-config/list',
-        method: 'get'
+        method: 'get',
+        params
       })
     },
 

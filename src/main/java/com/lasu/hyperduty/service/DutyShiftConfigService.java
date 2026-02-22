@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.lasu.hyperduty.entity.DutyShiftConfig;
 
@@ -19,6 +20,15 @@ public interface DutyShiftConfigService extends IService<DutyShiftConfig> {
      * @return 带互斥班次信息的班次配置列表
      */
     List<Map<String, Object>> getShiftConfigsWithMutex();
+
+    /**
+     * 获取带互斥班次信息的班次配置列表（分页）
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param keyword 搜索关键字
+     * @return 带互斥班次信息的班次配置分页列表
+     */
+    Page<Map<String, Object>> getShiftConfigsWithMutex(Integer pageNum, Integer pageSize, String keyword);
 
     /**
      * 根据ID获取带互斥班次信息的班次配置

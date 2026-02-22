@@ -17,6 +17,7 @@
         :columns="columns"
         :show-pagination="true"
         :pagination="pagination"
+        :backend-pagination="true"
         :show-search="true"
         :search-placeholder="'请输入值班表名称'"
         :show-export="true"
@@ -24,7 +25,7 @@
         :show-skeleton="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        @search="handleSearch"
+        @search="handleTableSearch"
         @export="handleExport"
       >
         <template #startDate="{ row }">
@@ -207,8 +208,8 @@ import { getEmployeeList } from '../../api/employee'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { safeInput } from '../../utils/xssUtil'
+import { useSearchPagination } from '../../hooks/usePagination'
 
-const searchQuery = ref('')
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogLoading = ref(false)
@@ -221,8 +222,17 @@ const currentScheduleId = ref(null)
 const activeTab = ref('list')
 const selectedLeaderList = ref([])
 
-const currentPage = ref(1)
-const pageSize = ref(10)
+// 分页配置
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch
+} = useSearchPagination()
 
 const scheduleList = ref([])
 const allEmployeeList = ref([])
@@ -265,14 +275,7 @@ const filteredScheduleList = computed(() => {
   return list
 })
 
-const pagination = computed(() => {
-  return {
-    currentPage: currentPage.value,
-    pageSize: pageSize.value,
-    pageSizes: [10, 20, 50, 100],
-    total: filteredScheduleList.value.length
-  }
-})
+
 
 const columns = [
   { prop: 'id', label: 'ID', width: '80' },
@@ -292,8 +295,14 @@ const getEmployeeName = (employeeId) => {
 const fetchScheduleList = async () => {
   loading.value = true
   try {
-    const data = await getScheduleList()
-    scheduleList.value = data || []
+    const data = await getScheduleList({
+      pageNum: currentPage.value,
+      pageSize: pageSize.value,
+      keyword: searchQuery.value
+    })
+    scheduleList.value = data.records || []
+    total.value = data.total || 0
+    pagination.total = data.total || 0
   } catch (error) {
     console.error('获取值班表列表失败:', error)
     ElMessage.error('获取值班表列表失败')
@@ -304,7 +313,7 @@ const fetchScheduleList = async () => {
 
 const fetchEmployeeList = async () => {
   try {
-    const data = await getEmployeeList()
+    const data = await getEmployeeList(1, 1000, '') // 传递较大的pageSize以获取所有员工
     allEmployeeList.value = (data?.records || []).map(emp => ({
       key: emp.id,
       label: emp.employeeName,
@@ -320,8 +329,12 @@ const shiftApi = shiftConfigApi()
 
 const fetchShiftList = async () => {
   try {
-    const data = await shiftApi.getShiftConfigList()
-    allShiftList.value = (data || []).map(shift => ({
+    const data = await shiftApi.getShiftConfigList({
+      pageNum: 1,
+      pageSize: 100, // 加载足够多的班次
+      keyword: ''
+    })
+    allShiftList.value = (data?.records || []).map(shift => ({
       key: shift.id,
       label: shift.shiftName,
       disabled: shift.status !== 1
@@ -332,9 +345,10 @@ const fetchShiftList = async () => {
   }
 }
 
-const handleSearch = (searchParams) => {
-  searchQuery.value = searchParams.global
-  currentPage.value = 1
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  handleSearch(keyword)
+  fetchScheduleList()
 }
 
 const handleExport = (exportParams) => {
@@ -342,13 +356,14 @@ const handleExport = (exportParams) => {
   ElMessage.success(`导出${exportParams.format}格式成功`)
 }
 
-const handleSizeChange = (size) => {
-  pageSize.value = size
-  currentPage.value = 1
+const handleSizeChange = (val) => {
+  originalHandleSizeChange(val)
+  fetchScheduleList()
 }
 
-const handleCurrentChange = (page) => {
-  currentPage.value = page
+const handleCurrentChange = (val) => {
+  originalHandleCurrentChange(val)
+  fetchScheduleList()
 }
 
 const openAddDialog = () => {

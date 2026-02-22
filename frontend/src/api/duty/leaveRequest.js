@@ -115,33 +115,33 @@ export function getEmployeeLeaveInfo(employeeIds, startDate, endDate) {
 /**
  * 分页获取我的请假申请
  */
-export function getMyLeaveRequestsPage(employeeId, page, size, leaveType, approvalStatus, startDate, endDate) {
+export function getMyLeaveRequestsPage(employeeId, page, size, leaveType, approvalStatus, startDate, endDate, searchQuery) {
   return request({
     url: `/duty/leave-request/my/page/${employeeId}`,
     method: 'get',
-    params: { page, size, leaveType, approvalStatus, startDate, endDate }
+    params: { page, size, leaveType, approvalStatus, startDate, endDate, searchQuery }
   })
 }
 
 /**
  * 分页获取待审批请假申请
  */
-export function getPendingApprovalsPage(approverId, page, size, scheduleId, leaveType, startDate, endDate) {
+export function getPendingApprovalsPage(approverId, page, size, scheduleId, leaveType, startDate, endDate, searchQuery) {
   return request({
     url: `/duty/leave-request/pending/page/${approverId}`,
     method: 'get',
-    params: { page, size, scheduleId, leaveType, startDate, endDate }
+    params: { page, size, scheduleId, leaveType, startDate, endDate, searchQuery }
   })
 }
 
 /**
  * 分页获取已审批请假申请
  */
-export function getApprovedApprovalsPage(approverId, page, size, scheduleId, leaveType, approvalStatus, startDate, endDate) {
+export function getApprovedApprovalsPage(approverId, page, size, scheduleId, leaveType, approvalStatus, startDate, endDate, searchQuery) {
   return request({
     url: `/duty/leave-request/approved/page/${approverId}`,
     method: 'get',
-    params: { page, size, scheduleId, leaveType, approvalStatus, startDate, endDate }
+    params: { page, size, scheduleId, leaveType, approvalStatus, startDate, endDate, searchQuery }
   })
 }
 

@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -239,19 +240,19 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         java.time.LocalDate start = java.time.LocalDate.parse(startDate);
         java.time.LocalDate end = java.time.LocalDate.parse(endDate);
 
-        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lasu.hyperduty.entity.DutyAssignment> queryWrapper = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
-        queryWrapper.eq(com.lasu.hyperduty.entity.DutyAssignment::getEmployeeId, employeeId)
-                .ge(com.lasu.hyperduty.entity.DutyAssignment::getDutyDate, start)
-                .le(com.lasu.hyperduty.entity.DutyAssignment::getDutyDate, end);
+        LambdaQueryWrapper<DutyAssignment> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DutyAssignment::getEmployeeId, employeeId)
+                .ge(DutyAssignment::getDutyDate, start)
+                .le(DutyAssignment::getDutyDate, end);
 
         // 如果提供了scheduleId，只查询该值班表的排班
         if (scheduleId != null) {
-            queryWrapper.eq(com.lasu.hyperduty.entity.DutyAssignment::getScheduleId, scheduleId);
+            queryWrapper.eq(DutyAssignment::getScheduleId, scheduleId);
         }
 
-        List<com.lasu.hyperduty.entity.DutyAssignment> assignments = dutyAssignmentService.list(queryWrapper);
+        List<DutyAssignment> assignments = dutyAssignmentService.list(queryWrapper);
 
-        Map<String, Object> result = new java.util.HashMap<>();
+        Map<String, Object> result = new HashMap<>();
         result.put("hasSchedule", !assignments.isEmpty());
         result.put("assignments", assignments);
         return result;
@@ -404,7 +405,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public IPage<LeaveRequest> getMyLeaveRequestsPage(Long employeeId, Integer page, Integer size, Integer leaveType, String approvalStatus, String startDate, String endDate) {
+    public IPage<LeaveRequest> getMyLeaveRequestsPage(Long employeeId, Integer page, Integer size, Integer leaveType, String approvalStatus, String startDate, String endDate, String searchQuery) {
         IPage<LeaveRequest> iPage = new Page<>(page, size);
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
         
@@ -431,6 +432,14 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
             queryWrapper.le("end_date", endDate);
         }
         
+        // 可选条件：搜索关键词
+        if (searchQuery != null && !searchQuery.isEmpty()) {
+            queryWrapper.and(wrapper -> wrapper
+                    .like("request_no", searchQuery)
+                    .or().like("reason", searchQuery)
+            );
+        }
+        
         // 排序：创建时间倒序
         queryWrapper.orderByDesc("create_time");
         
@@ -438,7 +447,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public IPage<LeaveRequest> getPendingApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String startDate, String endDate) {
+    public IPage<LeaveRequest> getPendingApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String startDate, String endDate, String searchQuery) {
         IPage<LeaveRequest> iPage = new Page<>(page, size);
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
         
@@ -467,6 +476,15 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
             queryWrapper.le("end_date", endDate);
         }
         
+        // 可选条件：搜索关键词
+        if (searchQuery != null && !searchQuery.isEmpty()) {
+            queryWrapper.and(wrapper -> wrapper
+                    .like("request_no", searchQuery)
+                    .or().like("reason", searchQuery)
+                    .or().like("employee_id", searchQuery)
+            );
+        }
+        
         // 排序：创建时间倒序
         queryWrapper.orderByDesc("create_time");
         
@@ -474,7 +492,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public IPage<LeaveRequest> getApprovedApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String approvalStatus, String startDate, String endDate) {
+    public IPage<LeaveRequest> getApprovedApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String approvalStatus, String startDate, String endDate, String searchQuery) {
         IPage<LeaveRequest> iPage = new Page<>(page, size);
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
         
@@ -510,6 +528,15 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         // 可选条件：结束日期
         if (endDate != null && !endDate.isEmpty()) {
             queryWrapper.le("end_date", endDate);
+        }
+        
+        // 可选条件：搜索关键词
+        if (searchQuery != null && !searchQuery.isEmpty()) {
+            queryWrapper.and(wrapper -> wrapper
+                    .like("request_no", searchQuery)
+                    .or().like("reason", searchQuery)
+                    .or().like("employee_id", searchQuery)
+            );
         }
         
         // 排序：更新时间倒序

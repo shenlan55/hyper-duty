@@ -14,6 +14,7 @@
         :columns="columns"
         :show-pagination="true"
         :pagination="pagination"
+        :backend-pagination="true"
         :show-search="true"
         :search-placeholder="'请输入模式名称或编码'"
         :show-export="true"
@@ -112,11 +113,27 @@ const fetchModeList = async () => {
   try {
     const data = await modeApi.getAllModes()
     // 确保status字段为字符串类型，与el-switch组件的active-value/inactive-value类型匹配
-    modeList.value = (data || []).map(item => ({
+    let processedData = (data || []).map(item => ({
       ...item,
       status: item.status.toString()
     }))
-    total.value = data ? data.length : 0
+    
+    // 搜索过滤
+    if (searchQuery.value) {
+      const query = searchQuery.value.toLowerCase()
+      processedData = processedData.filter(item => 
+        item.modeName.toLowerCase().includes(query) || 
+        item.modeCode.toLowerCase().includes(query)
+      )
+    }
+    
+    // 计算总条数
+    total.value = processedData.length
+    
+    // 前端分页
+    const startIndex = (currentPage.value - 1) * pageSize.value
+    const endIndex = startIndex + pageSize.value
+    modeList.value = processedData.slice(startIndex, endIndex)
   } catch (error) {
     ElMessage.error('网络错误，请稍后重试')
   } finally {
@@ -178,16 +195,20 @@ const handleSaveSuccess = () => {
 const handleSizeChange = (size) => {
   pageSize.value = size
   currentPage.value = 1
+  fetchModeList()
 }
 
 const handleCurrentChange = (current) => {
   currentPage.value = current
+  fetchModeList()
 }
 
 // 搜索处理
-const handleSearch = (query) => {
-  searchQuery.value = query
+const handleSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  searchQuery.value = keyword
   currentPage.value = 1
+  fetchModeList()
 }
 
 // 导出处理

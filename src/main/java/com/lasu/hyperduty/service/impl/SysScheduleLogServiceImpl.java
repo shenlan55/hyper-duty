@@ -1,6 +1,7 @@
 package com.lasu.hyperduty.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.SysScheduleLog;
 import com.lasu.hyperduty.mapper.SysScheduleLogMapper;
@@ -47,6 +48,36 @@ public class SysScheduleLogServiceImpl extends ServiceImpl<SysScheduleLogMapper,
         // 然后执行删除操作
         this.remove(queryWrapper);
         return (int) count;
+    }
+
+    @Override
+    public Page<SysScheduleLog> getLogList(int pageNum, int pageSize, Long jobId, String keyword) {
+        QueryWrapper<SysScheduleLog> queryWrapper = new QueryWrapper<>();
+        
+        // 根据jobId过滤
+        if (jobId != null) {
+            queryWrapper.eq("job_id", jobId);
+        }
+        
+        // 根据关键词搜索
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.and(wrapper -> wrapper
+                .like("job_name", keyword)
+                .or()
+                .like("job_group", keyword)
+                .or()
+                .like("job_code", keyword)
+                .or()
+                .like("error_msg", keyword)
+            );
+        }
+        
+        // 按开始时间倒序排序
+        queryWrapper.orderByDesc("start_time");
+        
+        // 执行分页查询
+        Page<SysScheduleLog> page = new Page<>(pageNum, pageSize);
+        return this.page(page, queryWrapper);
     }
 
 }

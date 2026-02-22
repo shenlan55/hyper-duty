@@ -63,7 +63,7 @@
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button type="primary" @click="handleFilterSearch">查询</el-button>
             <el-button @click="resetFilter">重置</el-button>
           </el-form-item>
         </el-form>
@@ -75,6 +75,7 @@
         :columns="approvalColumns"
         :show-pagination="true"
         :pagination="pagination"
+        :backend-pagination="true"
         :show-search="true"
         :search-placeholder="'请输入申请编号或申请人'"
         :show-export="true"
@@ -82,7 +83,7 @@
         :show-skeleton="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        @search="handleSearch"
+        @search="handleTableSearch"
         @export="handleExport"
       >
         <template #employeeName="{ row }">
@@ -286,7 +287,8 @@ import {
   autoSelectSubstitutes
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
-import { getScheduleList } from '../../api/duty/schedule'
+import { getAllSchedules, getScheduleEmployees } from '../../api/duty/schedule'
+import { getAssignmentsByScheduleId } from '../../api/duty/assignment'
 import {
   generateAutoSchedule,
   generateAutoScheduleByWorkHours,
@@ -296,6 +298,7 @@ import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 import BaseTable from '../../components/BaseTable.vue'
+import { useSearchPagination } from '../../hooks/usePagination'
 
 const userStore = useUserStore()
 
@@ -315,12 +318,17 @@ const shiftConfigList = ref([])
 const shiftApi = shiftConfigApi()
 const substituteInfoList = ref([])
 
-// 分页相关
-const pagination = reactive({
-  page: 1,
-  size: 10,
-  total: 0
-})
+// 分页配置
+const {
+  currentPage,
+  pageSize,
+  total,
+  pagination,
+  handleCurrentChange: originalHandleCurrentChange,
+  handleSizeChange: originalHandleSizeChange,
+  searchQuery,
+  handleSearch
+} = useSearchPagination()
 
 // 筛选条件
 const filterForm = reactive({
@@ -498,8 +506,36 @@ const fetchEmployeeList = async () => {
 
 const fetchScheduleList = async () => {
   try {
-    const data = await getScheduleList()
-    scheduleList.value = data || []
+    const data = await getAllSchedules()
+    
+    // 过滤出用户所在的值班表
+    let userSchedules = []
+    if (userStore.employeeId) {
+      for (const schedule of data || []) {
+        try {
+          // 检查用户是否在值班表中
+          const employees = await getScheduleEmployees(schedule.id)
+          if (employees && employees.includes(userStore.employeeId)) {
+            userSchedules.push(schedule)
+          }
+        } catch (error) {
+          console.error('获取值班表员工失败:', error)
+        }
+      }
+    }
+    
+    // 如果没有找到用户所在的值班表，或者用户未登录，使用所有值班表
+    if (userSchedules.length === 0) {
+      userSchedules = data || []
+    }
+    
+    // 获取值班表列表（后端已经按id排序）
+    scheduleList.value = userSchedules
+    
+    // 如果有值班表，默认选择第一个
+    if (scheduleList.value.length > 0 && !selectedScheduleId.value) {
+      selectedScheduleId.value = scheduleList.value[0].id
+    }
   } catch (error) {
     console.error('获取值班表列表失败:', error)
     ElMessage.error('获取值班表列表失败')
@@ -526,28 +562,31 @@ const fetchPendingApprovals = async (tabName = activeTab.value) => {
       // console.log('Fetching pending approvals')
       data = await getPendingApprovalsPage(
         userStore.employeeId || 1,
-        pagination.page,
-        pagination.size,
+        currentPage.value,
+        pageSize.value,
         selectedScheduleId.value || null,
         filterForm.leaveType,
         startDate,
-        endDate
+        endDate,
+        searchQuery.value
       )
     } else {
       // console.log('Fetching approved approvals')
       data = await getApprovedApprovalsPage(
         userStore.employeeId || 1,
-        pagination.page,
-        pagination.size,
+        currentPage.value,
+        pageSize.value,
         selectedScheduleId.value || null,
         filterForm.leaveType,
         filterForm.approvalStatus || null,
         startDate,
-        endDate
+        endDate,
+        searchQuery.value
       )
     }
     // console.log('Response received:', data)
     requestList.value = data.records || []
+    total.value = data.total || 0
     pagination.total = data.total || 0
     // console.log('Request list updated:', requestList.value)
   } catch (error) {
@@ -559,7 +598,8 @@ const fetchPendingApprovals = async (tabName = activeTab.value) => {
 }
 
 const handleScheduleChange = () => {
-  pagination.page = 1 // 重置页码
+  currentPage.value = 1 // 重置页码
+  pagination.currentPage = 1
   fetchPendingApprovals()
 }
 
@@ -569,25 +609,36 @@ const refreshList = () => {
 
 const handleTabClick = (tab) => {
   // console.log('Tab clicked, tab name:', tab.props.name)
-  pagination.page = 1 // 重置页码
+  currentPage.value = 1 // 重置页码
+  pagination.currentPage = 1
   fetchPendingApprovals(tab.props.name)
 }
 
-// 分页大小变化处理
-const handleSizeChange = (size) => {
-  pagination.size = size
+// 分页变更处理
+const handleCurrentChange = (val) => {
+  originalHandleCurrentChange(val)
   fetchPendingApprovals()
 }
 
-// 页码变化处理
-const handleCurrentChange = (current) => {
-  pagination.page = current
+const handleSizeChange = (val) => {
+  originalHandleSizeChange(val)
+  fetchPendingApprovals()
+}
+
+// 表格搜索处理
+const handleTableSearch = (searchParams) => {
+  const keyword = searchParams?.global || ''
+  searchQuery.value = keyword
+  currentPage.value = 1
   fetchPendingApprovals()
 }
 
 // 搜索处理
-const handleSearch = () => {
-  pagination.page = 1 // 重置页码
+const handleFilterSearch = () => {
+  // 重置页码
+  currentPage.value = 1
+  pagination.currentPage = 1
+  // 重新获取数据，使用筛选条件
   fetchPendingApprovals()
 }
 

@@ -96,7 +96,10 @@ public class SysEmployeeServiceImpl extends CacheableServiceImpl<SysEmployeeMapp
     }
 
     @Override
-    public Page<SysEmployee> page(Page<SysEmployee> page, String keyword, Long deptId) {
+    public Page<SysEmployee> page(
+            Page<SysEmployee> page, 
+            String keyword, 
+            Long deptId) {
         LambdaQueryWrapper<SysEmployee> queryWrapper = new LambdaQueryWrapper<>();
         
         // 关键字搜索

@@ -1,5 +1,7 @@
 package com.lasu.hyperduty.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.SysRole;
 import com.lasu.hyperduty.entity.SysRoleMenu;
@@ -107,6 +109,29 @@ public class SysRoleServiceImpl extends CacheableServiceImpl<SysRoleMapper, SysR
             CacheUtil.delete("role::menu_ids_" + entity.getId());
             CacheUtil.delete("role::user_ids_" + entity.getId());
         }
+    }
+
+    @Override
+    public Page<SysRole> getRoleList(Integer pageNum, Integer pageSize, String keyword) {
+        // 创建分页对象
+        Page<SysRole> pagination = new Page<>(pageNum, pageSize);
+        
+        // 构建查询条件
+        QueryWrapper<SysRole> queryWrapper = new QueryWrapper<>();
+        
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.and(wrapper -> 
+                wrapper.like("role_name", keyword)
+                       .or().like("role_code", keyword)
+                       .or().like("description", keyword)
+            );
+        }
+        
+        // 按创建时间倒序排序
+        queryWrapper.orderByDesc("create_time");
+        
+        // 执行分页查询
+        return baseMapper.selectPage(pagination, queryWrapper);
     }
 
 }
