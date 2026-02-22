@@ -480,6 +480,34 @@ const useDefaultMenus = () => {
           icon: 'DataAnalysis'
         }
       ]
+    },
+    {
+      id: 'project',
+      name: '项目管理',
+      path: '/project',
+      icon: 'List',
+      children: [
+        {
+          name: '项目列表',
+          path: '/project/list',
+          icon: 'List'
+        },
+        {
+          name: '任务列表',
+          path: '/project/task',
+          icon: 'Document'
+        },
+        {
+          name: '我的任务',
+          path: '/project/my-task',
+          icon: 'User'
+        },
+        {
+          name: '甘特图',
+          path: '/project/gantt',
+          icon: 'DataAnalysis'
+        }
+      ]
     }
   ]
   
@@ -504,7 +532,12 @@ const useDefaultMenus = () => {
     '/duty/leave-request': '请假申请',
     '/duty/leave-approval': '请假审批',
     '/duty/swap-request': '调班管理',
-    '/duty/statistics': '排班统计'
+    '/duty/statistics': '排班统计',
+    '/project': '项目管理',
+    '/project/list': '项目列表',
+    '/project/task': '任务列表',
+    '/project/my-task': '我的任务',
+    '/project/gantt': '甘特图'
   }
   
   // 始终设置首页为默认激活

@@ -131,6 +131,38 @@ const routes = [
             meta: { title: '排班统计' }
           }
         ]
+      },
+      {
+        path: 'project',
+        name: 'Project',
+        component: () => import('../views/project/ProjectLayout.vue'),
+        meta: { title: '项目管理' },
+        children: [
+          {
+            path: 'list',
+            name: 'ProjectList',
+            component: () => import('../views/project/ProjectList.vue'),
+            meta: { title: '项目列表' }
+          },
+          {
+            path: 'task',
+            name: 'TaskList',
+            component: () => import('../views/project/TaskList.vue'),
+            meta: { title: '任务列表' }
+          },
+          {
+            path: 'my-task',
+            name: 'MyTask',
+            component: () => import('../views/project/MyTask.vue'),
+            meta: { title: '我的任务' }
+          },
+          {
+            path: 'gantt',
+            name: 'ProjectGantt',
+            component: () => import('../views/project/ProjectGantt.vue'),
+            meta: { title: '甘特图' }
+          }
+        ]
       }
     ]
   }

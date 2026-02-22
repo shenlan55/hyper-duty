@@ -1,38 +1,46 @@
-# 超级值班系统
+# Hyper Duty 综合管理系统
 
 ## 项目概述
 
-超级值班系统（Hyper Duty System）是一款面向企业的值班管理系统，用于管理员工值班信息、排班安排、值班记录等功能，提高企业值班管理效率。
+Hyper Duty System 是一款面向企业的综合管理系统，集成了系统管理、值班管理和项目管理等核心功能，为企业提供全面的管理解决方案。
 
 ## 技术栈
 
-- **后端**：Spring Boot 3.1.0 + Spring Security + MyBatis Plus 3.5.6 + Druid + MySQL 8.0
-- **前端**：Vue 3 + Vite 4.5.0 + Element Plus + Pinia + Vue Router
+- **后端**：Spring Boot 3.1.0 + Spring Security + MyBatis Plus 3.5.6 + Druid 1.2.20 + PostgreSQL 18.2.1 + Redis 8.6.0
+- **前端**：Vue 3.5.24 + Vite 4.5.0 + Element Plus 2.13.1 + Pinia 3.0.4 + Vue Router 4.6.4 + Axios 1.13.2
+- **存储**：RustFS 1.0.0 (对象存储)
 
 ## 功能模块
 
-### 1. 用户管理
+### 1. 系统管理
 - 员工信息管理：添加、修改、删除员工信息
 - 部门管理：部门树形结构管理
 - 角色管理：角色创建、编辑、删除
 - 权限管理：基于角色的菜单权限控制
+- 字典管理：系统字典配置
 
 ### 2. 值班管理
 - 排班管理：创建、修改、删除排班计划
 - 值班记录：记录值班情况，包括签到、签退、异常情况
 - 值班统计：按时间段、员工、部门统计值班情况
 
-### 3. 菜单管理
+### 3. 项目管理
+- 项目管理：项目创建、编辑、删除、归档
+- 任务管理：任务创建、编辑、删除，支持3级任务层级
+- 任务进度：实时更新任务进度，自动计算项目进度
+- 甘特图：可视化项目进度和任务时间线
+
+### 4. 菜单管理
 - 菜单树形结构管理
 - 菜单权限分配：为不同角色分配不同菜单权限
 
-### 4. 认证授权
+### 5. 认证授权
 - 用户登录：JWT令牌认证
 - 权限控制：基于角色的访问控制
 
 ## 启动步骤
 
-1. **初始化数据库**：执行 `src/main/resources/sql/init.sql` 创建数据库和表
+1. **初始化数据库**：执行 `src/main/resources/sql/hyper_duty_ddl_postgresql.sql` 创建数据库和表
 2. **启动后端**：
    ```
    mvn spring-boot:run
@@ -46,7 +54,7 @@
    ```
 4. **访问应用**：
    - 前端：http://localhost:5173
-   - 登录账号：admin/123456
+   - 登录账号：admin/admin123
 
 ## 项目结构
 
@@ -135,6 +143,7 @@ frontend/
 
 ### 核心数据表
 
+#### 系统管理模块
 - **用户表（sys_user）**：存储用户信息
 - **角色表（sys_role）**：存储角色信息
 - **菜单表（sys_menu）**：存储菜单信息
@@ -142,6 +151,32 @@ frontend/
 - **员工表（sys_employee）**：存储员工信息
 - **角色菜单关联表（sys_role_menu）**：存储角色与菜单的关联关系
 - **角色用户关联表（sys_user_role）**：存储角色与用户的关联关系
+- **字典表（sys_dict）**：存储字典类型信息
+- **字典数据表（sys_dict_data）**：存储字典数据信息
+
+#### 值班管理模块
+- **排班表（duty_schedule）**：存储排班计划信息
+- **排班模式表（duty_schedule_mode）**：存储排班模式信息
+- **值班分配表（duty_assignment）**：存储值班分配信息
+- **值班记录表（duty_record）**：存储值班记录信息
+- **班次配置表（duty_shift_config）**：存储班次配置信息
+- **请假申请表（leave_request）**：存储请假申请信息
+- **请假审批表（leave_approval）**：存储请假审批信息
+- **调班申请表（swap_request）**：存储调班申请信息
+- **调班审批表（swap_approval）**：存储调班审批信息
+- **员工可用时间表（employee_available_time）**：存储员工可用时间信息
+- **节假日表（duty_holiday）**：存储节假日信息
+
+#### 项目管理模块
+- **项目表（pm_project）**：存储项目基本信息
+- **项目成员表（pm_project_member）**：存储项目成员信息
+- **任务表（pm_task）**：存储任务信息
+- **任务关联人表（pm_task_stakeholder）**：存储任务关联人信息
+- **任务附件表（pm_task_attachment）**：存储任务附件信息
+- **任务进度表（pm_task_progress）**：存储任务进度记录
+- **任务评论表（pm_task_comment）**：存储任务评论信息
+- **任务更新申请表（pm_task_update_request）**：存储任务更新申请信息
+- **项目附件表（pm_project_attachment）**：存储项目附件信息
 
 ## 部署说明
 

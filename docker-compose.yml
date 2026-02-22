@@ -24,13 +24,18 @@ services:
       - "8080:8080"
     environment:
       - DB_HOST=192.168.3.8
-      - DB_PORT=3306
+      - DB_PORT=5432
       - DB_NAME=hyper_duty
-      - DB_USER=root
-      - DB_PASSWORD=123456
+      - DB_USER=postgres
+      - DB_PASSWORD=Postgres@123456
       - REDIS_HOST=192.168.3.8
       - REDIS_PORT=6379
       - REDIS_PASSWORD=Redis@123
+      - RUSTFS_ENDPOINT=http://192.168.3.8:9000
+      - RUSTFS_ACCESS_KEY=Rustfs
+      - RUSTFS_SECRET_KEY=Rfs@123456
+      - RUSTFS_BUCKET=hyper-duty
+      - RUSTFS_REGION=us-east-1
       - CORS_ALLOWED_ORIGINS=*
       - TZ=Asia/Shanghai
       - LANG=C.UTF-8

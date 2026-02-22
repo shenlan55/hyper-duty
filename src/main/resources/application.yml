@@ -3,10 +3,10 @@ spring:
     name: hyper-duty
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:hyper_duty}?useUnicode=true&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=Asia/Shanghai&useLegacyDatetimeCode=false
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:123456}
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:hyper_duty}?currentSchema=public&useUnicode=true&characterEncoding=utf8
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:Postgres@123456}
     druid:
       initial-size: 10
       min-idle: 10
@@ -14,7 +14,7 @@ spring:
       max-wait: 60000
       time-between-eviction-runs-millis: 60000
       min-evictable-idle-time-millis: 300000
-      validation-query: SELECT 1 FROM DUAL
+      validation-query: SELECT 1
       test-while-idle: true
       test-on-borrow: false
       test-on-return: false
@@ -22,12 +22,6 @@ spring:
       max-pool-prepared-statement-per-connection-size: 20
       filters: stat,wall
       connection-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
-  # 数据库初始化配置
-  sql:
-    init:
-      schema-locations: classpath:sql/hyper_duty_ddl.sql
-      mode: always
-      encoding: utf-8
   jackson:
     time-zone: GMT+8
     date-format: yyyy-MM-dd HH:mm:ss
@@ -72,4 +66,9 @@ logging:
     com.lasu.hyperduty: debug
     org.springframework.security: info
 
-
+rustfs:
+  endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
+  access-key: ${RUSTFS_ACCESS_KEY:Rustfs}
+  secret-key: ${RUSTFS_SECRET_KEY:Rfs@123456}
+  bucket-name: ${RUSTFS_BUCKET:hyper-duty}
+  region: ${RUSTFS_REGION:us-east-1}
