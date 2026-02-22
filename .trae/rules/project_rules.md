@@ -56,6 +56,36 @@
   - 类型引用规范：所有类型引用必须通过 import 语句导入后使用简单类型名，禁止直接使用完整包路径。例如：
     - 正确：`import com.baomidou.mybatisplus.extension.plugins.pagination.Page;` 然后使用 `Page<SysEmployee>`
     - 错误：直接使用 `com.baomidou.mybatisplus.extension.plugins.pagination.Page<SysEmployee>`
+  - **分页实现规范**：
+    - **前端分页规范**：
+      - 使用 `useSearchPagination` hook 管理分页状态（currentPage、pageSize、total）
+      - BaseTable 组件的 pagination 属性配置：
+        ```vue
+        :pagination="{
+          currentPage: pagination.currentPage,
+          pageSize: pagination.pageSize,
+          pageSizes: pagination.pageSizes,
+          total: pagination.total
+        }"
+        ```
+      - 模板中正确绑定分页数据，使用 `pagination.total` 而非 `total.value`
+      - 监听分页变化事件（size-change、current-change）并重新加载数据
+      - 处理后端返回的分页格式数据，确保正确更新 total 值
+      - 页面初始化时，在设置默认筛选条件后自动加载数据
+    - **后端分页规范**：
+      - 使用 MyBatis-Plus 的 `Page` 对象实现分页查询
+      - 继承 `BasePageService` 接口实现通用分页功能
+      - 统一的分页响应格式，包含 records、total、current、size、pages 字段
+      - 支持多条件筛选的分页查询，使用 LambdaQueryWrapper 构建查询条件
+      - 正确处理关联查询的分页逻辑，避免子查询导致的性能问题
+      - 按创建时间或相关字段倒序排序，确保最新数据优先显示
+    - **前后端联调规范**：
+      - 确保分页参数传递正确，前端传递 pageNum 和 pageSize
+      - 验证 total 字段的一致性，前端显示应与后端返回一致
+      - 测试不同分页大小的场景，确保数据显示正确
+      - 检查边界情况（如第一页、最后一页）的分页控件状态
+      - 使用 Chrome DevTools MCP 验证网络请求和控制台日志
+      - 使用 MySQL MCP 验证数据库查询结果的准确性
 - **缓存管理规范**：
   - 缓存键设计：使用 `{模块}::{键名}_{参数}` 的格式，确保缓存键的唯一性和可读性
   - 缓存清除机制：
