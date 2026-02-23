@@ -218,6 +218,18 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="排序" prop="sort">
+              <el-input-number
+                v-model="employeeForm.sort"
+                placeholder="请输入排序值"
+                style="width: 100%"
+                :min="0"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="employeeForm.status">
             <el-radio :value="1">启用</el-radio>
@@ -265,7 +277,7 @@ const employeeFormRef = ref()
 
 // 表格列配置
 const columns = [
-  { prop: 'id', label: 'ID', width: '80' },
+  { prop: 'sort', label: '排序', width: '100' },
   { prop: 'employeeName', label: '人员姓名', minWidth: '150' },
   { prop: 'employeeCode', label: '人员编码', width: '150' },
   { prop: 'username', label: '用户名', minWidth: '150' },
@@ -333,6 +345,7 @@ const employeeForm = reactive({
   gender: 0,
   dictTypeId: null,
   dictDataId: null,
+  sort: 0,
   status: 1
 })
 
@@ -534,6 +547,7 @@ const resetForm = () => {
     gender: 0,
     dictTypeId: null,
     dictDataId: null,
+    sort: 0,
     status: 1
   })
   dictDataList.value = []

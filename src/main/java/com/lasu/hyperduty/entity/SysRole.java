@@ -48,4 +48,9 @@ public class SysRole implements Serializable {
      * 更新时间
      */
     private Date updateTime;
+
+    /**
+     * 排序
+     */
+    private Integer sort;
 }

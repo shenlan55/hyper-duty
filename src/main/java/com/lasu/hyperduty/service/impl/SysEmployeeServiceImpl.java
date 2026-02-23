@@ -67,6 +67,7 @@ public class SysEmployeeServiceImpl extends CacheableServiceImpl<SysEmployeeMapp
                 .set(SysEmployee::getDictTypeId, sysEmployee.getDictTypeId())
                 .set(SysEmployee::getDictDataId, sysEmployee.getDictDataId())
                 .set(SysEmployee::getStatus, sysEmployee.getStatus())
+                .set(SysEmployee::getSort, sysEmployee.getSort())
                 .set(SysEmployee::getUpdateTime, sysEmployee.getUpdateTime());
         
         // 如果密码不为空，则加密密码并更新
@@ -115,6 +116,10 @@ public class SysEmployeeServiceImpl extends CacheableServiceImpl<SysEmployeeMapp
         if (deptId != null) {
             queryWrapper.eq(SysEmployee::getDeptId, deptId);
         }
+
+        // 按排序字段正序排列
+        queryWrapper.orderByAsc(SysEmployee::getSort)
+                .orderByAsc(SysEmployee::getId);
         
         return baseMapper.selectPage(page, queryWrapper);
     }

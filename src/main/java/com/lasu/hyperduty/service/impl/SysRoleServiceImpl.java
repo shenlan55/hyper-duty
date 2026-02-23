@@ -127,8 +127,9 @@ public class SysRoleServiceImpl extends CacheableServiceImpl<SysRoleMapper, SysR
             );
         }
         
-        // 按创建时间倒序排序
-        queryWrapper.orderByDesc("create_time");
+        // 按排序字段升序排列
+        queryWrapper.orderByAsc("sort")
+                .orderByDesc("create_time");
         
         // 执行分页查询
         return baseMapper.selectPage(pagination, queryWrapper);

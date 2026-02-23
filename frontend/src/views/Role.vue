@@ -56,6 +56,9 @@
         <el-form-item label="角色描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入角色描述"></el-input>
         </el-form-item>
+        <el-form-item label="排序" prop="sort">
+          <el-input-number v-model="form.sort" :min="0" style="width: 100%" placeholder="请输入排序值"></el-input-number>
+        </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0"></el-switch>
         </el-form-item>
@@ -149,7 +152,7 @@ const {
 
 // 表格列配置
 const columns = [
-  { prop: 'id', label: '角色ID', width: '80', align: 'center' },
+  { prop: 'sort', label: '排序', width: '100', align: 'center' },
   { prop: 'roleName', label: '角色名称', width: '180' },
   { prop: 'roleCode', label: '角色编码', width: '180' },
   { prop: 'description', label: '角色描述' },
@@ -181,7 +184,8 @@ const form = reactive({
   roleName: '',
   roleCode: '',
   description: '',
-  status: 1
+  status: 1,
+  sort: 0
 })
 
 // 表单验证规则
@@ -242,6 +246,7 @@ const handleAdd = () => {
   form.roleCode = ''
   form.description = ''
   form.status = 1
+  form.sort = 0
   dialogVisible.value = true
 }
 
@@ -438,9 +443,9 @@ const handleTableSearch = (searchParams) => {
 const handleExport = () => {
   // 导出逻辑
   const exportData = roleList.value
-  const headers = ['角色ID', '角色名称', '角色编码', '角色描述', '状态', '创建时间']
+  const headers = ['排序', '角色名称', '角色编码', '角色描述', '状态', '创建时间']
   const rows = exportData.map(row => [
-    row.id,
+    row.sort,
     row.roleName,
     row.roleCode,
     row.description || '',

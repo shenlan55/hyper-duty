@@ -43,6 +43,8 @@ public class SysEmployee implements Serializable {
 
     private LocalDateTime updateTime;
 
+    private Integer sort;
+
     // 当月工时（非持久化字段）
     private transient Integer monthlyWorkHours;
 

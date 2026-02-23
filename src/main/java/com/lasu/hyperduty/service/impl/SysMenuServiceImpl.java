@@ -69,6 +69,8 @@ public class SysMenuServiceImpl extends CacheableServiceImpl<SysMenuMapper, SysM
                 treeMenus.add(findChildren(menu, menus));
             }
         }
+        // 对根节点菜单按照sort字段升序排序
+        treeMenus.sort((m1, m2) -> Integer.compare(m1.getSort(), m2.getSort()));
         return treeMenus;
     }
 
