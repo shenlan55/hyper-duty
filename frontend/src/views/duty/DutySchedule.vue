@@ -27,6 +27,7 @@
         @current-change="handleCurrentChange"
         @search="handleTableSearch"
         @export="handleExport"
+        @sort-change="handleSortChange"
       >
         <template #startDate="{ row }">
           {{ formatDate(row.startDate) }}
@@ -112,6 +113,15 @@
             <el-radio :value="1">启用</el-radio>
             <el-radio :value="0">禁用</el-radio>
           </el-radio-group>
+        </el-form-item>
+        
+        <el-form-item label="排序" prop="sortOrder">
+          <el-input-number
+            v-model="scheduleForm.sortOrder"
+            :min="0"
+            :step="1"
+            placeholder="请输入排序数字"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -240,13 +250,17 @@ const selectedEmployeeList = ref([])
 const allShiftList = ref([])
 const selectedShiftList = ref([])
 
+const sortOrder = ref(null)
+const sortProp = ref(null)
+
 const scheduleForm = reactive({
   id: null,
   scheduleName: '',
   description: '',
   startDate: null,
   endDate: null,
-  status: 1
+  status: 1,
+  sortOrder: 0
 })
 
 const scheduleRules = {
@@ -278,12 +292,12 @@ const filteredScheduleList = computed(() => {
 
 
 const columns = [
-  { prop: 'id', label: 'ID', width: '80' },
-  { prop: 'scheduleName', label: '值班表名称', minWidth: '150' },
+  { prop: 'sortOrder', label: '排序', width: '100', sortable: true },
+  { prop: 'scheduleName', label: '值班表名称', minWidth: '150', sortable: true },
   { prop: 'description', label: '描述', minWidth: '200' },
-  { prop: 'startDate', label: '开始日期', width: '150' },
-  { prop: 'endDate', label: '结束日期', width: '150' },
-  { prop: 'status', label: '状态', width: '100' },
+  { prop: 'startDate', label: '开始日期', width: '150', sortable: true },
+  { prop: 'endDate', label: '结束日期', width: '150', sortable: true },
+  { prop: 'status', label: '状态', width: '100', sortable: true },
   { type: 'operation', label: '操作', width: '240', fixed: 'right' }
 ]
 
@@ -292,13 +306,26 @@ const getEmployeeName = (employeeId) => {
   return employee ? employee.label : '未知人员'
 }
 
+const handleSortChange = (sort) => {
+  if (sort.prop) {
+    sortProp.value = sort.prop
+    sortOrder.value = sort.order
+  } else {
+    sortProp.value = null
+    sortOrder.value = null
+  }
+  fetchScheduleList()
+}
+
 const fetchScheduleList = async () => {
   loading.value = true
   try {
     const data = await getScheduleList({
       pageNum: currentPage.value,
       pageSize: pageSize.value,
-      keyword: searchQuery.value
+      keyword: searchQuery.value,
+      sortField: sortProp.value,
+      sortOrder: sortOrder.value
     })
     scheduleList.value = data.records || []
     total.value = data.total || 0
@@ -385,7 +412,8 @@ const resetForm = () => {
     description: '',
     startDate: null,
     endDate: null,
-    status: 1
+    status: 1,
+    sortOrder: 0
   })
 }
 

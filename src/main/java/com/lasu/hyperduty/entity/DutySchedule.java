@@ -30,6 +30,8 @@ public class DutySchedule implements Serializable {
     
     private Integer status;
     
+    private Integer sortOrder;
+    
     private Long createBy;
     
     private LocalDateTime createTime;

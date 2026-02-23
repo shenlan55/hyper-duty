@@ -68,7 +68,7 @@ public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, Dut
     }
 
     @Override
-    public Page<DutySchedule> getScheduleList(Integer pageNum, Integer pageSize, String keyword) {
+    public Page<DutySchedule> getScheduleList(Integer pageNum, Integer pageSize, String keyword, String sortField, String sortOrder) {
         // 创建分页对象
         Page<DutySchedule> pagination = new Page<>(pageNum, pageSize);
         
@@ -82,8 +82,33 @@ public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, Dut
             );
         }
         
-        // 按创建时间倒序排序
-        queryWrapper.orderByDesc(DutySchedule::getCreateTime);
+        // 动态排序
+        if (sortField != null && !sortField.isEmpty()) {
+            boolean isAsc = "ascending".equals(sortOrder);
+            switch (sortField) {
+                case "scheduleName":
+                    queryWrapper.orderBy(true, isAsc, DutySchedule::getScheduleName);
+                    break;
+                case "startDate":
+                    queryWrapper.orderBy(true, isAsc, DutySchedule::getStartDate);
+                    break;
+                case "endDate":
+                    queryWrapper.orderBy(true, isAsc, DutySchedule::getEndDate);
+                    break;
+                case "status":
+                    queryWrapper.orderBy(true, isAsc, DutySchedule::getStatus);
+                    break;
+                case "sortOrder":
+                    queryWrapper.orderBy(true, isAsc, DutySchedule::getSortOrder);
+                    break;
+                default:
+                    queryWrapper.orderByAsc(DutySchedule::getSortOrder);
+                    break;
+            }
+        } else {
+            // 默认按排序字段排序
+            queryWrapper.orderByAsc(DutySchedule::getSortOrder);
+        }
         
         // 执行分页查询
         return baseMapper.selectPage(pagination, queryWrapper);

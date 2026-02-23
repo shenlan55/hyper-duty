@@ -523,6 +523,7 @@ CREATE TABLE duty_schedule (
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   status SMALLINT DEFAULT '1',
+  sort_order INT DEFAULT '0',
   create_by BIGINT DEFAULT NULL,
   create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -538,6 +539,7 @@ COMMENT ON COLUMN duty_schedule.description IS '描述';
 COMMENT ON COLUMN duty_schedule.start_date IS '开始日期';
 COMMENT ON COLUMN duty_schedule.end_date IS '结束日期';
 COMMENT ON COLUMN duty_schedule.status IS '状态：0禁用，1启用';
+COMMENT ON COLUMN duty_schedule.sort_order IS '排序';
 COMMENT ON COLUMN duty_schedule.create_by IS '创建人ID';
 COMMENT ON COLUMN duty_schedule.create_time IS '创建时间';
 COMMENT ON COLUMN duty_schedule.update_time IS '更新时间';

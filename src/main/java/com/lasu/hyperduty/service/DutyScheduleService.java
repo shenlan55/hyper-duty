@@ -21,7 +21,7 @@ public interface DutyScheduleService extends IService<DutySchedule> {
  
     boolean updateEmployeesAndLeaders(Long scheduleId, List<Long> employeeIds, List<Long> leaderIds);
     
-    Page<DutySchedule> getScheduleList(Integer pageNum, Integer pageSize, String keyword);
+    Page<DutySchedule> getScheduleList(Integer pageNum, Integer pageSize, String keyword, String sortField, String sortOrder);
 
     List<DutySchedule> getAllSchedules();
 }

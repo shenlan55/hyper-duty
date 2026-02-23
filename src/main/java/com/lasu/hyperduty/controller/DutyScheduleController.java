@@ -27,8 +27,10 @@ public class DutyScheduleController {
     public ResponseResult<Page<DutySchedule>> getAllSchedules(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) String keyword) {
-        Page<DutySchedule> page = dutyScheduleService.getScheduleList(pageNum, pageSize, keyword);
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String sortField,
+            @RequestParam(required = false) String sortOrder) {
+        Page<DutySchedule> page = dutyScheduleService.getScheduleList(pageNum, pageSize, keyword, sortField, sortOrder);
         return ResponseResult.success(page);
     }
 
