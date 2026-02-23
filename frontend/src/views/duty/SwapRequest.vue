@@ -316,6 +316,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRoute } from 'vue-router'
 import {
   getMySwapRequests,
   submitSwapRequest,
@@ -333,6 +334,7 @@ import { useSearchPagination } from '../../hooks/usePagination'
 import BaseTable from '../../components/BaseTable.vue'
 
 const shiftApi = shiftConfigApi()
+const route = useRoute()
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -1065,6 +1067,15 @@ onMounted(async () => {
   await fetchEmployeeList()
   await fetchShiftConfigList()
   await fetchScheduleList()
+  
+  // 从URL参数中读取并应用筛选条件
+  if (route.query.approvalStatus) {
+    filterForm.approvalStatus = route.query.approvalStatus
+  }
+  if (route.query.scheduleId) {
+    filterForm.scheduleId = parseInt(route.query.scheduleId)
+  }
+  
   await fetchMySwapRequests()
 })
 </script>

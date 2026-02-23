@@ -237,7 +237,8 @@ const loadTodoList = async () => {
             description: `${creatorName} 申请与您调班，日期：${item.originalSwapDate || item.swapDate}`,
             data: {
               ...item,
-              originalEmployeeName: creatorName
+              originalEmployeeName: creatorName,
+              scheduleId: item.scheduleId
             }
           }
         })
@@ -352,7 +353,8 @@ const handleTodoClick = (todo) => {
     router.push({
       path: '/duty/swap-request',
       query: {
-        approvalStatus: 'pending'
+        approvalStatus: 'pending',
+        scheduleId: todo.data.scheduleId
       }
     })
   } else if (todo.type === 'overtime') {
