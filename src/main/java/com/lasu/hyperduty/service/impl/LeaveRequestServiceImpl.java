@@ -346,12 +346,16 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
             return leaveInfo;
         }
         
+        // 将字符串日期转换为LocalDate
+        LocalDate startLocalDate = LocalDate.parse(startDate);
+        LocalDate endLocalDate = LocalDate.parse(endDate);
+        
         // 查询员工在指定日期范围内的请假记录
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
         queryWrapper.in("employee_id", employeeIds);
         // 查询与指定日期范围有重叠的请假记录
-        queryWrapper.le("start_date", endDate); // 请假开始日期 <= 范围结束日期
-        queryWrapper.ge("end_date", startDate); // 请假结束日期 >= 范围开始日期
+        queryWrapper.le("start_date", endLocalDate); // 请假开始日期 <= 范围结束日期
+        queryWrapper.ge("end_date", startLocalDate); // 请假结束日期 >= 范围开始日期
         queryWrapper.eq("approval_status", "approved"); // 只考虑已通过的请假
         
         List<LeaveRequest> leaveRequests = this.list(queryWrapper);
@@ -429,12 +433,12 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         
         // 可选条件：开始日期
         if (startDate != null && !startDate.isEmpty()) {
-            queryWrapper.ge("start_date", startDate);
+            queryWrapper.ge("start_date", LocalDate.parse(startDate));
         }
         
         // 可选条件：结束日期
         if (endDate != null && !endDate.isEmpty()) {
-            queryWrapper.le("end_date", endDate);
+            queryWrapper.le("end_date", LocalDate.parse(endDate));
         }
         
         // 可选条件：搜索关键词
@@ -473,12 +477,12 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         
         // 可选条件：开始日期
         if (startDate != null && !startDate.isEmpty()) {
-            queryWrapper.ge("start_date", startDate);
+            queryWrapper.ge("start_date", LocalDate.parse(startDate));
         }
         
         // 可选条件：结束日期
         if (endDate != null && !endDate.isEmpty()) {
-            queryWrapper.le("end_date", endDate);
+            queryWrapper.le("end_date", LocalDate.parse(endDate));
         }
         
         // 可选条件：搜索关键词
@@ -527,12 +531,12 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         
         // 可选条件：开始日期
         if (startDate != null && !startDate.isEmpty()) {
-            queryWrapper.ge("start_date", startDate);
+            queryWrapper.ge("start_date", LocalDate.parse(startDate));
         }
         
         // 可选条件：结束日期
         if (endDate != null && !endDate.isEmpty()) {
-            queryWrapper.le("end_date", endDate);
+            queryWrapper.le("end_date", LocalDate.parse(endDate));
         }
         
         // 可选条件：搜索关键词
