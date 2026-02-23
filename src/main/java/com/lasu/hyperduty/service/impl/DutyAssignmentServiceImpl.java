@@ -30,8 +30,8 @@ public class DutyAssignmentServiceImpl extends CacheableServiceImpl<DutyAssignme
     public void deleteByScheduleIdAndDateRange(Long scheduleId, String startDate, String endDate) {
         LambdaQueryWrapper<DutyAssignment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DutyAssignment::getScheduleId, scheduleId)
-                .ge(DutyAssignment::getDutyDate, startDate)
-                .le(DutyAssignment::getDutyDate, endDate);
+                .ge(DutyAssignment::getDutyDate, LocalDate.parse(startDate))
+                .le(DutyAssignment::getDutyDate, LocalDate.parse(endDate));
         remove(wrapper);
     }
 
