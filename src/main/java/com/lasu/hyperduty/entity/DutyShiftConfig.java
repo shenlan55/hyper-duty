@@ -8,6 +8,7 @@ import lombok.Data;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Data
 @TableName("duty_shift_config")
@@ -24,9 +25,9 @@ public class DutyShiftConfig implements Serializable {
 
     private Integer shiftType;
 
-    private String startTime;
+    private LocalTime startTime;
 
-    private String endTime;
+    private LocalTime endTime;
 
     private Integer isCrossDay;
 

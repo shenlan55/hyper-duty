@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.math.BigDecimal;
@@ -272,15 +273,19 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
         }
 
         if (availableTime.getStartTime() != null && availableTime.getEndTime() != null) {
-            String shiftStart = shiftConfig.getStartTime();
-            String shiftEnd = shiftConfig.getEndTime();
-            String availableStart = availableTime.getStartTime();
-            String availableEnd = availableTime.getEndTime();
-
-            if (shiftStart.compareTo(availableStart) < 0 || shiftEnd.compareTo(availableEnd) > 0) {
-                return false;
+                LocalTime shiftStart = shiftConfig.getStartTime();
+                LocalTime shiftEnd = shiftConfig.getEndTime();
+                String availableStart = availableTime.getStartTime();
+                String availableEnd = availableTime.getEndTime();
+                
+                // 将字符串转换为LocalTime进行比较
+                LocalTime availableStartLocalTime = LocalTime.parse(availableStart);
+                LocalTime availableEndLocalTime = LocalTime.parse(availableEnd);
+                
+                if (shiftStart.isBefore(availableStartLocalTime) || shiftEnd.isAfter(availableEndLocalTime)) {
+                    return false;
+                }
             }
-        }
 
         return true;
     }

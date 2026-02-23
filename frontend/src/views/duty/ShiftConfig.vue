@@ -188,6 +188,16 @@
             <el-radio :value="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="排序" prop="sort">
+          <el-input-number
+            v-model="form.sort"
+            :min="0"
+            :max="999"
+            :step="1"
+            placeholder="请输入排序数字"
+            style="width: 100%"
+          />
+        </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input
             v-model="form.remark"
@@ -270,12 +280,13 @@ const form = reactive({
   breakHours: 0,
   isOvertimeShift: 0,
   status: 1,
+  sort: 0,
   remark: '',
   mutexShiftIds: []
 })
 
 const columns = [
-  { prop: 'id', label: 'ID', width: '80' },
+  { prop: 'sort', label: '排序', width: '80' },
   { prop: 'shiftName', label: '班次名称', width: '150' },
   { prop: 'shiftCode', label: '班次编码', width: '120' },
   { prop: 'shiftType', label: '班次类型', width: '100' },
@@ -390,6 +401,7 @@ const resetForm = () => {
     breakHours: 0,
     isOvertimeShift: 0,
     status: 1,
+    sort: 0,
     remark: '',
     mutexShiftIds: []
   })

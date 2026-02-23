@@ -174,7 +174,19 @@ public class LeaveRequestController {
     public ResponseResult<Map<Long, Map<String, Map<String, List<Long>>>>> getEmployeeLeaveInfo(
             @RequestParam("startDate") String startDate,
             @RequestParam("endDate") String endDate,
-            @RequestParam("employeeIds") List<Long> employeeIds) {
+            @RequestParam("employeeIds") String employeeIdsStr) {
+        // 解析逗号分隔的员工ID字符串为List<Long>
+        List<Long> employeeIds = new java.util.ArrayList<>();
+        if (employeeIdsStr != null && !employeeIdsStr.isEmpty()) {
+            String[] ids = employeeIdsStr.split(",");
+            for (String id : ids) {
+                try {
+                    employeeIds.add(Long.parseLong(id.trim()));
+                } catch (NumberFormatException e) {
+                    // 忽略格式错误的ID
+                }
+            }
+        }
         Map<Long, Map<String, Map<String, List<Long>>>> leaveInfo = leaveRequestService.getEmployeeLeaveInfo(employeeIds, startDate, endDate);
         return ResponseResult.success(leaveInfo);
     }

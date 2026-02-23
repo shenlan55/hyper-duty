@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
@@ -49,8 +50,8 @@ public class DutyShiftConfigController {
         shiftConfig.setShiftName((String) shiftConfigMap.get("shiftName"));
         shiftConfig.setShiftCode((String) shiftConfigMap.get("shiftCode"));
         shiftConfig.setShiftType((Integer) shiftConfigMap.get("shiftType"));
-        shiftConfig.setStartTime((String) shiftConfigMap.get("startTime"));
-        shiftConfig.setEndTime((String) shiftConfigMap.get("endTime"));
+        shiftConfig.setStartTime(LocalTime.parse((String) shiftConfigMap.get("startTime")));
+        shiftConfig.setEndTime(LocalTime.parse((String) shiftConfigMap.get("endTime")));
         shiftConfig.setIsCrossDay((Integer) shiftConfigMap.get("isCrossDay"));
         // 处理 durationHours 类型转换
         Object durationHoursObj = shiftConfigMap.get("durationHours");
@@ -124,8 +125,8 @@ public class DutyShiftConfigController {
         shiftConfig.setShiftName((String) shiftConfigMap.get("shiftName"));
         shiftConfig.setShiftCode((String) shiftConfigMap.get("shiftCode"));
         shiftConfig.setShiftType((Integer) shiftConfigMap.get("shiftType"));
-        shiftConfig.setStartTime((String) shiftConfigMap.get("startTime"));
-        shiftConfig.setEndTime((String) shiftConfigMap.get("endTime"));
+        shiftConfig.setStartTime(LocalTime.parse((String) shiftConfigMap.get("startTime")));
+        shiftConfig.setEndTime(LocalTime.parse((String) shiftConfigMap.get("endTime")));
         shiftConfig.setIsCrossDay((Integer) shiftConfigMap.get("isCrossDay"));
         // 处理 durationHours 类型转换
         Object durationHoursObj = shiftConfigMap.get("durationHours");

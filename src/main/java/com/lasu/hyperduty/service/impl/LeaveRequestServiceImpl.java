@@ -381,8 +381,13 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
                 shiftConfigIds.add(request.getShiftConfigId());
             }
             
-            java.time.LocalDate start = java.time.LocalDate.parse(request.getStartDate().toString());
-            java.time.LocalDate end = java.time.LocalDate.parse(request.getEndDate().toString());
+            java.time.LocalDate start = request.getStartDate();
+            java.time.LocalDate end = request.getEndDate();
+            
+            // 跳过空日期的请假记录
+            if (start == null || end == null) {
+                continue;
+            }
             
             // 遍历请假期间的所有日期
             java.time.LocalDate current = start;
