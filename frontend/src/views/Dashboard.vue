@@ -201,7 +201,8 @@ const loadTodoList = async () => {
               description: `${creatorName} 申请 ${item.leaveType ? item.leaveType === 1 ? '事假' : item.leaveType === 2 ? '病假' : item.leaveType === 3 ? '年假' : item.leaveType === 4 ? '调休' : '其他' : '未知'}，时长 ${item.totalHours || 0} 小时`,
               data: {
                 ...item,
-                employeeName: creatorName
+                employeeName: creatorName,
+                scheduleId: item.scheduleId
               }
             }
           })
@@ -342,7 +343,8 @@ const handleTodoClick = (todo) => {
     router.push({
       path: '/duty/leave-approval',
       query: {
-        activeTab: 'pending'
+        activeTab: 'pending',
+        scheduleId: todo.data.scheduleId
       }
     })
   } else if (todo.type === 'swap') {

@@ -270,7 +270,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getPendingApprovals,
@@ -301,6 +301,7 @@ import BaseTable from '../../components/BaseTable.vue'
 import { useSearchPagination } from '../../hooks/usePagination'
 
 const userStore = useUserStore()
+const route = useRoute()
 
 const loading = ref(false)
 const approveDialogVisible = ref(false)
@@ -504,7 +505,7 @@ const fetchEmployeeList = async () => {
   }
 }
 
-const fetchScheduleList = async () => {
+const fetchScheduleList = async (targetScheduleId = null) => {
   try {
     const data = await getAllSchedules()
     
@@ -531,6 +532,15 @@ const fetchScheduleList = async () => {
     
     // 获取值班表列表（后端已经按id排序）
     scheduleList.value = userSchedules
+    
+    // 如果有目标 scheduleId，优先使用目标 scheduleId
+    if (targetScheduleId) {
+      const targetSchedule = scheduleList.value.find(s => s.id === targetScheduleId)
+      if (targetSchedule) {
+        selectedScheduleId.value = targetScheduleId
+        return
+      }
+    }
     
     // 如果有值班表，默认选择第一个
     if (scheduleList.value.length > 0 && !selectedScheduleId.value) {
@@ -909,8 +919,17 @@ const fetchSubstituteInfo = async (leaveRequestId) => {
 }
 
 onMounted(async () => {
+  // 从路由参数中读取 activeTab 和 scheduleId
+  const queryActiveTab = route.query?.activeTab
+  const queryScheduleId = route.query?.scheduleId ? Number(route.query.scheduleId) : null
+  
+  // 设置 activeTab
+  if (queryActiveTab === 'pending' || queryActiveTab === 'approved') {
+    activeTab.value = queryActiveTab
+  }
+  
   await fetchEmployeeList()
-  await fetchScheduleList()
+  await fetchScheduleList(queryScheduleId)
   await fetchEnabledShifts()
   await fetchPendingApprovals()
 })
