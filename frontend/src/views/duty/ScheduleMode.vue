@@ -67,7 +67,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import ScheduleModeEdit from './components/ScheduleModeEdit.vue'
 import { scheduleModeApi } from '@/api/duty/scheduleMode'
 import BaseTable from '@/components/BaseTable.vue'
@@ -88,12 +88,11 @@ const currentModeId = ref(null)
 const modeApi = scheduleModeApi()
 
 const columns = [
-  { prop: 'id', label: 'ID', width: '80' },
+  { prop: 'sort', label: '排序', width: '80' },
   { prop: 'modeName', label: '排班模式名称', minWidth: '150' },
   { prop: 'modeCode', label: '编码', width: '120' },
   { prop: 'modeType', label: '类型', width: '100' },
   { prop: 'status', label: '状态', width: '80' },
-  { prop: 'sort', label: '排序', width: '80' },
   { prop: 'createTime', label: '创建时间', width: '180' },
   { type: 'operation', label: '操作', width: '180', fixed: 'right' }
 ]
@@ -158,11 +157,22 @@ const handleEdit = (row) => {
 // 删除排班模式
 const handleDelete = async (id) => {
   try {
+    await ElMessageBox.confirm(
+      '确定要删除该排班模式吗？删除后将无法恢复！',
+      '删除确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
     await modeApi.delete(id)
     ElMessage.success('删除成功')
     fetchModeList()
   } catch (error) {
-    ElMessage.error('网络错误，请稍后重试')
+    if (error !== 'cancel') {
+      ElMessage.error('网络错误，请稍后重试')
+    }
   }
 }
 
@@ -216,7 +226,6 @@ const handleExport = () => {
   try {
     // 准备导出数据
     const exportData = modeList.value.map(item => ({
-      'ID': item.id,
       '排班模式名称': item.modeName,
       '编码': item.modeCode,
       '类型': getModeTypeName(item.modeType),

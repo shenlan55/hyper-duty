@@ -1,8 +1,10 @@
 package com.lasu.hyperduty.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.lasu.hyperduty.typehandler.PostgreSqlJsonTypeHandler;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -25,6 +27,7 @@ public class DutyScheduleMode implements Serializable {
     
     private String algorithmClass;
     
+    @TableField(typeHandler = PostgreSqlJsonTypeHandler.class)
     private String configJson;
     
     private String description;
