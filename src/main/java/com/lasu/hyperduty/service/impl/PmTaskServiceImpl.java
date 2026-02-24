@@ -233,4 +233,31 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             projectMapper.updateById(project);
         }
     }
+
+    @Override
+    public boolean hasTaskPermission(Long taskId, Long employeeId) {
+        // 获取任务信息
+        PmTask task = getById(taskId);
+        if (task == null) {
+            return false;
+        }
+        
+        // 检查是否是任务的创建者
+        if (task.getCreateBy() != null && task.getCreateBy().equals(employeeId)) {
+            return true;
+        }
+        
+        // 检查是否是任务的负责人
+        if (task.getAssigneeId() != null && task.getAssigneeId().equals(employeeId)) {
+            return true;
+        }
+        
+        // 检查是否是项目的所有者
+        PmProject project = projectMapper.selectById(task.getProjectId());
+        if (project != null && project.getOwnerId() != null && project.getOwnerId().equals(employeeId)) {
+            return true;
+        }
+        
+        return false;
+    }
 }

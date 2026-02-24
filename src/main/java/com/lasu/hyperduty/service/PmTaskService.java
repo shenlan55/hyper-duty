@@ -33,4 +33,6 @@ public interface PmTaskService extends IService<PmTask> {
     void pinTask(Long taskId, boolean pinned);
 
     Integer calculateProjectProgress(Long projectId);
+
+    boolean hasTaskPermission(Long taskId, Long employeeId);
 }

@@ -1539,8 +1539,44 @@ ALTER SEQUENCE public.duty_shift_config_id_seq OWNER TO postgres;
 -- Name: duty_shift_config_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
+
 ALTER SEQUENCE public.duty_shift_config_id_seq OWNED BY public.duty_shift_config.id;
 
+
+--
+-- 创建项目参与者关联表
+--
+CREATE TABLE IF NOT EXISTS public.pm_project_participant (
+    id SERIAL PRIMARY KEY,
+    project_id BIGINT NOT NULL,
+    employee_id BIGINT NOT NULL,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES public.pm_project(id) ON DELETE CASCADE,
+    FOREIGN KEY (employee_id) REFERENCES public.sys_employee(id) ON DELETE CASCADE,
+    UNIQUE(project_id, employee_id)
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_pm_project_participant_project_id ON public.pm_project_participant(project_id);
+CREATE INDEX IF NOT EXISTS idx_pm_project_participant_employee_id ON public.pm_project_participant(employee_id);
+
+--
+-- 创建任务进展更新表
+--
+CREATE TABLE IF NOT EXISTS public.pm_task_progress_update (
+    id BIGSERIAL PRIMARY KEY,
+    task_id BIGINT NOT NULL REFERENCES public.pm_task(id) ON DELETE CASCADE,
+    employee_id BIGINT NOT NULL REFERENCES public.sys_employee(id),
+    progress INTEGER NOT NULL CHECK (progress >= 0 AND progress <= 100),
+    description TEXT,
+    attachments JSONB,
+    create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_pm_task_progress_update_task_id ON public.pm_task_progress_update(task_id);
+CREATE INDEX IF NOT EXISTS idx_pm_task_progress_update_create_time ON public.pm_task_progress_update(create_time);
 
 --
 -- TOC entry 245 (class 1259 OID 34274)

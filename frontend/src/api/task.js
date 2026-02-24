@@ -104,3 +104,33 @@ export function addTaskComment(data) {
     data
   })
 }
+
+// 任务进展更新相关API
+export function createProgressUpdate(data) {
+  return request({
+    url: '/pm/task/progress/update',
+    method: 'post',
+    data
+  })
+}
+
+export function getTaskProgressUpdates(taskId) {
+  return request({
+    url: `/pm/task/progress/update/task/${taskId}`,
+    method: 'get'
+  })
+}
+
+export function getProgressUpdateDetail(id) {
+  return request({
+    url: `/pm/task/progress/update/${id}`,
+    method: 'get'
+  })
+}
+
+export function hasTaskPermission(taskId, employeeId) {
+  return request({
+    url: `/pm/task/permission/${taskId}/${employeeId}`,
+    method: 'get'
+  })
+}

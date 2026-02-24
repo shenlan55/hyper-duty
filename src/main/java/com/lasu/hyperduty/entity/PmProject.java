@@ -8,6 +8,7 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @TableName("pm_project")
@@ -52,4 +53,7 @@ public class PmProject {
 
     @TableField(exist = false)
     private Integer completedTaskCount;
+
+    @TableField(exist = false)
+    private List<Long> participants;
 }

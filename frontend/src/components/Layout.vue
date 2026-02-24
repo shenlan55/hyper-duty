@@ -513,6 +513,16 @@ const useDefaultMenus = () => {
           icon: 'DataAnalysis'
         },
         {
+          name: '日历视图',
+          path: '/project/calendar',
+          icon: 'Calendar'
+        },
+        {
+          name: '团队视图',
+          path: '/project/team',
+          icon: 'UserFilled'
+        },
+        {
           name: '项目统计',
           path: '/project/statistics',
           icon: 'DataAnalysis'
@@ -549,6 +559,8 @@ const useDefaultMenus = () => {
     '/project/task': '任务管理',
     '/project/my-task': '我的任务',
     '/project/gantt': '甘特图',
+    '/project/calendar': '日历视图',
+    '/project/team': '团队视图',
     '/project/statistics': '项目统计'
   }
   

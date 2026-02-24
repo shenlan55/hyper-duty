@@ -93,11 +93,19 @@ public class PmTaskController {
         return ResponseResult.success(tasks);
     }
 
-    @PutMapping("/pin/{taskId}")
+    @PostMapping("/pin")
     public ResponseResult<Void> pinTask(
-            @PathVariable Long taskId,
-            @RequestParam boolean pinned) {
+            @RequestParam Long taskId,
+            @RequestParam Boolean pinned) {
         pmTaskService.pinTask(taskId, pinned);
         return ResponseResult.success();
+    }
+
+    @GetMapping("/permission/{taskId}/{employeeId}")
+    public ResponseResult<Boolean> hasTaskPermission(
+            @PathVariable Long taskId,
+            @PathVariable Long employeeId) {
+        boolean hasPermission = pmTaskService.hasTaskPermission(taskId, employeeId);
+        return ResponseResult.success(hasPermission);
     }
 }

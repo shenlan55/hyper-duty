@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface PmProjectService extends IService<PmProject> {
 
-    Page<PmProject> pageList(Integer pageNum, Integer pageSize, String projectName, Integer status, Long ownerId);
+    Page<PmProject> pageList(Integer pageNum, Integer pageSize, String projectName, Integer status, Long ownerId, Boolean showArchived);
 
     List<PmProject> getMyProjects(Long employeeId);
 

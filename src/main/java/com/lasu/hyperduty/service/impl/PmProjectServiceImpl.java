@@ -4,7 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.PmProject;
+import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.mapper.PmProjectMapper;
+import com.lasu.hyperduty.mapper.SysEmployeeMapper;
+import com.lasu.hyperduty.service.PmProjectEmployeeService;
 import com.lasu.hyperduty.service.PmProjectService;
 import com.lasu.hyperduty.service.PmTaskService;
 import lombok.RequiredArgsConstructor;
@@ -21,13 +24,18 @@ import java.util.List;
 public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject> implements PmProjectService {
 
     private final PmTaskService pmTaskService;
+    private final PmProjectEmployeeService pmProjectEmployeeService;
+    private final SysEmployeeMapper sysEmployeeMapper;
 
     @Override
-    public Page<PmProject> pageList(Integer pageNum, Integer pageSize, String projectName, Integer status, Long ownerId) {
+    public Page<PmProject> pageList(Integer pageNum, Integer pageSize, String projectName, Integer status, Long ownerId, Boolean showArchived) {
         Page<PmProject> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<PmProject> wrapper = new LambdaQueryWrapper<>();
         
-        wrapper.eq(PmProject::getArchived, 0);
+        // 只有当showArchived为true时才显示已归档的项目
+        if (!Boolean.TRUE.equals(showArchived)) {
+            wrapper.eq(PmProject::getArchived, 0);
+        }
         
         if (StringUtils.hasText(projectName)) {
             wrapper.like(PmProject::getProjectName, projectName);
@@ -43,7 +51,21 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
         
         wrapper.orderByDesc(PmProject::getCreateTime);
         
-        return baseMapper.selectPage(page, wrapper);
+        Page<PmProject> result = baseMapper.selectPage(page, wrapper);
+        
+        // 填充负责人名称
+        if (result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (PmProject project : result.getRecords()) {
+                if (project.getOwnerId() != null) {
+                    SysEmployee employee = sysEmployeeMapper.selectById(project.getOwnerId());
+                    if (employee != null) {
+                        project.setOwnerName(employee.getEmployeeName());
+                    }
+                }
+            }
+        }
+        
+        return result;
     }
 
     @Override
@@ -57,6 +79,10 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
         if (project != null) {
             Integer progress = pmTaskService.calculateProjectProgress(id);
             project.setProgress(progress);
+            
+            // 加载项目参与者
+            List<Long> participantIds = pmProjectEmployeeService.getEmployeeIdsByProjectId(id);
+            project.setParticipants(participantIds);
         }
         return project;
     }
@@ -71,6 +97,11 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
         
         save(project);
         
+        // 保存项目参与者
+        if (project.getParticipants() != null && !project.getParticipants().isEmpty()) {
+            pmProjectEmployeeService.saveProjectEmployees(project.getId(), project.getParticipants());
+        }
+        
         log.info("创建项目成功: {}", project.getProjectName());
         return project;
     }
@@ -79,6 +110,9 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
     public PmProject updateProject(PmProject project) {
         project.setUpdateTime(LocalDateTime.now());
         updateById(project);
+        
+        // 保存项目参与者
+        pmProjectEmployeeService.saveProjectEmployees(project.getId(), project.getParticipants());
         
         log.info("更新项目成功: {}", project.getId());
         return project;

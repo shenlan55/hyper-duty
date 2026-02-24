@@ -221,17 +221,19 @@
         <el-form-item label="附件">
           <el-upload
             class="upload-demo"
-            action="#"
+            :http-request="handleCustomUpload"
+            :before-upload="beforeUpload"
             :on-preview="handlePreview"
             :on-remove="handleRemove"
             :before-remove="beforeRemove"
             :limit="3"
             :on-exceed="handleExceed"
             :file-list="fileList"
+            :auto-upload="true"
           >
             <el-button size="small" type="primary">点击上传</el-button>
             <template #tip>
-              <div class="el-upload__tip">只能上传jpg/png文件，且不超过500kb</div>
+              <div class="el-upload__tip">支持上传JPG/PNG图片、Word、Excel、PDF、PPT和ZIP文件，单个文件大小不超过10MB，最多上传3个文件</div>
             </template>
           </el-upload>
         </el-form-item>
@@ -342,6 +344,7 @@ import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 import BaseTable from '../../components/BaseTable.vue'
 import { useSearchPagination } from '../../hooks/usePagination'
+import request from '../../utils/request'
 
 const userStore = useUserStore()
 
@@ -845,6 +848,111 @@ const beforeRemove = (file) => {
 
 const handleExceed = (files) => {
   ElMessage.warning(`当前限制选择 3 个文件，本次选择了 ${files.length} 个文件`)
+}
+
+const handleUploadSuccess = (response, file, fileList) => {
+  // 上传成功后，更新文件列表
+  if (response && response.data) {
+    const fileData = response.data
+    const uploadedFile = {
+      uid: file.uid,
+      name: file.name,
+      url: fileData.fileUrl,
+      filePath: fileData.filePath,
+      type: file.type,
+      size: file.size
+    }
+    
+    // 查找并替换文件列表中的文件
+    const index = fileList.findIndex(item => item.uid === file.uid)
+    if (index !== -1) {
+      fileList[index] = uploadedFile
+    } else {
+      fileList.push(uploadedFile)
+    }
+    
+    ElMessage.success('文件上传成功')
+  } else {
+    ElMessage.error('文件上传失败')
+  }
+}
+
+const handleUploadError = (error, file, fileList) => {
+  console.error('文件上传失败', error)
+  ElMessage.error('文件上传失败')
+}
+
+const beforeUpload = (file) => {
+  // 检查文件类型
+  const allowedTypes = [
+    'image/jpeg', 'image/png', // 图片
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // Word
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // Excel
+    'application/pdf', // PDF
+    'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPT
+    'application/zip', 'application/x-zip-compressed' // ZIP
+  ]
+  
+  const isAllowedType = allowedTypes.includes(file.type)
+  if (!isAllowedType) {
+    ElMessage.error('只能上传JPG/PNG图片、Word、Excel、PDF、PPT和ZIP文件')
+    return false
+  }
+  
+  // 检查文件大小
+  const isLt10M = file.size / 1024 / 1024 < 10
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过10MB')
+    return false
+  }
+  
+  return true
+}
+
+const handleCustomUpload = async (options) => {
+  const { file, onSuccess, onError } = options
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const response = await request.post('/file/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    // 更新文件列表
+    if (response) {
+      const uploadedFile = {
+        uid: file.uid,
+        name: file.name,
+        url: response.fileUrl,
+        filePath: response.filePath,
+        type: file.type,
+        size: file.size
+      }
+      
+      // 查找并替换文件列表中的文件
+      const index = fileList.value.findIndex(item => item.uid === file.uid)
+      if (index !== -1) {
+        fileList.value[index] = uploadedFile
+      } else {
+        fileList.value.push(uploadedFile)
+      }
+      
+      ElMessage.success('文件上传成功')
+    }
+    
+    // 构造el-upload组件期望的响应格式
+    onSuccess({ 
+      status: 'success', 
+      data: response 
+    })
+  } catch (error) {
+    console.error('文件上传失败', error)
+    ElMessage.error('文件上传失败')
+    onError(error)
+  }
 }
 
 const updateDisabledShifts = async (selectedShiftIds) => {

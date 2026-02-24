@@ -21,6 +21,9 @@
           </el-select>
         </el-form-item>
         <el-form-item>
+          <el-checkbox v-model="searchForm.showArchived">显示归档项目</el-checkbox>
+        </el-form-item>
+        <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
@@ -80,6 +83,14 @@
             <el-option label="高" :value="1" />
             <el-option label="中" :value="2" />
             <el-option label="低" :value="3" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="form.status" placeholder="请选择状态">
+            <el-option label="未开始" :value="1" />
+            <el-option label="进行中" :value="2" />
+            <el-option label="已完成" :value="3" />
+            <el-option label="已暂停" :value="4" />
           </el-select>
         </el-form-item>
         <el-form-item label="负责人" prop="ownerId">
@@ -144,7 +155,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BaseTable from '@/components/BaseTable.vue'
 import EmployeeSelector from '@/components/EmployeeSelector.vue'
-import { getProjectPage, createProject, updateProject, archiveProject, deleteProject } from '@/api/project'
+import { getProjectPage, getProjectDetail, createProject, updateProject, archiveProject, deleteProject } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 
 const router = useRouter()
@@ -158,7 +169,8 @@ const employeeList = ref([])
 
 const searchForm = reactive({
   projectName: '',
-  status: null
+  status: null,
+  showArchived: true
 })
 
 const pagination = reactive({
@@ -173,6 +185,7 @@ const form = reactive({
   projectName: '',
   projectCode: '',
   priority: 2,
+  status: 1,
   ownerId: null,
   ownerName: '',
   startDate: '',
@@ -231,7 +244,9 @@ const loadData = async () => {
     const params = {
       pageNum: pagination.currentPage,
       pageSize: pagination.pageSize,
-      ...searchForm
+      projectName: searchForm.projectName,
+      status: searchForm.status,
+      showArchived: searchForm.showArchived
     }
     const data = await getProjectPage(params)
     tableData.value = data.records || []
@@ -274,9 +289,16 @@ const handleView = (row) => {
   router.push(`/project/task?projectId=${row.id}`)
 }
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   dialogTitle.value = '编辑项目'
-  Object.assign(form, row)
+  try {
+    // 调用getProjectDetail获取完整的项目信息，包括参与人员列表
+    const projectDetail = await getProjectDetail(row.id)
+    Object.assign(form, projectDetail)
+  } catch (error) {
+    console.error('获取项目详情失败', error)
+    ElMessage.error('获取项目详情失败')
+  }
   dialogVisible.value = true
 }
 

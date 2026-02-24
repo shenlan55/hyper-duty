@@ -19,14 +19,14 @@ public class PmProjectController {
     private final PmProjectService pmProjectService;
 
     @GetMapping("/page")
-    public ResponseResult<Page<PmProject>> pageList(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize,
+    public ResponseResult<Page<PmProject>> getProjectPage(
+            @RequestParam Integer pageNum,
+            @RequestParam Integer pageSize,
             @RequestParam(required = false) String projectName,
             @RequestParam(required = false) Integer status,
-            @RequestParam(required = false) Long ownerId) {
-        
-        Page<PmProject> page = pmProjectService.pageList(pageNum, pageSize, projectName, status, ownerId);
+            @RequestParam(required = false) Long ownerId,
+            @RequestParam(required = false, defaultValue = "false") Boolean showArchived) {
+        Page<PmProject> page = pmProjectService.pageList(pageNum, pageSize, projectName, status, ownerId, showArchived);
         return ResponseResult.success(page);
     }
 

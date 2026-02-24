@@ -377,6 +377,10 @@ INSERT INTO public.sys_menu VALUES (27, '项目列表', 26, '/project/list', 'vi
 INSERT INTO public.sys_menu VALUES (28, '项目详情', 26, '/project/detail', 'views/project/ProjectDetail.vue', 'project:detail', 2, 'View', 2, 1, '2026-02-23 00:26:25.681238', '2026-02-23 00:26:25.681238');
 INSERT INTO public.sys_menu VALUES (29, '任务管理', 26, '/project/task', 'views/project/TaskList.vue', 'project:task:list', 2, 'Check', 3, 1, '2026-02-23 00:26:25.681238', '2026-02-23 00:26:25.681238');
 INSERT INTO public.sys_menu VALUES (30, '项目统计', 26, '/project/statistics', 'views/project/ProjectGantt.vue', 'project:statistics', 2, 'DataAnalysis', 4, 1, '2026-02-23 00:26:25.681238', '2026-02-23 00:26:25.681238');
+INSERT INTO public.sys_menu VALUES (31, '我的任务', 26, '/project/my-task', 'views/project/MyTask.vue', 'project:myTask:list', 2, 'User', 5, 1, '2026-02-24 20:30:00', '2026-02-24 20:30:00');
+INSERT INTO public.sys_menu VALUES (32, '甘特图', 26, '/project/gantt', 'views/project/ProjectGantt.vue', 'project:gantt:view', 2, 'DataAnalysis', 6, 1, '2026-02-24 20:30:00', '2026-02-24 20:30:00');
+INSERT INTO public.sys_menu VALUES (33, '日历视图', 26, '/project/calendar', 'views/project/TaskCalendar.vue', 'project:calendar:view', 2, 'Calendar', 7, 1, '2026-02-24 20:30:00', '2026-02-24 20:30:00');
+INSERT INTO public.sys_menu VALUES (34, '团队视图', 26, '/project/team', 'views/project/TeamView.vue', 'project:team:view', 2, 'UserFilled', 8, 1, '2026-02-24 20:30:00', '2026-02-24 20:30:00');
 INSERT INTO public.sys_menu VALUES (1, '首页', 0, '/dashboard', 'views/Dashboard.vue', '', 1, 'HomeFilled', 1, 1, '2026-02-22 23:21:27', '2026-02-22 23:21:27');
 
 
@@ -412,6 +416,10 @@ INSERT INTO public.sys_role_menu VALUES (572, 2, 27, '2026-02-24 10:28:29.928216
 INSERT INTO public.sys_role_menu VALUES (573, 2, 28, '2026-02-24 10:28:29.928216');
 INSERT INTO public.sys_role_menu VALUES (574, 2, 29, '2026-02-24 10:28:29.928216');
 INSERT INTO public.sys_role_menu VALUES (575, 2, 30, '2026-02-24 10:28:29.928216');
+INSERT INTO public.sys_role_menu VALUES (599, 2, 31, '2026-02-24 20:30:00');
+INSERT INTO public.sys_role_menu VALUES (600, 2, 32, '2026-02-24 20:30:00');
+INSERT INTO public.sys_role_menu VALUES (601, 2, 33, '2026-02-24 20:30:00');
+INSERT INTO public.sys_role_menu VALUES (602, 2, 34, '2026-02-24 20:30:00');
 INSERT INTO public.sys_role_menu VALUES (576, 14, 1, '2026-02-24 10:28:32.524782');
 INSERT INTO public.sys_role_menu VALUES (577, 14, 4, '2026-02-24 10:28:32.524782');
 INSERT INTO public.sys_role_menu VALUES (578, 14, 5, '2026-02-24 10:28:32.524782');
@@ -447,6 +455,10 @@ INSERT INTO public.sys_role_menu VALUES (507, 1, 27, '2026-02-23 00:26:58.775378
 INSERT INTO public.sys_role_menu VALUES (508, 1, 28, '2026-02-23 00:26:58.775378');
 INSERT INTO public.sys_role_menu VALUES (509, 1, 29, '2026-02-23 00:26:58.775378');
 INSERT INTO public.sys_role_menu VALUES (510, 1, 30, '2026-02-23 00:26:58.775378');
+INSERT INTO public.sys_role_menu VALUES (595, 1, 31, '2026-02-24 20:30:00');
+INSERT INTO public.sys_role_menu VALUES (596, 1, 32, '2026-02-24 20:30:00');
+INSERT INTO public.sys_role_menu VALUES (597, 1, 33, '2026-02-24 20:30:00');
+INSERT INTO public.sys_role_menu VALUES (598, 1, 34, '2026-02-24 20:30:00');
 INSERT INTO public.sys_role_menu VALUES (586, 14, 14, '2026-02-24 10:28:32.524782');
 INSERT INTO public.sys_role_menu VALUES (587, 14, 15, '2026-02-24 10:28:32.524782');
 INSERT INTO public.sys_role_menu VALUES (588, 14, 16, '2026-02-24 10:28:32.524782');

@@ -51,6 +51,7 @@
             :on-error="handleUploadError"
             :file-list="fileList"
             :auto-upload="true"
+            :before-upload="beforeUpload"
             multiple
           >
             <el-button type="primary">点击上传</el-button>
@@ -130,6 +131,33 @@ const handleUploadSuccess = (response, file, fileList) => {
 
 const handleUploadError = (error, file, fileList) => {
   ElMessage.error('文件上传失败')
+}
+
+const beforeUpload = (file) => {
+  // 检查文件类型
+  const allowedTypes = [
+    'image/jpeg', 'image/png', // 图片
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // Word
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // Excel
+    'application/pdf', // PDF
+    'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPT
+    'application/zip', 'application/x-zip-compressed' // ZIP
+  ]
+  
+  const isAllowedType = allowedTypes.includes(file.type)
+  if (!isAllowedType) {
+    ElMessage.error('只能上传JPG/PNG图片、Word、Excel、PDF、PPT和ZIP文件')
+    return false
+  }
+  
+  // 检查文件大小
+  const isLt10M = file.size / 1024 / 1024 < 10
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过10MB')
+    return false
+  }
+  
+  return true
 }
 
 const resetCommentForm = () => {

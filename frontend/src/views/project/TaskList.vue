@@ -72,29 +72,30 @@
         </template>
         <template #operation="{ row }">
           <el-button 
-            v-if="hasPermission(row)" 
+            v-if="row.hasPermission " 
             link type="primary" 
             @click="handleEdit(row)"
           >
             编辑
           </el-button>
           <el-button 
-            v-if="hasPermission(row)" 
+            v-if="row.hasPermission " 
             link type="primary" 
             @click="handleUpdateProgress(row)"
           >
             更新进度
           </el-button>
+          <el-button link type="primary" @click="handleViewTaskDetail(row)">详情</el-button>
           <el-button link type="primary" @click="handleViewComments(row)">批注</el-button>
           <el-button 
-            v-if="hasPermission(row)" 
+            v-if="row.hasPermission " 
             link type="warning" 
             @click="handlePin(row)"
           >
             {{ row.isPinned === 1 ? '取消置顶' : '置顶' }}
           </el-button>
           <el-button 
-            v-if="hasPermission(row)" 
+            v-if="row.hasPermission " 
             link type="danger" 
             @click="handleDelete(row)"
           >
@@ -226,6 +227,171 @@
     >
       <TaskComment v-if="currentTask" :task-id="currentTask.id" />
     </el-dialog>
+
+    <el-dialog
+      v-model="progressUpdateDialogVisible"
+      :title="`更新任务进展 - ${currentTaskForUpdate?.taskName || ''}`"
+      width="800px"
+    >
+      <!-- 任务基本信息（只读） -->
+      <div class="task-info-panel" style="margin-bottom: 20px; padding: 15px; background-color: #f5f7fa; border-radius: 4px;">
+        <h4 style="margin-bottom: 10px;">任务信息</h4>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-descriptions :column="1" size="small">
+              <el-descriptions-item label="任务名称">{{ currentTaskForUpdate?.taskName }}</el-descriptions-item>
+              <el-descriptions-item label="所属项目">{{ currentTaskForUpdate?.projectName }}</el-descriptions-item>
+              <el-descriptions-item label="负责人">{{ currentTaskForUpdate?.ownerName }}</el-descriptions-item>
+            </el-descriptions>
+          </el-col>
+          <el-col :span="12">
+            <el-descriptions :column="1" size="small">
+              <el-descriptions-item label="优先级">{{ getPriorityText(currentTaskForUpdate?.priority) }}</el-descriptions-item>
+              <el-descriptions-item label="状态">{{ getStatusText(currentTaskForUpdate?.status) }}</el-descriptions-item>
+              <el-descriptions-item label="当前进度">{{ currentTaskForUpdate?.progress }}%</el-descriptions-item>
+            </el-descriptions>
+          </el-col>
+        </el-row>
+      </div>
+
+      <!-- 进度更新表单 -->
+      <el-form label-width="100px">
+        <el-form-item label="更新进度">
+          <el-slider v-model="progressUpdateForm.progress" :min="0" :max="100" show-input />
+        </el-form-item>
+        <el-form-item label="进展描述">
+          <RichTextEditor v-model="progressUpdateForm.description" placeholder="请输入进展描述" />
+        </el-form-item>
+        <el-form-item label="附件">
+          <el-upload
+            class="upload-demo"
+            :http-request="handleCustomUpload"
+            :file-list="progressUpdateForm.attachments"
+            :auto-upload="true"
+            :limit="5"
+            :before-upload="beforeUpload"
+            list-type="picture"
+          >
+            <el-button type="primary">点击上传</el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持上传JPG/PNG图片、Word、Excel、PDF、PPT和ZIP文件，且不超过10MB
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+
+      <!-- 进展历史时间线 -->
+      <div style="margin-top: 30px;">
+        <h4 style="margin-bottom: 15px;">进展历史</h4>
+        <el-timeline>
+          <el-timeline-item
+            v-for="(update, index) in progressUpdates"
+            :key="index"
+            :timestamp="formatDateTime(update.createTime)"
+            type="primary"
+            placement="top"
+          >
+            <el-card>
+              <div class="update-content">
+                <div class="update-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                  <span style="font-weight: bold;">{{ update.employeeName }}</span>
+                  <span style="color: #606266;">进度更新至 {{ update.progress }}%</span>
+                </div>
+                <div class="update-description" v-if="update.description" style="margin-bottom: 10px;" v-html="update.description"></div>
+                <div class="update-attachments" v-if="update.attachmentList && update.attachmentList.length > 0">
+                  <el-divider content-position="left">附件</el-divider>
+                  <el-image
+                    v-for="(attachment, idx) in update.attachmentList"
+                    :key="idx"
+                    :src="attachment.url"
+                    :alt="attachment.name"
+                    style="width: 100px; height: 100px; margin-right: 10px;"
+                    fit="cover"
+                  />
+                </div>
+              </div>
+            </el-card>
+          </el-timeline-item>
+        </el-timeline>
+      </div>
+
+      <template #footer>
+        <el-button @click="progressUpdateDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmitProgressUpdate">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 任务详情对话框（只读） -->
+    <el-dialog
+      v-model="taskDetailDialogVisible"
+      :title="`任务详情 - ${currentTaskForDetail?.taskName || ''}`"
+      width="800px"
+    >
+      <!-- 任务基本信息（只读） -->
+      <div class="task-info-panel" style="margin-bottom: 20px; padding: 15px; background-color: #f5f7fa; border-radius: 4px;">
+        <h4 style="margin-bottom: 10px;">任务信息</h4>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-descriptions :column="1" size="small">
+              <el-descriptions-item label="任务名称">{{ currentTaskForDetail?.taskName }}</el-descriptions-item>
+              <el-descriptions-item label="所属项目">{{ currentTaskForDetail?.projectName }}</el-descriptions-item>
+              <el-descriptions-item label="负责人">{{ currentTaskForDetail?.ownerName }}</el-descriptions-item>
+              <el-descriptions-item label="开始日期">{{ currentTaskForDetail?.startDate }}</el-descriptions-item>
+              <el-descriptions-item label="结束日期">{{ currentTaskForDetail?.endDate }}</el-descriptions-item>
+            </el-descriptions>
+          </el-col>
+          <el-col :span="12">
+            <el-descriptions :column="1" size="small">
+              <el-descriptions-item label="优先级">{{ getPriorityText(currentTaskForDetail?.priority) }}</el-descriptions-item>
+              <el-descriptions-item label="状态">{{ getStatusText(currentTaskForDetail?.status) }}</el-descriptions-item>
+              <el-descriptions-item label="当前进度">{{ currentTaskForDetail?.progress }}%</el-descriptions-item>
+              <el-descriptions-item label="任务描述">{{ currentTaskForDetail?.description }}</el-descriptions-item>
+            </el-descriptions>
+          </el-col>
+        </el-row>
+      </div>
+
+      <!-- 进展历史时间线 -->
+      <div style="margin-top: 30px;">
+        <h4 style="margin-bottom: 15px;">进展历史</h4>
+        <el-timeline>
+          <el-timeline-item
+            v-for="(update, index) in taskDetailProgressUpdates"
+            :key="index"
+            :timestamp="formatDateTime(update.createTime)"
+            type="primary"
+            placement="top"
+          >
+            <el-card>
+              <div class="update-content">
+                <div class="update-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                  <span style="font-weight: bold;">{{ update.employeeName }}</span>
+                  <span style="color: #606266;">进度更新至 {{ update.progress }}%</span>
+                </div>
+                <div class="update-description" v-if="update.description" style="margin-bottom: 10px;" v-html="update.description"></div>
+                <div class="update-attachments" v-if="update.attachmentList && update.attachmentList.length > 0">
+                  <el-divider content-position="left">附件</el-divider>
+                  <el-image
+                    v-for="(attachment, idx) in update.attachmentList"
+                    :key="idx"
+                    :src="attachment.url"
+                    :alt="attachment.name"
+                    style="width: 100px; height: 100px; margin-right: 10px;"
+                    fit="cover"
+                  />
+                </div>
+              </div>
+            </el-card>
+          </el-timeline-item>
+        </el-timeline>
+      </div>
+
+      <template #footer>
+        <el-button @click="taskDetailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -236,10 +402,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import TaskComment from '@/components/TaskComment.vue'
-import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks } from '@/api/task'
+import RichTextEditor from '@/components/RichTextEditor.vue'
+import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, hasTaskPermission } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
+import request from '@/utils/request'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -252,9 +420,21 @@ const taskTreeData = ref([])
 const dialogVisible = ref(false)
 const progressDialogVisible = ref(false)
 const commentDialogVisible = ref(false)
+const taskDetailDialogVisible = ref(false)
 const currentTask = ref(null)
+const currentTaskForDetail = ref(null)
 const dialogTitle = ref('新建任务')
 const formRef = ref(null)
+const taskDetailProgressUpdates = ref([])
+const progressUpdateDialogVisible = ref(false)
+const currentTaskForUpdate = ref(null)
+const progressUpdateForm = reactive({
+  taskId: null,
+  progress: 0,
+  description: '',
+  attachments: []
+})
+const progressUpdates = ref([])
 
 const searchForm = reactive({
   projectId: null,
@@ -343,6 +523,17 @@ const loadData = async () => {
     }
     const data = await getTaskPage(params)
     tableData.value = data.records || []
+    
+    // 为每个任务计算权限状态
+    for (const task of tableData.value) {
+      try {
+        task.hasPermission = await hasTaskPermission(task.id, userStore.employeeId)
+      } catch (error) {
+        console.error('检查任务权限失败', error)
+        task.hasPermission = false
+      }
+    }
+    
     pagination.total = data.total || 0
   } catch (error) {
     ElMessage.error('加载数据失败')
@@ -353,7 +544,7 @@ const loadData = async () => {
 
 const loadProjectList = async () => {
   try {
-    const data = await getProjectPage({ pageNum: 1, pageSize: 1000 })
+    const data = await getProjectPage({ pageNum: 1, pageSize: 1000, showArchived: true })
     projectList.value = data.records || []
   } catch (error) {
     console.error('加载项目列表失败', error)
@@ -427,8 +618,8 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row) => {
-  if (!hasPermission(row)) {
+const handleEdit = async (row) => {
+  if (!(await hasPermission(row))) {
     ElMessage.warning('您没有权限编辑此任务')
     return
   }
@@ -441,18 +632,221 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
-const handleUpdateProgress = (row) => {
-  if (!hasPermission(row)) {
+const handleUpdateProgress = async (row) => {
+  if (!(await hasPermission(row))) {
     ElMessage.warning('您没有权限更新此任务进度')
     return
   }
-  progressForm.taskId = row.id
-  progressForm.progress = row.progress || 0
-  progressDialogVisible.value = true
+  currentTaskForUpdate.value = row
+  progressUpdateForm.taskId = row.id
+  progressUpdateForm.progress = row.progress || 0
+  progressUpdateForm.description = ''
+  progressUpdateForm.attachments = []
+  
+  // 加载任务的进展历史
+  await loadProgressUpdates(row.id)
+  
+  progressUpdateDialogVisible.value = true
+}
+
+const handleViewTaskDetail = async (row) => {
+  currentTaskForDetail.value = row
+  
+  // 加载任务的进展历史
+  await loadTaskDetailProgressUpdates(row.id)
+  
+  taskDetailDialogVisible.value = true
+}
+
+const loadProgressUpdates = async (taskId) => {
+  try {
+    const data = await getTaskProgressUpdates(taskId)
+    progressUpdates.value = data || []
+  } catch (error) {
+    console.error('加载任务进展历史失败', error)
+    ElMessage.error('加载任务进展历史失败')
+  }
+}
+
+const loadTaskDetailProgressUpdates = async (taskId) => {
+  try {
+    const data = await getTaskProgressUpdates(taskId)
+    taskDetailProgressUpdates.value = data || []
+  } catch (error) {
+    console.error('加载任务进展历史失败', error)
+    ElMessage.error('加载任务进展历史失败')
+  }
+}
+
+const handleSubmitProgressUpdate = async () => {
+  try {
+    // 准备附件数据
+    let attachmentsJson = null
+    if (progressUpdateForm.attachments && progressUpdateForm.attachments.length > 0) {
+      const attachments = progressUpdateForm.attachments.map(file => ({
+        name: file.name,
+        url: file.url || '',
+        type: file.type,
+        size: file.size
+      }))
+      attachmentsJson = JSON.stringify(attachments)
+    }
+    
+    // 提交进展更新
+    const updateData = {
+      taskId: progressUpdateForm.taskId,
+      employeeId: userStore.employeeId,
+      progress: progressUpdateForm.progress,
+      description: progressUpdateForm.description || ''
+    }
+    
+    // 只有当有附件时才添加 attachments 字段
+    if (attachmentsJson !== null) {
+      updateData.attachments = attachmentsJson
+    }
+    
+    await createProgressUpdate(updateData)
+    ElMessage.success('更新任务进展成功')
+    
+    // 重新加载数据
+    progressUpdateDialogVisible.value = false
+    loadData()
+  } catch (error) {
+    console.error('更新任务进展失败', error)
+    ElMessage.error('更新任务进展失败')
+  }
+}
+
+const formatDateTime = (dateTime) => {
+  if (!dateTime) return ''
+  const date = new Date(dateTime)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+const handlePreview = (file) => {
+  console.log('预览文件', file)
+  // 实际项目中应该打开文件预览
+}
+
+const handleRemove = (file, fileList) => {
+  console.log('删除文件', file, fileList)
+  // 实际项目中应该处理文件删除逻辑
+}
+
+const handleCustomUpload = async (options) => {
+  const { file, onSuccess, onError } = options
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const response = await request.post('/file/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    // 更新文件列表
+    if (response) {
+      const uploadedFile = {
+        uid: file.uid,
+        name: file.name,
+        url: response.fileUrl,
+        filePath: response.filePath,
+        type: file.type,
+        size: file.size
+      }
+      
+      // 查找并替换文件列表中的文件
+      const index = progressUpdateForm.attachments.findIndex(item => item.uid === file.uid)
+      if (index !== -1) {
+        progressUpdateForm.attachments[index] = uploadedFile
+      } else {
+        progressUpdateForm.attachments.push(uploadedFile)
+      }
+      
+      ElMessage.success('文件上传成功')
+    }
+    
+    // 构造el-upload组件期望的响应格式
+    onSuccess({ 
+      status: 'success', 
+      data: response 
+    })
+  } catch (error) {
+    console.error('文件上传失败', error)
+    ElMessage.error('文件上传失败')
+    onError(error)
+  }
+}
+
+const handleUploadSuccess = (response, file, fileList) => {
+  // 上传成功后，更新文件列表
+  if (response && response.data) {
+    const fileData = response.data
+    const uploadedFile = {
+      uid: file.uid,
+      name: file.name,
+      url: fileData.fileUrl,
+      filePath: fileData.filePath,
+      type: file.type,
+      size: file.size
+    }
+    
+    // 查找并替换文件列表中的文件
+    const index = progressUpdateForm.attachments.findIndex(item => item.uid === file.uid)
+    if (index !== -1) {
+      progressUpdateForm.attachments[index] = uploadedFile
+    } else {
+      progressUpdateForm.attachments.push(uploadedFile)
+    }
+    
+    ElMessage.success('文件上传成功')
+  } else {
+    ElMessage.error('文件上传失败')
+  }
+}
+
+const handleUploadError = (error, file, fileList) => {
+  console.error('文件上传失败', error)
+  ElMessage.error('文件上传失败')
+}
+
+const beforeUpload = (file) => {
+  // 检查文件类型
+  const allowedTypes = [
+    'image/jpeg', 'image/png', // 图片
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // Word
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // Excel
+    'application/pdf', // PDF
+    'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPT
+    'application/zip', 'application/x-zip-compressed' // ZIP
+  ]
+  
+  const isAllowedType = allowedTypes.includes(file.type)
+  if (!isAllowedType) {
+    ElMessage.error('只能上传JPG/PNG图片、Word、Excel、PDF、PPT和ZIP文件')
+    return false
+  }
+  
+  // 检查文件大小（增加到10MB）
+  const isLt10M = file.size / 1024 / 1024 < 10
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过10MB')
+    return false
+  }
+  
+  return true
 }
 
 const handlePin = async (row) => {
-  if (!hasPermission(row)) {
+  if (!(await hasPermission(row))) {
     ElMessage.warning('您没有权限置顶此任务')
     return
   }
@@ -467,7 +861,7 @@ const handlePin = async (row) => {
 }
 
 const handleDelete = async (row) => {
-  if (!hasPermission(row)) {
+  if (!(await hasPermission(row))) {
     ElMessage.warning('您没有权限删除此任务')
     return
   }
@@ -501,16 +895,14 @@ const handleViewComments = (row) => {
   commentDialogVisible.value = true
 }
 
-const hasPermission = (task) => {
-  // 检查是否是任务负责人
-  if (task.assigneeId === userStore.employeeId || task.ownerId === userStore.employeeId) {
-    return true
+const hasPermission = async (task) => {
+  try {
+    const result = await hasTaskPermission(task.id, userStore.employeeId)
+    return result
+  } catch (error) {
+    console.error('检查任务权限失败', error)
+    return false
   }
-  // 检查是否是授权干系人（这里简化处理，实际应该从后端获取权限信息）
-  if (task.stakeholders && task.stakeholders.includes(userStore.employeeId)) {
-    return true
-  }
-  return false
 }
 
 const handleSubmit = async () => {

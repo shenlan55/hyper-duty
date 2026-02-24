@@ -16,12 +16,12 @@ import java.sql.SQLException;
  */
 public class PostgreSqlJsonTypeHandler extends BaseTypeHandler<String> {
 
-    private static final String JSON_TYPE = "json";
+    private static final String JSONB_TYPE = "jsonb";
 
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, String parameter, JdbcType jdbcType) throws SQLException {
         PGobject jsonObject = new PGobject();
-        jsonObject.setType(JSON_TYPE);
+        jsonObject.setType(JSONB_TYPE);
         jsonObject.setValue(parameter);
         ps.setObject(i, jsonObject);
     }

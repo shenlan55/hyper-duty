@@ -430,7 +430,7 @@ const getTaskCountByStatus = (status) => {
 
 const loadProjectList = async () => {
   try {
-    const data = await getProjectPage({ pageNum: 1, pageSize: 1000 })
+    const data = await getProjectPage({ pageNum: 1, pageSize: 1000, showArchived: true })
     projectList.value = data.records || []
   } catch (error) {
     console.error('加载项目列表失败', error)
