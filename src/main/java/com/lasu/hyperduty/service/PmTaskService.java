@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface PmTaskService extends IService<PmTask> {
 
-    Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long ownerId, Integer status, Integer priority);
+    Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long assigneeId, Integer status, Integer priority);
 
     List<PmTask> getProjectTasks(Long projectId);
 

@@ -493,7 +493,12 @@ const useDefaultMenus = () => {
           icon: 'List'
         },
         {
-          name: '任务列表',
+          name: '项目详情',
+          path: '/project/detail',
+          icon: 'View'
+        },
+        {
+          name: '任务管理',
           path: '/project/task',
           icon: 'Document'
         },
@@ -505,6 +510,11 @@ const useDefaultMenus = () => {
         {
           name: '甘特图',
           path: '/project/gantt',
+          icon: 'DataAnalysis'
+        },
+        {
+          name: '项目统计',
+          path: '/project/statistics',
           icon: 'DataAnalysis'
         }
       ]
@@ -535,9 +545,11 @@ const useDefaultMenus = () => {
     '/duty/statistics': '排班统计',
     '/project': '项目管理',
     '/project/list': '项目列表',
-    '/project/task': '任务列表',
+    '/project/detail': '项目详情',
+    '/project/task': '任务管理',
     '/project/my-task': '我的任务',
-    '/project/gantt': '甘特图'
+    '/project/gantt': '甘特图',
+    '/project/statistics': '项目统计'
   }
   
   // 始终设置首页为默认激活

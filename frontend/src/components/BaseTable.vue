@@ -367,11 +367,11 @@ const initDefaultExpandedNodes = () => {
     if (!Array.isArray(tree)) return
     
     tree.forEach(node => {
-      if (currentLevel < expandToLevel && node.id) {
+      if (node && currentLevel < expandToLevel && node.id) {
         expandedRows.add(node.id)
       }
       
-      if (node[props.treeProps.children] && Array.isArray(node[props.treeProps.children])) {
+      if (node && node[props.treeProps.children] && Array.isArray(node[props.treeProps.children])) {
         traverseTree(node[props.treeProps.children], currentLevel + 1)
       }
     })
@@ -535,16 +535,18 @@ const processedData = computed(() => {
   const flattenTree = (tree, level = 0, parentExpanded = true) => {
     let result = []
     tree.forEach(node => {
-      // 为节点添加层级信息
-      const nodeWithLevel = { ...node, level }
-      result.push(nodeWithLevel)
-      
-      // 检查是否需要展开子节点
-      const hasChildren = node[props.treeProps.hasChildren] || (node[props.treeProps.children] && node[props.treeProps.children].length > 0)
-      const isRowExpanded = parentExpanded && (hasChildren ? isExpanded(node) : true)
-      
-      if (isRowExpanded && node[props.treeProps.children] && node[props.treeProps.children].length > 0) {
-        result = result.concat(flattenTree(node[props.treeProps.children], level + 1, isRowExpanded))
+      if (node) {
+        // 为节点添加层级信息
+        const nodeWithLevel = { ...node, level }
+        result.push(nodeWithLevel)
+        
+        // 检查是否需要展开子节点
+        const hasChildren = node[props.treeProps.hasChildren] || (node[props.treeProps.children] && node[props.treeProps.children].length > 0)
+        const isRowExpanded = parentExpanded && (hasChildren ? isExpanded(node) : true)
+        
+        if (isRowExpanded && node[props.treeProps.children] && node[props.treeProps.children].length > 0) {
+          result = result.concat(flattenTree(node[props.treeProps.children], level + 1, isRowExpanded))
+        }
       }
     })
     return result

@@ -24,7 +24,7 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     private final PmProjectMapper projectMapper;
 
     @Override
-    public Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long ownerId, Integer status, Integer priority) {
+    public Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long assigneeId, Integer status, Integer priority) {
         Page<PmTask> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<PmTask> wrapper = new LambdaQueryWrapper<>();
         
@@ -32,8 +32,8 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             wrapper.eq(PmTask::getProjectId, projectId);
         }
         
-        if (ownerId != null) {
-            wrapper.eq(PmTask::getOwnerId, ownerId);
+        if (assigneeId != null) {
+            wrapper.eq(PmTask::getAssigneeId, assigneeId);
         }
         
         if (status != null) {

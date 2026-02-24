@@ -24,6 +24,8 @@ public class PmTask {
 
     private String taskName;
 
+    private String taskCode;
+
     private Long moduleId;
 
     private Integer priority;
@@ -36,7 +38,7 @@ public class PmTask {
 
     private LocalDate endDate;
 
-    private Long ownerId;
+    private Long assigneeId;
 
     private String description;
 

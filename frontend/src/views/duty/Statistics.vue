@@ -90,7 +90,22 @@
       <div class="chart-header">
         <h3>员工排班统计</h3>
         <div class="filter-controls">
+          <el-radio-group v-model="queryType" style="margin-right: 10px" @change="handleQueryTypeChange">
+            <el-radio value="year">按年份查询</el-radio>
+            <el-radio value="month">按月份查询</el-radio>
+          </el-radio-group>
           <el-date-picker
+            v-if="queryType === 'year'"
+            v-model="selectedDate"
+            type="year"
+            placeholder="选择年份"
+            format="YYYY年"
+            value-format="YYYY"
+            @change="handleDateChange"
+            style="margin-right: 10px"
+          />
+          <el-date-picker
+            v-else
             v-model="selectedDate"
             type="month"
             placeholder="选择月份"
@@ -156,9 +171,12 @@ const statistics = reactive({
 })
 
 const employeeStatistics = ref([])
+// 默认查询类型：按月份查询
+const queryType = ref('month')
 // 默认查询当前月份
 const currentDate = new Date()
 const formattedMonth = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0')
+const formattedYear = currentDate.getFullYear()
 const selectedDate = ref(formattedMonth)
 
 // 员工统计表格配置
@@ -346,15 +364,33 @@ const handleDateChange = (value) => {
   selectedDate.value = value
 }
 
+const handleQueryTypeChange = (value) => {
+  queryType.value = value
+  // 切换查询类型时，更新默认日期
+  if (value === 'year') {
+    selectedDate.value = formattedYear
+  } else {
+    selectedDate.value = formattedMonth
+  }
+  // 切换查询类型后自动查询
+  fetchEmployeeStatistics()
+}
+
 const fetchEmployeeStatistics = async () => {
   employeeLoading.value = true
   try {
     let year = null
     let month = null
     if (selectedDate.value) {
-      const [yearStr, monthStr] = selectedDate.value.split('-')
-      year = parseInt(yearStr)
-      month = parseInt(monthStr)
+      if (queryType.value === 'year') {
+        // 按年份查询，只设置year参数
+        year = parseInt(selectedDate.value)
+      } else {
+        // 按月份查询，设置year和month参数
+        const [yearStr, monthStr] = selectedDate.value.split('-')
+        year = parseInt(yearStr)
+        month = parseInt(monthStr)
+      }
     }
     
     const data = await getEmployeeStatistics(year, month)

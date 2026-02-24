@@ -13,7 +13,7 @@
           <el-input v-model="searchForm.projectName" placeholder="请输入项目名称" clearable />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
+          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 120px;">
             <el-option label="未开始" :value="1" />
             <el-option label="进行中" :value="2" />
             <el-option label="已完成" :value="3" />
@@ -83,14 +83,11 @@
           </el-select>
         </el-form-item>
         <el-form-item label="负责人" prop="ownerId">
-          <el-select v-model="form.ownerId" placeholder="请选择负责人" filterable>
-            <el-option
-              v-for="employee in employeeList"
-              :key="employee.id"
-              :label="employee.employeeName"
-              :value="employee.id"
-            />
-          </el-select>
+          <EmployeeSelector
+            v-model="form.ownerId"
+            placeholder="请选择负责人"
+            @select="handleEmployeeSelect"
+          />
         </el-form-item>
         <el-form-item label="开始日期" prop="startDate">
           <el-date-picker
@@ -130,14 +127,13 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BaseTable from '@/components/BaseTable.vue'
+import EmployeeSelector from '@/components/EmployeeSelector.vue'
 import { getProjectPage, createProject, updateProject, archiveProject, deleteProject } from '@/api/project'
-import { getEmployeeList } from '@/api/employee'
 
 const router = useRouter()
 
 const loading = ref(false)
 const tableData = ref([])
-const employeeList = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('新建项目')
 const formRef = ref(null)
@@ -160,6 +156,7 @@ const form = reactive({
   projectCode: '',
   priority: 2,
   ownerId: null,
+  ownerName: '',
   startDate: '',
   endDate: '',
   description: ''
@@ -224,15 +221,6 @@ const loadData = async () => {
     ElMessage.error('加载数据失败')
   } finally {
     loading.value = false
-  }
-}
-
-const loadEmployeeList = async () => {
-  try {
-    const data = await getEmployeeList()
-    employeeList.value = data || []
-  } catch (error) {
-    console.error('加载员工列表失败', error)
   }
 }
 
@@ -332,15 +320,26 @@ const resetForm = () => {
   form.projectCode = ''
   form.priority = 2
   form.ownerId = null
+  form.ownerName = ''
   form.startDate = ''
   form.endDate = ''
   form.description = ''
   formRef.value?.resetFields()
 }
 
+const handleEmployeeSelect = (row) => {
+  // 选择员工
+  if (row) {
+    form.ownerId = row.id
+    form.ownerName = row.employeeName
+  } else {
+    form.ownerId = null
+    form.ownerName = ''
+  }
+}
+
 onMounted(() => {
   loadData()
-  loadEmployeeList()
 })
 </script>
 
@@ -358,4 +357,6 @@ onMounted(() => {
 .search-form {
   margin-bottom: 20px;
 }
+
+
 </style>

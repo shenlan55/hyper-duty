@@ -145,6 +145,12 @@ const routes = [
             meta: { title: '项目列表' }
           },
           {
+            path: 'detail',
+            name: 'ProjectDetail',
+            component: () => import('../views/project/ProjectDetail.vue'),
+            meta: { title: '项目详情' }
+          },
+          {
             path: 'task',
             name: 'TaskList',
             component: () => import('../views/project/TaskList.vue'),
@@ -161,6 +167,12 @@ const routes = [
             name: 'ProjectGantt',
             component: () => import('../views/project/ProjectGantt.vue'),
             meta: { title: '甘特图' }
+          },
+          {
+            path: 'statistics',
+            name: 'ProjectStatistics',
+            component: () => import('../views/project/ProjectStatistics.vue'),
+            meta: { title: '项目统计' }
           }
         ]
       }

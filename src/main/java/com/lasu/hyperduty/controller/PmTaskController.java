@@ -23,11 +23,11 @@ public class PmTaskController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) Long projectId,
-            @RequestParam(required = false) Long ownerId,
+            @RequestParam(required = false) Long assigneeId,
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) Integer priority) {
         
-        Page<PmTask> page = pmTaskService.pageList(pageNum, pageSize, projectId, ownerId, status, priority);
+        Page<PmTask> page = pmTaskService.pageList(pageNum, pageSize, projectId, assigneeId, status, priority);
         return ResponseResult.success(page);
     }
 
@@ -37,9 +37,9 @@ public class PmTaskController {
         return ResponseResult.success(tasks);
     }
 
-    @GetMapping("/sub/{parentId}")
-    public ResponseResult<List<PmTask>> getSubTasks(@PathVariable Long parentId) {
-        List<PmTask> tasks = pmTaskService.getSubTasks(parentId);
+    @GetMapping("/sub/{projectId}")
+    public ResponseResult<List<PmTask>> getSubTasks(@PathVariable Long projectId) {
+        List<PmTask> tasks = pmTaskService.getSubTasks(projectId);
         return ResponseResult.success(tasks);
     }
 

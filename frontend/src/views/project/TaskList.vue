@@ -123,8 +123,8 @@
             <el-option label="低" :value="3" />
           </el-select>
         </el-form-item>
-        <el-form-item label="负责人" prop="ownerId">
-          <el-select v-model="form.ownerId" placeholder="请选择负责人" filterable>
+        <el-form-item label="负责人" prop="assigneeId">
+          <el-select v-model="form.assigneeId" placeholder="请选择负责人" filterable>
             <el-option
               v-for="employee in employeeList"
               :key="employee.id"
@@ -221,10 +221,10 @@ const form = reactive({
   id: null,
   projectId: null,
   parentId: 0,
-  parentIdPath: [],
+  parentIdPath: null,
   taskName: '',
   priority: 2,
-  ownerId: null,
+  assigneeId: null,
   startDate: '',
   endDate: '',
   description: ''
@@ -238,7 +238,7 @@ const progressForm = reactive({
 const rules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
   taskName: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
-  ownerId: [{ required: true, message: '请选择负责人', trigger: 'change' }]
+  assigneeId: [{ required: true, message: '请选择负责人', trigger: 'change' }]
 }
 
 const columns = [
@@ -310,7 +310,7 @@ const loadProjectList = async () => {
 const loadEmployeeList = async () => {
   try {
     const data = await getEmployeeList()
-    employeeList.value = data || []
+    employeeList.value = data?.records || []
   } catch (error) {
     console.error('加载员工列表失败', error)
   }
@@ -378,6 +378,8 @@ const handleEdit = (row) => {
   dialogTitle.value = '编辑任务'
   Object.assign(form, row)
   form.parentId = row.parentId || 0
+  form.parentIdPath = row.parentId && row.parentId > 0 ? row.parentId : null
+  form.assigneeId = row.assigneeId || row.ownerId || null
   loadTaskTree(row.projectId)
   dialogVisible.value = true
 }
@@ -452,10 +454,10 @@ const resetForm = () => {
   form.id = null
   form.projectId = null
   form.parentId = 0
-  form.parentIdPath = []
+  form.parentIdPath = null
   form.taskName = ''
   form.priority = 2
-  form.ownerId = null
+  form.assigneeId = null
   form.startDate = ''
   form.endDate = ''
   form.description = ''
