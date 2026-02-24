@@ -287,7 +287,7 @@ import {
   autoSelectSubstitutes
 } from '../../api/duty/leaveRequest'
 import { getEmployeeList } from '../../api/employee'
-import { getAllSchedules, getScheduleEmployees } from '../../api/duty/schedule'
+import { getAllSchedules, getScheduleEmployees, getScheduleEmployeesWithDetails } from '../../api/duty/schedule'
 import { getAssignmentsByScheduleId } from '../../api/duty/assignment'
 import {
   generateAutoSchedule,
@@ -309,7 +309,8 @@ const approveLoading = ref(false)
 const viewDialogVisible = ref(false)
 const approveFormRef = ref()
 const requestList = ref([])
-const employeeList = ref([])
+const employeeList = ref([]) // 保留以保持兼容性
+const scheduleEmployeeList = ref([]) // 存储值班表的员工详细信息
 const scheduleList = ref([])
 const selectedScheduleId = ref('')
 const currentRequest = ref({})
@@ -468,7 +469,7 @@ const getApprovalStatusColor = (status) => {
 }
 
 const getEmployeeName = (employeeId) => {
-  const employee = employeeList.value.find(e => e.id === employeeId)
+  const employee = scheduleEmployeeList.value.find(e => e.id === employeeId) || employeeList.value.find(e => e.id === employeeId)
   return employee ? employee.employeeName : '未知'
 }
 
@@ -496,13 +497,9 @@ const getScheduleName = (scheduleId) => {
 }
 
 const fetchEmployeeList = async () => {
-  try {
-    const data = await getEmployeeList()
-    employeeList.value = data?.records || []
-  } catch (error) {
-    console.error('获取员工列表失败:', error)
-    ElMessage.error('获取员工列表失败')
-  }
+  // 现在不再需要从所有员工中过滤，直接从值班表获取员工详细信息
+  // 该方法保留以保持兼容性
+  return
 }
 
 const fetchScheduleList = async (targetScheduleId = null) => {
@@ -538,6 +535,19 @@ const fetchScheduleList = async (targetScheduleId = null) => {
       const targetSchedule = scheduleList.value.find(s => s.id === targetScheduleId)
       if (targetSchedule) {
         selectedScheduleId.value = targetScheduleId
+        // 获取目标值班表的员工详细信息
+        try {
+          const employeeDetails = await getScheduleEmployeesWithDetails(targetScheduleId)
+          scheduleEmployeeList.value = (employeeDetails || []).map(emp => ({
+            id: emp.id,
+            employeeName: emp.employee_name,
+            employeeCode: emp.employee_code,
+            deptId: emp.dept_id,
+            status: emp.status
+          }))
+        } catch (error) {
+          console.error('获取值班表员工详情失败:', error)
+        }
         return
       }
     }
@@ -545,6 +555,19 @@ const fetchScheduleList = async (targetScheduleId = null) => {
     // 如果有值班表，默认选择第一个
     if (scheduleList.value.length > 0 && !selectedScheduleId.value) {
       selectedScheduleId.value = scheduleList.value[0].id
+      // 获取默认值班表的员工详细信息
+      try {
+        const employeeDetails = await getScheduleEmployeesWithDetails(selectedScheduleId.value)
+        scheduleEmployeeList.value = (employeeDetails || []).map(emp => ({
+          id: emp.id,
+          employeeName: emp.employee_name,
+          employeeCode: emp.employee_code,
+          deptId: emp.dept_id,
+          status: emp.status
+        }))
+      } catch (error) {
+        console.error('获取值班表员工详情失败:', error)
+      }
     }
   } catch (error) {
     console.error('获取值班表列表失败:', error)
@@ -857,7 +880,23 @@ const getAvailableSubstitutesForRow = (row) => {
 
 const checkSchedule = async () => {
   try {
-    const data = await checkEmployeeSchedule(currentRequest.value.employeeId, currentRequest.value.startDate, currentRequest.value.endDate, currentRequest.value.scheduleId)
+    const scheduleId = currentRequest.value.scheduleId
+    
+    // 获取值班表的员工详细信息
+    try {
+      const employeeDetails = await getScheduleEmployeesWithDetails(scheduleId)
+      scheduleEmployeeList.value = (employeeDetails || []).map(emp => ({
+        id: emp.id,
+        employeeName: emp.employee_name,
+        employeeCode: emp.employee_code,
+        deptId: emp.dept_id,
+        status: emp.status
+      }))
+    } catch (error) {
+      console.error('获取值班表员工详情失败:', error)
+    }
+    
+    const data = await checkEmployeeSchedule(currentRequest.value.employeeId, currentRequest.value.startDate, currentRequest.value.endDate, scheduleId)
     
     if (data.hasSchedule) {
       scheduleStatus.type = 'warning'

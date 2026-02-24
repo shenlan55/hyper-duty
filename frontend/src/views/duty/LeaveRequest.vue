@@ -522,7 +522,7 @@ const isShiftDisabled = (shiftId) => {
 
 const fetchEmployeeList = async () => {
   try {
-    const data = await getEmployeeList()
+    const data = await getEmployeeList(1, 1000) // 设置较大的pageSize确保获取所有员工
     employeeList.value = data?.records || []
   } catch (error) {
     // console.error('获取员工列表失败:', error)

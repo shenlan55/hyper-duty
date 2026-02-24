@@ -555,7 +555,7 @@ const filterEmployee = (query) => {
 
 const fetchEmployeeList = async () => {
   try {
-    const data = await getEmployeeList()
+    const data = await getEmployeeList(1, 1000) // 设置较大的pageSize确保获取所有员工
     employeeList.value = (data?.records || []).filter(emp => emp.status === 1)
   } catch (error) {
   }

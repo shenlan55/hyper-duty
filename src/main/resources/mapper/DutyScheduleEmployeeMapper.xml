@@ -16,6 +16,24 @@
         ORDER BY sort_order ASC
     </select>
 
+    <select id="getScheduleEmployeesWithDetails" resultType="java.util.Map">
+        SELECT
+            e.id,
+            e.employee_name,
+            e.employee_code,
+            e.dept_id,
+            e.status,
+            dse.is_leader
+        FROM
+            duty_schedule_employee dse
+        LEFT JOIN
+            sys_employee e ON dse.employee_id = e.id
+        WHERE
+            dse.schedule_id = #{scheduleId}
+        ORDER BY
+            dse.sort_order ASC
+    </select>
+
     <delete id="deleteByScheduleId">
         DELETE FROM duty_schedule_employee
         WHERE schedule_id = #{scheduleId}

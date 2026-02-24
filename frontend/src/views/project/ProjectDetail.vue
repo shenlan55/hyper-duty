@@ -203,6 +203,74 @@
         <el-button type="primary" @click="handleTaskSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="projectDialogVisible"
+      :title="projectDialogTitle"
+      width="600px"
+      @close="handleProjectDialogClose"
+    >
+      <el-form
+        ref="projectFormRef"
+        :model="projectForm"
+        :rules="projectRules"
+        label-width="100px"
+      >
+        <el-form-item label="项目名称" prop="projectName">
+          <el-input v-model="projectForm.projectName" placeholder="请输入项目名称" />
+        </el-form-item>
+        <el-form-item label="项目编码" prop="projectCode">
+          <el-input v-model="projectForm.projectCode" placeholder="请输入项目编码" />
+        </el-form-item>
+        <el-form-item label="优先级" prop="priority">
+          <el-select v-model="projectForm.priority" placeholder="请选择优先级">
+            <el-option label="高" :value="1" />
+            <el-option label="中" :value="2" />
+            <el-option label="低" :value="3" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="负责人" prop="ownerId">
+          <el-select v-model="projectForm.ownerId" placeholder="请选择负责人" filterable>
+            <el-option
+              v-for="employee in employeeList"
+              :key="employee.id"
+              :label="employee.employeeName"
+              :value="employee.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="开始日期" prop="startDate">
+          <el-date-picker
+            v-model="projectForm.startDate"
+            type="date"
+            placeholder="请选择开始日期"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="结束日期" prop="endDate">
+          <el-date-picker
+            v-model="projectForm.endDate"
+            type="date"
+            placeholder="请选择结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="项目描述" prop="description">
+          <el-input
+            v-model="projectForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入项目描述"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="projectDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleProjectSubmit">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -211,7 +279,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Document, User, Clock } from '@element-plus/icons-vue'
-import { getProjectDetail, updateProject, archiveProject, getProjectPage } from '@/api/project'
+import { getProjectDetail, updateProject, archiveProject, getProjectPage, createProject } from '@/api/project'
 import { getProjectTasks, createTask, updateTask } from '@/api/task'
 import { getEmployeeList } from '@/api/employee'
 
@@ -229,6 +297,10 @@ const taskDialogVisible = ref(false)
 const taskDialogTitle = ref('新建任务')
 const taskFormRef = ref(null)
 const defaultStatus = ref(1)
+
+const projectDialogVisible = ref(false)
+const projectDialogTitle = ref('编辑项目')
+const projectFormRef = ref(null)
 
 const statusList = [
   { label: '未开始', value: 1 },
@@ -251,6 +323,23 @@ const taskForm = reactive({
 
 const taskRules = {
   taskName: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
+  ownerId: [{ required: true, message: '请选择负责人', trigger: 'change' }]
+}
+
+const projectForm = reactive({
+  id: null,
+  projectName: '',
+  projectCode: '',
+  priority: 2,
+  ownerId: null,
+  ownerName: '',
+  startDate: '',
+  endDate: '',
+  description: ''
+})
+
+const projectRules = {
+  projectName: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
   ownerId: [{ required: true, message: '请选择负责人', trigger: 'change' }]
 }
 
@@ -347,7 +436,13 @@ const handleProjectChange = (id) => {
 }
 
 const handleEdit = () => {
-  ElMessage.info('编辑功能开发中')
+  if (!selectedProjectId.value) {
+    ElMessage.warning('请先选择项目')
+    return
+  }
+  projectDialogTitle.value = '编辑项目'
+  Object.assign(projectForm, project.value)
+  projectDialogVisible.value = true
 }
 
 const handleArchive = async () => {
@@ -406,8 +501,34 @@ const handleTaskSubmit = async () => {
   }
 }
 
+const handleProjectSubmit = async () => {
+  try {
+    await projectFormRef.value.validate()
+    if (projectForm.id) {
+      await updateProject(projectForm)
+      ElMessage.success('更新成功')
+    } else {
+      await createProject(projectForm)
+      ElMessage.success('创建成功')
+    }
+    projectDialogVisible.value = false
+    if (selectedProjectId.value) {
+      loadProject(selectedProjectId.value)
+      loadProjectList()
+    }
+  } catch (error) {
+    if (error !== false) {
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
 const handleTaskDialogClose = () => {
   resetTaskForm()
+}
+
+const handleProjectDialogClose = () => {
+  resetProjectForm()
 }
 
 const resetTaskForm = () => {
@@ -421,6 +542,19 @@ const resetTaskForm = () => {
   taskForm.description = ''
   taskForm.status = defaultStatus.value || 1
   taskFormRef.value?.resetFields()
+}
+
+const resetProjectForm = () => {
+  projectForm.id = null
+  projectForm.projectName = ''
+  projectForm.projectCode = ''
+  projectForm.priority = 2
+  projectForm.ownerId = null
+  projectForm.ownerName = ''
+  projectForm.startDate = ''
+  projectForm.endDate = ''
+  projectForm.description = ''
+  projectFormRef.value?.resetFields()
 }
 
 onMounted(async () => {

@@ -52,6 +52,11 @@ public class DutyScheduleEmployeeServiceImpl extends ServiceImpl<DutyScheduleEmp
     }
 
     @Override
+    public List<Map<String, Object>> getScheduleEmployeesWithDetails(Long scheduleId) {
+        return baseMapper.getScheduleEmployeesWithDetails(scheduleId);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean saveBatch(Long scheduleId, List<Long> employeeIds) {
         if (employeeIds == null || employeeIds.isEmpty()) {

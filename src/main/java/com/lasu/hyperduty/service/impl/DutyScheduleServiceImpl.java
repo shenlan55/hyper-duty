@@ -38,6 +38,11 @@ public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, Dut
     }
 
     @Override
+    public List<Map<String, Object>> getScheduleEmployeesWithDetails(Long scheduleId) {
+        return scheduleEmployeeService.getScheduleEmployeesWithDetails(scheduleId);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateEmployees(Long scheduleId, List<Long> employeeIds) {
         scheduleEmployeeService.deleteByScheduleId(scheduleId);

@@ -15,6 +15,8 @@ public interface DutyScheduleService extends IService<DutySchedule> {
 
     List<Map<String, Object>> getScheduleEmployeesWithLeaderInfo(Long scheduleId);
 
+    List<Map<String, Object>> getScheduleEmployeesWithDetails(Long scheduleId);
+
     boolean updateEmployees(Long scheduleId, List<Long> employeeIds);
 
     boolean updateLeaders(Long scheduleId, List<Long> leaderIds);

@@ -501,7 +501,7 @@ import {
   deleteBatchAssignments,
   batchSchedule
 } from '../../api/duty/assignment'
-import { getAllSchedules, getScheduleEmployees, getScheduleLeaders, getScheduleShifts, getScheduleModeList, generateScheduleByMode } from '../../api/duty/schedule'
+import { getAllSchedules, getScheduleEmployees, getScheduleLeaders, getScheduleShifts, getScheduleModeList, generateScheduleByMode, getScheduleEmployeesWithDetails } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
 import { getDeptList } from '../../api/dept'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
@@ -529,7 +529,6 @@ const batchDialogLoading = ref(false)
 const batchFormRef = ref()
 
 const scheduleList = ref([])
-const allEmployeeList = ref([])
 const scheduleEmployeeList = ref([])
 const scheduleLeaderList = ref([])
 const shiftConfigList = ref([])
@@ -687,13 +686,13 @@ const getShiftTypeColor = (shiftId) => {
 }
 
 const getEmployeeName = (employeeId) => {
-  const employee = allEmployeeList.value.find(e => e.id === employeeId)
+  const employee = scheduleEmployeeList.value.find(e => e.id === employeeId)
   return employee ? employee.employeeName : '未知人员'
 }
 
 // 根据员工ID获取员工信息
 const getEmployeeInfo = (employeeId) => {
-  return allEmployeeList.value.find(e => e.id === employeeId) || {}
+  return scheduleEmployeeList.value.find(e => e.id === employeeId) || {}
 }
 
 // 根据部门ID获取部门名称
@@ -803,16 +802,6 @@ const fetchScheduleList = async () => {
   }
 }
 
-const fetchEmployeeList = async () => {
-  try {
-    const data = await getEmployeeList()
-    allEmployeeList.value = data?.records || []
-  } catch (error) {
-    // console.error('获取员工列表失败:', error)
-    ElMessage.error('获取员工列表失败')
-  }
-}
-
 // 获取部门列表
 const fetchDeptList = async () => {
   try {
@@ -884,14 +873,18 @@ const fetchScheduleEmployees = async (scheduleId, showError = true) => {
       }
       return []
     }
-    const [employeeIds, leaderIds] = await Promise.all([
-      getScheduleEmployees(scheduleId),
+    const [employeeDetails, leaderIds] = await Promise.all([
+      getScheduleEmployeesWithDetails(scheduleId),
       getScheduleLeaders(scheduleId)
     ])
-    const employeeIdsArray = employeeIds || []
-    scheduleEmployeeList.value = allEmployeeList.value.filter(emp => 
-      employeeIdsArray.includes(emp.id)
-    )
+    // 转换员工详情数据格式，确保与原来的allEmployeeList结构一致
+    scheduleEmployeeList.value = (employeeDetails || []).map(emp => ({
+      id: emp.id,
+      employeeName: emp.employee_name,
+      employeeCode: emp.employee_code,
+      deptId: emp.dept_id,
+      status: emp.status
+    }))
     scheduleLeaderList.value = leaderIds || []
     return scheduleEmployeeList.value
   } catch (error) {
@@ -1590,7 +1583,6 @@ const handleDetailExport = () => {
 
 onMounted(async () => {
   await fetchScheduleList()
-  await fetchEmployeeList()
   await fetchDeptList()
   await fetchShiftConfigList()
   await fetchScheduleModeList()
