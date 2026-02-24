@@ -88,3 +88,19 @@ export function pinTask(taskId, pinned) {
     params: { pinned }
   })
 }
+
+export function getTaskComments(taskId) {
+  return request({
+    url: `/pm/task/comment/list`,
+    method: 'get',
+    params: { taskId }
+  })
+}
+
+export function addTaskComment(data) {
+  return request({
+    url: `/pm/task/comment/add`,
+    method: 'post',
+    data
+  })
+}

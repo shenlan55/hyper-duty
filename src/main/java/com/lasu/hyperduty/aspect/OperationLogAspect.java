@@ -254,6 +254,13 @@ public class OperationLogAspect {
             return "操作日志";
         }
         
+        // 处理项目管理模块
+        if (requestUrl.startsWith("/pm/project")) {
+            return "项目管理";
+        } else if (requestUrl.startsWith("/pm/task")) {
+            return "任务管理";
+        }
+        
         // 处理其他模块
         if (requestUrl.startsWith("/dept")) {
             return "部门管理";

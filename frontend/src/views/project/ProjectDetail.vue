@@ -155,7 +155,7 @@
           <el-input v-model="taskForm.taskName" placeholder="请输入任务名称" />
         </el-form-item>
         <el-form-item label="优先级" prop="priority">
-          <el-select v-model="taskForm.priority" placeholder="请选择优先级">
+          <el-select v-model="taskForm.priority" placeholder="请选择优先级" style="width: 100px;">
             <el-option label="高" :value="1" />
             <el-option label="中" :value="2" />
             <el-option label="低" :value="3" />
@@ -223,7 +223,7 @@
           <el-input v-model="projectForm.projectCode" placeholder="请输入项目编码" />
         </el-form-item>
         <el-form-item label="优先级" prop="priority">
-          <el-select v-model="projectForm.priority" placeholder="请选择优先级">
+          <el-select v-model="projectForm.priority" placeholder="请选择优先级" style="width: 100px;">
             <el-option label="高" :value="1" />
             <el-option label="中" :value="2" />
             <el-option label="低" :value="3" />
@@ -271,6 +271,52 @@
         <el-button type="primary" @click="handleProjectSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="taskDetailDialogVisible"
+      :title="taskDetailDialogTitle"
+      width="600px"
+    >
+      <div class="task-detail-content">
+        <el-form label-width="100px">
+          <el-form-item label="任务名称">
+            <el-input v-model="currentTask.taskName" disabled />
+          </el-form-item>
+          <el-form-item label="优先级">
+            <el-tag :type="getPriorityType(currentTask.priority)">{{ getPriorityText(currentTask.priority) }}</el-tag>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-tag :type="getStatusType(currentTask.status)">{{ getStatusText(currentTask.status) }}</el-tag>
+          </el-form-item>
+          <el-form-item label="负责人">
+            <el-input v-model="currentTask.ownerName" disabled />
+          </el-form-item>
+          <el-form-item label="开始日期">
+            <el-input v-model="currentTask.startDate" disabled />
+          </el-form-item>
+          <el-form-item label="结束日期">
+            <el-input v-model="currentTask.endDate" disabled />
+          </el-form-item>
+          <el-form-item label="进度">
+            <el-progress 
+              :percentage="currentTask.progress || 0" 
+              :status="getProgressStatus(currentTask.progress)"
+            />
+          </el-form-item>
+          <el-form-item label="任务描述">
+            <el-input
+              v-model="currentTask.description"
+              type="textarea"
+              :rows="3"
+              disabled
+            />
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button @click="taskDetailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -297,6 +343,10 @@ const taskDialogVisible = ref(false)
 const taskDialogTitle = ref('新建任务')
 const taskFormRef = ref(null)
 const defaultStatus = ref(1)
+
+const taskDetailDialogVisible = ref(false)
+const taskDetailDialogTitle = ref('任务详情')
+const currentTask = ref(null)
 
 const projectDialogVisible = ref(false)
 const projectDialogTitle = ref('编辑项目')
@@ -477,7 +527,8 @@ const handleAddTask = (status = 1) => {
 }
 
 const handleViewTask = (task) => {
-  ElMessage.info('任务详情功能开发中')
+  currentTask.value = { ...task }
+  taskDetailDialogVisible.value = true
 }
 
 const handleTaskSubmit = async () => {

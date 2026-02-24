@@ -173,6 +173,18 @@ const routes = [
             name: 'ProjectStatistics',
             component: () => import('../views/project/ProjectStatistics.vue'),
             meta: { title: '项目统计' }
+          },
+          {
+            path: 'calendar',
+            name: 'TaskCalendar',
+            component: () => import('../views/project/TaskCalendar.vue'),
+            meta: { title: '日历视图' }
+          },
+          {
+            path: 'team',
+            name: 'TeamView',
+            component: () => import('../views/project/TeamView.vue'),
+            meta: { title: '团队视图' }
           }
         ]
       }

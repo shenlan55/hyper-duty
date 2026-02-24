@@ -113,6 +113,22 @@
             placeholder="请输入项目描述"
           />
         </el-form-item>
+        <el-form-item label="参与人员">
+          <el-select
+            v-model="form.participants"
+            multiple
+            placeholder="请选择参与人员"
+            filterable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="employee in employeeList"
+              :key="employee.id"
+              :label="employee.employeeName"
+              :value="employee.id"
+            />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -129,6 +145,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import BaseTable from '@/components/BaseTable.vue'
 import EmployeeSelector from '@/components/EmployeeSelector.vue'
 import { getProjectPage, createProject, updateProject, archiveProject, deleteProject } from '@/api/project'
+import { getEmployeeList } from '@/api/employee'
 
 const router = useRouter()
 
@@ -137,6 +154,7 @@ const tableData = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('新建项目')
 const formRef = ref(null)
+const employeeList = ref([])
 
 const searchForm = reactive({
   projectName: '',
@@ -159,7 +177,8 @@ const form = reactive({
   ownerName: '',
   startDate: '',
   endDate: '',
-  description: ''
+  description: '',
+  participants: []
 })
 
 const rules = {
@@ -324,6 +343,7 @@ const resetForm = () => {
   form.startDate = ''
   form.endDate = ''
   form.description = ''
+  form.participants = []
   formRef.value?.resetFields()
 }
 
@@ -338,14 +358,24 @@ const handleEmployeeSelect = (row) => {
   }
 }
 
+const loadEmployeeList = async () => {
+  try {
+    const data = await getEmployeeList()
+    employeeList.value = data?.records || []
+  } catch (error) {
+    console.error('加载员工列表失败', error)
+  }
+}
+
 onMounted(() => {
   loadData()
+  loadEmployeeList()
 })
 </script>
 
 <style scoped>
 .project-list {
-  padding: 20px;
+  padding: 10px;
 }
 
 .card-header {
@@ -355,7 +385,7 @@ onMounted(() => {
 }
 
 .search-form {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 

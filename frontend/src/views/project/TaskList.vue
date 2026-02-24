@@ -20,7 +20,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
+          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 120px;">
             <el-option label="未开始" :value="1" />
             <el-option label="进行中" :value="2" />
             <el-option label="已完成" :value="3" />
@@ -28,7 +28,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="优先级">
-          <el-select v-model="searchForm.priority" placeholder="请选择优先级" clearable>
+          <el-select v-model="searchForm.priority" placeholder="请选择优先级" clearable style="width: 100px;">
             <el-option label="高" :value="1" />
             <el-option label="中" :value="2" />
             <el-option label="低" :value="3" />
@@ -71,12 +71,35 @@
           <el-tag :type="getPriorityType(row.priority)">{{ getPriorityText(row.priority) }}</el-tag>
         </template>
         <template #operation="{ row }">
-          <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-          <el-button link type="primary" @click="handleUpdateProgress(row)">更新进度</el-button>
-          <el-button link type="warning" @click="handlePin(row)">
+          <el-button 
+            v-if="hasPermission(row)" 
+            link type="primary" 
+            @click="handleEdit(row)"
+          >
+            编辑
+          </el-button>
+          <el-button 
+            v-if="hasPermission(row)" 
+            link type="primary" 
+            @click="handleUpdateProgress(row)"
+          >
+            更新进度
+          </el-button>
+          <el-button link type="primary" @click="handleViewComments(row)">批注</el-button>
+          <el-button 
+            v-if="hasPermission(row)" 
+            link type="warning" 
+            @click="handlePin(row)"
+          >
             {{ row.isPinned === 1 ? '取消置顶' : '置顶' }}
           </el-button>
-          <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+          <el-button 
+            v-if="hasPermission(row)" 
+            link type="danger" 
+            @click="handleDelete(row)"
+          >
+            删除
+          </el-button>
         </template>
       </BaseTable>
     </el-card>
@@ -117,7 +140,7 @@
           <el-input v-model="form.taskName" placeholder="请输入任务名称" />
         </el-form-item>
         <el-form-item label="优先级" prop="priority">
-          <el-select v-model="form.priority" placeholder="请选择优先级">
+          <el-select v-model="form.priority" placeholder="请选择优先级" style="width: 100px;">
             <el-option label="高" :value="1" />
             <el-option label="中" :value="2" />
             <el-option label="低" :value="3" />
@@ -157,6 +180,22 @@
             placeholder="请输入任务描述"
           />
         </el-form-item>
+        <el-form-item label="干系人">
+          <el-select
+            v-model="form.stakeholders"
+            multiple
+            placeholder="请选择干系人"
+            filterable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="employee in employeeList"
+              :key="employee.id"
+              :label="employee.employeeName"
+              :value="employee.id"
+            />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -179,6 +218,14 @@
         <el-button type="primary" @click="handleSubmitProgress">确定</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="commentDialogVisible"
+      :title="`任务批注 - ${currentTask?.taskName || ''}`"
+      width="600px"
+    >
+      <TaskComment v-if="currentTask" :task-id="currentTask.id" />
+    </el-dialog>
   </div>
 </template>
 
@@ -188,11 +235,14 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
+import TaskComment from '@/components/TaskComment.vue'
 import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const tableData = ref([])
@@ -201,6 +251,8 @@ const employeeList = ref([])
 const taskTreeData = ref([])
 const dialogVisible = ref(false)
 const progressDialogVisible = ref(false)
+const commentDialogVisible = ref(false)
+const currentTask = ref(null)
 const dialogTitle = ref('新建任务')
 const formRef = ref(null)
 
@@ -227,7 +279,8 @@ const form = reactive({
   assigneeId: null,
   startDate: '',
   endDate: '',
-  description: ''
+  description: '',
+  stakeholders: []
 })
 
 const progressForm = reactive({
@@ -375,6 +428,10 @@ const handleAdd = () => {
 }
 
 const handleEdit = (row) => {
+  if (!hasPermission(row)) {
+    ElMessage.warning('您没有权限编辑此任务')
+    return
+  }
   dialogTitle.value = '编辑任务'
   Object.assign(form, row)
   form.parentId = row.parentId || 0
@@ -385,9 +442,47 @@ const handleEdit = (row) => {
 }
 
 const handleUpdateProgress = (row) => {
+  if (!hasPermission(row)) {
+    ElMessage.warning('您没有权限更新此任务进度')
+    return
+  }
   progressForm.taskId = row.id
   progressForm.progress = row.progress || 0
   progressDialogVisible.value = true
+}
+
+const handlePin = async (row) => {
+  if (!hasPermission(row)) {
+    ElMessage.warning('您没有权限置顶此任务')
+    return
+  }
+  try {
+    const pinned = row.isPinned === 1 ? false : true
+    await pinTask(row.id, pinned)
+    ElMessage.success(pinned ? '置顶成功' : '取消置顶成功')
+    loadData()
+  } catch (error) {
+    ElMessage.error('操作失败')
+  }
+}
+
+const handleDelete = async (row) => {
+  if (!hasPermission(row)) {
+    ElMessage.warning('您没有权限删除此任务')
+    return
+  }
+  try {
+    await ElMessageBox.confirm('确定要删除该任务吗？删除后将同时删除所有子任务。', '提示', {
+      type: 'warning'
+    })
+    await deleteTask(row.id)
+    ElMessage.success('删除成功')
+    loadData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
 }
 
 const handleSubmitProgress = async () => {
@@ -401,30 +496,21 @@ const handleSubmitProgress = async () => {
   }
 }
 
-const handlePin = async (row) => {
-  try {
-    const pinned = row.isPinned === 1 ? false : true
-    await pinTask(row.id, pinned)
-    ElMessage.success(pinned ? '置顶成功' : '取消置顶成功')
-    loadData()
-  } catch (error) {
-    ElMessage.error('操作失败')
-  }
+const handleViewComments = (row) => {
+  currentTask.value = row
+  commentDialogVisible.value = true
 }
 
-const handleDelete = async (row) => {
-  try {
-    await ElMessageBox.confirm('确定要删除该任务吗？删除后将同时删除所有子任务。', '提示', {
-      type: 'warning'
-    })
-    await deleteTask(row.id)
-    ElMessage.success('删除成功')
-    loadData()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
+const hasPermission = (task) => {
+  // 检查是否是任务负责人
+  if (task.assigneeId === userStore.employeeId || task.ownerId === userStore.employeeId) {
+    return true
   }
+  // 检查是否是授权干系人（这里简化处理，实际应该从后端获取权限信息）
+  if (task.stakeholders && task.stakeholders.includes(userStore.employeeId)) {
+    return true
+  }
+  return false
 }
 
 const handleSubmit = async () => {
@@ -461,6 +547,7 @@ const resetForm = () => {
   form.startDate = ''
   form.endDate = ''
   form.description = ''
+  form.stakeholders = []
   formRef.value?.resetFields()
 }
 
@@ -476,7 +563,7 @@ onMounted(() => {
 
 <style scoped>
 .task-list {
-  padding: 20px;
+  padding: 10px;
 }
 
 .card-header {
@@ -486,7 +573,7 @@ onMounted(() => {
 }
 
 .search-form {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .pinned-task {
