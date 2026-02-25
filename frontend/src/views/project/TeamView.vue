@@ -26,7 +26,7 @@
               :data="getMemberTasks(member.id)"
               :columns="columns"
               :loading="loading"
-              :pagination="false"
+              :show-pagination="false"
             >
               <template #progress="{ row }">
                 <el-progress :percentage="row.progress" :status="getProgressStatus(row.progress)" />
@@ -38,8 +38,8 @@
                 <el-tag :type="getPriorityType(row.priority)">{{ getPriorityText(row.priority) }}</el-tag>
               </template>
               <template #operation="{ row }">
-                <el-button link type="primary" @click="handleViewTask(row)">查看</el-button>
-                <el-button link type="primary" @click="handleEditTask(row)">编辑</el-button>
+                <el-button type="info" size="small" @click="handleViewTask(row)">查看</el-button>
+                <el-button type="primary" size="small" @click="handleEditTask(row)">编辑</el-button>
               </template>
             </BaseTable>
           </el-tab-pane>

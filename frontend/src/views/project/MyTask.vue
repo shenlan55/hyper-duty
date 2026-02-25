@@ -81,8 +81,8 @@
           <span :class="{ 'overdue': isOverdue(row) }">{{ row.endDate }}</span>
         </template>
         <template #operation="{ row }">
-          <el-button link type="primary" @click="handleUpdateProgress(row)">更新进度</el-button>
-          <el-button link type="warning" @click="handlePin(row)">
+          <el-button type="success" size="small" @click="handleUpdateProgress(row)">更新进度</el-button>
+          <el-button type="warning" size="small" @click="handlePin(row)" style="width: 70px;">
             {{ row.isPinned === 1 ? '取消置顶' : '置顶' }}
           </el-button>
         </template>
@@ -144,14 +144,14 @@ const progressForm = reactive({
 })
 
 const columns = [
-  { prop: 'taskName', label: '任务名称', minWidth: 200, slot: 'taskName' },
-  { prop: 'projectName', label: '所属项目', width: 120 },
+  { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName' },
+  { prop: 'projectName', label: '所属项目', width: 180 },
   { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
   { prop: 'status', label: '状态', width: 100, slot: 'status' },
   { prop: 'progress', label: '进度', width: 150, slot: 'progress' },
   { prop: 'startDate', label: '开始日期', width: 110 },
   { prop: 'endDate', label: '结束日期', width: 110, slot: 'endDate' },
-  { prop: 'operation', label: '操作', width: 160, fixed: 'right', slot: 'operation' }
+  { prop: 'operation', label: '操作', width: 220, fixed: 'right', slot: 'operation' }
 ]
 
 const getStatusType = (status) => {

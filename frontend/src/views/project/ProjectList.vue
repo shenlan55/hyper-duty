@@ -52,10 +52,10 @@
           <el-tag :type="getPriorityType(row.priority)">{{ getPriorityText(row.priority) }}</el-tag>
         </template>
         <template #operation="{ row }">
-          <el-button link type="primary" @click="handleView(row)">查看</el-button>
-          <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-          <el-button link type="warning" @click="handleArchive(row)">归档</el-button>
-          <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+          <el-button type="info" size="small" @click="handleView(row)">查看</el-button>
+          <el-button type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button type="warning" size="small" @click="handleArchive(row)">归档</el-button>
+          <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
         </template>
       </BaseTable>
     </el-card>
@@ -200,7 +200,7 @@ const rules = {
 }
 
 const columns = [
-  { prop: 'projectName', label: '项目名称', minWidth: 120 },
+  { prop: 'projectName', label: '项目名称', minWidth: 100 },
   { prop: 'projectCode', label: '项目编码', width: 150 },
   { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
   { prop: 'status', label: '状态', width: 100, slot: 'status' },
@@ -208,7 +208,7 @@ const columns = [
   { prop: 'ownerName', label: '负责人', width: 100 },
   { prop: 'startDate', label: '开始日期', width: 110 },
   { prop: 'endDate', label: '结束日期', width: 110 },
-  { prop: 'operation', label: '操作', width: 220, fixed: 'right', slot: 'operation' }
+  { prop: 'operation', label: '操作', width: 300, fixed: 'right', slot: 'operation' }
 ]
 
 const getStatusType = (status) => {
