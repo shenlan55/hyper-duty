@@ -26,29 +26,24 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     @Override
     public Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long assigneeId, Integer status, Integer priority) {
         Page<PmTask> page = new Page<>(pageNum, pageSize);
-        LambdaQueryWrapper<PmTask> wrapper = new LambdaQueryWrapper<>();
         
-        if (projectId != null) {
-            wrapper.eq(PmTask::getProjectId, projectId);
+        // 查询总记录数
+        Long total = baseMapper.selectTaskCount(projectId, assigneeId, status, priority);
+        page.setTotal(total);
+        
+        // 查询带关联的数据
+        List<PmTask> records = baseMapper.selectTaskPage(projectId, assigneeId, status, priority);
+        
+        // 手动分页
+        int fromIndex = (pageNum - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, records.size());
+        if (fromIndex < records.size()) {
+            page.setRecords(records.subList(fromIndex, toIndex));
+        } else {
+            page.setRecords(new java.util.ArrayList<>());
         }
         
-        if (assigneeId != null) {
-            wrapper.eq(PmTask::getAssigneeId, assigneeId);
-        }
-        
-        if (status != null) {
-            wrapper.eq(PmTask::getStatus, status);
-        }
-        
-        if (priority != null) {
-            wrapper.eq(PmTask::getPriority, priority);
-        }
-        
-        wrapper.orderByDesc(PmTask::getIsPinned)
-               .orderByAsc(PmTask::getPriority)
-               .orderByAsc(PmTask::getEndDate);
-        
-        return baseMapper.selectPage(page, wrapper);
+        return page;
     }
 
     @Override

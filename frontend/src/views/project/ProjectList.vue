@@ -200,8 +200,8 @@ const rules = {
 }
 
 const columns = [
-  { prop: 'projectName', label: '项目名称', minWidth: 150 },
-  { prop: 'projectCode', label: '项目编码', width: 120 },
+  { prop: 'projectName', label: '项目名称', minWidth: 120 },
+  { prop: 'projectCode', label: '项目编码', width: 150 },
   { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
   { prop: 'status', label: '状态', width: 100, slot: 'status' },
   { prop: 'progress', label: '进度', width: 150, slot: 'progress' },

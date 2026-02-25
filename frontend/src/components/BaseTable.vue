@@ -138,7 +138,7 @@
               
               <!-- 内容 -->
               <span class="node-content">
-                <slot :name="column.slotName || column.prop" v-bind="scope">
+                <slot :name="column.slot || column.slotName || column.prop" v-bind="scope">
                   {{ scope.row[column.prop] }}
                 </slot>
               </span>

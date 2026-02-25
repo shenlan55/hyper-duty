@@ -11,6 +11,39 @@ import java.util.List;
 @Mapper
 public interface PmTaskMapper extends BaseMapper<PmTask> {
 
+    @Select("<script>" +
+            "SELECT t.*, e.employee_name as owner_name, p.project_name " +
+            "FROM pm_task t " +
+            "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
+            "LEFT JOIN pm_project p ON t.project_id = p.id " +
+            "<where>" +
+            "<if test='projectId != null'> AND t.project_id = #{projectId}</if>" +
+            "<if test='assigneeId != null'> AND t.assignee_id = #{assigneeId}</if>" +
+            "<if test='status != null'> AND t.status = #{status}</if>" +
+            "<if test='priority != null'> AND t.priority = #{priority}</if>" +
+            "</where>" +
+            "ORDER BY t.is_pinned DESC, t.priority ASC, t.end_date ASC" +
+            "</script>")
+    List<PmTask> selectTaskPage(@Param("projectId") Long projectId,
+                                  @Param("assigneeId") Long assigneeId,
+                                  @Param("status") Integer status,
+                                  @Param("priority") Integer priority);
+
+    @Select("<script>" +
+            "SELECT COUNT(*) " +
+            "FROM pm_task t " +
+            "<where>" +
+            "<if test='projectId != null'> AND t.project_id = #{projectId}</if>" +
+            "<if test='assigneeId != null'> AND t.assignee_id = #{assigneeId}</if>" +
+            "<if test='status != null'> AND t.status = #{status}</if>" +
+            "<if test='priority != null'> AND t.priority = #{priority}</if>" +
+            "</where>" +
+            "</script>")
+    Long selectTaskCount(@Param("projectId") Long projectId,
+                         @Param("assigneeId") Long assigneeId,
+                         @Param("status") Integer status,
+                         @Param("priority") Integer priority);
+
     @Select("SELECT t.*, e.employee_name as owner_name, p.project_name " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +

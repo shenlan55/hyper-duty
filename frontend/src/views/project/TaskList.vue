@@ -1,6 +1,6 @@
 <template>
-  <div class="task-list">
-    <el-card>
+  <div class="task-list" style="width: 100%; height: 100%;">
+    <el-card style="width: 100%; height: 100%;">
       <template #header>
         <div class="card-header">
           <span>任务列表</span>
@@ -54,6 +54,7 @@
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
+        style="width: 100%;"
       >
         <template #taskName="{ row }">
           <span :class="{ 'pinned-task': row.isPinned === 1 }">
@@ -73,30 +74,35 @@
         <template #operation="{ row }">
           <el-button 
             v-if="row.hasPermission " 
-            link type="primary" 
+            type="primary" 
+            size="small" 
             @click="handleEdit(row)"
           >
             编辑
           </el-button>
           <el-button 
             v-if="row.hasPermission " 
-            link type="primary" 
+            type="success" 
+            size="small" 
             @click="handleUpdateProgress(row)"
           >
             更新进度
           </el-button>
-          <el-button link type="primary" @click="handleViewTaskDetail(row)">详情</el-button>
-          <el-button link type="primary" @click="handleViewComments(row)">批注</el-button>
+          <el-button type="info" size="small" @click="handleViewTaskDetail(row)">详情</el-button>
+          <el-button type="info" size="small" @click="handleViewComments(row)">批注</el-button>
           <el-button 
             v-if="row.hasPermission " 
-            link type="warning" 
+            type="warning" 
+            size="small" 
             @click="handlePin(row)"
+            style="width: 70px;"
           >
             {{ row.isPinned === 1 ? '取消置顶' : '置顶' }}
           </el-button>
           <el-button 
             v-if="row.hasPermission " 
-            link type="danger" 
+            type="danger" 
+            size="small" 
             @click="handleDelete(row)"
           >
             删除
@@ -231,7 +237,7 @@
     <el-dialog
       v-model="progressUpdateDialogVisible"
       :title="`更新任务进展 - ${currentTaskForUpdate?.taskName || ''}`"
-      width="800px"
+      width="1000px"
     >
       <!-- 任务基本信息（只读） -->
       <div class="task-info-panel" style="margin-bottom: 20px; padding: 15px; background-color: #f5f7fa; border-radius: 4px;">
@@ -302,14 +308,18 @@
                 <div class="update-description" v-if="update.description" style="margin-bottom: 10px;" v-html="update.description"></div>
                 <div class="update-attachments" v-if="update.attachmentList && update.attachmentList.length > 0">
                   <el-divider content-position="left">附件</el-divider>
-                  <el-image
-                    v-for="(attachment, idx) in update.attachmentList"
-                    :key="idx"
-                    :src="attachment.url"
-                    :alt="attachment.name"
-                    style="width: 100px; height: 100px; margin-right: 10px;"
-                    fit="cover"
-                  />
+                  <div class="attachments-container">
+                    <el-image
+                      v-for="(attachment, idx) in update.attachmentList"
+                      :key="idx"
+                      :src="attachment.url"
+                      :alt="attachment.name"
+                      class="attachment-image"
+                      fit="cover"
+                      :preview-src-list="update.attachmentList.map(a => a.url)"
+                      :initial-index="idx"
+                    />
+                  </div>
                 </div>
               </div>
             </el-card>
@@ -327,7 +337,7 @@
     <el-dialog
       v-model="taskDetailDialogVisible"
       :title="`任务详情 - ${currentTaskForDetail?.taskName || ''}`"
-      width="800px"
+      width="1000px"
     >
       <!-- 任务基本信息（只读） -->
       <div class="task-info-panel" style="margin-bottom: 20px; padding: 15px; background-color: #f5f7fa; border-radius: 4px;">
@@ -373,14 +383,18 @@
                 <div class="update-description" v-if="update.description" style="margin-bottom: 10px;" v-html="update.description"></div>
                 <div class="update-attachments" v-if="update.attachmentList && update.attachmentList.length > 0">
                   <el-divider content-position="left">附件</el-divider>
-                  <el-image
-                    v-for="(attachment, idx) in update.attachmentList"
-                    :key="idx"
-                    :src="attachment.url"
-                    :alt="attachment.name"
-                    style="width: 100px; height: 100px; margin-right: 10px;"
-                    fit="cover"
-                  />
+                  <div class="attachments-container">
+                    <el-image
+                      v-for="(attachment, idx) in update.attachmentList"
+                      :key="idx"
+                      :src="attachment.url"
+                      :alt="attachment.name"
+                      class="attachment-image"
+                      fit="cover"
+                      :preview-src-list="update.attachmentList.map(a => a.url)"
+                      :initial-index="idx"
+                    />
+                  </div>
                 </div>
               </div>
             </el-card>
@@ -475,15 +489,15 @@ const rules = {
 }
 
 const columns = [
-  { prop: 'taskName', label: '任务名称', minWidth: 200, slot: 'taskName' },
-  { prop: 'projectName', label: '所属项目', width: 120 },
+  { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName' },
+  { prop: 'projectName', label: '所属项目', width: 180 },
   { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
   { prop: 'status', label: '状态', width: 100, slot: 'status' },
-  { prop: 'progress', label: '进度', width: 150, slot: 'progress' },
+  { prop: 'progress', label: '进度', width: 120, slot: 'progress' },
   { prop: 'ownerName', label: '负责人', width: 100 },
   { prop: 'startDate', label: '开始日期', width: 110 },
   { prop: 'endDate', label: '结束日期', width: 110 },
-  { prop: 'operation', label: '操作', width: 260, fixed: 'right', slot: 'operation' }
+  { prop: 'operation', label: '操作', width: 410, fixed: 'right', slot: 'operation' }
 ]
 
 const getStatusType = (status) => {
@@ -971,5 +985,133 @@ onMounted(() => {
 .pinned-task {
   color: #f56c6c;
   font-weight: bold;
+}
+
+/* 操作列按钮强制在一行显示 */
+:deep(.el-table__cell:last-child) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 操作按钮样式调整 */
+:deep(.el-table__cell:last-child .el-button) {
+  margin-right: 5px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+/* 确保操作列内容容器不换行 */
+:deep(.el-table__cell:last-child) > div {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 对话框内容样式，防止横向滚动 */
+:deep(.el-dialog__body) {
+  overflow-x: hidden !important;
+  padding: 20px;
+}
+
+/* 更新内容区域样式 */
+.update-content {
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* 描述内容自适应 */
+.update-description {
+  width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
+}
+
+/* 富文本编辑器内容自适应 */
+.update-description :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.update-description :deep(table) {
+  max-width: 100%;
+  overflow-x: auto;
+  display: block;
+}
+
+/* 附件区域自适应 */
+.update-attachments {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 附件图片容器，使用flex布局支持自适应换行 */
+.attachments-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 附件图片样式 */
+.attachment-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.attachment-image:hover {
+  transform: scale(1.05);
+}
+
+/* 时间线内容自适应 */
+:deep(.el-timeline-item__content) {
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* 卡片内容自适应 */
+:deep(.el-card__body) {
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  padding: 15px;
+}
+
+/* 任务信息面板自适应 */
+.task-info-panel {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 确保行和列布局自适应 */
+:deep(.el-row) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(.el-col) {
+  box-sizing: border-box;
+}
+
+/* 描述列表自适应 */
+:deep(.el-descriptions) {
+  width: 100%;
+}
+
+:deep(.el-descriptions__body) {
+  width: 100%;
+}
+
+/* 分割线自适应 */
+:deep(.el-divider) {
+  width: 100%;
+  box-sizing: border-box;
 }
 </style>

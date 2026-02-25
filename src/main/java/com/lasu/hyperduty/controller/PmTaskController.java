@@ -93,9 +93,9 @@ public class PmTaskController {
         return ResponseResult.success(tasks);
     }
 
-    @PostMapping("/pin")
+    @PutMapping("/pin/{taskId}")
     public ResponseResult<Void> pinTask(
-            @RequestParam Long taskId,
+            @PathVariable Long taskId,
             @RequestParam Boolean pinned) {
         pmTaskService.pinTask(taskId, pinned);
         return ResponseResult.success();
