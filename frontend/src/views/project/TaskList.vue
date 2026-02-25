@@ -309,16 +309,23 @@
                 <div class="update-attachments" v-if="update.attachmentList && update.attachmentList.length > 0">
                   <el-divider content-position="left">附件</el-divider>
                   <div class="attachments-container">
-                    <el-image
-                      v-for="(attachment, idx) in update.attachmentList"
-                      :key="idx"
-                      :src="attachment.url"
-                      :alt="attachment.name"
-                      class="attachment-image"
-                      fit="cover"
-                      :preview-src-list="update.attachmentList.map(a => a.url)"
-                      :initial-index="idx"
-                    />
+                    <div v-for="(attachment, idx) in update.attachmentList" :key="idx" class="attachment-item">
+                      <div class="attachment-file">
+                        <el-icon class="file-icon"><Document /></el-icon>
+                        <span class="file-name">{{ attachment.name || '未知文件' }}</span>
+                      </div>
+                      <div class="attachment-info">
+                        <span class="attachment-name">{{ attachment.name || '未知文件' }}</span>
+                        <div class="attachment-actions">
+                          <el-button size="small" type="primary" @click="handleAttachmentPreview(attachment)">
+                            预览
+                          </el-button>
+                          <el-button size="small" @click="handleAttachmentDownload(attachment)">
+                            下载
+                          </el-button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -384,16 +391,23 @@
                 <div class="update-attachments" v-if="update.attachmentList && update.attachmentList.length > 0">
                   <el-divider content-position="left">附件</el-divider>
                   <div class="attachments-container">
-                    <el-image
-                      v-for="(attachment, idx) in update.attachmentList"
-                      :key="idx"
-                      :src="attachment.url"
-                      :alt="attachment.name"
-                      class="attachment-image"
-                      fit="cover"
-                      :preview-src-list="update.attachmentList.map(a => a.url)"
-                      :initial-index="idx"
-                    />
+                    <div v-for="(attachment, idx) in update.attachmentList" :key="idx" class="attachment-item">
+                      <div class="attachment-file">
+                        <el-icon class="file-icon"><Document /></el-icon>
+                        <span class="file-name">{{ attachment.name || '未知文件' }}</span>
+                      </div>
+                      <div class="attachment-info">
+                        <span class="attachment-name">{{ attachment.name || '未知文件' }}</span>
+                        <div class="attachment-actions">
+                          <el-button size="small" type="primary" @click="handleAttachmentPreview(attachment)">
+                            预览
+                          </el-button>
+                          <el-button size="small" @click="handleAttachmentDownload(attachment)">
+                            下载
+                          </el-button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -413,7 +427,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Star } from '@element-plus/icons-vue'
+import { Star, Document } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import TaskComment from '@/components/TaskComment.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
@@ -700,6 +714,7 @@ const handleSubmitProgressUpdate = async () => {
       const attachments = progressUpdateForm.attachments.map(file => ({
         name: file.name,
         url: file.url || '',
+        previewUrl: file.previewUrl || '',
         type: file.type,
         size: file.size
       }))
@@ -772,6 +787,7 @@ const handleCustomUpload = async (options) => {
         uid: file.uid,
         name: file.name,
         url: response.fileUrl,
+        previewUrl: response.previewUrl,
         filePath: response.filePath,
         type: file.type,
         size: file.size
@@ -808,6 +824,7 @@ const handleUploadSuccess = (response, file, fileList) => {
       uid: file.uid,
       name: file.name,
       url: fileData.fileUrl,
+      previewUrl: fileData.previewUrl,
       filePath: fileData.filePath,
       type: file.type,
       size: file.size
@@ -917,6 +934,32 @@ const hasPermission = async (task) => {
     console.error('检查任务权限失败', error)
     return false
   }
+}
+
+const isImageType = (fileName) => {
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+  const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'))
+  return imageExtensions.includes(ext)
+}
+
+const handleAttachmentPreview = (attachment) => {
+  console.log('预览附件', attachment)
+  // 强制使用KKFileView预览URL
+  if (attachment.previewUrl) {
+    window.open(attachment.previewUrl, '_blank')
+  } else {
+    window.open(attachment.url, '_blank')
+  }
+}
+
+const handleAttachmentDownload = (attachment) => {
+  console.log('下载附件', attachment)
+  const link = document.createElement('a')
+  link.href = attachment.url
+  link.download = attachment.name || '未知文件'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 const handleSubmit = async () => {
@@ -1067,6 +1110,84 @@ onMounted(() => {
 
 .attachment-image:hover {
   transform: scale(1.05);
+}
+
+.attachment-item {
+  position: relative;
+  margin-bottom: 15px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  transition: all 0.3s;
+}
+
+.attachment-item:hover {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.attachment-file {
+  width: 120px;
+  height: 120px;
+  border-radius: 4px;
+  background-color: #f0f2f5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.attachment-file:hover {
+  transform: scale(1.05);
+}
+
+.file-icon {
+  font-size: 32px;
+  color: #409eff;
+  margin-bottom: 8px;
+}
+
+.file-name {
+  font-size: 12px;
+  color: #606266;
+  text-align: center;
+  word-break: break-all;
+  padding: 0 8px;
+}
+
+.attachment-info {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attachment-name {
+  font-size: 14px;
+  font-weight: bold;
+  color: #303133;
+  word-break: break-all;
+}
+
+.attachment-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.attachment-actions .el-button {
+  padding: 0 12px;
+}
+
+/* 确保附件容器的布局正确 */
+.attachments-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 时间线内容自适应 */

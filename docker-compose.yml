@@ -37,8 +37,20 @@ services:
       - RUSTFS_BUCKET=hyper-duty
       - RUSTFS_REGION=us-east-1
       - CORS_ALLOWED_ORIGINS=*
+      - KKFILEVIEW_ENDPOINT=http://kkfileview:8012
       - TZ=Asia/Shanghai
       - LANG=C.UTF-8
+    networks:
+      - hyper-duty-network
+    depends_on:
+      - kkfileview
+
+  kkfileview:
+    image: kkfileview/kkfileview:4.4.0
+    ports:
+      - "8012:8012"
+    environment:
+      - TZ=Asia/Shanghai
     networks:
       - hyper-duty-network
 

@@ -73,6 +73,7 @@ public class SecurityConfig {
                     .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                     .requestMatchers("/druid/**").permitAll()
                     .requestMatchers("/static/**").permitAll()
+                    .requestMatchers("/file/preview", "/file/download").permitAll()
                     // 其他接口需要认证
                     .anyRequest().authenticated())
                 // 添加JWT认证过滤器

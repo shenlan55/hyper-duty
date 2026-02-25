@@ -51,6 +51,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.excludePaths.add("/v3/api-docs/**");
         this.excludePaths.add("/druid/**");
         this.excludePaths.add("/static/**");
+        this.excludePaths.add("/file/preview");
+        this.excludePaths.add("/file/download");
     }
 
     @Override

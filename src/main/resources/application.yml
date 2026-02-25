@@ -72,3 +72,7 @@ rustfs:
   secret-key: ${RUSTFS_SECRET_KEY:Rfs@123456}
   bucket-name: ${RUSTFS_BUCKET:hyper-duty}
   region: ${RUSTFS_REGION:us-east-1}
+
+kkfileview:
+  endpoint: ${KKFILEVIEW_ENDPOINT:http://localhost:8012}
+  preview-path: /onlinePreview
