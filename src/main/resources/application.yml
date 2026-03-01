@@ -3,8 +3,8 @@ spring:
     name: hyper-duty
   servlet:
     multipart:
-      max-file-size: 100MB
-      max-request-size: 100MB
+      max-file-size: 25MB
+      max-request-size: 25MB
       enabled: true
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource

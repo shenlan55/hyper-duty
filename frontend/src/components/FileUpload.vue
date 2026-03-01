@@ -39,6 +39,7 @@ import { ref, defineProps, defineEmits, defineExpose } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Upload } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import SparkMD5 from 'spark-md5'
 
 // 定义props
 const props = defineProps({
@@ -63,21 +64,37 @@ const currentFile = ref(null)
 // 分片上传配置
 const CHUNK_SIZE = 1024 * 1024 * 5 // 5MB 分片大小
 
-// 生成文件哈希
+// 生成文件MD5哈希
 const generateFileHash = (file) => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader()
+    const spark = new SparkMD5.ArrayBuffer()
+    const chunkSize = 1024 * 1024 * 2 // 2MB per chunk for hashing
+    const chunks = Math.ceil(file.size / chunkSize)
+    let currentChunk = 0
+
     reader.onload = (e) => {
-      const arrayBuffer = e.target.result
-      const uint8Array = new Uint8Array(arrayBuffer)
-      let hash = 0
-      for (let i = 0; i < uint8Array.length; i++) {
-        hash = ((hash << 5) - hash) + uint8Array[i]
-        hash = hash & hash
+      spark.append(e.target.result)
+      currentChunk++
+
+      if (currentChunk < chunks) {
+        loadNext()
+      } else {
+        resolve(spark.end())
       }
-      resolve(Math.abs(hash).toString(16) + '_' + Date.now())
     }
-    reader.readAsArrayBuffer(file)
+
+    reader.onerror = () => {
+      reject(new Error('文件哈希计算失败'))
+    }
+
+    const loadNext = () => {
+      const start = currentChunk * chunkSize
+      const end = Math.min(start + chunkSize, file.size)
+      reader.readAsArrayBuffer(file.slice(start, end))
+    }
+
+    loadNext()
   })
 }
 
@@ -129,7 +146,6 @@ const handleCustomUpload = async (options) => {
       emit('update:fileList', newFileList)
       emit('upload-success', uploadedFile)
       
-      ElMessage.success('文件上传成功')
       uploadProgress.value = 100
       uploadStatus.value = 'success'
       return
@@ -189,13 +205,11 @@ const handleCustomUpload = async (options) => {
       emit('update:fileList', newFileList)
       emit('upload-success', uploadedFile)
       
-      ElMessage.success('文件上传成功')
       uploadProgress.value = 100
       uploadStatus.value = 'success'
     }
   } catch (error) {
     console.error('文件上传失败', error)
-    ElMessage.error('文件上传失败')
     uploadStatus.value = 'exception'
     emit('upload-error', error)
   } finally {

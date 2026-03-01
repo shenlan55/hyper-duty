@@ -157,9 +157,13 @@ public class FileController {
                 displayFileName = filePath.substring(filePath.lastIndexOf("/") + 1);
             }
             
+            // 对文件名进行URL编码，支持中文文件名
+            String encodedFileName = java.net.URLEncoder.encode(displayFileName, StandardCharsets.UTF_8.toString())
+                    .replaceAll("\\+", "%20");
+            
             // 设置响应头
             response.setContentType("application/octet-stream");
-            response.setHeader("Content-Disposition", "inline; filename=\"" + displayFileName + "\"");
+            response.setHeader("Content-Disposition", "inline; filename*=UTF-8''" + encodedFileName + "; filename=\"" + encodedFileName + "\"");
             
             // 写入响应流
             byte[] buffer = new byte[1024 * 4];
@@ -177,6 +181,60 @@ public class FileController {
             try {
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 response.getWriter().write("预览文件失败");
+                response.getWriter().flush();
+                response.getWriter().close();
+            } catch (IOException ex) {
+                log.error("写入响应失败: {}", ex.getMessage(), ex);
+            }
+        }
+    }
+
+    @GetMapping("/download")
+    public void downloadFile(
+            @RequestParam("filePath") String filePath,
+            @RequestParam(value = "fileName", required = false) String fileName,
+            HttpServletResponse response) {
+        
+        try {
+            // 检查文件是否存在
+            if (!fileStorageService.fileExists(filePath)) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            // 获取文件输入流
+            InputStream inputStream = fileStorageService.downloadFile(filePath);
+            
+            // 确定文件名
+            String displayFileName = fileName;
+            if (displayFileName == null || displayFileName.isEmpty()) {
+                displayFileName = filePath.substring(filePath.lastIndexOf("/") + 1);
+            }
+            
+            // 对文件名进行URL编码，支持中文文件名
+            String encodedFileName = java.net.URLEncoder.encode(displayFileName, StandardCharsets.UTF_8.toString())
+                    .replaceAll("\\+", "%20");
+            
+            // 设置响应头为attachment，强制下载
+            response.setContentType("application/octet-stream");
+            response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName + "; filename=\"" + encodedFileName + "\"");
+            
+            // 写入响应流
+            byte[] buffer = new byte[1024 * 4];
+            int len;
+            while ((len = inputStream.read(buffer)) != -1) {
+                response.getOutputStream().write(buffer, 0, len);
+            }
+            
+            // 关闭流
+            inputStream.close();
+            response.getOutputStream().flush();
+            response.getOutputStream().close();
+        } catch (Exception e) {
+            log.error("下载文件失败: {}", e.getMessage(), e);
+            try {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().write("下载文件失败");
                 response.getWriter().flush();
                 response.getWriter().close();
             } catch (IOException ex) {

@@ -787,35 +787,11 @@ const generateFileHash = (file) => {
   })
 }
 
-const handleUploadSuccess = (response, file, fileList) => {
-  // 上传成功后，更新文件列表
-  if (response && response.data) {
-    const fileData = response.data
-    const uploadedFile = {
-      uid: file.uid,
-      name: file.name,
-      url: fileData.fileUrl,
-      previewUrl: fileData.previewUrl,
-      filePath: fileData.filePath,
-      type: file.type,
-      size: file.size
-    }
-    
-    // 查找并替换文件列表中的文件
-    const index = progressUpdateForm.attachments.findIndex(item => item.uid === file.uid)
-    if (index !== -1) {
-      progressUpdateForm.attachments[index] = uploadedFile
-    } else {
-      progressUpdateForm.attachments.push(uploadedFile)
-    }
-    
-    ElMessage.success('文件上传成功')
-  } else {
-    ElMessage.error('文件上传失败')
-  }
+const handleUploadSuccess = (uploadedFile) => {
+  ElMessage.success('文件上传成功')
 }
 
-const handleUploadError = (error, file, fileList) => {
+const handleUploadError = (error) => {
   console.error('文件上传失败', error)
   ElMessage.error('文件上传失败')
 }
@@ -925,13 +901,31 @@ const handleAttachmentPreview = (attachment) => {
 
 const handleAttachmentDownload = (attachment) => {
   console.log('下载附件', attachment)
-  // 构建包含原文件名的下载URL
+  console.log('原始 URL:', attachment.url)
+  console.log('文件名:', attachment.name)
+  
+  // 将 preview 接口改为 download 接口
   let downloadUrl = attachment.url
+  if (downloadUrl.includes('/file/preview')) {
+    downloadUrl = downloadUrl.replace('/file/preview', '/file/download')
+  }
+  
+  console.log('替换后 URL:', downloadUrl)
+  
+  // 如果 URL 中已经有 fileName 参数，先移除它
+  if (downloadUrl.includes('fileName=')) {
+    const urlObj = new URL(downloadUrl, window.location.origin)
+    urlObj.searchParams.delete('fileName')
+    downloadUrl = urlObj.toString()
+  }
+  
+  // 添加 fileName 参数
   if (attachment.name) {
-    // 检查URL是否已有查询参数
     const separator = downloadUrl.includes('?') ? '&' : '?'
     downloadUrl += `${separator}fileName=${encodeURIComponent(attachment.name)}`
   }
+  
+  console.log('最终下载 URL:', downloadUrl)
   
   const link = document.createElement('a')
   link.href = downloadUrl
