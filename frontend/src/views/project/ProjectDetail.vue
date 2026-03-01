@@ -142,8 +142,7 @@
     <el-dialog
       v-model="taskDialogVisible"
       :title="taskDialogTitle"
-      width="90%"
-      max-width="1000px"
+      width="1200px"
       @close="handleTaskDialogClose"
     >
       <el-form
@@ -152,6 +151,26 @@
         :rules="taskRules"
         label-width="100px"
       >
+        <el-form-item label="所属项目" prop="projectId">
+          <el-select v-model="taskForm.projectId" placeholder="请选择项目" filterable disabled>
+            <el-option
+              v-for="item in projectList"
+              :key="item.id"
+              :label="item.projectName"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="父任务">
+          <el-cascader
+            v-model="taskForm.parentIdPath"
+            :options="taskTreeData"
+            :props="{ checkStrictly: true, value: 'id', label: 'taskName', emitPath: false }"
+            placeholder="请选择父任务（可选）"
+            clearable
+            @change="handleParentChange"
+          />
+        </el-form-item>
         <el-form-item label="任务名称" prop="taskName">
           <el-input v-model="taskForm.taskName" placeholder="请输入任务名称" />
         </el-form-item>
@@ -162,8 +181,8 @@
             <el-option label="低" :value="3" />
           </el-select>
         </el-form-item>
-        <el-form-item label="负责人" prop="ownerId">
-          <el-select v-model="taskForm.ownerId" placeholder="请选择负责人" filterable>
+        <el-form-item label="负责人" prop="assigneeId">
+          <el-select v-model="taskForm.assigneeId" placeholder="请选择负责人" filterable>
             <el-option
               v-for="employee in employeeList"
               :key="employee.id"
@@ -178,25 +197,41 @@
             type="date"
             placeholder="请选择开始日期"
             value-format="YYYY-MM-DD"
-            style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="截止日期" prop="endDate">
+        <el-form-item label="结束日期" prop="endDate">
           <el-date-picker
             v-model="taskForm.endDate"
             type="date"
-            placeholder="请选择截止日期"
+            placeholder="请选择结束日期"
             value-format="YYYY-MM-DD"
-            style="width: 100%"
           />
         </el-form-item>
         <el-form-item label="任务描述" prop="description">
-          <el-input
-            v-model="taskForm.description"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入任务描述"
+          <RichTextEditor v-model="taskForm.description" placeholder="请输入任务描述" />
+        </el-form-item>
+        <el-form-item label="附件">
+          <FileUpload
+            v-model:fileList="taskForm.attachments"
+            @upload-success="handleUploadSuccess"
+            @upload-error="handleUploadError"
           />
+        </el-form-item>
+        <el-form-item label="干系人">
+          <el-select
+            v-model="taskForm.stakeholders"
+            multiple
+            placeholder="请选择干系人"
+            filterable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="employee in employeeList"
+              :key="employee.id"
+              :label="employee.employeeName"
+              :value="employee.id"
+            />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -293,6 +328,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Document, User, Clock } from '@element-plus/icons-vue'
 import TaskDetail from '@/components/TaskDetail.vue'
+import RichTextEditor from '@/components/RichTextEditor.vue'
+import FileUpload from '@/components/FileUpload.vue'
 import { getProjectDetail, updateProject, archiveProject, getProjectPage, createProject } from '@/api/project'
 import { getProjectTasks, createTask, updateTask } from '@/api/task'
 import { getEmployeeList } from '@/api/employee'
@@ -311,6 +348,7 @@ const taskDialogVisible = ref(false)
 const taskDialogTitle = ref('新建任务')
 const taskFormRef = ref(null)
 const defaultStatus = ref(1)
+const taskTreeData = ref([])
 
 const taskDetailDialogVisible = ref(false)
 const taskDetailDialogTitle = ref('任务详情')
@@ -330,18 +368,22 @@ const statusList = [
 const taskForm = reactive({
   id: null,
   projectId: null,
+  parentId: null,
+  parentIdPath: null,
   taskName: '',
   priority: 2,
-  ownerId: null,
+  assigneeId: null,
   startDate: '',
   endDate: '',
   description: '',
+  attachments: [],
+  stakeholders: [],
   status: 1
 })
 
 const taskRules = {
   taskName: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
-  ownerId: [{ required: true, message: '请选择负责人', trigger: 'change' }]
+  assigneeId: [{ required: true, message: '请选择负责人', trigger: 'change' }]
 }
 
 const projectForm = reactive({
@@ -500,6 +542,18 @@ const handleAddTask = (status = 1) => {
   taskDialogVisible.value = true
 }
 
+const handleParentChange = (value) => {
+  taskForm.parentId = value || null
+}
+
+const handleUploadSuccess = (file) => {
+  ElMessage.success('文件上传成功')
+}
+
+const handleUploadError = (error) => {
+  ElMessage.error('文件上传失败')
+}
+
 const handleViewTask = (task) => {
   currentTask.value = { ...task }
   taskDetailDialogVisible.value = true
@@ -508,11 +562,17 @@ const handleViewTask = (task) => {
 const handleTaskSubmit = async () => {
   try {
     await taskFormRef.value.validate()
+    // 准备提交的数据
+    const submitData = {
+      ...taskForm,
+      ownerId: taskForm.assigneeId, // 映射到后端需要的字段名
+      stakeholders: taskForm.stakeholders ? taskForm.stakeholders.join(',') : ''
+    }
     if (taskForm.id) {
-      await updateTask(taskForm)
+      await updateTask(submitData)
       ElMessage.success('更新成功')
     } else {
-      await createTask(taskForm)
+      await createTask(submitData)
       ElMessage.success('创建成功')
     }
     taskDialogVisible.value = false
@@ -559,12 +619,16 @@ const handleProjectDialogClose = () => {
 const resetTaskForm = () => {
   taskForm.id = null
   taskForm.projectId = null
+  taskForm.parentId = null
+  taskForm.parentIdPath = null
   taskForm.taskName = ''
   taskForm.priority = 2
-  taskForm.ownerId = null
+  taskForm.assigneeId = null
   taskForm.startDate = ''
   taskForm.endDate = ''
   taskForm.description = ''
+  taskForm.attachments = []
+  taskForm.stakeholders = []
   taskForm.status = defaultStatus.value || 1
   taskFormRef.value?.resetFields()
 }
