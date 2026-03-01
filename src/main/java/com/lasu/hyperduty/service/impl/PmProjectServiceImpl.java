@@ -49,7 +49,7 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
             wrapper.eq(PmProject::getOwnerId, ownerId);
         }
         
-        wrapper.orderByDesc(PmProject::getCreateTime);
+        wrapper.orderByAsc(PmProject::getSort).orderByDesc(PmProject::getCreateTime);
         
         Page<PmProject> result = baseMapper.selectPage(page, wrapper);
         
@@ -140,7 +140,7 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
         LambdaQueryWrapper<PmProject> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(PmProject::getStatus, status)
                .eq(PmProject::getArchived, 0)
-               .orderByDesc(PmProject::getCreateTime);
+               .orderByAsc(PmProject::getSort).orderByDesc(PmProject::getCreateTime);
         return list(wrapper);
     }
 }

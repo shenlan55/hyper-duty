@@ -165,6 +165,11 @@ const loadProjectList = async () => {
   try {
     const data = await getProjectPage({ pageNum: 1, pageSize: 1000 })
     projectList.value = data.records || []
+    // 自动选择第一个项目
+    if (projectList.value.length > 0 && !selectedProjectId.value) {
+      selectedProjectId.value = projectList.value[0].id
+      await handleProjectChange()
+    }
   } catch (error) {
     ElMessage.error('加载项目列表失败')
   }

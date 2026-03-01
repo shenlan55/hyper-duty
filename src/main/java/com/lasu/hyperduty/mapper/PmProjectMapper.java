@@ -15,7 +15,7 @@ public interface PmProjectMapper extends BaseMapper<PmProject> {
             "FROM pm_project p " +
             "LEFT JOIN sys_employee e ON p.owner_id = e.id " +
             "WHERE p.archived = 0 " +
-            "ORDER BY p.create_time DESC")
+            "ORDER BY p.sort ASC, p.create_time DESC")
     List<PmProject> selectProjectsWithOwner();
 
     @Select("SELECT p.*, e.employee_name as owner_name, " +
@@ -24,7 +24,7 @@ public interface PmProjectMapper extends BaseMapper<PmProject> {
             "FROM pm_project p " +
             "LEFT JOIN sys_employee e ON p.owner_id = e.id " +
             "WHERE p.owner_id = #{employeeId} AND p.archived = 0 " +
-            "ORDER BY p.create_time DESC")
+            "ORDER BY p.sort ASC, p.create_time DESC")
     List<PmProject> selectByOwnerId(@Param("employeeId") Long employeeId);
 
     @Select("SELECT p.*, e.employee_name as owner_name " +

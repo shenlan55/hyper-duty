@@ -400,6 +400,12 @@ const loadProjectList = async () => {
   try {
     const data = await getProjectPage({ pageNum: 1, pageSize: 1000, showArchived: true })
     projectList.value = data.records || []
+    // 如果没有指定项目ID，默认选择第一个项目
+    if (projectList.value.length > 0 && !selectedProjectId.value) {
+      selectedProjectId.value = projectList.value[0].id
+      loadProject(selectedProjectId.value)
+      loadTasks(selectedProjectId.value)
+    }
   } catch (error) {
     console.error('加载项目列表失败', error)
   }

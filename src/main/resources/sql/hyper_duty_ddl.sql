@@ -2487,6 +2487,7 @@ CREATE TABLE public.pm_project (
     owner_id bigint,
     create_by bigint,
     archived integer DEFAULT 0,
+    sort integer DEFAULT 0,
     create_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     update_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
@@ -2618,6 +2619,16 @@ COMMENT ON COLUMN public.pm_project.create_by IS '创建人ID';
 --
 
 COMMENT ON COLUMN public.pm_project.archived IS '是否归档：0-否，1-是';
+
+
+--
+-- TOC entry 4296 (class 0 OID 0)
+-- Dependencies: 275
+-- Name: COLUMN pm_project.sort; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+
+COMMENT ON COLUMN public.pm_project.sort IS '排序';
 
 
 --

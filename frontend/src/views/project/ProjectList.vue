@@ -78,6 +78,9 @@
         <el-form-item label="项目编码" prop="projectCode">
           <el-input v-model="form.projectCode" placeholder="请输入项目编码" />
         </el-form-item>
+        <el-form-item label="排序" prop="sort">
+          <el-input-number v-model="form.sort" placeholder="请输入排序值" :min="0" :step="1" />
+        </el-form-item>
         <el-form-item label="优先级" prop="priority">
           <el-select v-model="form.priority" placeholder="请选择优先级">
             <el-option label="高" :value="1" />
@@ -184,6 +187,7 @@ const form = reactive({
   id: null,
   projectName: '',
   projectCode: '',
+  sort: 0,
   priority: 2,
   status: 1,
   ownerId: null,
@@ -200,6 +204,7 @@ const rules = {
 }
 
 const columns = [
+  { prop: 'sort', label: '排序', width: 80 },
   { prop: 'projectName', label: '项目名称', minWidth: 100 },
   { prop: 'projectCode', label: '项目编码', width: 150 },
   { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
@@ -359,6 +364,7 @@ const resetForm = () => {
   form.id = null
   form.projectName = ''
   form.projectCode = ''
+  form.sort = 0
   form.priority = 2
   form.ownerId = null
   form.ownerName = ''

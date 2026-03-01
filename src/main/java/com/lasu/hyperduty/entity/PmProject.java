@@ -56,4 +56,6 @@ public class PmProject {
 
     @TableField(exist = false)
     private List<Long> participants;
+
+    private Integer sort;
 }
