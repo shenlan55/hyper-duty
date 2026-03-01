@@ -17,7 +17,7 @@
       </slot>
       <template #tip>
         <div class="el-upload__tip">
-          支持上传JPG/PNG图片、Word、Excel、PDF、PPT和ZIP文件，单个文件不超过100MB
+          支持上传JPG/PNG图片、Word、Excel、PDF、PPT和ZIP文件，单个文件不超过25MB
         </div>
       </template>
     </el-upload>
@@ -240,10 +240,10 @@ const beforeUpload = (file) => {
     return false
   }
   
-  // 检查文件大小（增加到100MB）
-  const isLt100M = file.size / 1024 / 1024 < 100
-  if (!isLt100M) {
-    ElMessage.error('文件大小不能超过100MB')
+  // 检查文件大小（限制为25MB）
+  const isLt25M = file.size / 1024 / 1024 < 25
+  if (!isLt25M) {
+    ElMessage.error('文件大小不能超过25MB')
     return false
   }
   
