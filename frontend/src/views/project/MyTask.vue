@@ -39,6 +39,10 @@
       <template #header>
         <div class="card-header">
           <span>我的任务</span>
+          <el-select v-model="selectedProjectId" placeholder="选择项目" style="width: 200px; margin-left: 20px;" @change="handleProjectChange">
+            <el-option label="所有项目" value="0" />
+            <el-option v-for="project in projects" :key="project.id" :label="project.projectName" :value="project.id" />
+          </el-select>
         </div>
       </template>
 
@@ -72,10 +76,10 @@
           <el-progress :percentage="row.progress" :status="getProgressStatus(row.progress)" />
         </template>
         <template #status="{ row }">
-          <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
+          <el-tag :type="getTaskStatusType(row.status)">{{ getTaskStatusText(row.status) }}</el-tag>
         </template>
         <template #priority="{ row }">
-          <el-tag :type="getPriorityType(row.priority)">{{ getPriorityText(row.priority) }}</el-tag>
+          <el-tag :type="getTaskPriorityType(row.priority)">{{ getTaskPriorityText(row.priority) }}</el-tag>
         </template>
         <template #endDate="{ row }">
           <span :class="{ 'overdue': isOverdue(row) }">{{ row.endDate }}</span>
@@ -90,22 +94,69 @@
     </el-card>
 
     <el-dialog
-      v-model="progressDialogVisible"
-      title="更新进度"
-      width="400px"
+      v-model="progressUpdateDialogVisible"
+      :title="`更新任务进展 - ${currentTaskForUpdate?.taskName || ''}`"
+      width="1500px"
     >
-      <el-form label-width="80px">
-        <el-form-item label="任务名称">
-          <el-input :value="progressForm.taskName" disabled />
+      <!-- 任务基本信息（只读） -->
+      <div class="task-info-panel" style="margin-bottom: 20px; padding: 15px; background-color: #f5f7fa; border-radius: 4px;">
+        <h4 style="margin-bottom: 10px;">任务信息</h4>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-descriptions :column="1" size="small">
+              <el-descriptions-item label="任务名称">{{ currentTaskForUpdate?.taskName }}</el-descriptions-item>
+              <el-descriptions-item label="所属项目">{{ currentTaskForUpdate?.projectName }}</el-descriptions-item>
+              <el-descriptions-item label="负责人">{{ currentTaskForUpdate?.ownerName }}</el-descriptions-item>
+            </el-descriptions>
+          </el-col>
+          <el-col :span="12">
+            <el-descriptions :column="1" size="small">
+              <el-descriptions-item label="优先级">{{ getTaskPriorityText(currentTaskForUpdate?.priority) }}</el-descriptions-item>
+              <el-descriptions-item label="状态">{{ getTaskStatusText(currentTaskForUpdate?.status) }}</el-descriptions-item>
+              <el-descriptions-item label="当前进度">{{ currentTaskForUpdate?.progress }}%</el-descriptions-item>
+            </el-descriptions>
+          </el-col>
+        </el-row>
+      </div>
+
+      <!-- 进度更新表单 -->
+      <el-form label-width="100px">
+        <el-form-item label="更新进度">
+          <el-slider v-model="progressUpdateForm.progress" :min="0" :max="100" show-input />
         </el-form-item>
-        <el-form-item label="当前进度">
-          <el-slider v-model="progressForm.progress" :min="0" :max="100" show-input />
+        <el-form-item label="进展描述">
+          <RichTextEditor v-model="progressUpdateForm.description" placeholder="请输入进展描述" />
+        </el-form-item>
+        <el-form-item label="附件">
+          <el-upload
+            class="upload-demo"
+            :http-request="handleCustomUpload"
+            :file-list="progressUpdateForm.attachments"
+            :auto-upload="true"
+            :limit="5"
+            :before-upload="beforeUpload"
+            list-type="picture"
+          >
+            <el-button type="primary">点击上传</el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持上传JPG/PNG图片、Word、Excel、PDF、PPT和ZIP文件，且不超过10MB
+              </div>
+            </template>
+          </el-upload>
         </el-form-item>
       </el-form>
-      <template #footer>
-        <el-button @click="progressDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitProgress">确定</el-button>
-      </template>
+
+      <!-- 操作按钮区域 -->
+      <div style="margin: 20px 0; display: flex; justify-content: flex-end; gap: 10px;">
+        <el-button @click="progressUpdateDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmitProgressUpdate">确定</el-button>
+      </div>
+
+      <!-- 进展历史时间线 -->
+      <div style="margin-top: 30px;">
+        <ProgressHistory :progress-updates="progressUpdates" />
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -115,13 +166,20 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Star } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
-import { getMyTasks, updateProgress, pinTask, getUpcomingTasks } from '@/api/task'
+import RichTextEditor from '@/components/RichTextEditor.vue'
+import ProgressHistory from '@/components/ProgressHistory.vue'
+import { getMyTasks, getMyTasksByProject, updateProgress, pinTask, getUpcomingTasks, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
+import { getMyProjects } from '@/api/project'
 import { getCurrentUserId } from '@/utils/jwt'
+import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, formatDateTime, getProgressStatus } from '@/utils/taskUtils'
+import request from '@/utils/request'
 
 const loading = ref(false)
 const tableData = ref([])
-const progressDialogVisible = ref(false)
+const progressUpdateDialogVisible = ref(false)
 const activeTab = ref('all')
+const projects = ref([])
+const selectedProjectId = ref('0')
 
 const stats = reactive({
   total: 0,
@@ -137,11 +195,13 @@ const pagination = reactive({
   total: 0
 })
 
-const progressForm = reactive({
-  taskId: null,
-  taskName: '',
-  progress: 0
+const currentTaskForUpdate = ref(null)
+const progressUpdateForm = reactive({
+  progress: 0,
+  description: '',
+  attachments: []
 })
+const progressUpdates = ref([])
 
 const columns = [
   { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName' },
@@ -154,32 +214,7 @@ const columns = [
   { prop: 'operation', label: '操作', width: 220, fixed: 'right', slot: 'operation' }
 ]
 
-const getStatusType = (status) => {
-  const types = { 1: 'info', 2: 'primary', 3: 'success', 4: 'warning' }
-  return types[status] || 'info'
-}
 
-const getStatusText = (status) => {
-  const texts = { 1: '未开始', 2: '进行中', 3: '已完成', 4: '已暂停' }
-  return texts[status] || '未知'
-}
-
-const getPriorityType = (priority) => {
-  const types = { 1: 'danger', 2: 'warning', 3: 'info' }
-  return types[priority] || 'info'
-}
-
-const getPriorityText = (priority) => {
-  const texts = { 1: '高', 2: '中', 3: '低' }
-  return texts[priority] || '未知'
-}
-
-const getProgressStatus = (progress) => {
-  if (progress >= 100) return 'success'
-  if (progress >= 60) return ''
-  if (progress >= 30) return 'warning'
-  return 'exception'
-}
 
 const isOverdue = (row) => {
   if (!row.endDate || row.status === 3) return false
@@ -191,6 +226,20 @@ const isOverdue = (row) => {
 
 const getCurrentEmployeeId = () => {
   return getCurrentUserId()
+}
+
+const loadProjects = async () => {
+  try {
+    const employeeId = getCurrentEmployeeId()
+    if (!employeeId) {
+      ElMessage.error('无法获取用户信息')
+      return
+    }
+    const projectList = await getMyProjects(employeeId)
+    projects.value = projectList
+  } catch (error) {
+    ElMessage.error('加载项目列表失败')
+  }
 }
 
 const loadData = async () => {
@@ -206,7 +255,11 @@ const loadData = async () => {
     if (activeTab.value === 'upcoming') {
       data = await getUpcomingTasks()
     } else {
-      data = await getMyTasks(employeeId)
+      if (selectedProjectId.value === '0') {
+        data = await getMyTasks(employeeId)
+      } else {
+        data = await getMyTasksByProject(employeeId, selectedProjectId.value)
+      }
     }
 
     if (activeTab.value === 'pending') {
@@ -238,6 +291,11 @@ const handleTabChange = () => {
   loadData()
 }
 
+const handleProjectChange = () => {
+  pagination.currentPage = 1
+  loadData()
+}
+
 const handleSizeChange = (val) => {
   pagination.pageSize = val
 }
@@ -246,23 +304,94 @@ const handleCurrentChange = (val) => {
   pagination.currentPage = val
 }
 
-const handleUpdateProgress = (row) => {
-  progressForm.taskId = row.id
-  progressForm.taskName = row.taskName
-  progressForm.progress = row.progress || 0
-  progressDialogVisible.value = true
+const handleUpdateProgress = async (row) => {
+  currentTaskForUpdate.value = row
+  progressUpdateForm.progress = row.progress || 0
+  progressUpdateForm.description = ''
+  progressUpdateForm.attachments = []
+  
+  // 加载进度更新历史
+  try {
+    const updates = await getTaskProgressUpdates(row.id)
+    progressUpdates.value = updates || []
+  } catch (error) {
+    console.error('加载进度更新历史失败', error)
+  }
+  
+  progressUpdateDialogVisible.value = true
 }
 
-const handleSubmitProgress = async () => {
+const handleSubmitProgressUpdate = async () => {
+  if (!currentTaskForUpdate.value) return
+  
   try {
-    await updateProgress(progressForm.taskId, progressForm.progress)
+    await createProgressUpdate({
+      taskId: currentTaskForUpdate.value.id,
+      progress: progressUpdateForm.progress,
+      description: progressUpdateForm.description,
+      attachments: progressUpdateForm.attachments
+    })
+    
+    // 同时更新任务的进度
+    await updateProgress(currentTaskForUpdate.value.id, progressUpdateForm.progress)
+    
     ElMessage.success('更新进度成功')
-    progressDialogVisible.value = false
+    progressUpdateDialogVisible.value = false
     loadData()
   } catch (error) {
     ElMessage.error('更新进度失败')
   }
 }
+
+const handleCustomUpload = async (options) => {
+  const { file, onSuccess, onError } = options
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const response = await request({
+      url: '/api/upload',
+      method: 'post',
+      data: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    if (response && response.data) {
+      const attachment = {
+        name: file.name,
+        url: response.data.url,
+        size: file.size
+      }
+      progressUpdateForm.attachments.push(attachment)
+      onSuccess()
+    } else {
+      onError(new Error('上传失败'))
+    }
+  } catch (error) {
+    console.error('上传失败', error)
+    onError(error)
+  }
+}
+
+const beforeUpload = (file) => {
+  const isImage = /\.(jpg|jpeg|png|gif)$/i.test(file.name)
+  const isDocument = /\.(doc|docx|xls|xlsx|pdf|ppt|pptx|zip)$/i.test(file.name)
+  const isLt10M = file.size / 1024 / 1024 < 10
+  
+  if (!isImage && !isDocument) {
+    ElMessage.error('只能上传图片、文档和压缩文件!')
+    return false
+  }
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过10MB!')
+    return false
+  }
+  return true
+}
+
+
 
 const handlePin = async (row) => {
   try {
@@ -276,6 +405,7 @@ const handlePin = async (row) => {
 }
 
 onMounted(() => {
+  loadProjects()
   loadData()
 })
 </script>
@@ -323,13 +453,54 @@ onMounted(() => {
   align-items: center;
 }
 
-.pinned-task {
+.pinned-task.overdue {
   color: #f56c6c;
   font-weight: bold;
 }
 
-.overdue {
-  color: #f56c6c;
-  font-weight: bold;
+/* 任务信息面板样式 */
+.task-info-panel {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 表单样式 */
+:deep(el-form) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(el-form-item) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 富文本编辑器样式 */
+:deep(.rich-text-editor) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(.editor-container) {
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* 附件上传样式 */
+:deep(.el-upload) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(.el-upload-list) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 对话框内容样式，防止横向滚动 */
+:deep(.el-dialog__body) {
+  overflow-x: hidden !important;
+  padding: 20px;
 }
 </style>

@@ -55,6 +55,7 @@
   - 前端处理用户输入时应使用 `xssUtil` 工具，防止 XSS 攻击
   - 后端热点数据应使用 `@Cacheable` 注解，利用 Redis 缓存提升性能
   - 后端敏感接口应使用 `@RateLimit` 注解，防止恶意请求和 DDoS 攻击
+  - 前端附件显示规范：附件应采用垂直方向逐行显示，提高可读性和一致性
   - 类型引用规范：所有类型引用必须通过 import 语句导入后使用简单类型名，禁止直接使用完整包路径。例如：
     - 正确：`import com.baomidou.mybatisplus.extension.plugins.pagination.Page;` 然后使用 `Page<SysEmployee>`
     - 错误：直接使用 `com.baomidou.mybatisplus.extension.plugins.pagination.Page<SysEmployee>`

@@ -65,9 +65,19 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
-            "WHERE t.assignee_id = #{employeeId} AND t.status != 3 " +
+            "WHERE t.assignee_id = #{employeeId} " +
             "ORDER BY t.is_pinned DESC, t.priority ASC, t.end_date ASC")
     List<PmTask> selectMyTasks(@Param("employeeId") Long employeeId);
+
+    @Select("SELECT t.*, e.employee_name as owner_name, p.project_name, " +
+            "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id) as sub_task_count, " +
+            "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id AND sub.status = 3) as completed_sub_task_count " +
+            "FROM pm_task t " +
+            "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
+            "LEFT JOIN pm_project p ON t.project_id = p.id " +
+            "WHERE t.assignee_id = #{employeeId} AND t.project_id = #{projectId} " +
+            "ORDER BY t.is_pinned DESC, t.priority ASC, t.end_date ASC")
+    List<PmTask> selectMyTasksByProject(@Param("employeeId") Long employeeId, @Param("projectId") Long projectId);
 
     @Select("SELECT t.*, e.employee_name as owner_name " +
             "FROM pm_task t " +

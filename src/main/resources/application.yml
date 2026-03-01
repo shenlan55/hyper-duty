@@ -76,3 +76,6 @@ rustfs:
 kkfileview:
   endpoint: ${KKFILEVIEW_ENDPOINT:http://localhost:8012}
   preview-path: /onlinePreview
+
+frontend:
+  url: ${FRONTEND_URL:http://localhost:5173}

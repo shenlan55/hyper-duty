@@ -16,6 +16,8 @@ public interface PmTaskService extends IService<PmTask> {
 
     List<PmTask> getMyTasks(Long employeeId);
 
+    List<PmTask> getMyTasksByProject(Long employeeId, Long projectId);
+
     PmTask getTaskDetail(Long id);
 
     PmTask createTask(PmTask task);

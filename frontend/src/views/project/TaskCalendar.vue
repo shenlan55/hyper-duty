@@ -42,27 +42,10 @@
     <el-dialog
       v-model="taskDialogVisible"
       :title="`任务详情 - ${selectedTask?.taskName || ''}`"
-      width="600px"
+      width="1500px"
+      max-width="1500px"
     >
-      <div v-if="selectedTask" class="task-detail">
-        <el-descriptions :column="1" border>
-          <el-descriptions-item label="任务名称">{{ selectedTask.taskName }}</el-descriptions-item>
-          <el-descriptions-item label="所属项目">{{ selectedTask.projectName }}</el-descriptions-item>
-          <el-descriptions-item label="优先级">
-            <el-tag :type="getTaskType(selectedTask.priority)">{{ getPriorityText(selectedTask.priority) }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag :type="getStatusType(selectedTask.status)">{{ getStatusText(selectedTask.status) }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="进度">
-            <el-progress :percentage="selectedTask.progress" :status="getProgressStatus(selectedTask.progress)" />
-          </el-descriptions-item>
-          <el-descriptions-item label="负责人">{{ selectedTask.ownerName }}</el-descriptions-item>
-          <el-descriptions-item label="开始日期">{{ selectedTask.startDate }}</el-descriptions-item>
-          <el-descriptions-item label="结束日期">{{ selectedTask.endDate }}</el-descriptions-item>
-          <el-descriptions-item label="任务描述">{{ selectedTask.description }}</el-descriptions-item>
-        </el-descriptions>
-      </div>
+      <TaskDetail v-if="selectedTask" :task="selectedTask" />
     </el-dialog>
   </div>
 </template>
@@ -72,6 +55,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getTaskPage } from '@/api/task'
 import { getProjectPage } from '@/api/project'
+import TaskDetail from '@/components/TaskDetail.vue'
 
 const currentDate = ref(new Date())
 const selectedProject = ref(null)
@@ -195,5 +179,56 @@ onMounted(() => {
 
 .task-detail {
   padding: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  max-width: 1460px;
+  margin: 0 auto;
+}
+
+/* 任务信息面板样式 */
+.task-info-panel {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 表单样式 */
+:deep(el-form) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(el-form-item) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 富文本编辑器样式 */
+:deep(.rich-text-editor) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(.editor-container) {
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* 附件上传样式 */
+:deep(.el-upload) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(.el-upload-list) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 对话框内容样式，防止横向滚动 */
+:deep(.el-dialog__body) {
+  overflow-x: hidden !important;
+  padding: 20px;
 }
 </style>

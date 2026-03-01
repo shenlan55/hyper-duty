@@ -49,6 +49,12 @@ public class PmTaskController {
         return ResponseResult.success(tasks);
     }
 
+    @GetMapping("/my/{employeeId}/project/{projectId}")
+    public ResponseResult<List<PmTask>> getMyTasksByProject(@PathVariable Long employeeId, @PathVariable Long projectId) {
+        List<PmTask> tasks = pmTaskService.getMyTasksByProject(employeeId, projectId);
+        return ResponseResult.success(tasks);
+    }
+
     @GetMapping("/{id}")
     public ResponseResult<PmTask> getTaskDetail(@PathVariable Long id) {
         PmTask task = pmTaskService.getTaskDetail(id);

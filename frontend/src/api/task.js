@@ -29,6 +29,13 @@ export function getMyTasks(employeeId) {
   })
 }
 
+export function getMyTasksByProject(employeeId, projectId) {
+  return request({
+    url: `/pm/task/my/${employeeId}/project/${projectId}`,
+    method: 'get'
+  })
+}
+
 export function getTaskDetail(id) {
   return request({
     url: `/pm/task/${id}`,

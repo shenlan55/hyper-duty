@@ -62,6 +62,11 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     }
 
     @Override
+    public List<PmTask> getMyTasksByProject(Long employeeId, Long projectId) {
+        return baseMapper.selectMyTasksByProject(employeeId, projectId);
+    }
+
+    @Override
     public PmTask getTaskDetail(Long id) {
         return baseMapper.selectTaskById(id);
     }

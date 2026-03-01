@@ -142,7 +142,8 @@
     <el-dialog
       v-model="taskDialogVisible"
       :title="taskDialogTitle"
-      width="600px"
+      width="90%"
+      max-width="1000px"
       @close="handleTaskDialogClose"
     >
       <el-form
@@ -275,44 +276,10 @@
     <el-dialog
       v-model="taskDetailDialogVisible"
       :title="taskDetailDialogTitle"
-      width="600px"
+      width="1500px"
+      max-width="1500px"
     >
-      <div class="task-detail-content">
-        <el-form label-width="100px">
-          <el-form-item label="任务名称">
-            <el-input v-model="currentTask.taskName" disabled />
-          </el-form-item>
-          <el-form-item label="优先级">
-            <el-tag :type="getPriorityType(currentTask.priority)">{{ getPriorityText(currentTask.priority) }}</el-tag>
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-tag :type="getStatusType(currentTask.status)">{{ getStatusText(currentTask.status) }}</el-tag>
-          </el-form-item>
-          <el-form-item label="负责人">
-            <el-input v-model="currentTask.ownerName" disabled />
-          </el-form-item>
-          <el-form-item label="开始日期">
-            <el-input v-model="currentTask.startDate" disabled />
-          </el-form-item>
-          <el-form-item label="结束日期">
-            <el-input v-model="currentTask.endDate" disabled />
-          </el-form-item>
-          <el-form-item label="进度">
-            <el-progress 
-              :percentage="currentTask.progress || 0" 
-              :status="getProgressStatus(currentTask.progress)"
-            />
-          </el-form-item>
-          <el-form-item label="任务描述">
-            <el-input
-              v-model="currentTask.description"
-              type="textarea"
-              :rows="3"
-              disabled
-            />
-          </el-form-item>
-        </el-form>
-      </div>
+      <TaskDetail :task="currentTask" />
       <template #footer>
         <el-button @click="taskDetailDialogVisible = false">关闭</el-button>
       </template>
@@ -325,6 +292,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Document, User, Clock } from '@element-plus/icons-vue'
+import TaskDetail from '@/components/TaskDetail.vue'
 import { getProjectDetail, updateProject, archiveProject, getProjectPage, createProject } from '@/api/project'
 import { getProjectTasks, createTask, updateTask } from '@/api/task'
 import { getEmployeeList } from '@/api/employee'
@@ -787,5 +755,36 @@ onMounted(async () => {
 .add-task-card:hover {
   border-color: #409eff;
   color: #409eff;
+}
+
+/* 确保富文本内容中的图片自适应容器宽度 */
+:deep(.ql-editor img) {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+/* 确保编辑器容器宽度自适应 */
+:deep(.rich-text-editor) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(.editor-container) {
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* 任务详情弹框样式 */
+:deep(.el-dialog) {
+  max-width: 1500px !important;
+}
+
+:deep(.el-dialog__body) {
+  overflow-x: hidden !important;
+  padding: 20px;
 }
 </style>

@@ -66,10 +66,10 @@
           <el-progress :percentage="row.progress" :status="getProgressStatus(row.progress)" />
         </template>
         <template #status="{ row }">
-          <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
+          <el-tag :type="getTaskStatusType(row.status)">{{ getTaskStatusText(row.status) }}</el-tag>
         </template>
         <template #priority="{ row }">
-          <el-tag :type="getPriorityType(row.priority)">{{ getPriorityText(row.priority) }}</el-tag>
+          <el-tag :type="getTaskPriorityType(row.priority)">{{ getTaskPriorityText(row.priority) }}</el-tag>
         </template>
         <template #operation="{ row }">
           <el-button 
@@ -237,7 +237,7 @@
     <el-dialog
       v-model="progressUpdateDialogVisible"
       :title="`更新任务进展 - ${currentTaskForUpdate?.taskName || ''}`"
-      width="1000px"
+      width="1500px"
     >
       <!-- 任务基本信息（只读） -->
       <div class="task-info-panel" style="margin-bottom: 20px; padding: 15px; background-color: #f5f7fa; border-radius: 4px;">
@@ -252,8 +252,8 @@
           </el-col>
           <el-col :span="12">
             <el-descriptions :column="1" size="small">
-              <el-descriptions-item label="优先级">{{ getPriorityText(currentTaskForUpdate?.priority) }}</el-descriptions-item>
-              <el-descriptions-item label="状态">{{ getStatusText(currentTaskForUpdate?.status) }}</el-descriptions-item>
+              <el-descriptions-item label="优先级">{{ getTaskPriorityText(currentTaskForUpdate?.priority) }}</el-descriptions-item>
+              <el-descriptions-item label="状态">{{ getTaskStatusText(currentTaskForUpdate?.status) }}</el-descriptions-item>
               <el-descriptions-item label="当前进度">{{ currentTaskForUpdate?.progress }}%</el-descriptions-item>
             </el-descriptions>
           </el-col>
@@ -287,6 +287,12 @@
           </el-upload>
         </el-form-item>
       </el-form>
+
+      <!-- 操作按钮区域 -->
+      <div style="margin: 20px 0; display: flex; justify-content: flex-end; gap: 10px;">
+        <el-button @click="progressUpdateDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmitProgressUpdate">确定</el-button>
+      </div>
 
       <!-- 进展历史时间线 -->
       <div style="margin-top: 30px;">
@@ -333,89 +339,16 @@
           </el-timeline-item>
         </el-timeline>
       </div>
-
-      <template #footer>
-        <el-button @click="progressUpdateDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitProgressUpdate">确定</el-button>
-      </template>
     </el-dialog>
 
     <!-- 任务详情对话框（只读） -->
     <el-dialog
       v-model="taskDetailDialogVisible"
       :title="`任务详情 - ${currentTaskForDetail?.taskName || ''}`"
-      width="1000px"
+      width="1500px"
+      max-width="1500px"
     >
-      <!-- 任务基本信息（只读） -->
-      <div class="task-info-panel" style="margin-bottom: 20px; padding: 15px; background-color: #f5f7fa; border-radius: 4px;">
-        <h4 style="margin-bottom: 10px;">任务信息</h4>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-descriptions :column="1" size="small">
-              <el-descriptions-item label="任务名称">{{ currentTaskForDetail?.taskName }}</el-descriptions-item>
-              <el-descriptions-item label="所属项目">{{ currentTaskForDetail?.projectName }}</el-descriptions-item>
-              <el-descriptions-item label="负责人">{{ currentTaskForDetail?.ownerName }}</el-descriptions-item>
-              <el-descriptions-item label="开始日期">{{ currentTaskForDetail?.startDate }}</el-descriptions-item>
-              <el-descriptions-item label="结束日期">{{ currentTaskForDetail?.endDate }}</el-descriptions-item>
-            </el-descriptions>
-          </el-col>
-          <el-col :span="12">
-            <el-descriptions :column="1" size="small">
-              <el-descriptions-item label="优先级">{{ getPriorityText(currentTaskForDetail?.priority) }}</el-descriptions-item>
-              <el-descriptions-item label="状态">{{ getStatusText(currentTaskForDetail?.status) }}</el-descriptions-item>
-              <el-descriptions-item label="当前进度">{{ currentTaskForDetail?.progress }}%</el-descriptions-item>
-              <el-descriptions-item label="任务描述">{{ currentTaskForDetail?.description }}</el-descriptions-item>
-            </el-descriptions>
-          </el-col>
-        </el-row>
-      </div>
-
-      <!-- 进展历史时间线 -->
-      <div style="margin-top: 30px;">
-        <h4 style="margin-bottom: 15px;">进展历史</h4>
-        <el-timeline>
-          <el-timeline-item
-            v-for="(update, index) in taskDetailProgressUpdates"
-            :key="index"
-            :timestamp="formatDateTime(update.createTime)"
-            type="primary"
-            placement="top"
-          >
-            <el-card>
-              <div class="update-content">
-                <div class="update-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                  <span style="font-weight: bold;">{{ update.employeeName }}</span>
-                  <span style="color: #606266;">进度更新至 {{ update.progress }}%</span>
-                </div>
-                <div class="update-description" v-if="update.description" style="margin-bottom: 10px;" v-html="update.description"></div>
-                <div class="update-attachments" v-if="update.attachmentList && update.attachmentList.length > 0">
-                  <el-divider content-position="left">附件</el-divider>
-                  <div class="attachments-container">
-                    <div v-for="(attachment, idx) in update.attachmentList" :key="idx" class="attachment-item">
-                      <div class="attachment-file">
-                        <el-icon class="file-icon"><Document /></el-icon>
-                        <span class="file-name">{{ attachment.name || '未知文件' }}</span>
-                      </div>
-                      <div class="attachment-info">
-                        <span class="attachment-name">{{ attachment.name || '未知文件' }}</span>
-                        <div class="attachment-actions">
-                          <el-button size="small" type="primary" @click="handleAttachmentPreview(attachment)">
-                            预览
-                          </el-button>
-                          <el-button size="small" @click="handleAttachmentDownload(attachment)">
-                            下载
-                          </el-button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </el-card>
-          </el-timeline-item>
-        </el-timeline>
-      </div>
-
+      <TaskDetail :task="currentTaskForDetail" />
       <template #footer>
         <el-button @click="taskDetailDialogVisible = false">关闭</el-button>
       </template>
@@ -430,12 +363,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star, Document } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import TaskComment from '@/components/TaskComment.vue'
+import TaskDetail from '@/components/TaskDetail.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, hasTaskPermission } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
+import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime } from '@/utils/taskUtils'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -453,7 +388,6 @@ const currentTask = ref(null)
 const currentTaskForDetail = ref(null)
 const dialogTitle = ref('新建任务')
 const formRef = ref(null)
-const taskDetailProgressUpdates = ref([])
 const progressUpdateDialogVisible = ref(false)
 const currentTaskForUpdate = ref(null)
 const progressUpdateForm = reactive({
@@ -514,32 +448,7 @@ const columns = [
   { prop: 'operation', label: '操作', width: 410, fixed: 'right', slot: 'operation' }
 ]
 
-const getStatusType = (status) => {
-  const types = { 1: 'info', 2: 'primary', 3: 'success', 4: 'warning' }
-  return types[status] || 'info'
-}
 
-const getStatusText = (status) => {
-  const texts = { 1: '未开始', 2: '进行中', 3: '已完成', 4: '已暂停' }
-  return texts[status] || '未知'
-}
-
-const getPriorityType = (priority) => {
-  const types = { 1: 'danger', 2: 'warning', 3: 'info' }
-  return types[priority] || 'info'
-}
-
-const getPriorityText = (priority) => {
-  const texts = { 1: '高', 2: '中', 3: '低' }
-  return texts[priority] || '未知'
-}
-
-const getProgressStatus = (progress) => {
-  if (progress >= 100) return 'success'
-  if (progress >= 60) return ''
-  if (progress >= 30) return 'warning'
-  return 'exception'
-}
 
 const loadData = async () => {
   loading.value = true
@@ -677,12 +586,8 @@ const handleUpdateProgress = async (row) => {
   progressUpdateDialogVisible.value = true
 }
 
-const handleViewTaskDetail = async (row) => {
+const handleViewTaskDetail = (row) => {
   currentTaskForDetail.value = row
-  
-  // 加载任务的进展历史
-  await loadTaskDetailProgressUpdates(row.id)
-  
   taskDetailDialogVisible.value = true
 }
 
@@ -696,15 +601,7 @@ const loadProgressUpdates = async (taskId) => {
   }
 }
 
-const loadTaskDetailProgressUpdates = async (taskId) => {
-  try {
-    const data = await getTaskProgressUpdates(taskId)
-    taskDetailProgressUpdates.value = data || []
-  } catch (error) {
-    console.error('加载任务进展历史失败', error)
-    ElMessage.error('加载任务进展历史失败')
-  }
-}
+
 
 const handleSubmitProgressUpdate = async () => {
   try {
@@ -746,18 +643,7 @@ const handleSubmitProgressUpdate = async () => {
   }
 }
 
-const formatDateTime = (dateTime) => {
-  if (!dateTime) return ''
-  const date = new Date(dateTime)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
-}
+
 
 const handlePreview = (file) => {
   console.log('预览文件', file)
@@ -954,8 +840,16 @@ const handleAttachmentPreview = (attachment) => {
 
 const handleAttachmentDownload = (attachment) => {
   console.log('下载附件', attachment)
+  // 构建包含原文件名的下载URL
+  let downloadUrl = attachment.url
+  if (attachment.name) {
+    // 检查URL是否已有查询参数
+    const separator = downloadUrl.includes('?') ? '&' : '?'
+    downloadUrl += `${separator}fileName=${encodeURIComponent(attachment.name)}`
+  }
+  
   const link = document.createElement('a')
-  link.href = attachment.url
+  link.href = downloadUrl
   link.download = attachment.name || '未知文件'
   document.body.appendChild(link)
   link.click()
@@ -1090,11 +984,9 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-/* 附件图片容器，使用flex布局支持自适应换行 */
+/* 附件容器，使用block布局支持垂直排列 */
 .attachments-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: block;
   width: 100%;
   box-sizing: border-box;
 }
@@ -1113,12 +1005,17 @@ onMounted(() => {
 }
 
 .attachment-item {
-  position: relative;
-  margin-bottom: 15px;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 10px;
   background-color: #f9f9f9;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  margin-bottom: 10px;
+  border: 1px solid #e4e7ed;
   transition: all 0.3s;
 }
 
@@ -1127,54 +1024,44 @@ onMounted(() => {
 }
 
 .attachment-file {
-  width: 120px;
-  height: 120px;
-  border-radius: 4px;
-  background-color: #f0f2f5;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.attachment-file:hover {
-  transform: scale(1.05);
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
 }
 
 .file-icon {
-  font-size: 32px;
-  color: #409eff;
-  margin-bottom: 8px;
+  color: #409EFF;
+  font-size: 20px;
 }
 
 .file-name {
-  font-size: 12px;
-  color: #606266;
-  text-align: center;
-  word-break: break-all;
-  padding: 0 8px;
+  font-size: 14px;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .attachment-info {
-  margin-top: 10px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 15px;
 }
 
 .attachment-name {
   font-size: 14px;
-  font-weight: bold;
   color: #303133;
-  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
 }
 
 .attachment-actions {
   display: flex;
   gap: 8px;
-  margin-top: 5px;
 }
 
 .attachment-actions .el-button {
@@ -1183,9 +1070,7 @@ onMounted(() => {
 
 /* 确保附件容器的布局正确 */
 .attachments-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 15px;
+  display: block;
   width: 100%;
   box-sizing: border-box;
 }
@@ -1234,5 +1119,67 @@ onMounted(() => {
 :deep(.el-divider) {
   width: 100%;
   box-sizing: border-box;
+}
+
+/* 确保富文本内容中的图片自适应容器宽度 */
+.update-description img,
+:deep(.ql-editor img) {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+/* 确保富文本编辑器容器宽度自适应 */
+.rich-text-editor {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.editor-container {
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* 表单样式 */
+:deep(el-form) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(el-form-item) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 富文本编辑器样式 */
+:deep(.rich-text-editor) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(.editor-container) {
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* 附件上传样式 */
+:deep(.el-upload) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(.el-upload-list) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 对话框内容样式，防止横向滚动 */
+:deep(.el-dialog__body) {
+  overflow-x: hidden !important;
+  padding: 20px;
 }
 </style>
