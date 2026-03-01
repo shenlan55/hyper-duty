@@ -128,22 +128,11 @@
           <RichTextEditor v-model="progressUpdateForm.description" placeholder="请输入进展描述" />
         </el-form-item>
         <el-form-item label="附件">
-          <el-upload
-            class="upload-demo"
-            :http-request="handleCustomUpload"
-            :file-list="progressUpdateForm.attachments"
-            :auto-upload="true"
-            :limit="5"
-            :before-upload="beforeUpload"
-            list-type="picture"
-          >
-            <el-button type="primary">点击上传</el-button>
-            <template #tip>
-              <div class="el-upload__tip">
-                支持上传JPG/PNG图片、Word、Excel、PDF、PPT和ZIP文件，且不超过10MB
-              </div>
-            </template>
-          </el-upload>
+          <FileUpload
+            v-model:fileList="progressUpdateForm.attachments"
+            @upload-success="handleUploadSuccess"
+            @upload-error="handleUploadError"
+          />
         </el-form-item>
       </el-form>
 
@@ -168,11 +157,11 @@ import { Star } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import ProgressHistory from '@/components/ProgressHistory.vue'
-import { getMyTasks, getMyTasksByProject, updateProgress, pinTask, getUpcomingTasks, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
+import FileUpload from '@/components/FileUpload.vue'
+import { getMyTasks, getMyTasksByProject, pinTask, getUpcomingTasks, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
 import { getMyProjects } from '@/api/project'
 import { getCurrentUserId } from '@/utils/jwt'
 import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, formatDateTime, getProgressStatus } from '@/utils/taskUtils'
-import request from '@/utils/request'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -325,70 +314,48 @@ const handleSubmitProgressUpdate = async () => {
   if (!currentTaskForUpdate.value) return
   
   try {
-    await createProgressUpdate({
+    // 准备附件数据
+    let attachmentsJson = null
+    if (progressUpdateForm.attachments && progressUpdateForm.attachments.length > 0) {
+      const attachments = progressUpdateForm.attachments.map(file => ({
+        name: file.name,
+        url: file.url || '',
+        previewUrl: file.previewUrl || '',
+        type: file.type,
+        size: file.size
+      }))
+      attachmentsJson = JSON.stringify(attachments)
+    }
+    
+    // 提交进展更新
+    const updateData = {
       taskId: currentTaskForUpdate.value.id,
       progress: progressUpdateForm.progress,
-      description: progressUpdateForm.description,
-      attachments: progressUpdateForm.attachments
-    })
+      description: progressUpdateForm.description || ''
+    }
     
-    // 同时更新任务的进度
-    await updateProgress(currentTaskForUpdate.value.id, progressUpdateForm.progress)
+    // 只有当有附件时才添加 attachments 字段
+    if (attachmentsJson !== null) {
+      updateData.attachments = attachmentsJson
+    }
     
+    await createProgressUpdate(updateData)
     ElMessage.success('更新进度成功')
     progressUpdateDialogVisible.value = false
     loadData()
   } catch (error) {
+    console.error('更新任务进展失败', error)
     ElMessage.error('更新进度失败')
   }
 }
 
-const handleCustomUpload = async (options) => {
-  const { file, onSuccess, onError } = options
-  try {
-    const formData = new FormData()
-    formData.append('file', file)
-    
-    const response = await request({
-      url: '/api/upload',
-      method: 'post',
-      data: formData,
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    
-    if (response && response.data) {
-      const attachment = {
-        name: file.name,
-        url: response.data.url,
-        size: file.size
-      }
-      progressUpdateForm.attachments.push(attachment)
-      onSuccess()
-    } else {
-      onError(new Error('上传失败'))
-    }
-  } catch (error) {
-    console.error('上传失败', error)
-    onError(error)
-  }
+const handleUploadSuccess = (uploadedFile) => {
+  ElMessage.success('文件上传成功')
 }
 
-const beforeUpload = (file) => {
-  const isImage = /\.(jpg|jpeg|png|gif)$/i.test(file.name)
-  const isDocument = /\.(doc|docx|xls|xlsx|pdf|ppt|pptx|zip)$/i.test(file.name)
-  const isLt10M = file.size / 1024 / 1024 < 10
-  
-  if (!isImage && !isDocument) {
-    ElMessage.error('只能上传图片、文档和压缩文件!')
-    return false
-  }
-  if (!isLt10M) {
-    ElMessage.error('文件大小不能超过10MB!')
-    return false
-  }
-  return true
+const handleUploadError = (error) => {
+  console.error('文件上传失败', error)
+  ElMessage.error('文件上传失败')
 }
 
 

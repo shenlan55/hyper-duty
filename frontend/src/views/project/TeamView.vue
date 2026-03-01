@@ -94,22 +94,11 @@
           <RichTextEditor v-model="progressUpdateForm.description" placeholder="请输入进展描述" />
         </el-form-item>
         <el-form-item label="附件">
-          <el-upload
-            class="upload-demo"
-            :http-request="handleCustomUpload"
-            :file-list="progressUpdateForm.attachments"
-            :auto-upload="true"
-            :limit="5"
-            :before-upload="beforeUpload"
-            list-type="picture"
-          >
-            <el-button type="primary">点击上传</el-button>
-            <template #tip>
-              <div class="el-upload__tip">
-                支持上传JPG/PNG图片、Word、Excel、PDF、PPT和ZIP文件，且不超过10MB
-              </div>
-            </template>
-          </el-upload>
+          <FileUpload
+            v-model:fileList="progressUpdateForm.attachments"
+            @upload-success="handleUploadSuccess"
+            @upload-error="handleUploadError"
+          />
         </el-form-item>
       </el-form>
 
@@ -175,11 +164,11 @@ import { Document } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
+import FileUpload from '@/components/FileUpload.vue'
 import { getTaskPage, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
-import request from '@/utils/request'
 import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime } from '@/utils/taskUtils'
 
 const loading = ref(false)
@@ -336,169 +325,13 @@ const handleSubmitProgressUpdate = async () => {
 
 
 
-// 分片上传配置
-const CHUNK_SIZE = 1024 * 1024 * 5 // 5MB 分片大小
-
-const handleCustomUpload = async (options) => {
-  const { file, onSuccess, onError, onProgress } = options
-  try {
-    // 生成文件唯一标识
-    const fileHash = await generateFileHash(file)
-    const fileName = file.name
-    const fileSize = file.size
-    const chunkCount = Math.ceil(fileSize / CHUNK_SIZE)
-    
-    // 检查文件是否已存在
-    const checkResponse = await request.post('/file/check', {
-      fileHash,
-      fileName,
-      fileSize
-    })
-    
-    if (checkResponse && checkResponse.exists) {
-      // 文件已存在，直接返回结果
-      const uploadedFile = {
-        uid: file.uid,
-        name: file.name,
-        url: checkResponse.fileUrl,
-        previewUrl: checkResponse.previewUrl,
-        filePath: checkResponse.filePath,
-        type: file.type,
-        size: file.size
-      }
-      
-      // 查找并替换文件列表中的文件
-      const index = progressUpdateForm.attachments.findIndex(item => item.uid === file.uid)
-      if (index !== -1) {
-        progressUpdateForm.attachments[index] = uploadedFile
-      } else {
-        progressUpdateForm.attachments.push(uploadedFile)
-      }
-      
-      ElMessage.success('文件上传成功')
-      onSuccess({ 
-        status: 'success', 
-        data: checkResponse 
-      })
-      return
-    }
-    
-    // 分片上传
-    const uploadedChunks = []
-    for (let i = 0; i < chunkCount; i++) {
-      const start = i * CHUNK_SIZE
-      const end = Math.min(start + CHUNK_SIZE, fileSize)
-      const chunk = file.slice(start, end)
-      
-      const formData = new FormData()
-      formData.append('file', chunk)
-      formData.append('fileHash', fileHash)
-      formData.append('fileName', fileName)
-      formData.append('chunkIndex', i)
-      formData.append('chunkCount', chunkCount)
-      formData.append('chunkSize', CHUNK_SIZE)
-      
-      // 上传分片
-      await request.post('/file/upload-chunk', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          const percent = Math.round((i * CHUNK_SIZE + progressEvent.loaded) / fileSize * 100)
-          if (onProgress) {
-            onProgress({ percent })
-          }
-        }
-      })
-      
-      uploadedChunks.push(i)
-    }
-    
-    // 合并分片
-    const mergeResponse = await request.post('/file/merge', {
-      fileHash,
-      fileName,
-      chunkCount
-    })
-    
-    // 更新文件列表
-    if (mergeResponse) {
-      const uploadedFile = {
-        uid: file.uid,
-        name: file.name,
-        url: mergeResponse.fileUrl,
-        previewUrl: mergeResponse.previewUrl,
-        filePath: mergeResponse.filePath,
-        type: file.type,
-        size: file.size
-      }
-      
-      // 查找并替换文件列表中的文件
-      const index = progressUpdateForm.attachments.findIndex(item => item.uid === file.uid)
-      if (index !== -1) {
-        progressUpdateForm.attachments[index] = uploadedFile
-      } else {
-        progressUpdateForm.attachments.push(uploadedFile)
-      }
-      
-      ElMessage.success('文件上传成功')
-    }
-    
-    // 构造el-upload组件期望的响应格式
-    onSuccess({ 
-      status: 'success', 
-      data: mergeResponse 
-    })
-  } catch (error) {
-    console.error('文件上传失败', error)
-    ElMessage.error('文件上传失败')
-    onError(error)
-  }
+const handleUploadSuccess = (uploadedFile) => {
+  ElMessage.success('文件上传成功')
 }
 
-// 生成文件哈希
-const generateFileHash = (file) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const arrayBuffer = e.target.result
-      const uint8Array = new Uint8Array(arrayBuffer)
-      let hash = 0
-      for (let i = 0; i < uint8Array.length; i++) {
-        hash = ((hash << 5) - hash) + uint8Array[i]
-        hash = hash & hash
-      }
-      resolve(Math.abs(hash).toString(16) + '_' + Date.now())
-    }
-    reader.readAsArrayBuffer(file)
-  })
-}
-
-const beforeUpload = (file) => {
-  // 检查文件类型
-  const allowedTypes = [
-    'image/jpeg', 'image/png', // 图片
-    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // Word
-    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // Excel
-    'application/pdf', // PDF
-    'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPT
-    'application/zip', 'application/x-zip-compressed' // ZIP
-  ]
-  
-  const isAllowedType = allowedTypes.includes(file.type)
-  if (!isAllowedType) {
-    ElMessage.error('只能上传JPG/PNG图片、Word、Excel、PDF、PPT和ZIP文件')
-    return false
-  }
-  
-  // 检查文件大小（增加到10MB）
-  const isLt10M = file.size / 1024 / 1024 < 10
-  if (!isLt10M) {
-    ElMessage.error('文件大小不能超过10MB')
-    return false
-  }
-  
-  return true
+const handleUploadError = (error) => {
+  console.error('文件上传失败', error)
+  ElMessage.error('文件上传失败')
 }
 
 const handleAttachmentPreview = (attachment) => {
