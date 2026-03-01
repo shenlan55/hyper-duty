@@ -18,7 +18,8 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 import java.io.InputStream;
 import java.net.URI;
 import java.time.Duration;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -27,6 +28,11 @@ public class RustFSFileStorageServiceImpl implements FileStorageService {
 
     private final S3Client s3Client;
     private final RustFSConfig rustFSConfig;
+    
+    // 存储分片上传的上传ID
+    private final Map<String, String> uploadIdMap = new ConcurrentHashMap<>();
+    // 存储分片的ETag
+    private final Map<String, List<CompletedPart>> partsMap = new ConcurrentHashMap<>();
 
     @Override
     public String uploadFile(MultipartFile file, String directory) {
@@ -192,5 +198,107 @@ public class RustFSFileStorageServiceImpl implements FileStorageService {
         } catch (Exception e) {
             log.error("检查/创建存储桶失败: {}", e.getMessage(), e);
         }
+    }
+
+    @Override
+    public boolean checkFileExists(String fileHash, String fileName) {
+        String filePath = generateFilePathFromHash(fileHash, fileName);
+        return fileExists(filePath);
+    }
+
+    @Override
+    public String getFilePathByHash(String fileHash, String fileName) {
+        return generateFilePathFromHash(fileHash, fileName);
+    }
+
+    @Override
+    public void uploadChunk(MultipartFile file, String fileHash, String fileName, int chunkIndex, int chunkCount) {
+        try {
+            String key = generateFilePathFromHash(fileHash, fileName);
+            String uploadKey = fileHash + "_" + fileName;
+            
+            // 获取或创建上传ID
+            String uploadId = uploadIdMap.computeIfAbsent(uploadKey, k -> {
+                CreateMultipartUploadRequest createRequest = CreateMultipartUploadRequest.builder()
+                        .bucket(rustFSConfig.getBucketName())
+                        .key(key)
+                        .contentType(file.getContentType())
+                        .build();
+                CreateMultipartUploadResponse createResponse = s3Client.createMultipartUpload(createRequest);
+                return createResponse.uploadId();
+            });
+            
+            // 上传分片
+            UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
+                    .bucket(rustFSConfig.getBucketName())
+                    .key(key)
+                    .uploadId(uploadId)
+                    .partNumber(chunkIndex + 1) // S3 part number starts from 1
+                    .contentLength(file.getSize())
+                    .build();
+            
+            UploadPartResponse uploadPartResponse = s3Client.uploadPart(uploadPartRequest, 
+                    software.amazon.awssdk.core.sync.RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+            
+            // 存储分片ETag
+            List<CompletedPart> parts = partsMap.computeIfAbsent(uploadKey, k -> new ArrayList<>());
+            parts.add(CompletedPart.builder()
+                    .partNumber(chunkIndex + 1)
+                    .eTag(uploadPartResponse.eTag())
+                    .build());
+            
+            log.info("分片上传成功: fileHash={}, chunkIndex={}", fileHash, chunkIndex);
+        } catch (Exception e) {
+            log.error("分片上传失败: {}", e.getMessage(), e);
+            throw new RuntimeException("分片上传失败: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public String mergeChunks(String fileHash, String fileName, int chunkCount) {
+        try {
+            String key = generateFilePathFromHash(fileHash, fileName);
+            String uploadKey = fileHash + "_" + fileName;
+            
+            String uploadId = uploadIdMap.get(uploadKey);
+            List<CompletedPart> parts = partsMap.get(uploadKey);
+            
+            if (uploadId == null || parts == null || parts.size() != chunkCount) {
+                throw new RuntimeException("分片上传不完整");
+            }
+            
+            // 按分片序号排序
+            parts.sort(Comparator.comparingInt(CompletedPart::partNumber));
+            
+            // 完成上传
+            CompleteMultipartUploadRequest completeRequest = CompleteMultipartUploadRequest.builder()
+                    .bucket(rustFSConfig.getBucketName())
+                    .key(key)
+                    .uploadId(uploadId)
+                    .multipartUpload(CompletedMultipartUpload.builder()
+                            .parts(parts)
+                            .build())
+                    .build();
+            
+            s3Client.completeMultipartUpload(completeRequest);
+            
+            // 清理临时数据
+            uploadIdMap.remove(uploadKey);
+            partsMap.remove(uploadKey);
+            
+            log.info("文件合并成功: {}", key);
+            return key;
+        } catch (Exception e) {
+            log.error("文件合并失败: {}", e.getMessage(), e);
+            throw new RuntimeException("文件合并失败: " + e.getMessage(), e);
+        }
+    }
+    
+    private String generateFilePathFromHash(String fileHash, String fileName) {
+        String extension = "";
+        if (fileName != null && fileName.contains(".")) {
+            extension = fileName.substring(fileName.lastIndexOf("."));
+        }
+        return "chunks/" + fileHash + extension;
     }
 }

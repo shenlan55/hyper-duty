@@ -12,6 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -24,6 +25,7 @@ import java.util.List;
  * JWT 认证过滤器
  * 用于验证请求中的 JWT 令牌并进行身份认证
  */
+@Slf4j
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -61,9 +63,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 获取请求路径并处理前缀
         String requestPath = getProcessedRequestPath(request);
+        String originalPath = request.getServletPath();
+        String fullUrl = request.getRequestURL().toString();
+        
+        log.debug("请求URL: {}, ServletPath: {}, 处理后路径: {}", fullUrl, originalPath, requestPath);
         
         // 对于不需要认证的路径，直接放行
-        if (isExcludePath(requestPath)) {
+        if (isExcludePathWithFallback(requestPath, originalPath)) {
+            log.debug("路径匹配白名单，直接放行");
             filterChain.doFilter(request, response);
             return;
         }
@@ -106,6 +113,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private boolean isExcludePath(String requestPath) {
         for (String excludePath : excludePaths) {
             if (pathMatcher.match(excludePath, requestPath)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 判断路径是否为不需要认证的路径（同时检查原始路径）
+     * @param requestPath 处理后的请求路径
+     * @param originalPath 原始请求路径
+     * @return 是否为不需要认证的路径
+     */
+    private boolean isExcludePathWithFallback(String requestPath, String originalPath) {
+        for (String excludePath : excludePaths) {
+            if (pathMatcher.match(excludePath, requestPath)) {
+                log.debug("匹配到白名单路径（处理后）: {} -> {}", requestPath, excludePath);
+                return true;
+            }
+            if (pathMatcher.match(excludePath, originalPath)) {
+                log.debug("匹配到白名单路径（原始）: {} -> {}", originalPath, excludePath);
+                return true;
+            }
+            if (pathMatcher.match("/api" + excludePath, originalPath)) {
+                log.debug("匹配到白名单路径（带/api前缀）: {} -> /api{}", originalPath, excludePath);
                 return true;
             }
         }

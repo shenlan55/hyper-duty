@@ -73,7 +73,8 @@ public class SecurityConfig {
                     .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                     .requestMatchers("/druid/**").permitAll()
                     .requestMatchers("/static/**").permitAll()
-                    .requestMatchers("/file/preview", "/file/download").permitAll()
+                    .requestMatchers("/file/preview", "/file/download", "/file/check", "/file/upload-chunk", "/file/merge").permitAll()
+                    .requestMatchers("/api/file/preview", "/api/file/download", "/api/file/check", "/api/file/upload-chunk", "/api/file/merge").permitAll()
                     // 其他接口需要认证
                     .anyRequest().authenticated())
                 // 添加JWT认证过滤器

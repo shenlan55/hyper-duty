@@ -51,6 +51,90 @@ public class FileController {
         return ResponseResult.success(result);
     }
 
+    @PostMapping("/check")
+    public ResponseResult<Map<String, Object>> checkFile(
+            @RequestBody Map<String, Object> params) {
+        
+        String fileHash = (String) params.get("fileHash");
+        String fileName = (String) params.get("fileName");
+        
+        if (fileHash == null || fileName == null) {
+            return ResponseResult.error("参数不能为空");
+        }
+
+        boolean exists = fileStorageService.checkFileExists(fileHash, fileName);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("exists", exists);
+        
+        if (exists) {
+            String filePath = fileStorageService.getFilePathByHash(fileHash, fileName);
+            String fileUrl = "/api/file/preview?filePath=" + filePath;
+            String previewUrl = generateKKFileViewUrl(filePath, fileName);
+            result.put("filePath", filePath);
+            result.put("fileUrl", fileUrl);
+            result.put("previewUrl", previewUrl);
+        }
+
+        return ResponseResult.success(result);
+    }
+
+    @PostMapping("/upload-chunk")
+    public ResponseResult<Map<String, Object>> uploadChunk(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("fileHash") String fileHash,
+            @RequestParam("fileName") String fileName,
+            @RequestParam("chunkIndex") Integer chunkIndex,
+            @RequestParam("chunkCount") Integer chunkCount) {
+        
+        if (file.isEmpty()) {
+            return ResponseResult.error("上传文件不能为空");
+        }
+
+        try {
+            fileStorageService.uploadChunk(file, fileHash, fileName, chunkIndex, chunkCount);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("chunkIndex", chunkIndex);
+            result.put("status", "success");
+            
+            return ResponseResult.success(result);
+        } catch (Exception e) {
+            log.error("上传分片失败: {}", e.getMessage(), e);
+            return ResponseResult.error("上传分片失败: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/merge")
+    public ResponseResult<Map<String, Object>> mergeChunks(
+            @RequestBody Map<String, Object> params) {
+        
+        String fileHash = (String) params.get("fileHash");
+        String fileName = (String) params.get("fileName");
+        Integer chunkCount = (Integer) params.get("chunkCount");
+        
+        if (fileHash == null || fileName == null || chunkCount == null) {
+            return ResponseResult.error("参数不能为空");
+        }
+
+        try {
+            String filePath = fileStorageService.mergeChunks(fileHash, fileName, chunkCount);
+            String fileUrl = "/api/file/preview?filePath=" + filePath;
+            String previewUrl = generateKKFileViewUrl(filePath, fileName);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("fileName", fileName);
+            result.put("filePath", filePath);
+            result.put("fileUrl", fileUrl);
+            result.put("previewUrl", previewUrl);
+
+            return ResponseResult.success(result);
+        } catch (Exception e) {
+            log.error("合并分片失败: {}", e.getMessage(), e);
+            return ResponseResult.error("合并分片失败: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/preview")
     public void previewFile(
             @RequestParam("filePath") String filePath,
