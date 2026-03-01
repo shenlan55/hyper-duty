@@ -153,6 +153,14 @@
             <el-option label="低" :value="3" />
           </el-select>
         </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="form.status" placeholder="请选择状态" style="width: 120px;">
+            <el-option label="未开始" :value="1" />
+            <el-option label="进行中" :value="2" />
+            <el-option label="已完成" :value="3" />
+            <el-option label="已暂停" :value="4" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="负责人" prop="assigneeId">
           <el-select v-model="form.assigneeId" placeholder="请选择负责人" filterable>
             <el-option
@@ -410,6 +418,7 @@ const form = reactive({
   parentIdPath: null,
   taskName: '',
   priority: 2,
+  status: 1,
   assigneeId: null,
   startDate: '',
   endDate: '',
@@ -1005,6 +1014,7 @@ const resetForm = () => {
   form.parentIdPath = null
   form.taskName = ''
   form.priority = 2
+  form.status = 1
   form.assigneeId = null
   form.startDate = ''
   form.endDate = ''
