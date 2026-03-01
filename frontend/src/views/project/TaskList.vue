@@ -898,12 +898,12 @@ const resetForm = () => {
   formRef.value?.resetFields()
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (route.query.projectId) {
     searchForm.projectId = parseInt(route.query.projectId)
   }
+  await loadProjectList()
   loadData()
-  loadProjectList()
   loadEmployeeList()
 })
 </script>

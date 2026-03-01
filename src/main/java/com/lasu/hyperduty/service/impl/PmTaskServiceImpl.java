@@ -87,6 +87,14 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             }
         }
         
+        // 生成任务编码
+        if (task.getTaskCode() == null || task.getTaskCode().isEmpty()) {
+            PmProject project = projectMapper.selectById(task.getProjectId());
+            String projectCode = project != null && project.getProjectCode() != null ? project.getProjectCode() : "TASK";
+            String timestamp = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+            task.setTaskCode(projectCode + "-" + timestamp);
+        }
+        
         task.setStatus(1);
         task.setProgress(0);
         task.setIsPinned(0);
