@@ -42,6 +42,8 @@ public class PmTask {
 
     private String description;
 
+    private String attachments;
+
     private Integer isPinned;
 
     private Long createBy;

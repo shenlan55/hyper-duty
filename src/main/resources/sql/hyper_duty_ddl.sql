@@ -6419,6 +6419,15 @@ ALTER TABLE ONLY public.sys_user_role
     ADD CONSTRAINT sys_user_role_ibfk_2 FOREIGN KEY (role_id) REFERENCES public.sys_role(id) ON DELETE CASCADE;
 
 
+--
+-- 任务表结构调整
+--
+-- 添加attachments字段
+ALTER TABLE pm_task ADD COLUMN attachments text;
+
+-- 增加description字段长度以支持富文本内容
+ALTER TABLE pm_task ALTER COLUMN description TYPE text;
+
 -- Completed on 2026-02-24 20:59:48
 
 --

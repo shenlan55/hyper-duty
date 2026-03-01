@@ -114,7 +114,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="600px"
+      width="1200px"
       @close="handleDialogClose"
     >
       <el-form
@@ -180,11 +180,13 @@
           />
         </el-form-item>
         <el-form-item label="任务描述" prop="description">
-          <el-input
-            v-model="form.description"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入任务描述"
+          <RichTextEditor v-model="form.description" placeholder="请输入任务描述" />
+        </el-form-item>
+        <el-form-item label="附件">
+          <FileUpload
+            v-model:fileList="form.attachments"
+            @upload-success="handleUploadSuccess"
+            @upload-error="handleUploadError"
           />
         </el-form-item>
         <el-form-item label="干系人">
@@ -412,7 +414,8 @@ const form = reactive({
   startDate: '',
   endDate: '',
   description: '',
-  stakeholders: []
+  stakeholders: [],
+  attachments: []
 })
 
 const progressForm = reactive({
@@ -938,11 +941,31 @@ const handleAttachmentDownload = (attachment) => {
 const handleSubmit = async () => {
   try {
     await formRef.value.validate()
+    
+    // 准备附件数据
+    let attachmentsJson = null
+    if (form.attachments && form.attachments.length > 0) {
+      const attachments = form.attachments.map(file => ({
+        name: file.name,
+        url: file.url || '',
+        previewUrl: file.previewUrl || '',
+        type: file.type,
+        size: file.size
+      }))
+      attachmentsJson = JSON.stringify(attachments)
+    }
+    
+    // 准备提交数据
+    const submitData = { ...form }
+    if (attachmentsJson) {
+      submitData.attachments = attachmentsJson
+    }
+    
     if (form.id) {
-      await updateTask(form)
+      await updateTask(submitData)
       ElMessage.success('更新成功')
     } else {
-      await createTask(form)
+      await createTask(submitData)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
@@ -970,6 +993,7 @@ const resetForm = () => {
   form.endDate = ''
   form.description = ''
   form.stakeholders = []
+  form.attachments = []
   formRef.value?.resetFields()
 }
 
