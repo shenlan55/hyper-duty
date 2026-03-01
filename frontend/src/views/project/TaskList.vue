@@ -562,6 +562,23 @@ const handleEdit = async (row) => {
   form.parentId = row.parentId || 0
   form.parentIdPath = row.parentId && row.parentId > 0 ? row.parentId : null
   form.assigneeId = row.assigneeId || row.ownerId || null
+  
+  // 确保attachments是数组类型
+  if (row.attachments) {
+    if (typeof row.attachments === 'string') {
+      try {
+        form.attachments = JSON.parse(row.attachments)
+      } catch (error) {
+        console.error('解析附件数据失败', error)
+        form.attachments = []
+      }
+    } else if (!Array.isArray(row.attachments)) {
+      form.attachments = []
+    }
+  } else {
+    form.attachments = []
+  }
+  
   loadTaskTree(row.projectId)
   dialogVisible.value = true
 }
@@ -604,7 +621,7 @@ const handleSubmitProgressUpdate = async () => {
   try {
     // 准备附件数据
     let attachmentsJson = null
-    if (progressUpdateForm.attachments && progressUpdateForm.attachments.length > 0) {
+    if (progressUpdateForm.attachments && Array.isArray(progressUpdateForm.attachments) && progressUpdateForm.attachments.length > 0) {
       const attachments = progressUpdateForm.attachments.map(file => ({
         name: file.name,
         url: file.url || '',
@@ -944,7 +961,7 @@ const handleSubmit = async () => {
     
     // 准备附件数据
     let attachmentsJson = null
-    if (form.attachments && form.attachments.length > 0) {
+    if (form.attachments && Array.isArray(form.attachments) && form.attachments.length > 0) {
       const attachments = form.attachments.map(file => ({
         name: file.name,
         url: file.url || '',

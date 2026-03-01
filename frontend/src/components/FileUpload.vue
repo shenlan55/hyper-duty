@@ -107,14 +107,24 @@ const handleFileChange = (file, fileList) => {
     uploadProgress.value = 0
     // 触发自定义上传
     handleCustomUpload({
-      file: file.raw
+      file: file.raw,
+      onSuccess: () => {},
+      onError: () => {},
+      onProgress: () => {}
     })
   }
 }
 
 // 自定义上传方法
 const handleCustomUpload = async (options) => {
-  const { file } = options
+  // 确保options和file存在
+  if (!options || !options.file) {
+    console.error('上传失败：缺少文件参数')
+    emit('upload-error', new Error('缺少文件参数'))
+    return
+  }
+  
+  const { file, onSuccess, onError, onProgress } = options
   try {
     // 生成文件唯一标识
     const fileHash = await generateFileHash(file)
@@ -142,12 +152,17 @@ const handleCustomUpload = async (options) => {
       }
       
       // 更新文件列表
-      const newFileList = [...props.fileList, uploadedFile]
+      const newFileList = [...(props.fileList || []), uploadedFile]
       emit('update:fileList', newFileList)
       emit('upload-success', uploadedFile)
       
       uploadProgress.value = 100
       uploadStatus.value = 'success'
+      
+      // 调用回调
+      if (typeof onSuccess === 'function') {
+        onSuccess({ status: 'success', data: checkResponse })
+      }
       return
     }
     
@@ -175,6 +190,11 @@ const handleCustomUpload = async (options) => {
           const percent = Math.round((i * CHUNK_SIZE + progressEvent.loaded) / fileSize * 100)
           uploadProgress.value = percent
           emit('upload-progress', percent)
+          
+          // 调用回调
+          if (typeof onProgress === 'function') {
+            onProgress({ percent })
+          }
         }
       })
       
@@ -201,17 +221,27 @@ const handleCustomUpload = async (options) => {
       }
       
       // 更新文件列表
-      const newFileList = [...props.fileList, uploadedFile]
+      const newFileList = [...(props.fileList || []), uploadedFile]
       emit('update:fileList', newFileList)
       emit('upload-success', uploadedFile)
       
       uploadProgress.value = 100
       uploadStatus.value = 'success'
+      
+      // 调用回调
+      if (typeof onSuccess === 'function') {
+        onSuccess({ status: 'success', data: mergeResponse })
+      }
     }
   } catch (error) {
     console.error('文件上传失败', error)
     uploadStatus.value = 'exception'
     emit('upload-error', error)
+    
+    // 调用回调
+    if (typeof onError === 'function') {
+      onError(error)
+    }
   } finally {
     // 3秒后重置进度条
     setTimeout(() => {
