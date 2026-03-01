@@ -557,6 +557,10 @@ const handleAdd = () => {
   if (searchForm.projectId) {
     form.projectId = searchForm.projectId
     loadTaskTree(searchForm.projectId)
+  } else if (projectList.value.length > 0) {
+    // 如果searchForm.projectId为null，直接使用项目列表中的第一个项目
+    form.projectId = projectList.value[0].id
+    loadTaskTree(projectList.value[0].id)
   }
   dialogVisible.value = true
 }
@@ -982,10 +986,14 @@ const handleSubmit = async () => {
     }
     
     // 准备提交数据
-    const submitData = { ...form }
-    if (attachmentsJson) {
-      submitData.attachments = attachmentsJson
+    const submitData = {
+      ...form,
+      // 确保attachments是字符串类型
+      attachments: attachmentsJson || ''
     }
+    
+    // 移除stakeholders字段，因为后端实体类中没有这个字段
+    delete submitData.stakeholders
     
     if (form.id) {
       await updateTask(submitData)

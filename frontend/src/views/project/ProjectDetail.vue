@@ -566,7 +566,7 @@ const handleTaskSubmit = async () => {
     const submitData = {
       ...taskForm,
       ownerId: taskForm.assigneeId, // 映射到后端需要的字段名
-      stakeholders: taskForm.stakeholders ? taskForm.stakeholders.join(',') : ''
+      // 移除stakeholders字段，因为后端实体类中没有这个字段
     }
     if (taskForm.id) {
       await updateTask(submitData)
