@@ -161,7 +161,10 @@ import FileUpload from '@/components/FileUpload.vue'
 import { getMyTasks, getMyTasksByProject, pinTask, getUpcomingTasks, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
 import { getMyProjects } from '@/api/project'
 import { getCurrentUserId } from '@/utils/jwt'
+import { useUserStore } from '@/stores/user'
 import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, formatDateTime, getProgressStatus } from '@/utils/taskUtils'
+
+const userStore = useUserStore()
 
 const loading = ref(false)
 const tableData = ref([])
@@ -330,6 +333,7 @@ const handleSubmitProgressUpdate = async () => {
     // 提交进展更新
     const updateData = {
       taskId: currentTaskForUpdate.value.id,
+      employeeId: userStore.employeeId,
       progress: progressUpdateForm.progress,
       description: progressUpdateForm.description || ''
     }
