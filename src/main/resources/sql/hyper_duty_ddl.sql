@@ -1542,6 +1542,9 @@ ALTER SEQUENCE public.duty_shift_config_id_seq OWNER TO postgres;
 
 ALTER SEQUENCE public.duty_shift_config_id_seq OWNED BY public.duty_shift_config.id;
 
+-- 添加任务干系人字段
+ALTER TABLE public.pm_task ADD COLUMN stakeholders TEXT;
+
 
 --
 -- 创建项目参与者关联表

@@ -63,4 +63,9 @@ public class PmTask {
 
     @TableField(exist = false)
     private Integer completedSubTaskCount;
+
+    @TableField(exist = false)
+    private String parentTaskName;
+
+    private String stakeholders;
 }

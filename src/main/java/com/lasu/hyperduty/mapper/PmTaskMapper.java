@@ -79,9 +79,11 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "ORDER BY t.is_pinned DESC, t.priority ASC, t.end_date ASC")
     List<PmTask> selectMyTasksByProject(@Param("employeeId") Long employeeId, @Param("projectId") Long projectId);
 
-    @Select("SELECT t.*, e.employee_name as owner_name " +
+    @Select("SELECT t.*, e.employee_name as owner_name, p.project_name, pt.task_name as parentTaskName " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
+            "LEFT JOIN pm_project p ON t.project_id = p.id " +
+            "LEFT JOIN pm_task pt ON t.parent_id = pt.id " +
             "WHERE t.id = #{id}")
     PmTask selectTaskById(@Param("id") Long id);
 

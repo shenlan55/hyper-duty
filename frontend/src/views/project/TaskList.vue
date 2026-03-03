@@ -270,6 +270,49 @@
         </el-row>
       </div>
 
+      <!-- 任务描述 -->
+      <div class="task-description" style="margin-bottom: 20px;">
+        <h4 style="margin-bottom: 10px;">任务描述</h4>
+        <div class="description-content" v-if="currentTaskForUpdate?.description" v-html="currentTaskForUpdate.description"></div>
+        <el-empty v-else description="暂无任务描述" />
+      </div>
+
+      <!-- 附件列表 -->
+      <div class="task-attachments" style="margin-bottom: 20px;">
+        <h4 style="margin-bottom: 10px;">附件</h4>
+        <div v-if="currentTaskForUpdate?.attachments && currentTaskForUpdate.attachments.length > 0" class="attachments-container">
+          <div v-for="(attachment, index) in currentTaskForUpdate.attachments" :key="index" class="attachment-item">
+            <div class="attachment-file">
+              <el-icon class="file-icon"><Document /></el-icon>
+              <span class="file-name">{{ attachment.name || '未知文件' }}</span>
+            </div>
+            <div class="attachment-info">
+              <span class="attachment-name">{{ attachment.name || '未知文件' }}</span>
+              <div class="attachment-actions">
+                <el-button size="small" type="primary" @click="handleAttachmentPreview(attachment)">
+                  预览
+                </el-button>
+                <el-button size="small" @click="handleAttachmentDownload(attachment)">
+                  下载
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <el-empty v-else description="暂无附件" />
+      </div>
+
+      <!-- 干系人列表 -->
+      <div class="task-stakeholders" style="margin-bottom: 20px;">
+        <h4 style="margin-bottom: 10px;">干系人</h4>
+        <div v-if="currentTaskForUpdate?.stakeholders && currentTaskForUpdate.stakeholders.length > 0" class="stakeholders-container">
+          <el-tag v-for="(stakeholder, index) in currentTaskForUpdate.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
+            {{ stakeholder }}
+          </el-tag>
+        </div>
+        <el-empty v-else description="暂无干系人" />
+      </div>
+
       <!-- 进度更新表单 -->
       <el-form label-width="100px">
         <el-form-item label="更新进度">
@@ -365,7 +408,7 @@ import TaskComment from '@/components/TaskComment.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
-import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, hasTaskPermission } from '@/api/task'
+import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, hasTaskPermission, getTaskDetail } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
@@ -601,21 +644,196 @@ const handleUpdateProgress = async (row) => {
     ElMessage.warning('您没有权限更新此任务进度')
     return
   }
-  currentTaskForUpdate.value = row
-  progressUpdateForm.taskId = row.id
-  progressUpdateForm.progress = row.progress || 0
+  
+  try {
+    // 获取完整的任务详情数据
+    const taskDetail = await getTaskDetail(row.id)
+    // 处理附件数据
+    if (taskDetail.attachments) {
+      if (typeof taskDetail.attachments === 'string') {
+        try {
+          taskDetail.attachments = JSON.parse(taskDetail.attachments)
+        } catch (error) {
+          console.error('解析附件数据失败', error)
+          taskDetail.attachments = []
+        }
+      } else if (!Array.isArray(taskDetail.attachments)) {
+        taskDetail.attachments = []
+      }
+    } else {
+      taskDetail.attachments = []
+    }
+    
+    // 处理干系人数据
+    if (taskDetail.stakeholders) {
+      if (typeof taskDetail.stakeholders === 'string') {
+        try {
+          taskDetail.stakeholders = JSON.parse(taskDetail.stakeholders)
+        } catch (error) {
+          console.error('解析干系人数据失败', error)
+          taskDetail.stakeholders = []
+        }
+      } else if (!Array.isArray(taskDetail.stakeholders)) {
+        taskDetail.stakeholders = []
+      }
+    } else {
+      taskDetail.stakeholders = []
+    }
+    
+    // 将干系人ID转换为名称
+    if (taskDetail.stakeholders && Array.isArray(taskDetail.stakeholders)) {
+      taskDetail.stakeholders = taskDetail.stakeholders.map(stakeholderId => {
+        const employee = employeeList.value.find(emp => emp.id === stakeholderId)
+        return employee ? employee.employeeName : stakeholderId
+      })
+    }
+    
+    currentTaskForUpdate.value = taskDetail
+  } catch (error) {
+    console.error('加载任务详情失败', error)
+    // 如果API调用失败，使用表格中的行数据作为备用
+    currentTaskForUpdate.value = row
+    // 处理备用数据中的附件和干系人
+    if (row.attachments) {
+      if (typeof row.attachments === 'string') {
+        try {
+          row.attachments = JSON.parse(row.attachments)
+        } catch (error) {
+          console.error('解析附件数据失败', error)
+          row.attachments = []
+        }
+      } else if (!Array.isArray(row.attachments)) {
+        row.attachments = []
+      }
+    } else {
+      row.attachments = []
+    }
+    
+    if (row.stakeholders) {
+      if (typeof row.stakeholders === 'string') {
+        try {
+          row.stakeholders = JSON.parse(row.stakeholders)
+        } catch (error) {
+          console.error('解析干系人数据失败', error)
+          row.stakeholders = []
+        }
+      } else if (!Array.isArray(row.stakeholders)) {
+        row.stakeholders = []
+      }
+    } else {
+      row.stakeholders = []
+    }
+    
+    // 将干系人ID转换为名称
+    if (row.stakeholders && Array.isArray(row.stakeholders)) {
+      row.stakeholders = row.stakeholders.map(stakeholderId => {
+        const employee = employeeList.value.find(emp => emp.id === stakeholderId)
+        return employee ? employee.employeeName : stakeholderId
+      })
+    }
+  }
+  
+  progressUpdateForm.taskId = currentTaskForUpdate.value.id
+  progressUpdateForm.progress = currentTaskForUpdate.value.progress || 0
   progressUpdateForm.description = ''
   progressUpdateForm.attachments = []
   
   // 加载任务的进展历史
-  await loadProgressUpdates(row.id)
+  await loadProgressUpdates(currentTaskForUpdate.value.id)
   
   progressUpdateDialogVisible.value = true
 }
 
-const handleViewTaskDetail = (row) => {
-  currentTaskForDetail.value = row
-  taskDetailDialogVisible.value = true
+const handleViewTaskDetail = async (row) => {
+  try {
+    const taskDetail = await getTaskDetail(row.id)
+    // 处理附件数据
+    if (taskDetail.attachments) {
+      if (typeof taskDetail.attachments === 'string') {
+        try {
+          taskDetail.attachments = JSON.parse(taskDetail.attachments)
+        } catch (error) {
+          console.error('解析附件数据失败', error)
+          taskDetail.attachments = []
+        }
+      } else if (!Array.isArray(taskDetail.attachments)) {
+        taskDetail.attachments = []
+      }
+    } else {
+      taskDetail.attachments = []
+    }
+    
+    // 处理干系人数据
+    if (taskDetail.stakeholders) {
+      if (typeof taskDetail.stakeholders === 'string') {
+        try {
+          taskDetail.stakeholders = JSON.parse(taskDetail.stakeholders)
+        } catch (error) {
+          console.error('解析干系人数据失败', error)
+          taskDetail.stakeholders = []
+        }
+      } else if (!Array.isArray(taskDetail.stakeholders)) {
+        taskDetail.stakeholders = []
+      }
+    } else {
+      taskDetail.stakeholders = []
+    }
+    
+    // 将干系人ID转换为名称
+    if (taskDetail.stakeholders && Array.isArray(taskDetail.stakeholders)) {
+      taskDetail.stakeholders = taskDetail.stakeholders.map(stakeholderId => {
+        const employee = employeeList.value.find(emp => emp.id === stakeholderId)
+        return employee ? employee.employeeName : stakeholderId
+      })
+    }
+    
+    currentTaskForDetail.value = taskDetail
+    taskDetailDialogVisible.value = true
+  } catch (error) {
+    console.error('加载任务详情失败', error)
+    ElMessage.error('加载任务详情失败')
+    // 如果API调用失败，使用表格中的行数据作为备用
+    currentTaskForDetail.value = row
+    // 处理备用数据中的附件和干系人
+    if (row.attachments) {
+      if (typeof row.attachments === 'string') {
+        try {
+          row.attachments = JSON.parse(row.attachments)
+        } catch (error) {
+          console.error('解析附件数据失败', error)
+          row.attachments = []
+        }
+      } else if (!Array.isArray(row.attachments)) {
+        row.attachments = []
+      }
+    } else {
+      row.attachments = []
+    }
+    
+    if (row.stakeholders) {
+      if (typeof row.stakeholders === 'string') {
+        try {
+          row.stakeholders = JSON.parse(row.stakeholders)
+        } catch (error) {
+          console.error('解析干系人数据失败', error)
+          row.stakeholders = []
+        }
+      } else if (!Array.isArray(row.stakeholders)) {
+        row.stakeholders = []
+      }
+    } else {
+      row.stakeholders = []
+    }
+    
+    // 将干系人ID转换为名称
+    if (row.stakeholders && Array.isArray(row.stakeholders)) {
+      row.stakeholders = row.stakeholders.map(stakeholderId => {
+        const employee = employeeList.value.find(emp => emp.id === stakeholderId)
+        return employee ? employee.employeeName : stakeholderId
+      })
+    }
+    taskDetailDialogVisible.value = true
+  }
 }
 
 const loadProgressUpdates = async (taskId) => {
