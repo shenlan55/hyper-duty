@@ -704,10 +704,23 @@ const getDeptName = (deptId) => {
 const getAssignmentsByDate = (date) => {
   // 先过滤出当天的值班安排
   const assignments = assignmentList.value.filter(assignment => assignment.dutyDate === date)
-  // 排序：状态为1（有效）的排在前面，状态为0（无效）的排在后面
+  // 排序：首先按照班次的sort字段排序，然后状态为1（有效）的排在前面
   return assignments.sort((a, b) => {
-    if (a.status === b.status) return 0
-    return a.status > b.status ? -1 : 1
+    // 获取班次的sort值
+    const shiftA = shiftConfigList.value.find(s => s.id === a.dutyShift)
+    const shiftB = shiftConfigList.value.find(s => s.id === b.dutyShift)
+    const sortA = shiftA?.sort || 0
+    const sortB = shiftB?.sort || 0
+    
+    // 先按班次排序
+    if (sortA !== sortB) {
+      return sortA - sortB
+    }
+    // 班次相同再按状态排序
+    if (a.status !== b.status) {
+      return a.status > b.status ? -1 : 1
+    }
+    return 0
   })
 }
 
@@ -826,7 +839,9 @@ const fetchShiftConfigList = async () => {
       pageSize: 100, // 加载足够多的班次配置
       keyword: ''
     })
-    shiftConfigList.value = (data?.records || []).filter(shift => shift.status === 1)
+    shiftConfigList.value = (data?.records || [])
+      .filter(shift => shift.status === 1)
+      .sort((a, b) => (a.sort || 0) - (b.sort || 0)) // 按照sort字段排序
   } catch (error) {
     // console.error('获取班次配置列表失败:', error)
     ElMessage.error('获取班次配置列表失败')
