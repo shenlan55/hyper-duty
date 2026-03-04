@@ -119,6 +119,49 @@
         </el-row>
       </div>
 
+      <!-- 任务描述 -->
+      <div class="task-description" style="margin-bottom: 20px;">
+        <h4 style="margin-bottom: 10px;">任务描述</h4>
+        <div class="description-content" v-if="currentTaskForUpdate?.description" v-html="currentTaskForUpdate.description"></div>
+        <div v-else class="no-data">暂无任务描述</div>
+      </div>
+
+      <!-- 附件列表 -->
+      <div class="task-attachments" style="margin-bottom: 20px;">
+        <h4 style="margin-bottom: 10px;">附件</h4>
+        <div v-if="currentTaskForUpdate?.attachments && currentTaskForUpdate.attachments.length > 0" class="attachments-container">
+          <div v-for="(attachment, index) in currentTaskForUpdate.attachments" :key="index" class="attachment-item">
+            <div class="attachment-file">
+              <el-icon class="file-icon"><Document /></el-icon>
+              <span class="file-name">{{ attachment.name || '未知文件' }}</span>
+            </div>
+            <div class="attachment-info">
+              <span class="attachment-name">{{ attachment.name || '未知文件' }}</span>
+              <div class="attachment-actions">
+                <el-button size="small" type="primary" @click="handleAttachmentPreview(attachment)">
+                  预览
+                </el-button>
+                <el-button size="small" @click="handleAttachmentDownload(attachment)">
+                  下载
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="no-data">暂无附件</div>
+      </div>
+
+      <!-- 干系人列表 -->
+      <div class="task-stakeholders" style="margin-bottom: 20px;">
+        <h4 style="margin-bottom: 10px;">干系人</h4>
+        <div v-if="currentTaskForUpdate?.stakeholders && currentTaskForUpdate.stakeholders.length > 0" class="stakeholders-container">
+          <el-tag v-for="(stakeholder, index) in currentTaskForUpdate.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
+            {{ stakeholder }}
+          </el-tag>
+        </div>
+        <div v-else class="no-data">暂无干系人</div>
+      </div>
+
       <!-- 进度更新表单 -->
       <el-form label-width="100px">
         <el-form-item label="更新进度">
@@ -153,13 +196,14 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Star } from '@element-plus/icons-vue'
+import { Star, Document } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import ProgressHistory from '@/components/ProgressHistory.vue'
 import FileUpload from '@/components/FileUpload.vue'
-import { getMyTasks, getMyTasksByProject, pinTask, getUpcomingTasks, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
+import { getMyTasks, getMyTasksByProject, pinTask, getUpcomingTasks, createProgressUpdate, getTaskProgressUpdates, getTaskDetail } from '@/api/task'
 import { getMyProjects } from '@/api/project'
+import { getEmployeeList } from '@/api/employee'
 import { getCurrentUserId } from '@/utils/jwt'
 import { useUserStore } from '@/stores/user'
 import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, formatDateTime, getProgressStatus } from '@/utils/taskUtils'
@@ -172,6 +216,7 @@ const progressUpdateDialogVisible = ref(false)
 const activeTab = ref('all')
 const projects = ref([])
 const selectedProjectId = ref('0')
+const employeeList = ref([])
 
 const stats = reactive({
   total: 0,
@@ -231,6 +276,16 @@ const loadProjects = async () => {
     projects.value = projectList
   } catch (error) {
     ElMessage.error('加载项目列表失败')
+  }
+}
+
+const loadEmployeeList = async () => {
+  try {
+    const data = await getEmployeeList(1, 1000) // 获取足够多的员工数据
+    employeeList.value = data?.records || []
+  } catch (error) {
+    console.error('加载员工列表失败', error)
+    employeeList.value = []
   }
 }
 
@@ -297,20 +352,68 @@ const handleCurrentChange = (val) => {
 }
 
 const handleUpdateProgress = async (row) => {
-  currentTaskForUpdate.value = row
-  progressUpdateForm.progress = row.progress || 0
-  progressUpdateForm.description = ''
-  progressUpdateForm.attachments = []
-  
-  // 加载进度更新历史
   try {
-    const updates = await getTaskProgressUpdates(row.id)
-    progressUpdates.value = updates || []
+    // 获取完整的任务详情数据
+    const taskDetail = await getTaskDetail(row.id)
+    
+    // 处理附件数据
+    if (taskDetail.attachments) {
+      if (typeof taskDetail.attachments === 'string') {
+        try {
+          taskDetail.attachments = JSON.parse(taskDetail.attachments)
+        } catch (error) {
+          console.error('解析附件数据失败', error)
+          taskDetail.attachments = []
+        }
+      } else if (!Array.isArray(taskDetail.attachments)) {
+        taskDetail.attachments = []
+      }
+    } else {
+      taskDetail.attachments = []
+    }
+    
+    // 处理干系人数据
+    if (taskDetail.stakeholders) {
+      if (typeof taskDetail.stakeholders === 'string') {
+        try {
+          taskDetail.stakeholders = JSON.parse(taskDetail.stakeholders)
+        } catch (error) {
+          console.error('解析干系人数据失败', error)
+          taskDetail.stakeholders = []
+        }
+      } else if (!Array.isArray(taskDetail.stakeholders)) {
+        taskDetail.stakeholders = []
+      }
+    } else {
+      taskDetail.stakeholders = []
+    }
+    
+    // 将干系人ID转换为名称
+    if (taskDetail.stakeholders && Array.isArray(taskDetail.stakeholders)) {
+      taskDetail.stakeholders = taskDetail.stakeholders.map(stakeholderId => {
+        const employee = employeeList.value.find(emp => emp.id === stakeholderId)
+        return employee ? employee.employeeName : stakeholderId
+      })
+    }
+    
+    currentTaskForUpdate.value = taskDetail
+    progressUpdateForm.progress = taskDetail.progress || 0
+    progressUpdateForm.description = ''
+    progressUpdateForm.attachments = []
+    
+    // 加载进度更新历史
+    try {
+      const updates = await getTaskProgressUpdates(row.id)
+      progressUpdates.value = updates || []
+    } catch (error) {
+      console.error('加载进度更新历史失败', error)
+    }
+    
+    progressUpdateDialogVisible.value = true
   } catch (error) {
-    console.error('加载进度更新历史失败', error)
+    console.error('获取任务详情失败', error)
+    ElMessage.error('获取任务详情失败')
   }
-  
-  progressUpdateDialogVisible.value = true
 }
 
 const handleSubmitProgressUpdate = async () => {
@@ -362,7 +465,25 @@ const handleUploadError = (error) => {
   ElMessage.error('文件上传失败')
 }
 
+const handleAttachmentPreview = (attachment) => {
+  if (attachment.url) {
+    window.open(attachment.url, '_blank')
+  } else if (attachment.fileUrl) {
+    window.open(attachment.fileUrl, '_blank')
+  } else {
+    ElMessage.warning('附件预览失败，文件路径不存在')
+  }
+}
 
+const handleAttachmentDownload = (attachment) => {
+  if (attachment.url) {
+    window.open(attachment.url, '_blank')
+  } else if (attachment.fileUrl) {
+    window.open(attachment.fileUrl, '_blank')
+  } else {
+    ElMessage.warning('附件下载失败，文件路径不存在')
+  }
+}
 
 const handlePin = async (row) => {
   try {
@@ -377,6 +498,7 @@ const handlePin = async (row) => {
 
 onMounted(() => {
   loadProjects()
+  loadEmployeeList()
   loadData()
 })
 </script>
@@ -473,5 +595,81 @@ onMounted(() => {
 :deep(.el-dialog__body) {
   overflow-x: hidden !important;
   padding: 20px;
+}
+
+/* 附件样式 */
+.attachments-container {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  margin-bottom: 10px;
+  border: 1px solid #e4e7ed;
+  transition: all 0.3s;
+}
+
+.attachment-item:hover {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.attachment-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.file-icon {
+  color: #409EFF;
+  font-size: 20px;
+}
+
+.file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: #606266;
+}
+
+.attachment-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.attachment-name {
+  font-size: 14px;
+  color: #606266;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.attachment-actions {
+  display: flex;
+  gap: 5px;
+}
+
+/* 干系人样式 */
+.stakeholders-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 </style>
