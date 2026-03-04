@@ -274,7 +274,7 @@
       <div class="task-description" style="margin-bottom: 20px;">
         <h4 style="margin-bottom: 10px;">任务描述</h4>
         <div class="description-content" v-if="currentTaskForUpdate?.description" v-html="currentTaskForUpdate.description"></div>
-        <el-empty v-else description="暂无任务描述" />
+        <div v-else class="no-data">暂无任务描述</div>
       </div>
 
       <!-- 附件列表 -->
@@ -299,7 +299,7 @@
             </div>
           </div>
         </div>
-        <el-empty v-else description="暂无附件" />
+        <div v-else class="no-data">暂无附件</div>
       </div>
 
       <!-- 干系人列表 -->
@@ -310,7 +310,7 @@
             {{ stakeholder }}
           </el-tag>
         </div>
-        <el-empty v-else description="暂无干系人" />
+        <div v-else class="no-data">暂无干系人</div>
       </div>
 
       <!-- 进度更新表单 -->
@@ -633,6 +633,22 @@ const handleEdit = async (row) => {
     }
   } else {
     form.attachments = []
+  }
+  
+  // 确保stakeholders是数组类型
+  if (row.stakeholders) {
+    if (typeof row.stakeholders === 'string') {
+      try {
+        form.stakeholders = JSON.parse(row.stakeholders)
+      } catch (error) {
+        console.error('解析干系人数据失败', error)
+        form.stakeholders = []
+      }
+    } else if (!Array.isArray(row.stakeholders)) {
+      form.stakeholders = []
+    }
+  } else {
+    form.stakeholders = []
   }
   
   loadTaskTree(row.projectId)
@@ -1203,15 +1219,20 @@ const handleSubmit = async () => {
       attachmentsJson = JSON.stringify(attachments)
     }
     
+    // 准备干系人数据
+    let stakeholdersJson = null
+    if (form.stakeholders && Array.isArray(form.stakeholders) && form.stakeholders.length > 0) {
+      stakeholdersJson = JSON.stringify(form.stakeholders)
+    }
+    
     // 准备提交数据
     const submitData = {
       ...form,
       // 确保attachments是字符串类型
-      attachments: attachmentsJson || ''
+      attachments: attachmentsJson || '',
+      // 确保stakeholders是字符串类型
+      stakeholders: stakeholdersJson || ''
     }
-    
-    // 移除stakeholders字段，因为后端实体类中没有这个字段
-    delete submitData.stakeholders
     
     if (form.id) {
       await updateTask(submitData)
@@ -1305,6 +1326,17 @@ onMounted(async () => {
 :deep(.el-dialog__body) {
   overflow-x: hidden !important;
   padding: 20px;
+}
+
+/* 暂无数据样式 */
+.no-data {
+  padding: 10px;
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
 }
 
 /* 更新内容区域样式 */
@@ -1537,5 +1569,16 @@ onMounted(async () => {
 :deep(.el-dialog__body) {
   overflow-x: hidden !important;
   padding: 20px;
+}
+
+/* 暂无数据样式 */
+.no-data {
+  padding: 10px;
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
 }
 </style>

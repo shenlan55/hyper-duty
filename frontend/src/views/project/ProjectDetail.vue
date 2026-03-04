@@ -568,6 +568,14 @@ const handleTaskSubmit = async () => {
       ownerId: taskForm.assigneeId, // 映射到后端需要的字段名
       // 移除stakeholders字段，因为后端实体类中没有这个字段
     }
+    
+    // 处理附件数据，转换为JSON字符串
+    if (submitData.attachments && Array.isArray(submitData.attachments)) {
+      submitData.attachments = JSON.stringify(submitData.attachments)
+    } else {
+      submitData.attachments = null
+    }
+    
     if (taskForm.id) {
       await updateTask(submitData)
       ElMessage.success('更新成功')

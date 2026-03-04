@@ -5,9 +5,12 @@
       :action="action"
       :before-upload="beforeUpload"
       :on-change="handleFileChange"
+      :on-remove="handleFileRemove"
       :file-list="fileList"
       :auto-upload="false"
       :http-request="handleCustomUpload"
+      :show-file-list="true"
+      list-type="text"
     >
       <slot>
         <el-button type="primary">
@@ -280,10 +283,30 @@ const beforeUpload = (file) => {
   return true
 }
 
+// 文件删除处理
+const handleFileRemove = async (file, fileList) => {
+  try {
+    // 如果文件有 filePath，调用删除API
+    if (file.filePath) {
+      await request.delete('/file/delete', {
+        params: { filePath: file.filePath }
+      })
+      console.log('文件删除成功:', file.filePath)
+    }
+    
+    // 更新文件列表
+    emit('update:fileList', fileList)
+  } catch (error) {
+    console.error('文件删除失败:', error)
+    ElMessage.error('文件删除失败')
+  }
+}
+
 // 暴露方法给父组件
 defineExpose({
   handleCustomUpload,
-  uploadProgress
+  uploadProgress,
+  handleFileRemove
 })
 </script>
 

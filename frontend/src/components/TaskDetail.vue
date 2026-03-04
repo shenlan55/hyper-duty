@@ -27,7 +27,7 @@
     <div class="task-description" style="margin-bottom: 20px;">
       <h4 style="margin-bottom: 10px;">任务描述</h4>
       <div class="description-content" v-if="task?.description" v-html="task.description"></div>
-      <el-empty v-else description="暂无任务描述" />
+      <div v-else class="no-data">暂无任务描述</div>
     </div>
 
     <!-- 附件列表 -->
@@ -52,7 +52,7 @@
           </div>
         </div>
       </div>
-      <el-empty v-else description="暂无附件" />
+      <div v-else class="no-data">暂无附件</div>
     </div>
 
     <!-- 干系人列表 -->
@@ -63,7 +63,7 @@
           {{ stakeholder }}
         </el-tag>
       </div>
-      <el-empty v-else description="暂无干系人" />
+      <div v-else class="no-data">暂无干系人</div>
     </div>
 
     <!-- 进展历史时间线 -->
@@ -345,5 +345,16 @@ const handleAttachmentDownload = (attachment) => {
     width: 100%;
     justify-content: space-between;
   }
+}
+
+/* 暂无数据样式 */
+.no-data {
+  padding: 10px;
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
 }
 </style>
