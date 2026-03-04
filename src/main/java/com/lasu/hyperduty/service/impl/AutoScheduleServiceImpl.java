@@ -530,8 +530,44 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
             return assignments;
         }
         
-        // 计算员工分组
-        List<List<SysEmployee>> employeeGroups = groupEmployees(employees, groupsConfig.size());
+        // 计算每个班组的人员分配
+        // 为每个班组分配固定的员工，确保每个班组的人员在排班周期内保持一致
+        List<List<SysEmployee>> employeeGroups = new ArrayList<>();
+        
+        // 计算每个班组需要的人数
+        List<Integer> groupEmployeeCounts = new ArrayList<>();
+        for (Map<String, Object> groupConfig : groupsConfig) {
+            List<Map<String, Object>> dayConfigs = (List<Map<String, Object>>) groupConfig.getOrDefault("days", new ArrayList<>());
+            int maxCount = 0;
+            for (Map<String, Object> dayConfig : dayConfigs) {
+                Integer count = (Integer) dayConfig.getOrDefault("employeeCount", 0);
+                if (count > maxCount) {
+                    maxCount = count;
+                }
+            }
+            groupEmployeeCounts.add(maxCount);
+        }
+        
+        // 分配员工到各个班组
+        int employeeIndex = 0;
+        for (int i = 0; i < groupsConfig.size(); i++) {
+            int groupSize = groupEmployeeCounts.get(i);
+            List<SysEmployee> group = new ArrayList<>();
+            
+            // 为每个班组分配固定数量的员工
+            for (int j = 0; j < groupSize && employeeIndex < employees.size(); j++) {
+                group.add(employees.get(employeeIndex));
+                employeeIndex++;
+            }
+            
+            // 如果员工不够，重复使用现有员工
+            while (group.size() < groupSize && !employees.isEmpty()) {
+                group.add(employees.get(employeeIndex % employees.size()));
+                employeeIndex++;
+            }
+            
+            employeeGroups.add(group);
+        }
         
         // 获取员工请假信息
         Map<Long, Map<LocalDate, Map<Long, List<Long>>>> leaveInfo = new HashMap<>();
@@ -647,12 +683,6 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
         }
         
         System.out.println("排班日期数量: " + scheduledDates.size());
-        
-        // 为每个组维护一个轮换索引，确保顺次排班
-        Map<Integer, Integer> groupRotationIndices = new HashMap<>();
-        for (int i = 0; i < groupsConfig.size(); i++) {
-            groupRotationIndices.put(i, 0);
-        }
         
         // 为每个过滤后的日期生成排班
         for (int dateIndex = 0; dateIndex < scheduledDates.size(); dateIndex++) {
@@ -821,18 +851,14 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                     }
                 }
                 
-                // 使用组级别的轮换索引，确保顺次排班
-                int rotationIndex = groupRotationIndices.getOrDefault(groupIndex, 0);
-                
-                // 如果还需要更多员工，使用轮班顺序选择
+                // 如果还需要更多员工，从固定的班组员工中选择
                 if (assignedEmployees.size() < employeeCount) {
-                    for (int i = 0; i < dayAvailableEmployees.size() && assignedEmployees.size() < employeeCount; i++) {
-                        // 计算当前应该选择的员工索引，确保轮换顺序的连续性
-                        int employeeIndex = (rotationIndex + i) % dayAvailableEmployees.size();
-                        SysEmployee employee = dayAvailableEmployees.get(employeeIndex);
+                    // 从固定的班组员工中选择，确保人员一致性
+                    for (int i = 0; i < groupEmployees.size() && assignedEmployees.size() < employeeCount; i++) {
+                        SysEmployee employee = groupEmployees.get(i);
                         
-                        // 跳过已经分配的员工
-                        if (!assignedEmployees.contains(employee)) {
+                        // 检查该员工是否在当天可用
+                        if (dayAvailableEmployees.contains(employee) && !assignedEmployees.contains(employee)) {
                             DutyAssignment assignment = new DutyAssignment();
                             assignment.setScheduleId(scheduleId);
                             assignment.setDutyDate(currentDate);
@@ -848,9 +874,28 @@ public class AutoScheduleServiceImpl implements AutoScheduleService {
                     }
                 }
                 
-                // 更新组级别的轮换索引
-                rotationIndex += employeeCount;
-                groupRotationIndices.put(groupIndex, rotationIndex);
+                // 如果仍然不够，从可用员工中补充
+                if (assignedEmployees.size() < employeeCount) {
+                    for (SysEmployee employee : dayAvailableEmployees) {
+                        if (!assignedEmployees.contains(employee)) {
+                            DutyAssignment assignment = new DutyAssignment();
+                            assignment.setScheduleId(scheduleId);
+                            assignment.setDutyDate(currentDate);
+                            assignment.setDutyShift(Integer.parseInt(shiftType)); // 直接使用班次ID作为dutyShift
+                            assignment.setEmployeeId(employee.getId());
+                            assignment.setStatus(1);
+                            assignment.setCreateTime(LocalDateTime.now());
+                            assignment.setUpdateTime(LocalDateTime.now());
+                            
+                            assignments.add(assignment);
+                            assignedEmployees.add(employee);
+                            
+                            if (assignedEmployees.size() >= employeeCount) {
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
         
