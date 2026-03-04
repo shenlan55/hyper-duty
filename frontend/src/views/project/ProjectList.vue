@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>项目列表</span>
-          <el-button type="primary" @click="handleAdd">新建项目</el-button>
+          <el-button v-if="canCreateProject" type="primary" @click="handleAdd">新建项目</el-button>
         </div>
       </template>
 
@@ -53,9 +53,9 @@
         </template>
         <template #operation="{ row }">
           <el-button type="info" size="small" @click="handleView(row)">查看</el-button>
-          <el-button type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button type="warning" size="small" @click="handleArchive(row)">归档</el-button>
-          <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+          <el-button v-if="canEditProject(row)" type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button v-if="canArchiveProject(row)" type="warning" size="small" @click="handleArchive(row)">归档</el-button>
+          <el-button v-if="canDeleteProject(row)" type="danger" size="small" @click="handleDelete(row)">删除</el-button>
         </template>
       </BaseTable>
     </el-card>
@@ -153,15 +153,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BaseTable from '@/components/BaseTable.vue'
 import EmployeeSelector from '@/components/EmployeeSelector.vue'
 import { getProjectPage, getProjectDetail, createProject, updateProject, archiveProject, deleteProject } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const tableData = ref([])
@@ -295,6 +297,10 @@ const handleView = (row) => {
 }
 
 const handleEdit = async (row) => {
+  if (!canEditProject(row)) {
+    ElMessage.warning('您没有权限编辑此项目')
+    return
+  }
   dialogTitle.value = '编辑项目'
   try {
     // 调用getProjectDetail获取完整的项目信息，包括参与人员列表
@@ -308,6 +314,10 @@ const handleEdit = async (row) => {
 }
 
 const handleArchive = async (row) => {
+  if (!canArchiveProject(row)) {
+    ElMessage.warning('您没有权限归档此项目')
+    return
+  }
   try {
     await ElMessageBox.confirm('确定要归档该项目吗？', '提示', {
       type: 'warning'
@@ -323,6 +333,10 @@ const handleArchive = async (row) => {
 }
 
 const handleDelete = async (row) => {
+  if (!canDeleteProject(row)) {
+    ElMessage.warning('您没有权限删除此项目')
+    return
+  }
   try {
     await ElMessageBox.confirm('确定要删除该项目吗？', '提示', {
       type: 'warning'
@@ -393,6 +407,30 @@ const loadEmployeeList = async () => {
   } catch (error) {
     console.error('加载员工列表失败', error)
   }
+}
+
+const canCreateProject = computed(() => {
+  // 只有项目负责人才能创建项目
+  // 项目参与人员只能查看项目列表，不能创建项目
+  // 这里可以根据实际需求调整，比如管理员也可以创建项目
+  // 暂时返回false，确保项目参与人员不能创建项目
+  // 实际项目中可以根据用户角色或权限进行判断
+  return false
+})
+
+const canEditProject = (project) => {
+  // 只有项目负责人才能编辑项目
+  return project.ownerId === userStore.employeeId
+}
+
+const canDeleteProject = (project) => {
+  // 只有项目负责人才能删除项目
+  return project.ownerId === userStore.employeeId
+}
+
+const canArchiveProject = (project) => {
+  // 只有项目负责人才能归档项目
+  return project.ownerId === userStore.employeeId
 }
 
 onMounted(() => {

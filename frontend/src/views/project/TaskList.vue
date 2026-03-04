@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>任务列表</span>
-          <el-button type="primary" @click="handleAdd">新建任务</el-button>
+          <el-button v-if="canCreateTask" type="primary" @click="handleAdd">新建任务</el-button>
         </div>
       </template>
 
@@ -100,7 +100,7 @@
             {{ row.isPinned === 1 ? '取消置顶' : '置顶' }}
           </el-button>
           <el-button 
-            v-if="row.hasPermission " 
+            v-if="row.hasDeletePermission " 
             type="danger" 
             size="small" 
             @click="handleDelete(row)"
@@ -408,7 +408,7 @@ import TaskComment from '@/components/TaskComment.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
-import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, hasTaskPermission, getTaskDetail } from '@/api/task'
+import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, hasTaskPermission, hasTaskDeletePermission, getTaskDetail } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
@@ -507,12 +507,22 @@ const loadData = async () => {
     tableData.value = data.records || []
     
     // 为每个任务计算权限状态
-    for (const task of tableData.value) {
-      try {
-        task.hasPermission = await hasTaskPermission(task.id, userStore.employeeId)
-      } catch (error) {
-        console.error('检查任务权限失败', error)
+    if (userStore.employeeId) {
+      for (const task of tableData.value) {
+        try {
+          task.hasPermission = await hasTaskPermission(task.id, userStore.employeeId)
+          task.hasDeletePermission = await hasTaskDeletePermission(task.id, userStore.employeeId)
+        } catch (error) {
+          console.error('检查任务权限失败', error)
+          task.hasPermission = false
+          task.hasDeletePermission = false
+        }
+      }
+    } else {
+      // 如果没有employeeId，设置所有任务都没有权限
+      for (const task of tableData.value) {
         task.hasPermission = false
+        task.hasDeletePermission = false
       }
     }
     
@@ -1106,7 +1116,7 @@ const handlePin = async (row) => {
 }
 
 const handleDelete = async (row) => {
-  if (!(await hasPermission(row))) {
+  if (!(await hasDeletePermission(row))) {
     ElMessage.warning('您没有权限删除此任务')
     return
   }
@@ -1141,6 +1151,9 @@ const handleViewComments = (row) => {
 }
 
 const hasPermission = async (task) => {
+  if (!userStore.employeeId || !task || !task.id) {
+    return false
+  }
   try {
     const result = await hasTaskPermission(task.id, userStore.employeeId)
     return result
@@ -1149,6 +1162,37 @@ const hasPermission = async (task) => {
     return false
   }
 }
+
+const hasDeletePermission = async (task) => {
+  if (!userStore.employeeId || !task || !task.id) {
+    return false
+  }
+  try {
+    const result = await hasTaskDeletePermission(task.id, userStore.employeeId)
+    return result
+  } catch (error) {
+    console.error('检查任务删除权限失败', error)
+    return false
+  }
+}
+
+const canCreateTask = computed(() => {
+  if (!searchForm.projectId) return false
+  const currentProject = projectList.value.find(p => p.id === searchForm.projectId)
+  if (!currentProject) return false
+  
+  // 项目负责人可以创建任务
+  if (currentProject.ownerId === userStore.employeeId) return true
+  
+  // 项目参与人员可以创建任务
+  if (currentProject.participants) {
+    const participants = typeof currentProject.participants === 'string' ? 
+      JSON.parse(currentProject.participants) : currentProject.participants
+    return Array.isArray(participants) && participants.includes(userStore.employeeId)
+  }
+  
+  return false
+})
 
 const isImageType = (fileName) => {
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']

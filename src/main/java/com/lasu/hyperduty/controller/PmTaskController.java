@@ -114,4 +114,12 @@ public class PmTaskController {
         boolean hasPermission = pmTaskService.hasTaskPermission(taskId, employeeId);
         return ResponseResult.success(hasPermission);
     }
+
+    @GetMapping("/permission/delete/{taskId}/{employeeId}")
+    public ResponseResult<Boolean> hasTaskDeletePermission(
+            @PathVariable Long taskId,
+            @PathVariable Long employeeId) {
+        boolean hasPermission = pmTaskService.hasTaskDeletePermission(taskId, employeeId);
+        return ResponseResult.success(hasPermission);
+    }
 }

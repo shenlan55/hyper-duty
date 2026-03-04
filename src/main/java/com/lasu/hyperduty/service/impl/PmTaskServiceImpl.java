@@ -244,6 +244,10 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
 
     @Override
     public boolean hasTaskPermission(Long taskId, Long employeeId) {
+        // 如果employeeId为null，直接返回false
+        if (employeeId == null) {
+            return false;
+        }
         // 获取任务信息
         PmTask task = getById(taskId);
         if (task == null) {
@@ -266,6 +270,75 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             return true;
         }
         
+        // 检查是否是项目的参与人员
+        if (project != null && project.getParticipants() != null) {
+            List<Long> participants = project.getParticipants();
+            if (participants.contains(employeeId)) {
+                return true;
+            }
+        }
+        
+        // 检查是否是任务的干系人
+        if (task.getStakeholders() != null) {
+            String stakeholders = task.getStakeholders();
+            try {
+                // 解析JSON字符串为数组
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                java.util.List<Long> stakeholderList = mapper.readValue(stakeholders, new com.fasterxml.jackson.core.type.TypeReference<java.util.List<Long>>() {});
+                if (stakeholderList.contains(employeeId)) {
+                    return true;
+                }
+            } catch (Exception e) {
+                // 如果解析失败，尝试直接检查字符串
+                if (stakeholders.contains("[" + employeeId + "]") || 
+                    stakeholders.contains("," + employeeId + ",") || 
+                    stakeholders.startsWith(employeeId + ",") || 
+                    stakeholders.endsWith("," + employeeId)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    @Override
+    public boolean hasTaskDeletePermission(Long taskId, Long employeeId) {
+        // 如果employeeId为null，直接返回false
+        if (employeeId == null) {
+            return false;
+        }
+        // 获取任务信息
+        PmTask task = getById(taskId);
+        if (task == null) {
+            return false;
+        }
+        
+        // 检查是否是任务的创建者
+        if (task.getCreateBy() != null && task.getCreateBy().equals(employeeId)) {
+            return true;
+        }
+        
+        // 检查是否是任务的负责人
+        if (task.getAssigneeId() != null && task.getAssigneeId().equals(employeeId)) {
+            return true;
+        }
+        
+        // 检查是否是项目的所有者
+        PmProject project = projectMapper.selectById(task.getProjectId());
+        if (project != null && project.getOwnerId() != null && project.getOwnerId().equals(employeeId)) {
+            return true;
+        }
+        
+        // 检查是否是项目的参与人员
+        if (project != null && project.getParticipants() != null) {
+            List<Long> participants = project.getParticipants();
+            if (participants.contains(employeeId)) {
+                return true;
+            }
+        }
+        
+        // 任务干系人没有删除权限
         return false;
     }
 }

@@ -65,7 +65,7 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
-            "WHERE t.assignee_id = #{employeeId} " +
+            "WHERE t.assignee_id = #{employeeId} OR t.stakeholders LIKE CONCAT('%', #{employeeId}, '%') " +
             "ORDER BY t.is_pinned DESC, t.priority ASC, t.end_date ASC")
     List<PmTask> selectMyTasks(@Param("employeeId") Long employeeId);
 
@@ -75,7 +75,7 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
-            "WHERE t.assignee_id = #{employeeId} AND t.project_id = #{projectId} " +
+            "WHERE t.project_id = #{projectId} AND (t.assignee_id = #{employeeId} OR t.stakeholders LIKE CONCAT('%', #{employeeId}, '%')) " +
             "ORDER BY t.is_pinned DESC, t.priority ASC, t.end_date ASC")
     List<PmTask> selectMyTasksByProject(@Param("employeeId") Long employeeId, @Param("projectId") Long projectId);
 

@@ -37,4 +37,6 @@ public interface PmTaskService extends IService<PmTask> {
     Integer calculateProjectProgress(Long projectId);
 
     boolean hasTaskPermission(Long taskId, Long employeeId);
+
+    boolean hasTaskDeletePermission(Long taskId, Long employeeId);
 }

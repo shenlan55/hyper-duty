@@ -141,3 +141,10 @@ export function hasTaskPermission(taskId, employeeId) {
     method: 'get'
   })
 }
+
+export function hasTaskDeletePermission(taskId, employeeId) {
+  return request({
+    url: `/pm/task/permission/delete/${taskId}/${employeeId}`,
+    method: 'get'
+  })
+}

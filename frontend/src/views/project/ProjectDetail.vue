@@ -20,15 +20,15 @@
             </el-tag>
           </div>
           <div class="project-actions" v-if="project.projectName">
-            <el-button type="primary" @click="handleAddTask">
+            <el-button v-if="canAddTask" type="primary" @click="handleAddTask">
               <el-icon><Plus /></el-icon>
               添加任务
             </el-button>
-            <el-button @click="handleEdit">
+            <el-button v-if="canEditProject" @click="handleEdit">
               <el-icon><Edit /></el-icon>
               编辑
             </el-button>
-            <el-button v-if="project.status !== 5" @click="handleArchive">
+            <el-button v-if="canArchiveProject && project.status !== 5" @click="handleArchive">
               <el-icon><Document /></el-icon>
               归档
             </el-button>
@@ -121,7 +121,7 @@
                 />
               </div>
             </div>
-            <div class="add-task-card" @click="handleAddTask(status.value)">
+            <div v-if="canAddTask" class="add-task-card" @click="handleAddTask(status.value)">
               <el-icon><Plus /></el-icon>
               <span>添加任务</span>
             </div>
@@ -333,9 +333,11 @@ import FileUpload from '@/components/FileUpload.vue'
 import { getProjectDetail, updateProject, archiveProject, getProjectPage, createProject } from '@/api/project'
 import { getProjectTasks, createTask, updateTask } from '@/api/task'
 import { getEmployeeList } from '@/api/employee'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const project = ref({})
@@ -343,6 +345,33 @@ const tasks = ref([])
 const employeeList = ref([])
 const projectList = ref([])
 const selectedProjectId = ref(null)
+
+// 计算属性：是否是项目负责人
+const isProjectOwner = computed(() => {
+  return project.value.ownerId === userStore.employeeId
+})
+
+// 计算属性：是否是项目参与人员
+const isProjectParticipant = computed(() => {
+  if (!project.value.participants) return false
+  const participants = Array.isArray(project.value.participants) ? project.value.participants : []
+  return participants.includes(userStore.employeeId)
+})
+
+// 计算属性：是否可以添加任务（项目负责人或参与人员都可以）
+const canAddTask = computed(() => {
+  return isProjectOwner.value || isProjectParticipant.value
+})
+
+// 计算属性：是否可以编辑项目（只有项目负责人可以）
+const canEditProject = computed(() => {
+  return isProjectOwner.value
+})
+
+// 计算属性：是否可以归档项目（只有项目负责人可以）
+const canArchiveProject = computed(() => {
+  return isProjectOwner.value
+})
 
 const taskDialogVisible = ref(false)
 const taskDialogTitle = ref('新建任务')
