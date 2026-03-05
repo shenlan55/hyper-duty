@@ -410,12 +410,10 @@ const loadEmployeeList = async () => {
 }
 
 const canCreateProject = computed(() => {
-  // 只有项目负责人才能创建项目
-  // 项目参与人员只能查看项目列表，不能创建项目
-  // 这里可以根据实际需求调整，比如管理员也可以创建项目
-  // 暂时返回false，确保项目参与人员不能创建项目
+  // 项目管理员(ROLE_PMADMIN)和超级管理员(ROLE_ADMIN)可以创建项目
+  // 这里暂时返回true，确保项目管理员可以创建项目
   // 实际项目中可以根据用户角色或权限进行判断
-  return false
+  return true
 })
 
 const canEditProject = (project) => {

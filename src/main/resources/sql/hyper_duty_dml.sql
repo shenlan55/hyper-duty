@@ -393,6 +393,7 @@ INSERT INTO public.sys_menu VALUES (1, '首页', 0, '/dashboard', 'views/Dashboa
 INSERT INTO public.sys_role VALUES (2, '普通用户', 'ROLE_USER', '拥有基础操作权限', 1, '2026-02-22 23:21:27', '2026-02-22 23:21:27', 2);
 INSERT INTO public.sys_role VALUES (1, '超级管理员', 'ROLE_ADMIN', '拥有系统所有权限', 1, '2026-02-22 23:21:27', '2026-02-22 23:21:27', 1);
 INSERT INTO public.sys_role VALUES (14, '值班管理员', 'ROLE_DUTYADMIN', '值班管理菜单所有权', 1, '2026-02-24 10:27:56', '2026-02-24 10:27:56', 3);
+INSERT INTO public.sys_role VALUES (15, '项目管理员', 'ROLE_PMADMIN', '项目管理模块所有权限', 1, '2026-03-05 00:00:00', '2026-03-05 00:00:00', 4);
 
 
 --
@@ -430,6 +431,27 @@ INSERT INTO public.sys_role_menu VALUES (582, 14, 9, '2026-02-24 10:28:32.524782
 INSERT INTO public.sys_role_menu VALUES (583, 14, 12, '2026-02-24 10:28:32.524782');
 INSERT INTO public.sys_role_menu VALUES (584, 14, 24, '2026-02-24 10:28:32.524782');
 INSERT INTO public.sys_role_menu VALUES (585, 14, 13, '2026-02-24 10:28:32.524782');
+-- 项目管理员权限
+INSERT INTO public.sys_role_menu VALUES (603, 15, 1, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (604, 15, 4, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (605, 15, 5, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (606, 15, 25, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (607, 15, 10, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (608, 15, 9, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (609, 15, 13, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (610, 15, 14, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (611, 15, 15, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (612, 15, 11, '2026-03-05 00:00:00');
+-- 项目管理模块所有权限
+INSERT INTO public.sys_role_menu VALUES (613, 15, 26, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (614, 15, 27, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (615, 15, 28, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (616, 15, 29, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (617, 15, 30, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (618, 15, 31, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (619, 15, 32, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (620, 15, 33, '2026-03-05 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (621, 15, 34, '2026-03-05 00:00:00');
 INSERT INTO public.sys_role_menu VALUES (486, 1, 1, '2026-02-23 00:26:58.775378');
 INSERT INTO public.sys_role_menu VALUES (487, 1, 2, '2026-02-23 00:26:58.775378');
 INSERT INTO public.sys_role_menu VALUES (488, 1, 3, '2026-02-23 00:26:58.775378');
