@@ -111,7 +111,7 @@ const loadDeptList = async () => {
 // 加载员工列表
 const loadEmployeeList = async () => {
   try {
-    const data = await getEmployeeList()
+    const data = await getEmployeeList(1, 1000)
     employeeList.value = Array.isArray(data) ? data : (data?.records || [])
     
     // 如果已经有选中值，更新显示
@@ -142,7 +142,7 @@ const loadEmployeeListByDept = async (deptId) => {
   try {
     // 这里可以调用专门的API根据部门ID获取员工列表
     // 暂时使用前端筛选
-    const allEmployees = await getEmployeeList()
+    const allEmployees = await getEmployeeList(1, 1000)
     const employees = Array.isArray(allEmployees) ? allEmployees : (allEmployees?.records || [])
     employeeList.value = employees.filter(emp => emp.deptId === deptId)
   } catch (error) {

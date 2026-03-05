@@ -182,14 +182,15 @@
           </el-select>
         </el-form-item>
         <el-form-item label="负责人" prop="assigneeId">
-          <el-select v-model="taskForm.assigneeId" placeholder="请选择负责人" filterable>
-            <el-option
-              v-for="employee in employeeList"
-              :key="employee.id"
-              :label="employee.employeeName"
-              :value="employee.id"
-            />
-          </el-select>
+          <el-input
+            v-model="assigneeName"
+            placeholder="请选择负责人"
+            readonly
+            clearable
+            @clear="handleAssigneeClear"
+            @click="assigneeDialogVisible = true"
+            style="cursor: pointer;"
+          />
         </el-form-item>
         <el-form-item label="开始日期" prop="startDate">
           <el-date-picker
@@ -217,21 +218,16 @@
             @upload-error="handleUploadError"
           />
         </el-form-item>
-        <el-form-item label="干系人">
-          <el-select
-            v-model="taskForm.stakeholders"
-            multiple
-            placeholder="请选择干系人"
-            filterable
-            style="width: 100%"
-          >
-            <el-option
-              v-for="employee in employeeList"
-              :key="employee.id"
-              :label="employee.employeeName"
-              :value="employee.id"
-            />
-          </el-select>
+        <el-form-item label="参与人">
+          <el-input
+            v-model="stakeholderNames"
+            placeholder="请选择参与人"
+            readonly
+            clearable
+            @clear="handleStakeholderClear"
+            @click="stakeholderDialogVisible = true"
+            style="cursor: pointer;"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -266,14 +262,15 @@
           </el-select>
         </el-form-item>
         <el-form-item label="负责人" prop="ownerId">
-          <el-select v-model="projectForm.ownerId" placeholder="请选择负责人" filterable>
-            <el-option
-              v-for="employee in employeeList"
-              :key="employee.id"
-              :label="employee.employeeName"
-              :value="employee.id"
-            />
-          </el-select>
+          <el-input
+            v-model="projectForm.ownerName"
+            placeholder="请选择负责人"
+            readonly
+            clearable
+            @clear="handleOwnerClear"
+            @click="ownerDialogVisible = true"
+            style="cursor: pointer;"
+          />
         </el-form-item>
         <el-form-item label="开始日期" prop="startDate">
           <el-date-picker
@@ -301,6 +298,37 @@
             placeholder="请输入项目描述"
           />
         </el-form-item>
+        <el-form-item label="参与人">
+          <el-input
+            v-model="participantsNames"
+            placeholder="请选择参与人"
+            readonly
+            clearable
+            @clear="handleParticipantsClear"
+            @click="participantsDialogVisible = true"
+            style="cursor: pointer;"
+          />
+        </el-form-item>
+
+        <!-- 参与人选择对话框 -->
+        <el-dialog
+          v-model="participantsDialogVisible"
+          title="选择参与人"
+          width="900px"
+          max-width="90vw"
+        >
+          <div style="padding: 10px; height: 600px; overflow: auto;">
+            <PersonSelector
+              v-model="selectedParticipants"
+              @change="handleParticipantsChange"
+              style="height: 500px;"
+            />
+          </div>
+          <template #footer>
+            <el-button @click="participantsDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="confirmParticipantsSelection">确认</el-button>
+          </template>
+        </el-dialog>
       </el-form>
       <template #footer>
         <el-button @click="projectDialogVisible = false">取消</el-button>
@@ -319,6 +347,64 @@
         <el-button @click="taskDetailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 任务负责人选择对话框 -->
+    <el-dialog
+      v-model="assigneeDialogVisible"
+      title="选择负责人"
+      width="900px"
+      max-width="90vw"
+    >
+      <div style="padding: 10px;">
+        <PersonSelector
+          v-model="selectedAssignees"
+          style="height: 500px;"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="assigneeDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmAssigneeSelection">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 项目负责人选择对话框 -->
+    <el-dialog
+      v-model="ownerDialogVisible"
+      title="选择负责人"
+      width="900px"
+      max-width="90vw"
+    >
+      <div style="padding: 10px;">
+        <PersonSelector
+          v-model="selectedOwners"
+          style="height: 500px;"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="ownerDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmOwnerSelection">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 任务参与人选择对话框 -->
+    <el-dialog
+      v-model="stakeholderDialogVisible"
+      title="选择参与人"
+      width="900px"
+      max-width="90vw"
+    >
+      <div style="padding: 10px;">
+        <PersonSelector
+          v-model="selectedStakeholders"
+          @change="handleStakeholderChange"
+          style="height: 500px;"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="stakeholderDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmStakeholderSelection">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -330,6 +416,7 @@ import { Plus, Edit, Document, User, Clock } from '@element-plus/icons-vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
+import PersonSelector from '@/components/PersonSelector.vue'
 import { getProjectDetail, updateProject, archiveProject, getProjectPage, createProject } from '@/api/project'
 import { getProjectTasks, createTask, updateTask } from '@/api/task'
 import { getEmployeeList } from '@/api/employee'
@@ -387,6 +474,25 @@ const projectDialogVisible = ref(false)
 const projectDialogTitle = ref('编辑项目')
 const projectFormRef = ref(null)
 
+// 负责人选择相关变量
+const assigneeDialogVisible = ref(false)
+const assigneeName = ref('')
+const selectedAssignees = ref([])
+
+// 项目负责人选择相关变量
+const ownerDialogVisible = ref(false)
+const selectedOwners = ref([])
+
+// 参与人员选择相关变量
+const participantsDialogVisible = ref(false)
+const participantsNames = ref('')
+const selectedParticipants = ref([])
+
+// 任务参与人选择相关变量
+const stakeholderDialogVisible = ref(false)
+const stakeholderNames = ref('')
+const selectedStakeholders = ref([])
+
 const statusList = [
   { label: '未开始', value: 1 },
   { label: '进行中', value: 2 },
@@ -424,7 +530,8 @@ const projectForm = reactive({
   ownerName: '',
   startDate: '',
   endDate: '',
-  description: ''
+  description: '',
+  participants: []
 })
 
 const projectRules = {
@@ -513,7 +620,7 @@ const loadTasks = async (id) => {
 
 const loadEmployeeList = async () => {
   try {
-    const data = await getEmployeeList()
+    const data = await getEmployeeList(1, 1000)
     employeeList.value = data?.records || []
   } catch (error) {
     console.error('加载员工列表失败', error)
@@ -530,13 +637,40 @@ const handleProjectChange = (id) => {
   }
 }
 
-const handleEdit = () => {
+const handleEdit = async () => {
   if (!selectedProjectId.value) {
     ElMessage.warning('请先选择项目')
     return
   }
   projectDialogTitle.value = '编辑项目'
   Object.assign(projectForm, project.value)
+  
+  // 同步参与人员信息
+  if (projectForm.participants && Array.isArray(projectForm.participants)) {
+    // 加载员工列表用于匹配姓名
+    try {
+      const data = await getEmployeeList(1, 1000)
+      const employeeList = data?.records || []
+      // 匹配参与人员姓名
+      const participantNames = []
+      const participantObjects = []
+      projectForm.participants.forEach(participantId => {
+        const employee = employeeList.find(emp => emp.id === participantId)
+        if (employee) {
+          participantNames.push(employee.employeeName)
+          participantObjects.push(employee)
+        }
+      })
+      participantsNames.value = participantNames.join(', ')
+      selectedParticipants.value = participantObjects
+    } catch (error) {
+      console.error('加载员工列表失败', error)
+    }
+  } else {
+    participantsNames.value = ''
+    selectedParticipants.value = []
+  }
+  
   projectDialogVisible.value = true
 }
 
@@ -573,6 +707,94 @@ const handleAddTask = (status = 1) => {
 
 const handleParentChange = (value) => {
   taskForm.parentId = value || null
+}
+
+// 负责人选择相关方法
+const handleAssigneeChange = (persons) => {
+  selectedAssignees.value = persons
+}
+
+const confirmAssigneeSelection = () => {
+  if (selectedAssignees.value.length > 0) {
+    const assignee = selectedAssignees.value[0]
+    taskForm.assigneeId = assignee.id
+    assigneeName.value = assignee.employeeName
+  }
+  assigneeDialogVisible.value = false
+}
+
+const handleAssigneeClear = () => {
+  taskForm.assigneeId = null
+  assigneeName.value = ''
+  selectedAssignees.value = []
+}
+
+// 项目负责人选择相关方法
+const handleOwnerChange = (persons) => {
+  selectedOwners.value = persons
+}
+
+const confirmOwnerSelection = () => {
+  if (selectedOwners.value.length > 0) {
+    const owner = selectedOwners.value[0]
+    projectForm.ownerId = owner.id
+    projectForm.ownerName = owner.employeeName
+  }
+  ownerDialogVisible.value = false
+}
+
+const handleOwnerClear = () => {
+  projectForm.ownerId = null
+  projectForm.ownerName = ''
+  selectedOwners.value = []
+}
+
+// 参与人员选择相关方法
+const handleParticipantsChange = (persons) => {
+  selectedParticipants.value = persons
+}
+
+const confirmParticipantsSelection = () => {
+  if (selectedParticipants.value.length > 0) {
+    // 提取参与人员ID数组
+    projectForm.participants = selectedParticipants.value.map(person => person.id)
+    // 提取参与人员姓名，用逗号分隔显示
+    participantsNames.value = selectedParticipants.value.map(person => person.employeeName).join(', ')
+  } else {
+    projectForm.participants = []
+    participantsNames.value = ''
+  }
+  participantsDialogVisible.value = false
+}
+
+const handleParticipantsClear = () => {
+  projectForm.participants = []
+  participantsNames.value = ''
+  selectedParticipants.value = []
+}
+
+// 任务参与人选择相关方法
+const handleStakeholderChange = (persons) => {
+  selectedStakeholders.value = persons
+}
+
+const confirmStakeholderSelection = () => {
+  if (selectedStakeholders.value.length > 0) {
+    // 提取参与人员ID数组
+    taskForm.stakeholders = selectedStakeholders.value.map(person => person.id)
+    // 提取参与人员姓名，用逗号分隔显示
+    stakeholderNames.value = selectedStakeholders.value.map(person => person.employeeName).join(', ')
+  } else {
+    taskForm.stakeholders = []
+    stakeholderNames.value = ''
+  }
+  stakeholderDialogVisible.value = false
+}
+
+const handleStakeholderClear = () => {
+  taskForm.stakeholders = []
+  stakeholderNames.value = ''
+  selectedStakeholders.value = []
 }
 
 const handleUploadSuccess = (file) => {
@@ -667,6 +889,12 @@ const resetTaskForm = () => {
   taskForm.attachments = []
   taskForm.stakeholders = []
   taskForm.status = defaultStatus.value || 1
+  assigneeName.value = ''
+  selectedAssignees.value = []
+  assigneeDialogVisible.value = false
+  stakeholderNames.value = ''
+  selectedStakeholders.value = []
+  stakeholderDialogVisible.value = false
   taskFormRef.value?.resetFields()
 }
 
@@ -680,6 +908,8 @@ const resetProjectForm = () => {
   projectForm.startDate = ''
   projectForm.endDate = ''
   projectForm.description = ''
+  selectedOwners.value = []
+  ownerDialogVisible.value = false
   projectFormRef.value?.resetFields()
 }
 

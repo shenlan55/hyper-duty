@@ -55,15 +55,15 @@
       <div v-else class="no-data">暂无附件</div>
     </div>
 
-    <!-- 干系人列表 -->
+    <!-- 参与人列表 -->
     <div class="task-stakeholders" style="margin-bottom: 20px;">
-      <h4 style="margin-bottom: 10px;">干系人</h4>
+      <h4 style="margin-bottom: 10px;">参与人</h4>
       <div v-if="task?.stakeholders && task.stakeholders.length > 0" class="stakeholders-container">
         <el-tag v-for="(stakeholder, index) in task.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
           {{ stakeholder }}
         </el-tag>
       </div>
-      <div v-else class="no-data">暂无干系人</div>
+      <div v-else class="no-data">暂无参与人</div>
     </div>
 
     <!-- 进展历史时间线 -->
@@ -88,7 +88,7 @@ const employeeList = ref([])
 // 加载员工列表
 const loadEmployeeList = async () => {
   try {
-    const data = await getEmployeeList()
+    const data = await getEmployeeList(1, 1000)
     employeeList.value = data?.records || []
   } catch (error) {
     console.error('加载员工列表失败', error)
@@ -131,10 +131,43 @@ watch(
   (newTask) => {
     if (newTask?.id) {
       loadProgressUpdates(newTask.id)
-      // 转换干系人ID为名称
+      // 处理附件数据
+      if (newTask.attachments) {
+        if (typeof newTask.attachments === 'string') {
+          try {
+            newTask.attachments = JSON.parse(newTask.attachments)
+          } catch (error) {
+            console.error('解析附件数据失败', error)
+            newTask.attachments = []
+          }
+        } else if (!Array.isArray(newTask.attachments)) {
+          newTask.attachments = []
+        }
+      } else {
+        newTask.attachments = []
+      }
+      // 处理参与人数据
+      if (newTask.stakeholders) {
+        if (typeof newTask.stakeholders === 'string') {
+          try {
+            newTask.stakeholders = JSON.parse(newTask.stakeholders)
+          } catch (error) {
+            console.error('解析参与人数据失败', error)
+            newTask.stakeholders = []
+          }
+        } else if (!Array.isArray(newTask.stakeholders)) {
+          newTask.stakeholders = []
+        }
+      } else {
+        newTask.stakeholders = []
+      }
+      // 转换参与人ID为名称
       if (newTask.stakeholders && Array.isArray(newTask.stakeholders)) {
         newTask.stakeholders = newTask.stakeholders.map(stakeholderId => {
-          const employee = employeeList.value.find(emp => emp.id === stakeholderId)
+          const employee = employeeList.value.find(emp => {
+            // 考虑ID类型不匹配的情况，进行类型转换后比较
+            return String(emp.id) === String(stakeholderId)
+          })
           return employee ? employee.employeeName : stakeholderId
         })
       }
@@ -154,18 +187,30 @@ watch(
   { immediate: true }
 )
 
-// 监听员工列表变化，重新转换干系人名称
+// 监听员工列表变化，重新转换参与人名称
 watch(
   () => employeeList.value,
   () => {
     if (props.task && props.task.stakeholders && Array.isArray(props.task.stakeholders)) {
-      props.task.stakeholders = props.task.stakeholders.map(stakeholderId => {
-        const employee = employeeList.value.find(emp => emp.id === stakeholderId)
-        return employee ? employee.employeeName : stakeholderId
+      // 无论参与人是什么格式，都尝试转换为名称
+      // 检查是否需要转换：如果有参与人是数字ID（字符串或数字形式），则进行转换
+      const needConversion = props.task.stakeholders.some(stakeholder => {
+        // 判断是否为数字ID（可以是数字或数字字符串）
+        return !isNaN(Number(stakeholder))
       })
+      
+      if (needConversion) {
+        props.task.stakeholders = props.task.stakeholders.map(stakeholderId => {
+          const employee = employeeList.value.find(emp => {
+            // 考虑ID类型不匹配的情况，进行类型转换后比较
+            return String(emp.id) === String(stakeholderId)
+          })
+          return employee ? employee.employeeName : stakeholderId
+        })
+      }
     }
   },
-  { deep: true }
+  { deep: true, immediate: true }
 )
 
 // 处理附件预览

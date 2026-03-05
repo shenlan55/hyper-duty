@@ -151,15 +151,15 @@
         <div v-else class="no-data">暂无附件</div>
       </div>
 
-      <!-- 干系人列表 -->
-      <div class="task-stakeholders" style="margin-bottom: 20px;">
-        <h4 style="margin-bottom: 10px;">干系人</h4>
+      <!-- 参与人列表 -->
+      <div class="project-stakeholders" style="margin-bottom: 20px;">
+        <h4 style="margin-bottom: 10px;">参与人</h4>
         <div v-if="currentTaskForUpdate?.stakeholders && currentTaskForUpdate.stakeholders.length > 0" class="stakeholders-container">
           <el-tag v-for="(stakeholder, index) in currentTaskForUpdate.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
             {{ stakeholder }}
           </el-tag>
         </div>
-        <div v-else class="no-data">暂无干系人</div>
+        <div v-else class="no-data">暂无参与人</div>
       </div>
 
       <!-- 进度更新表单 -->
@@ -372,13 +372,13 @@ const handleUpdateProgress = async (row) => {
       taskDetail.attachments = []
     }
     
-    // 处理干系人数据
+    // 处理参与人数据
     if (taskDetail.stakeholders) {
       if (typeof taskDetail.stakeholders === 'string') {
         try {
           taskDetail.stakeholders = JSON.parse(taskDetail.stakeholders)
         } catch (error) {
-          console.error('解析干系人数据失败', error)
+          console.error('解析参与人数据失败', error)
           taskDetail.stakeholders = []
         }
       } else if (!Array.isArray(taskDetail.stakeholders)) {
@@ -388,7 +388,7 @@ const handleUpdateProgress = async (row) => {
       taskDetail.stakeholders = []
     }
     
-    // 将干系人ID转换为名称
+    // 将参与人ID转换为名称
     if (taskDetail.stakeholders && Array.isArray(taskDetail.stakeholders)) {
       taskDetail.stakeholders = taskDetail.stakeholders.map(stakeholderId => {
         const employee = employeeList.value.find(emp => emp.id === stakeholderId)
@@ -666,7 +666,7 @@ onMounted(() => {
   gap: 5px;
 }
 
-/* 干系人样式 */
+/* 参与人样式 */
 .stakeholders-container {
   display: flex;
   flex-wrap: wrap;

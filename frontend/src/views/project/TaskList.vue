@@ -162,14 +162,14 @@
           </el-select>
         </el-form-item>
         <el-form-item label="负责人" prop="assigneeId">
-          <el-select v-model="form.assigneeId" placeholder="请选择负责人" filterable>
-            <el-option
-              v-for="employee in employeeList"
-              :key="employee.id"
-              :label="employee.employeeName"
-              :value="employee.id"
-            />
-          </el-select>
+          <el-input
+            v-model="assigneeName"
+            placeholder="请选择负责人"
+            readonly
+            prefix-icon="UserFilled"
+            @click="assigneeDialogVisible = true"
+            style="cursor: pointer;"
+          />
         </el-form-item>
         <el-form-item label="开始日期" prop="startDate">
           <el-date-picker
@@ -197,21 +197,15 @@
             @upload-error="handleUploadError"
           />
         </el-form-item>
-        <el-form-item label="干系人">
-          <el-select
-            v-model="form.stakeholders"
-            multiple
-            placeholder="请选择干系人"
-            filterable
-            style="width: 100%"
-          >
-            <el-option
-              v-for="employee in employeeList"
-              :key="employee.id"
-              :label="employee.employeeName"
-              :value="employee.id"
-            />
-          </el-select>
+        <el-form-item label="参与人">
+          <el-input
+            v-model="stakeholderNames"
+            placeholder="请选择参与人"
+            readonly
+            prefix-icon="UserFilled"
+            @click="stakeholderDialogVisible = true"
+            style="cursor: pointer;"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -395,19 +389,58 @@
         <el-button @click="taskDetailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 负责人选择对话框 -->
+    <el-dialog
+      v-model="assigneeDialogVisible"
+      title="选择负责人"
+      width="900px"
+      max-width="90vw"
+    >
+      <div style="padding: 10px;">
+        <PersonSelector
+          v-model="selectedAssignees"
+          style="height: 500px;"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="assigneeDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmAssigneeSelection">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 干系人选择对话框 -->
+    <el-dialog
+      v-model="stakeholderDialogVisible"
+      title="选择参与人"
+      width="900px"
+      max-width="90vw"
+    >
+      <div style="padding: 10px;">
+        <PersonSelector
+          v-model="selectedStakeholders"
+          style="height: 500px;"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="stakeholderDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmStakeholderSelection">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Star, Document } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, ElPopover } from 'element-plus'
+import { Star, Document, UserFilled } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import TaskComment from '@/components/TaskComment.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
+import PersonSelector from '@/components/PersonSelector.vue'
 import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, hasTaskPermission, hasTaskDeletePermission, getTaskDetail } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
@@ -440,6 +473,14 @@ const progressUpdateForm = reactive({
   attachments: []
 })
 const progressUpdates = ref([])
+
+// 负责人选择
+const assigneeDialogVisible = ref(false)
+const selectedAssignees = ref([])
+
+// 干系人选择
+const stakeholderDialogVisible = ref(false)
+const selectedStakeholders = ref([])
 
 const searchForm = reactive({
   projectId: null,
@@ -480,6 +521,26 @@ const rules = {
   taskName: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
   assigneeId: [{ required: true, message: '请选择负责人', trigger: 'change' }]
 }
+
+// 计算属性：负责人名称
+const assigneeName = computed(() => {
+  if (!form.assigneeId) return ''
+  const employee = employeeList.value.find(emp => emp.id === form.assigneeId)
+  return employee ? employee.employeeName : ''
+})
+
+// 计算属性：干系人名称
+const stakeholderNames = computed(() => {
+  if (!form.stakeholders || !Array.isArray(form.stakeholders)) return ''
+  const names = form.stakeholders.map(id => {
+    const employee = employeeList.value.find(emp => {
+      // 考虑ID类型不匹配的情况，进行类型转换后比较
+      return String(emp.id) === String(id)
+    })
+    return employee ? employee.employeeName : id
+  })
+  return names.join(', ')
+})
 
 const columns = [
   { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName' },
@@ -549,7 +610,7 @@ const loadProjectList = async () => {
 
 const loadEmployeeList = async () => {
   try {
-    const data = await getEmployeeList()
+    const data = await getEmployeeList(1, 1000)
     employeeList.value = data?.records || []
   } catch (error) {
     console.error('加载员工列表失败', error)
@@ -580,6 +641,20 @@ const buildTaskTree = (tasks, parentId = 0) => {
 
 const handleParentChange = (val) => {
   form.parentId = val || 0
+}
+
+// 确认负责人选择
+const confirmAssigneeSelection = () => {
+  if (selectedAssignees.value.length > 0) {
+    form.assigneeId = selectedAssignees.value[0].id
+  }
+  assigneeDialogVisible.value = false
+}
+
+// 确认干系人选择
+const confirmStakeholderSelection = () => {
+  form.stakeholders = selectedStakeholders.value.map(item => item.id)
+  stakeholderDialogVisible.value = false
 }
 
 const handleSearch = () => {
@@ -659,6 +734,22 @@ const handleEdit = async (row) => {
     }
   } else {
     form.stakeholders = []
+  }
+  
+  // 初始化选中的负责人和干系人
+  selectedAssignees.value = []
+  if (form.assigneeId) {
+    const assignee = employeeList.value.find(emp => emp.id === form.assigneeId)
+    if (assignee) {
+      selectedAssignees.value = [assignee]
+    }
+  }
+  
+  selectedStakeholders.value = []
+  if (form.stakeholders && Array.isArray(form.stakeholders)) {
+    selectedStakeholders.value = employeeList.value.filter(emp => 
+      form.stakeholders.includes(emp.id)
+    )
   }
   
   loadTaskTree(row.projectId)
@@ -1313,6 +1404,10 @@ const resetForm = () => {
   form.stakeholders = []
   form.attachments = []
   formRef.value?.resetFields()
+  
+  // 重置选择的人员
+  selectedAssignees.value = []
+  selectedStakeholders.value = []
 }
 
 onMounted(async () => {
@@ -1320,8 +1415,8 @@ onMounted(async () => {
     searchForm.projectId = parseInt(route.query.projectId)
   }
   await loadProjectList()
+  await loadEmployeeList()
   loadData()
-  loadEmployeeList()
 })
 </script>
 

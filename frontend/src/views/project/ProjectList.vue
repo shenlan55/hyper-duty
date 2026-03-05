@@ -3,7 +3,7 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>项目列表</span>
+          <span>   项目列表</span>
           <el-button v-if="canCreateProject" type="primary" @click="handleAdd">新建项目</el-button>
         </div>
       </template>
@@ -97,12 +97,36 @@
           </el-select>
         </el-form-item>
         <el-form-item label="负责人" prop="ownerId">
-          <EmployeeSelector
-            v-model="form.ownerId"
+          <el-input
+            v-model="ownerName"
             placeholder="请选择负责人"
-            @select="handleEmployeeSelect"
+            readonly
+            clearable
+            @clear="handleOwnerClear"
+            @click="ownerDialogVisible = true"
+            style="cursor: pointer;"
           />
         </el-form-item>
+
+        <!-- 负责人选择对话框 -->
+        <el-dialog
+          v-model="ownerDialogVisible"
+          title="选择负责人"
+          width="900px"
+          max-width="90vw"
+        >
+          <div style="padding: 10px; height: 600px; overflow: auto;">
+            <PersonSelector
+              v-model="selectedOwners"
+              @change="handleOwnerChange"
+              style="height: 500px;"
+            />
+          </div>
+          <template #footer>
+            <el-button @click="ownerDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="confirmOwnerSelection">确认</el-button>
+          </template>
+        </el-dialog>
         <el-form-item label="开始日期" prop="startDate">
           <el-date-picker
             v-model="form.startDate"
@@ -127,22 +151,37 @@
             placeholder="请输入项目描述"
           />
         </el-form-item>
-        <el-form-item label="参与人员">
-          <el-select
-            v-model="form.participants"
-            multiple
-            placeholder="请选择参与人员"
-            filterable
-            style="width: 100%"
-          >
-            <el-option
-              v-for="employee in employeeList"
-              :key="employee.id"
-              :label="employee.employeeName"
-              :value="employee.id"
-            />
-          </el-select>
+        <el-form-item label="参与人">
+          <el-input
+            v-model="participantsNames"
+            placeholder="请选择参与人"
+            readonly
+            clearable
+            @clear="handleParticipantsClear"
+            @click="participantsDialogVisible = true"
+            style="cursor: pointer;"
+          />
         </el-form-item>
+
+        <!-- 参与人选择对话框 -->
+        <el-dialog
+          v-model="participantsDialogVisible"
+          title="选择参与人"
+          width="900px"
+          max-width="90vw"
+        >
+          <div style="padding: 10px; height: 600px; overflow: auto;">
+            <PersonSelector
+              v-model="selectedParticipants"
+              @change="handleParticipantsChange"
+              style="height: 500px;"
+            />
+          </div>
+          <template #footer>
+            <el-button @click="participantsDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="confirmParticipantsSelection">确认</el-button>
+          </template>
+        </el-dialog>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -157,7 +196,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BaseTable from '@/components/BaseTable.vue'
-import EmployeeSelector from '@/components/EmployeeSelector.vue'
+import PersonSelector from '@/components/PersonSelector.vue'
 import { getProjectPage, getProjectDetail, createProject, updateProject, archiveProject, deleteProject } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
@@ -171,6 +210,16 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('新建项目')
 const formRef = ref(null)
 const employeeList = ref([])
+
+// 项目负责人选择相关变量
+const ownerDialogVisible = ref(false)
+const ownerName = ref('')
+const selectedOwners = ref([])
+
+// 参与人员选择相关变量
+const participantsDialogVisible = ref(false)
+const participantsNames = ref('')
+const selectedParticipants = ref([])
 
 const searchForm = reactive({
   projectName: '',
@@ -306,6 +355,29 @@ const handleEdit = async (row) => {
     // 调用getProjectDetail获取完整的项目信息，包括参与人员列表
     const projectDetail = await getProjectDetail(row.id)
     Object.assign(form, projectDetail)
+    // 同步负责人姓名到ownerName变量
+    ownerName.value = form.ownerName || ''
+    
+    // 同步参与人员信息
+    if (form.participants && Array.isArray(form.participants)) {
+      // 加载员工列表用于匹配姓名
+      await loadEmployeeList()
+      // 匹配参与人员姓名
+      const participantNames = []
+      const participantObjects = []
+      form.participants.forEach(participantId => {
+        const employee = employeeList.value.find(emp => emp.id === participantId)
+        if (employee) {
+          participantNames.push(employee.employeeName)
+          participantObjects.push(employee)
+        }
+      })
+      participantsNames.value = participantNames.join(', ')
+      selectedParticipants.value = participantObjects
+    } else {
+      participantsNames.value = ''
+      selectedParticipants.value = []
+    }
   } catch (error) {
     console.error('获取项目详情失败', error)
     ElMessage.error('获取项目详情失败')
@@ -386,23 +458,64 @@ const resetForm = () => {
   form.endDate = ''
   form.description = ''
   form.participants = []
+  ownerName.value = ''
+  selectedOwners.value = []
+  ownerDialogVisible.value = false
+  participantsNames.value = ''
+  selectedParticipants.value = []
+  participantsDialogVisible.value = false
   formRef.value?.resetFields()
 }
 
-const handleEmployeeSelect = (row) => {
-  // 选择员工
-  if (row) {
-    form.ownerId = row.id
-    form.ownerName = row.employeeName
-  } else {
-    form.ownerId = null
-    form.ownerName = ''
+// 项目负责人选择相关方法
+const handleOwnerChange = (persons) => {
+  selectedOwners.value = persons
+}
+
+const confirmOwnerSelection = () => {
+  if (selectedOwners.value.length > 0) {
+    const owner = selectedOwners.value[0]
+    form.ownerId = owner.id
+    form.ownerName = owner.employeeName
+    ownerName.value = owner.employeeName
   }
+  ownerDialogVisible.value = false
+}
+
+const handleOwnerClear = () => {
+  form.ownerId = null
+  form.ownerName = ''
+  ownerName.value = ''
+  selectedOwners.value = []
+}
+
+// 参与人员选择相关方法
+const handleParticipantsChange = (persons) => {
+  selectedParticipants.value = persons
+}
+
+const confirmParticipantsSelection = () => {
+  if (selectedParticipants.value.length > 0) {
+    // 提取参与人员ID数组
+    form.participants = selectedParticipants.value.map(person => person.id)
+    // 提取参与人员姓名，用逗号分隔显示
+    participantsNames.value = selectedParticipants.value.map(person => person.employeeName).join(', ')
+  } else {
+    form.participants = []
+    participantsNames.value = ''
+  }
+  participantsDialogVisible.value = false
+}
+
+const handleParticipantsClear = () => {
+  form.participants = []
+  participantsNames.value = ''
+  selectedParticipants.value = []
 }
 
 const loadEmployeeList = async () => {
   try {
-    const data = await getEmployeeList()
+    const data = await getEmployeeList(1, 1000)
     employeeList.value = data?.records || []
   } catch (error) {
     console.error('加载员工列表失败', error)
