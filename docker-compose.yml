@@ -15,6 +15,11 @@ services:
       - backend
     networks:
       - hyper-duty-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   backend:
     build:
@@ -45,6 +50,11 @@ services:
       - hyper-duty-network
     depends_on:
       - kkfileview
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   kkfileview:
     image: keking/kkfileview:4.1.0
@@ -54,6 +64,11 @@ services:
       - TZ=Asia/Shanghai
     networks:
       - hyper-duty-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 networks:
   hyper-duty-network:

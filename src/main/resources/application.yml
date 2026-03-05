@@ -70,6 +70,15 @@ logging:
   level:
     com.lasu.hyperduty: debug
     org.springframework.security: info
+  file:
+    name: logs/hyper-duty.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  logback:
+    rollingpolicy:
+      max-history: 5
+      max-file-size: 10MB
+      total-size-cap: 100MB
 
 rustfs:
   endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
