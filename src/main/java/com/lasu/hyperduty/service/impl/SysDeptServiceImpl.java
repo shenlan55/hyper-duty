@@ -22,13 +22,17 @@ public class SysDeptServiceImpl extends CacheableServiceImpl<SysDeptMapper, SysD
     }
 
     @Override
-    @Cacheable(value = "dept", key = "'deptTree'")
+    // 暂时禁用缓存，确保返回最新数据
+    // @Cacheable(value = "dept", key = "'deptTree'")
     public List<SysDept> getDeptTree() {
         // 获取所有部门
         List<SysDept> allDepts = list();
+        System.out.println("所有部门数据: " + allDepts);
         
         // 构建部门树
-        return buildDeptTree(allDepts, 0L);
+        List<SysDept> deptTree = buildDeptTree(allDepts, 0L);
+        System.out.println("构建后的部门树: " + deptTree);
+        return deptTree;
     }
 
     private List<SysDept> buildDeptTree(List<SysDept> deptList, Long parentId) {
@@ -37,8 +41,9 @@ public class SysDeptServiceImpl extends CacheableServiceImpl<SysDeptMapper, SysD
         for (SysDept dept : deptList) {
             if (parentId.equals(dept.getParentId())) {
                 // 递归查找子部门
+                List<SysDept> subDepts = buildDeptTree(deptList, dept.getId());
+                dept.setChildren(subDepts);
                 children.add(dept);
-                // 这里可以添加子部门列表字段，暂时只返回顶层部门
             }
         }
         

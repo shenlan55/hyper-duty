@@ -20,6 +20,12 @@ const routes = [
         meta: { title: '首页' }
       },
       {
+        path: 'test-person-selector',
+        name: 'TestPersonSelector',
+        component: () => import('../views/TestPersonSelector.vue'),
+        meta: { title: '人员选择框测试' }
+      },
+      {
         path: 'system',
         name: 'System',
         component: () => import('../views/system/SystemLayout.vue'),
