@@ -318,7 +318,7 @@
           max-width="90vw"
         >
           <div style="padding: 10px; height: 600px; overflow: auto;">
-            <PersonSelector
+            <EmployeeSelector
               v-model="selectedParticipants"
               @change="handleParticipantsChange"
               style="height: 500px;"
@@ -356,7 +356,7 @@
       max-width="90vw"
     >
       <div style="padding: 10px;">
-        <PersonSelector
+        <EmployeeSelector
           v-model="selectedAssignees"
           style="height: 500px;"
         />
@@ -375,7 +375,7 @@
       max-width="90vw"
     >
       <div style="padding: 10px;">
-        <PersonSelector
+        <EmployeeSelector
           v-model="selectedOwners"
           style="height: 500px;"
         />
@@ -394,7 +394,7 @@
       max-width="90vw"
     >
       <div style="padding: 10px;">
-        <PersonSelector
+        <EmployeeSelector
           v-model="selectedStakeholders"
           @change="handleStakeholderChange"
           style="height: 500px;"
@@ -416,7 +416,7 @@ import { Plus, Edit, Document, User, Clock } from '@element-plus/icons-vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
-import PersonSelector from '@/components/PersonSelector.vue'
+import EmployeeSelector from '@/components/EmployeeSelector.vue'
 import { getProjectDetail, updateProject, archiveProject, getProjectPage, createProject } from '@/api/project'
 import { getProjectTasks, createTask, updateTask } from '@/api/task'
 import { getEmployeeList } from '@/api/employee'

@@ -116,7 +116,7 @@
           max-width="90vw"
         >
           <div style="padding: 10px; height: 600px; overflow: auto;">
-            <PersonSelector
+            <EmployeeSelector
               v-model="selectedOwners"
               @change="handleOwnerChange"
               style="height: 500px;"
@@ -171,7 +171,7 @@
           max-width="90vw"
         >
           <div style="padding: 10px; height: 600px; overflow: auto;">
-            <PersonSelector
+            <EmployeeSelector
               v-model="selectedParticipants"
               @change="handleParticipantsChange"
               style="height: 500px;"
@@ -196,7 +196,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BaseTable from '@/components/BaseTable.vue'
-import PersonSelector from '@/components/PersonSelector.vue'
+import EmployeeSelector from '@/components/EmployeeSelector.vue'
 import { getProjectPage, getProjectDetail, createProject, updateProject, archiveProject, deleteProject } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
