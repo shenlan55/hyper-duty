@@ -398,7 +398,7 @@
       max-width="90vw"
     >
       <div style="padding: 10px;">
-        <EmployeeSelector
+        <PersonSelector
           v-model="selectedAssignees"
           style="height: 500px;"
         />
@@ -417,7 +417,7 @@
       max-width="90vw"
     >
       <div style="padding: 10px;">
-        <EmployeeSelector
+        <PersonSelector
           v-model="selectedStakeholders"
           style="height: 500px;"
         />
@@ -440,7 +440,7 @@ import TaskComment from '@/components/TaskComment.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
-import EmployeeSelector from '@/components/EmployeeSelector.vue'
+import PersonSelector from '@/components/PersonSelector.vue'
 import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, hasTaskPermission, hasTaskDeletePermission, getTaskDetail } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
