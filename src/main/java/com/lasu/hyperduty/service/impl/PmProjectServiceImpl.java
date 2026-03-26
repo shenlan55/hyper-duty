@@ -89,7 +89,10 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
 
     @Override
     public PmProject createProject(PmProject project) {
-        project.setStatus(1);
+        // 只有当状态为null时才设置默认值为1（未开始）
+        if (project.getStatus() == null) {
+            project.setStatus(1);
+        }
         project.setProgress(0);
         project.setArchived(0);
         project.setCreateTime(LocalDateTime.now());
