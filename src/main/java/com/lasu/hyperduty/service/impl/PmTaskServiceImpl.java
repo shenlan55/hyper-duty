@@ -114,7 +114,10 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             }
         }
         
-        task.setStatus(1);
+        // 如果前端没有传状态，默认为1（未开始）
+        if (task.getStatus() == null || task.getStatus() == 0) {
+            task.setStatus(1);
+        }
         task.setProgress(0);
         task.setIsPinned(0);
         task.setCreateTime(LocalDateTime.now());
