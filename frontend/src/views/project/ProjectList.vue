@@ -39,6 +39,7 @@
           pageSizes: pagination.pageSizes,
           total: pagination.total
         }"
+        :backend-pagination="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
       >
