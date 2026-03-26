@@ -95,6 +95,25 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             task.setTaskCode(projectCode + "-" + timestamp);
         }
         
+        // 如果前端没有传 createBy，从 SecurityContext 中获取当前用户
+        if (task.getCreateBy() == null) {
+            try {
+                org.springframework.security.core.Authentication authentication = 
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                if (authentication != null && authentication.getPrincipal() != null) {
+                    String principal = authentication.getPrincipal().toString();
+                    // 尝试从 principal 中获取 employeeId
+                    // 这里简化处理，实际项目中可能需要更复杂的逻辑
+                    if (principal.contains("employeeId")) {
+                        // 如果 principal 是自定义对象，可以强转为对应的类型
+                        // 这里暂时不做处理，让前端传 createBy
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("获取当前用户信息失败", e);
+            }
+        }
+        
         task.setStatus(1);
         task.setProgress(0);
         task.setIsPinned(0);

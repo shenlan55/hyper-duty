@@ -813,19 +813,80 @@ const handleViewTask = (task) => {
 const handleTaskSubmit = async () => {
   try {
     await taskFormRef.value.validate()
-    // 准备提交的数据
-    const submitData = {
-      ...taskForm,
-      ownerId: taskForm.assigneeId, // 映射到后端需要的字段名
-      // 移除stakeholders字段，因为后端实体类中没有这个字段
+    
+    console.log('taskForm 原始数据:', { ...taskForm })
+    console.log('taskForm.assigneeId:', taskForm.assigneeId, '类型:', typeof taskForm.assigneeId)
+    console.log('taskForm.priority:', taskForm.priority, '类型:', typeof taskForm.priority)
+    console.log('taskForm.status:', taskForm.status, '类型:', typeof taskForm.status)
+    console.log('userStore.employeeId:', userStore.employeeId)
+    
+    // 确保所有字段类型正确，只保留后端实体类中存在的字段
+    const submitData = {}
+    
+    // 只添加有值且类型正确的字段
+    if (taskForm.id !== undefined && taskForm.id !== null) {
+      submitData.id = Number(taskForm.id)
+    }
+    
+    if (taskForm.projectId !== undefined && taskForm.projectId !== null) {
+      submitData.projectId = Number(taskForm.projectId)
+    }
+    
+    if (taskForm.parentId !== undefined && taskForm.parentId !== null) {
+      submitData.parentId = Number(taskForm.parentId)
+    } else {
+      submitData.parentId = 0
+    }
+    
+    if (taskForm.taskName) {
+      submitData.taskName = taskForm.taskName
+    }
+    
+    if (taskForm.priority !== undefined && taskForm.priority !== null) {
+      submitData.priority = Number(taskForm.priority)
+    } else {
+      submitData.priority = 2
+    }
+    
+    if (taskForm.assigneeId !== undefined && taskForm.assigneeId !== null) {
+      submitData.assigneeId = Number(taskForm.assigneeId)
+    }
+    
+    if (taskForm.startDate) {
+      submitData.startDate = taskForm.startDate
+    }
+    
+    if (taskForm.endDate) {
+      submitData.endDate = taskForm.endDate
+    }
+    
+    if (taskForm.description) {
+      submitData.description = taskForm.description
+    }
+    
+    if (taskForm.status !== undefined && taskForm.status !== null) {
+      submitData.status = Number(taskForm.status)
+    } else {
+      submitData.status = 1
+    }
+    
+    // 添加创建人ID
+    if (userStore.employeeId) {
+      submitData.createBy = Number(userStore.employeeId)
     }
     
     // 处理附件数据，转换为JSON字符串
-    if (submitData.attachments && Array.isArray(submitData.attachments)) {
-      submitData.attachments = JSON.stringify(submitData.attachments)
-    } else {
-      submitData.attachments = null
+    if (taskForm.attachments && Array.isArray(taskForm.attachments) && taskForm.attachments.length > 0) {
+      submitData.attachments = JSON.stringify(taskForm.attachments)
     }
+    
+    // 处理参与人员数据，转换为JSON字符串
+    if (taskForm.stakeholders && Array.isArray(taskForm.stakeholders) && taskForm.stakeholders.length > 0) {
+      submitData.stakeholders = JSON.stringify(taskForm.stakeholders)
+    }
+    
+    console.log('最终提交的任务数据:', submitData)
+    console.log('JSON 格式:', JSON.stringify(submitData))
     
     if (taskForm.id) {
       await updateTask(submitData)
@@ -839,6 +900,7 @@ const handleTaskSubmit = async () => {
       loadTasks(selectedProjectId.value)
     }
   } catch (error) {
+    console.error('任务提交失败:', error)
     if (error !== false) {
       ElMessage.error('操作失败')
     }
