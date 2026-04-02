@@ -24,7 +24,8 @@ public interface PmProjectMapper extends BaseMapper<PmProject> {
             "FROM pm_project p " +
             "LEFT JOIN sys_employee e ON p.owner_id = e.id " +
             "LEFT JOIN pm_project_employee pe ON p.id = pe.project_id " +
-            "WHERE (p.owner_id = #{employeeId} OR pe.employee_id = #{employeeId}) AND p.archived = 0 " +
+            "LEFT JOIN pm_project_deputy_owner pdo ON p.id = pdo.project_id " +
+            "WHERE (p.owner_id = #{employeeId} OR pdo.employee_id = #{employeeId} OR pe.employee_id = #{employeeId}) AND p.archived = 0 " +
             "ORDER BY p.sort ASC, p.create_time DESC")
     List<PmProject> selectByOwnerId(@Param("employeeId") Long employeeId);
 

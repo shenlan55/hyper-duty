@@ -1565,6 +1565,24 @@ CREATE INDEX IF NOT EXISTS idx_pm_project_participant_project_id ON public.pm_pr
 CREATE INDEX IF NOT EXISTS idx_pm_project_participant_employee_id ON public.pm_project_participant(employee_id);
 
 --
+-- 创建项目代理负责人关联表
+--
+CREATE TABLE IF NOT EXISTS public.pm_project_deputy_owner (
+    id SERIAL PRIMARY KEY,
+    project_id BIGINT NOT NULL,
+    employee_id BIGINT NOT NULL,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES public.pm_project(id) ON DELETE CASCADE,
+    FOREIGN KEY (employee_id) REFERENCES public.sys_employee(id) ON DELETE CASCADE,
+    UNIQUE(project_id, employee_id)
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_pm_project_deputy_owner_project_id ON public.pm_project_deputy_owner(project_id);
+CREATE INDEX IF NOT EXISTS idx_pm_project_deputy_owner_employee_id ON public.pm_project_deputy_owner(employee_id);
+
+--
 -- 创建任务进展更新表
 --
 CREATE TABLE IF NOT EXISTS public.pm_task_progress_update (
@@ -6430,6 +6448,26 @@ ALTER TABLE pm_task ADD COLUMN attachments text;
 
 -- 增加description字段长度以支持富文本内容
 ALTER TABLE pm_task ALTER COLUMN description TYPE text;
+
+-- 项目表结构调整
+-- 删除旧的单个 deputy_owner_id 字段
+ALTER TABLE pm_project DROP COLUMN IF EXISTS deputy_owner_id;
+
+-- 创建代理负责人关联表
+CREATE TABLE IF NOT EXISTS public.pm_project_deputy_owner (
+    id SERIAL PRIMARY KEY,
+    project_id BIGINT NOT NULL,
+    employee_id BIGINT NOT NULL,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES public.pm_project(id) ON DELETE CASCADE,
+    FOREIGN KEY (employee_id) REFERENCES public.sys_employee(id) ON DELETE CASCADE,
+    UNIQUE(project_id, employee_id)
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_pm_project_deputy_owner_project_id ON public.pm_project_deputy_owner(project_id);
+CREATE INDEX IF NOT EXISTS idx_pm_project_deputy_owner_employee_id ON public.pm_project_deputy_owner(employee_id);
 
 -- Completed on 2026-02-24 20:59:48
 

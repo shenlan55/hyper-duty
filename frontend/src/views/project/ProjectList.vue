@@ -52,6 +52,9 @@
         <template #priority="{ row }">
           <el-tag :type="getPriorityType(row.priority)">{{ getPriorityText(row.priority) }}</el-tag>
         </template>
+        <template #deputyOwnerNames="{ row }">
+          {{ formatDeputyOwnerNames(row.deputyOwnerNames) }}
+        </template>
         <template #operation="{ row }">
           <el-button type="info" size="small" @click="handleView(row)">查看</el-button>
           <el-button v-if="canEditProject(row)" type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
@@ -108,7 +111,19 @@
             style="cursor: pointer;"
           />
         </el-form-item>
+        <el-form-item label="代理负责人" prop="deputyOwnerId">
+          <el-input
+            v-model="deputyOwnerName"
+            placeholder="请选择代理负责人（可选）"
+            readonly
+            clearable
+            @clear="handleDeputyOwnerClear"
+            @click="deputyOwnerDialogVisible = true"
+            style="cursor: pointer;"
+          />
+        </el-form-item>
 
+        <!-- 负责人选择对话框 -->
         <!-- 负责人选择对话框 -->
         <el-dialog
           v-model="ownerDialogVisible"
@@ -126,6 +141,26 @@
           <template #footer>
             <el-button @click="ownerDialogVisible = false">取消</el-button>
             <el-button type="primary" @click="confirmOwnerSelection">确认</el-button>
+          </template>
+        </el-dialog>
+
+        <!-- 代理负责人选择对话框 -->
+        <el-dialog
+          v-model="deputyOwnerDialogVisible"
+          title="选择代理负责人"
+          width="900px"
+          max-width="90vw"
+        >
+          <div style="padding: 10px; height: 600px; overflow: auto;">
+            <PersonSelector
+              v-model="selectedDeputyOwners"
+              @change="handleDeputyOwnerChange"
+              style="height: 500px;"
+            />
+          </div>
+          <template #footer>
+            <el-button @click="deputyOwnerDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="confirmDeputyOwnerSelection">确认</el-button>
           </template>
         </el-dialog>
         <el-form-item label="开始日期" prop="startDate">
@@ -217,6 +252,11 @@ const ownerDialogVisible = ref(false)
 const ownerName = ref('')
 const selectedOwners = ref([])
 
+// 代理负责人选择相关变量
+const deputyOwnerDialogVisible = ref(false)
+const deputyOwnerName = ref('')
+const selectedDeputyOwners = ref([])
+
 // 参与人员选择相关变量
 const participantsDialogVisible = ref(false)
 const participantsNames = ref('')
@@ -244,6 +284,8 @@ const form = reactive({
   status: 1,
   ownerId: null,
   ownerName: '',
+  deputyOwnerIds: [],
+  deputyOwnerNames: [],
   startDate: '',
   endDate: '',
   description: '',
@@ -263,6 +305,12 @@ const columns = [
   { prop: 'status', label: '状态', width: 100, slot: 'status' },
   { prop: 'progress', label: '进度', width: 150, slot: 'progress' },
   { prop: 'ownerName', label: '负责人', width: 100 },
+  { 
+    prop: 'deputyOwnerNames', 
+    label: '代理负责人', 
+    width: 180,
+    slot: 'deputyOwnerNames'
+  },
   { prop: 'startDate', label: '开始日期', width: 110 },
   { prop: 'endDate', label: '结束日期', width: 110 },
   { prop: 'operation', label: '操作', width: 300, fixed: 'right', slot: 'operation' }
@@ -293,6 +341,38 @@ const getProgressStatus = (progress) => {
   if (progress >= 60) return ''
   if (progress >= 30) return 'warning'
   return 'exception'
+}
+
+// 格式化代理负责人名称
+const formatDeputyOwnerNames = (deputyOwnerNames) => {
+  if (deputyOwnerNames) {
+    if (Array.isArray(deputyOwnerNames)) {
+      // 过滤空字符串并连接
+      const validNames = deputyOwnerNames.filter(name => name && name.trim())
+      return validNames.length > 0 ? validNames.join(', ') : ''
+    } else if (typeof deputyOwnerNames === 'string') {
+      // 尝试解析字符串为数组
+      try {
+        // 去除首尾的空格
+        const trimmed = deputyOwnerNames.trim()
+        // 检查是否是 JSON 数组格式
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          const parsed = JSON.parse(trimmed)
+          if (Array.isArray(parsed)) {
+            // 过滤空字符串并连接
+            const validNames = parsed.filter(name => name && name.trim())
+            return validNames.length > 0 ? validNames.join(', ') : ''
+          }
+        }
+        // 如果不是 JSON 数组，直接返回字符串
+        return trimmed
+      } catch (e) {
+        // 如果解析失败，直接返回字符串
+        return deputyOwnerNames
+      }
+    }
+  }
+  return ''
 }
 
 const loadData = async () => {
@@ -358,6 +438,60 @@ const handleEdit = async (row) => {
     Object.assign(form, projectDetail)
     // 同步负责人姓名到ownerName变量
     ownerName.value = form.ownerName || ''
+    // 同步代理负责人姓名到deputyOwnerName变量
+    if (form.deputyOwnerNames) {
+      if (Array.isArray(form.deputyOwnerNames)) {
+        deputyOwnerName.value = form.deputyOwnerNames.join(', ')
+      } else if (typeof form.deputyOwnerNames === 'string') {
+        // 尝试解析字符串为数组
+        try {
+          // 去除首尾的空格和引号
+          const trimmed = form.deputyOwnerNames.trim()
+          // 检查是否是 JSON 数组格式
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            const parsed = JSON.parse(trimmed)
+            if (Array.isArray(parsed)) {
+              deputyOwnerName.value = parsed.join(', ')
+            } else {
+              deputyOwnerName.value = ''
+            }
+          } else {
+            deputyOwnerName.value = ''
+          }
+        } catch (e) {
+          deputyOwnerName.value = ''
+        }
+      } else {
+        deputyOwnerName.value = ''
+      }
+    } else {
+      deputyOwnerName.value = ''
+    }
+    
+    // 同步代理负责人选择
+    if (form.deputyOwnerIds) {
+      if (Array.isArray(form.deputyOwnerIds)) {
+        await loadEmployeeList()
+        selectedDeputyOwners.value = employeeList.value.filter(emp => form.deputyOwnerIds.includes(emp.id))
+      } else if (typeof form.deputyOwnerIds === 'string') {
+        // 尝试解析字符串为数组
+        try {
+          // 去除首尾的空格和引号
+          const trimmed = form.deputyOwnerIds.trim()
+          // 检查是否是 JSON 数组格式
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            const parsed = JSON.parse(trimmed)
+            if (Array.isArray(parsed)) {
+              await loadEmployeeList()
+              selectedDeputyOwners.value = employeeList.value.filter(emp => parsed.includes(emp.id))
+            }
+          }
+        } catch (e) {
+          // 解析失败，清空选择
+          selectedDeputyOwners.value = []
+        }
+      }
+    }
     
     // 同步参与人员信息
     if (form.participants && Array.isArray(form.participants)) {
@@ -455,6 +589,8 @@ const resetForm = () => {
   form.priority = 2
   form.ownerId = null
   form.ownerName = ''
+  form.deputyOwnerIds = []
+  form.deputyOwnerNames = []
   form.startDate = ''
   form.endDate = ''
   form.description = ''
@@ -462,6 +598,9 @@ const resetForm = () => {
   ownerName.value = ''
   selectedOwners.value = []
   ownerDialogVisible.value = false
+  deputyOwnerName.value = ''
+  selectedDeputyOwners.value = []
+  deputyOwnerDialogVisible.value = false
   participantsNames.value = ''
   selectedParticipants.value = []
   participantsDialogVisible.value = false
@@ -488,6 +627,33 @@ const handleOwnerClear = () => {
   form.ownerName = ''
   ownerName.value = ''
   selectedOwners.value = []
+}
+
+// 代理负责人选择相关方法
+const handleDeputyOwnerChange = (persons) => {
+  selectedDeputyOwners.value = persons
+}
+
+const confirmDeputyOwnerSelection = () => {
+  if (selectedDeputyOwners.value.length > 0) {
+    // 提取代理负责人ID数组
+    form.deputyOwnerIds = selectedDeputyOwners.value.map(person => person.id)
+    // 提取代理负责人姓名，用逗号分隔显示
+    deputyOwnerName.value = selectedDeputyOwners.value.map(person => person.employeeName).join(', ')
+    form.deputyOwnerNames = selectedDeputyOwners.value.map(person => person.employeeName)
+  } else {
+    form.deputyOwnerIds = []
+    form.deputyOwnerNames = []
+    deputyOwnerName.value = ''
+  }
+  deputyOwnerDialogVisible.value = false
+}
+
+const handleDeputyOwnerClear = () => {
+  form.deputyOwnerIds = []
+  form.deputyOwnerNames = []
+  deputyOwnerName.value = ''
+  selectedDeputyOwners.value = []
 }
 
 // 参与人员选择相关方法
@@ -531,18 +697,36 @@ const canCreateProject = computed(() => {
 })
 
 const canEditProject = (project) => {
-  // 只有项目负责人才能编辑项目
-  return project.ownerId === userStore.employeeId
+  // 项目负责人或代理负责人都可以编辑项目
+  if (project.ownerId === userStore.employeeId) {
+    return true
+  }
+  if (project.deputyOwnerIds && Array.isArray(project.deputyOwnerIds)) {
+    return project.deputyOwnerIds.includes(userStore.employeeId)
+  }
+  return false
 }
 
 const canDeleteProject = (project) => {
-  // 只有项目负责人才能删除项目
-  return project.ownerId === userStore.employeeId
+  // 项目负责人或代理负责人都可以删除项目
+  if (project.ownerId === userStore.employeeId) {
+    return true
+  }
+  if (project.deputyOwnerIds && Array.isArray(project.deputyOwnerIds)) {
+    return project.deputyOwnerIds.includes(userStore.employeeId)
+  }
+  return false
 }
 
 const canArchiveProject = (project) => {
-  // 只有项目负责人才能归档项目
-  return project.ownerId === userStore.employeeId
+  // 项目负责人或代理负责人都可以归档项目
+  if (project.ownerId === userStore.employeeId) {
+    return true
+  }
+  if (project.deputyOwnerIds && Array.isArray(project.deputyOwnerIds)) {
+    return project.deputyOwnerIds.includes(userStore.employeeId)
+  }
+  return false
 }
 
 onMounted(() => {

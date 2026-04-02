@@ -7,6 +7,7 @@ import com.lasu.hyperduty.entity.PmProject;
 import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.mapper.PmProjectMapper;
 import com.lasu.hyperduty.mapper.SysEmployeeMapper;
+import com.lasu.hyperduty.service.PmProjectDeputyOwnerService;
 import com.lasu.hyperduty.service.PmProjectEmployeeService;
 import com.lasu.hyperduty.service.PmProjectService;
 import com.lasu.hyperduty.service.PmTaskService;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -25,6 +27,7 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
 
     private final PmTaskService pmTaskService;
     private final PmProjectEmployeeService pmProjectEmployeeService;
+    private final PmProjectDeputyOwnerService pmProjectDeputyOwnerService;
     private final SysEmployeeMapper sysEmployeeMapper;
 
     @Override
@@ -53,7 +56,7 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
         
         Page<PmProject> result = baseMapper.selectPage(page, wrapper);
         
-        // 填充负责人名称
+        // 填充负责人名称和代理负责人名称
         if (result.getRecords() != null && !result.getRecords().isEmpty()) {
             for (PmProject project : result.getRecords()) {
                 if (project.getOwnerId() != null) {
@@ -61,6 +64,19 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
                     if (employee != null) {
                         project.setOwnerName(employee.getEmployeeName());
                     }
+                }
+                // 加载代理负责人
+                List<Long> deputyOwnerIds = pmProjectDeputyOwnerService.getDeputyOwnerIdsByProjectId(project.getId());
+                project.setDeputyOwnerIds(deputyOwnerIds);
+                if (deputyOwnerIds != null && !deputyOwnerIds.isEmpty()) {
+                    List<String> deputyOwnerNames = new ArrayList<>();
+                    for (Long deputyOwnerId : deputyOwnerIds) {
+                        SysEmployee deputyEmployee = sysEmployeeMapper.selectById(deputyOwnerId);
+                        if (deputyEmployee != null) {
+                            deputyOwnerNames.add(deputyEmployee.getEmployeeName());
+                        }
+                    }
+                    project.setDeputyOwnerNames(deputyOwnerNames);
                 }
             }
         }
@@ -83,6 +99,20 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
             // 加载项目参与者
             List<Long> participantIds = pmProjectEmployeeService.getEmployeeIdsByProjectId(id);
             project.setParticipants(participantIds);
+            
+            // 加载代理负责人
+            List<Long> deputyOwnerIds = pmProjectDeputyOwnerService.getDeputyOwnerIdsByProjectId(id);
+            project.setDeputyOwnerIds(deputyOwnerIds);
+            if (deputyOwnerIds != null && !deputyOwnerIds.isEmpty()) {
+                List<String> deputyOwnerNames = new ArrayList<>();
+                for (Long deputyOwnerId : deputyOwnerIds) {
+                    SysEmployee deputyEmployee = sysEmployeeMapper.selectById(deputyOwnerId);
+                    if (deputyEmployee != null) {
+                        deputyOwnerNames.add(deputyEmployee.getEmployeeName());
+                    }
+                }
+                project.setDeputyOwnerNames(deputyOwnerNames);
+            }
         }
         return project;
     }
@@ -105,6 +135,11 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
             pmProjectEmployeeService.saveProjectEmployees(project.getId(), project.getParticipants());
         }
         
+        // 保存代理负责人
+        if (project.getDeputyOwnerIds() != null && !project.getDeputyOwnerIds().isEmpty()) {
+            pmProjectDeputyOwnerService.saveDeputyOwners(project.getId(), project.getDeputyOwnerIds());
+        }
+        
         log.info("创建项目成功: {}", project.getProjectName());
         return project;
     }
@@ -116,6 +151,9 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
         
         // 保存项目参与者
         pmProjectEmployeeService.saveProjectEmployees(project.getId(), project.getParticipants());
+        
+        // 保存代理负责人
+        pmProjectDeputyOwnerService.saveDeputyOwners(project.getId(), project.getDeputyOwnerIds());
         
         log.info("更新项目成功: {}", project.getId());
         return project;

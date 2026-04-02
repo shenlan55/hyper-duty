@@ -7,6 +7,7 @@ import com.lasu.hyperduty.entity.PmProject;
 import com.lasu.hyperduty.entity.PmTask;
 import com.lasu.hyperduty.mapper.PmProjectMapper;
 import com.lasu.hyperduty.mapper.PmTaskMapper;
+import com.lasu.hyperduty.service.PmProjectDeputyOwnerService;
 import com.lasu.hyperduty.service.PmTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import java.util.List;
 public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> implements PmTaskService {
 
     private final PmProjectMapper projectMapper;
+    private final PmProjectDeputyOwnerService pmProjectDeputyOwnerService;
 
     @Override
     public Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long assigneeId, Integer status, Integer priority) {
@@ -286,10 +288,17 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             return true;
         }
         
-        // 检查是否是项目的所有者
+        // 检查是否是项目的所有者或代理负责人
         PmProject project = projectMapper.selectById(task.getProjectId());
-        if (project != null && project.getOwnerId() != null && project.getOwnerId().equals(employeeId)) {
-            return true;
+        if (project != null) {
+            if (project.getOwnerId() != null && project.getOwnerId().equals(employeeId)) {
+                return true;
+            }
+            // 检查是否是代理负责人之一
+            List<Long> deputyOwnerIds = pmProjectDeputyOwnerService.getDeputyOwnerIdsByProjectId(task.getProjectId());
+            if (deputyOwnerIds != null && deputyOwnerIds.contains(employeeId)) {
+                return true;
+            }
         }
         
         // 检查是否是项目的参与人员
@@ -346,10 +355,17 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             return true;
         }
         
-        // 检查是否是项目的所有者
+        // 检查是否是项目的所有者或代理负责人
         PmProject project = projectMapper.selectById(task.getProjectId());
-        if (project != null && project.getOwnerId() != null && project.getOwnerId().equals(employeeId)) {
-            return true;
+        if (project != null) {
+            if (project.getOwnerId() != null && project.getOwnerId().equals(employeeId)) {
+                return true;
+            }
+            // 检查是否是代理负责人之一
+            List<Long> deputyOwnerIds = pmProjectDeputyOwnerService.getDeputyOwnerIdsByProjectId(task.getProjectId());
+            if (deputyOwnerIds != null && deputyOwnerIds.contains(employeeId)) {
+                return true;
+            }
         }
         
         // 检查是否是项目的参与人员

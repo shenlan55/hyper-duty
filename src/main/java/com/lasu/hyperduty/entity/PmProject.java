@@ -49,6 +49,12 @@ public class PmProject {
     private String ownerName;
 
     @TableField(exist = false)
+    private List<Long> deputyOwnerIds;
+
+    @TableField(exist = false)
+    private List<String> deputyOwnerNames;
+
+    @TableField(exist = false)
     private Integer taskCount;
 
     @TableField(exist = false)
