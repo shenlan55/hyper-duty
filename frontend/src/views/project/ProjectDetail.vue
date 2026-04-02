@@ -692,6 +692,28 @@ const loadTasks = async (id) => {
   }
 }
 
+const loadTaskTree = async (projectId, excludeTaskId = null) => {
+  if (!projectId) {
+    taskTreeData.value = []
+    return
+  }
+  try {
+    const data = await getProjectTasks(projectId)
+    taskTreeData.value = buildTaskTree(data, 0, excludeTaskId)
+  } catch (error) {
+    console.error('加载任务树失败', error)
+  }
+}
+
+const buildTaskTree = (tasks, parentId = 0, excludeTaskId = null) => {
+  return tasks
+    .filter(task => task.parentId === parentId && task.id !== excludeTaskId)
+    .map(task => ({
+      ...task,
+      children: buildTaskTree(tasks, task.id, excludeTaskId)
+    }))
+}
+
 const loadEmployeeList = async () => {
   try {
     const data = await getEmployeeList(1, 1000)
@@ -837,6 +859,8 @@ const handleAddTask = (status = 1) => {
   resetTaskForm()
   taskForm.status = status
   taskForm.projectId = selectedProjectId.value
+  // 加载任务树
+  loadTaskTree(selectedProjectId.value)
   taskDialogVisible.value = true
 }
 

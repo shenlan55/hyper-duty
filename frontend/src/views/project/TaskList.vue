@@ -617,25 +617,25 @@ const loadEmployeeList = async () => {
   }
 }
 
-const loadTaskTree = async (projectId) => {
+const loadTaskTree = async (projectId, excludeTaskId = null) => {
   if (!projectId) {
     taskTreeData.value = []
     return
   }
   try {
     const data = await getProjectTasks(projectId)
-    taskTreeData.value = buildTaskTree(data)
+    taskTreeData.value = buildTaskTree(data, 0, excludeTaskId)
   } catch (error) {
     console.error('加载任务树失败', error)
   }
 }
 
-const buildTaskTree = (tasks, parentId = 0) => {
+const buildTaskTree = (tasks, parentId = 0, excludeTaskId = null) => {
   return tasks
-    .filter(task => task.parentId === parentId)
+    .filter(task => task.parentId === parentId && task.id !== excludeTaskId)
     .map(task => ({
       ...task,
-      children: buildTaskTree(tasks, task.id)
+      children: buildTaskTree(tasks, task.id, excludeTaskId)
     }))
 }
 
@@ -752,7 +752,8 @@ const handleEdit = async (row) => {
     )
   }
   
-  loadTaskTree(row.projectId)
+  // 加载任务树时排除当前任务
+  loadTaskTree(row.projectId, row.id)
   dialogVisible.value = true
 }
 
