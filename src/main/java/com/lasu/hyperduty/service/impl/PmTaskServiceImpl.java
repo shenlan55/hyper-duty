@@ -250,6 +250,7 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     public Integer calculateProjectProgress(Long projectId) {
         LambdaQueryWrapper<PmTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(PmTask::getProjectId, projectId);
+        wrapper.eq(PmTask::getParentId, 0L);
         
         List<PmTask> tasks = list(wrapper);
         
@@ -295,6 +296,20 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             project.setUpdateTime(LocalDateTime.now());
             projectMapper.updateById(project);
         }
+    }
+
+    @Override
+    @Transactional
+    public void recalculateAllProjectProgress() {
+        LambdaQueryWrapper<PmProject> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PmProject::getArchived, 0);
+        List<PmProject> projects = projectMapper.selectList(wrapper);
+        
+        for (PmProject project : projects) {
+            updateProjectProgress(project.getId());
+        }
+        
+        log.info("重新计算所有项目进度完成，共处理 {} 个项目", projects.size());
     }
 
     @Override

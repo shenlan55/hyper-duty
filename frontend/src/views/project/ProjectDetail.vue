@@ -356,6 +356,7 @@
       :title="taskDetailDialogTitle"
       width="1500px"
       max-width="1500px"
+      @close="handleTaskDetailClose"
     >
       <TaskDetail :task="currentTask" />
       <template #footer>
@@ -990,6 +991,13 @@ const handleUploadError = (error) => {
 const handleViewTask = (task) => {
   currentTask.value = { ...task }
   taskDetailDialogVisible.value = true
+}
+
+const handleTaskDetailClose = () => {
+  if (selectedProjectId.value) {
+    loadProject(selectedProjectId.value)
+    loadTasks(selectedProjectId.value)
+  }
 }
 
 const handleTaskSubmit = async () => {

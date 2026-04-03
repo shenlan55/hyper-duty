@@ -122,4 +122,10 @@ public class PmTaskController {
         boolean hasPermission = pmTaskService.hasTaskDeletePermission(taskId, employeeId);
         return ResponseResult.success(hasPermission);
     }
+
+    @PostMapping("/recalculate-project-progress")
+    public ResponseResult<Void> recalculateAllProjectProgress() {
+        pmTaskService.recalculateAllProjectProgress();
+        return ResponseResult.success();
+    }
 }
