@@ -22,46 +22,59 @@
       </div>
 
       <div v-else class="gantt-container">
-        <div class="gantt-scroll-wrapper">
-          <div class="gantt-header">
-            <div class="gantt-task-header">任务名称</div>
-            <div class="gantt-timeline-header">
+        <div class="gantt-wrapper">
+          <div class="gantt-fixed-col">
+            <div class="gantt-header">
+              <div class="gantt-task-header">任务名称</div>
+            </div>
+            <div class="gantt-body" ref="fixedBodyRef">
               <div
-                v-for="date in dateList"
-                :key="date"
-                class="timeline-cell"
-                :class="{ 'is-today': isToday(date), 'is-weekend': isWeekend(date) }"
+                v-for="task in taskList"
+                :key="task.id"
+                class="gantt-row"
               >
-                {{ formatDate(date) }}
+                <div class="gantt-task-cell" :style="{ paddingLeft: (task.taskLevel - 1) * 20 + 'px' }">
+                  <span :class="{ 'pinned-task': task.isPinned === 1 }">
+                    {{ task.taskName }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-
-          <div class="gantt-body">
-            <div
-              v-for="task in taskList"
-              :key="task.id"
-              class="gantt-row"
-            >
-              <div class="gantt-task-cell" :style="{ paddingLeft: (task.taskLevel - 1) * 20 + 'px' }">
-                <span :class="{ 'pinned-task': task.isPinned === 1 }">
-                  {{ task.taskName }}
-                </span>
-              </div>
-              <div class="gantt-timeline-cell">
+          <div class="gantt-scroll-col" ref="scrollColRef" @scroll="handleScroll">
+            <div class="gantt-header">
+              <div class="gantt-timeline-header">
                 <div
                   v-for="date in dateList"
                   :key="date"
                   class="timeline-cell"
                   :class="{ 'is-today': isToday(date), 'is-weekend': isWeekend(date) }"
-                />
-                <div
-                  v-if="task.startDate && task.endDate"
-                  class="gantt-bar"
-                  :class="getBarClass(task)"
-                  :style="getBarStyle(task)"
                 >
-                  <span class="bar-text">{{ task.progress }}%</span>
+                  {{ formatDate(date) }}
+                </div>
+              </div>
+            </div>
+            <div class="gantt-body">
+              <div
+                v-for="task in taskList"
+                :key="task.id"
+                class="gantt-row"
+              >
+                <div class="gantt-timeline-cell">
+                  <div
+                    v-for="date in dateList"
+                    :key="date"
+                    class="timeline-cell"
+                    :class="{ 'is-today': isToday(date), 'is-weekend': isWeekend(date) }"
+                  />
+                  <div
+                    v-if="task.startDate && task.endDate"
+                    class="gantt-bar"
+                    :class="getBarClass(task)"
+                    :style="getBarStyle(task)"
+                  >
+                    <span class="bar-text">{{ task.progress }}%</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -77,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getProjectPage } from '@/api/project'
 import { getProjectTasks } from '@/api/task'
@@ -85,6 +98,8 @@ import { getProjectTasks } from '@/api/task'
 const selectedProjectId = ref(null)
 const projectList = ref([])
 const taskList = ref([])
+const fixedBodyRef = ref(null)
+const scrollColRef = ref(null)
 
 const dateList = computed(() => {
   if (taskList.value.length === 0) return []
@@ -193,6 +208,12 @@ const handleProjectChange = async () => {
   }
 }
 
+const handleScroll = (e) => {
+  if (fixedBodyRef.value) {
+    fixedBodyRef.value.scrollTop = e.target.scrollTop
+  }
+}
+
 onMounted(() => {
   loadProjectList()
 })
@@ -222,19 +243,56 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.gantt-scroll-wrapper {
-  overflow-x: auto;
-  overflow-y: auto;
+.gantt-wrapper {
+  display: flex;
   max-height: 500px;
+  border: 1px solid #ebeef5;
+}
+
+.gantt-fixed-col {
+  width: 200px;
+  min-width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid #ebeef5;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gantt-fixed-col .gantt-header {
+  border-bottom: 1px solid #ebeef5;
+  background: #f5f7fa;
+  flex-shrink: 0;
+}
+
+.gantt-fixed-col .gantt-body {
+  overflow: hidden;
+  flex: 1;
+}
+
+.gantt-scroll-col {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.gantt-scroll-col .gantt-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid #ebeef5;
+  background: #f5f7fa;
+  flex-shrink: 0;
+}
+
+.gantt-scroll-col .gantt-body {
+  overflow: visible;
+  flex: 1;
 }
 
 .gantt-header {
   display: flex;
-  border-bottom: 1px solid #ebeef5;
-  background: #f5f7fa;
-  position: sticky;
-  top: 0;
-  z-index: 20;
 }
 
 .gantt-task-header {
@@ -242,11 +300,6 @@ onMounted(() => {
   min-width: 200px;
   padding: 10px;
   font-weight: bold;
-  border-right: 1px solid #ebeef5;
-  position: sticky;
-  left: 0;
-  z-index: 30;
-  background: #f5f7fa;
 }
 
 .gantt-timeline-header {
@@ -279,6 +332,7 @@ onMounted(() => {
 .gantt-row {
   display: flex;
   border-bottom: 1px solid #ebeef5;
+  min-height: 41px;
 }
 
 .gantt-row:hover {
@@ -289,18 +343,9 @@ onMounted(() => {
   width: 200px;
   min-width: 200px;
   padding: 10px;
-  border-right: 1px solid #ebeef5;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  position: sticky;
-  left: 0;
-  z-index: 10;
-  background: #fff;
-}
-
-.gantt-row:hover .gantt-task-cell {
-  background: #f5f7fa;
 }
 
 .gantt-timeline-cell {
