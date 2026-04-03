@@ -112,7 +112,9 @@ const loadDeptList = async () => {
 const loadEmployeeList = async () => {
   try {
     const data = await getEmployeeList(1, 1000)
-    employeeList.value = Array.isArray(data) ? data : (data?.records || [])
+    const allEmployees = Array.isArray(data) ? data : (data?.records || [])
+    // 过滤掉禁用的人员
+    employeeList.value = allEmployees.filter(emp => emp.status === 1)
     
     // 如果已经有选中值，更新显示
     if (value.value) {
@@ -144,7 +146,8 @@ const loadEmployeeListByDept = async (deptId) => {
     // 暂时使用前端筛选
     const allEmployees = await getEmployeeList(1, 1000)
     const employees = Array.isArray(allEmployees) ? allEmployees : (allEmployees?.records || [])
-    employeeList.value = employees.filter(emp => emp.deptId === deptId)
+    // 过滤掉禁用的人员
+    employeeList.value = employees.filter(emp => emp.deptId === deptId && emp.status === 1)
   } catch (error) {
     console.error('加载部门员工列表失败', error)
     employeeList.value = []

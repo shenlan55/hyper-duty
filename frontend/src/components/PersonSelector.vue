@@ -182,9 +182,9 @@ const loadDeptTree = async () => {
 const loadEmployeesByDept = async (deptId) => {
   try {
     const data = await getEmployeesByDeptId(deptId)
-    // 过滤掉已选中的人员
+    // 过滤掉已选中的人员和禁用的人员
     const filteredData = (data || []).filter(emp => 
-      !selectedEmployees.value.some(selected => selected.id === emp.id)
+      emp.status === 1 && !selectedEmployees.value.some(selected => selected.id === emp.id)
     )
     employeeList.value = filteredData
   } catch (error) {
@@ -238,7 +238,7 @@ const handleSearchEnter = async () => {
       // 调用全量搜索API
       const response = await getEmployeeList(1, 1000, searchKeyword.value)
       console.log('API response:', response)
-      const employees = response?.records || []
+      const employees = (response?.records || []).filter(emp => emp.status === 1)
       console.log('Employees:', employees)
       
       if (employees.length > 0) {

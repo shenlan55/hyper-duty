@@ -52,15 +52,17 @@
         }"
         row-key="id"
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
+        :indent="20"
         style="width: 100%;"
       >
-        <template #taskName="{ row }">
-          <span :class="{ 'pinned-task': row.isPinned === 1 }">
+        <template #taskName="{ row, level }">
+          <div class="task-name-container" :class="{ 'pinned-task': row.isPinned === 1, 'parent-task': row.hasChildren }">
             <el-icon v-if="row.isPinned === 1" style="color: #f56c6c; margin-right: 4px;"><Star /></el-icon>
-            {{ row.taskName }}
-          </span>
+            <span class="task-name">{{ row.taskName }}</span>
+            <el-tag v-if="row.hasChildren" size="small" type="info" style="margin-left: 8px;">
+              {{ row.children ? row.children.length : 0 }}个子任务
+            </el-tag>
+          </div>
         </template>
         <template #progress="{ row }">
           <el-progress :percentage="row.progress" :status="getProgressStatus(row.progress)" />
@@ -72,41 +74,43 @@
           <el-tag :type="getTaskPriorityType(row.priority)">{{ getTaskPriorityText(row.priority) }}</el-tag>
         </template>
         <template #operation="{ row }">
-          <el-button 
-            v-if="row.hasPermission " 
-            type="primary" 
-            size="small" 
-            @click="handleEdit(row)"
-          >
-            编辑
-          </el-button>
-          <el-button 
-            v-if="row.hasPermission " 
-            type="success" 
-            size="small" 
-            @click="handleUpdateProgress(row)"
-          >
-            更新进度
-          </el-button>
-          <el-button type="info" size="small" @click="handleViewTaskDetail(row)">详情</el-button>
-          <el-button type="info" size="small" @click="handleViewComments(row)">批注</el-button>
-          <el-button 
-            v-if="row.hasPermission " 
-            type="warning" 
-            size="small" 
-            @click="handlePin(row)"
-            style="width: 70px;"
-          >
-            {{ row.isPinned === 1 ? '取消置顶' : '置顶' }}
-          </el-button>
-          <el-button 
-            v-if="row.hasDeletePermission " 
-            type="danger" 
-            size="small" 
-            @click="handleDelete(row)"
-          >
-            删除
-          </el-button>
+          <div style="display: flex; gap: 4px; white-space: nowrap;">
+            <el-button 
+              v-if="row.hasPermission " 
+              type="primary" 
+              size="small" 
+              @click="handleEdit(row)"
+            >
+              编辑
+            </el-button>
+            <el-button 
+              v-if="row.hasPermission " 
+              type="success" 
+              size="small" 
+              @click="handleUpdateProgress(row)"
+            >
+              更新进度
+            </el-button>
+            <el-button type="info" size="small" @click="handleViewTaskDetail(row)">详情</el-button>
+            <el-button type="info" size="small" @click="handleViewComments(row)">批注</el-button>
+            <el-button 
+              v-if="row.hasPermission " 
+              type="warning" 
+              size="small" 
+              @click="handlePin(row)"
+              style="min-width: 70px;"
+            >
+              {{ row.isPinned === 1 ? '取消置顶' : '置顶' }}
+            </el-button>
+            <el-button 
+              v-if="row.hasDeletePermission " 
+              type="danger" 
+              size="small" 
+              @click="handleDelete(row)"
+            >
+              删除
+            </el-button>
+          </div>
         </template>
       </BaseTable>
     </el-card>
@@ -543,7 +547,7 @@ const stakeholderNames = computed(() => {
 })
 
 const columns = [
-  { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName' },
+  { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName', indent: true },
   { prop: 'projectName', label: '所属项目', width: 180 },
   { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
   { prop: 'status', label: '状态', width: 100, slot: 'status' },
@@ -551,7 +555,7 @@ const columns = [
   { prop: 'ownerName', label: '负责人', width: 100 },
   { prop: 'startDate', label: '开始日期', width: 110 },
   { prop: 'endDate', label: '结束日期', width: 110 },
-  { prop: 'operation', label: '操作', width: 410, fixed: 'right', slot: 'operation' }
+  { prop: 'operation', label: '操作', width: 520, fixed: 'right', slot: 'operation' }
 ]
 
 
@@ -565,11 +569,11 @@ const loadData = async () => {
       ...searchForm
     }
     const data = await getTaskPage(params)
-    tableData.value = data.records || []
+    const tasks = data.records || []
     
     // 为每个任务计算权限状态
     if (userStore.employeeId) {
-      for (const task of tableData.value) {
+      for (const task of tasks) {
         try {
           task.hasPermission = await hasTaskPermission(task.id, userStore.employeeId)
           task.hasDeletePermission = await hasTaskDeletePermission(task.id, userStore.employeeId)
@@ -581,11 +585,14 @@ const loadData = async () => {
       }
     } else {
       // 如果没有employeeId，设置所有任务都没有权限
-      for (const task of tableData.value) {
+      for (const task of tasks) {
         task.hasPermission = false
         task.hasDeletePermission = false
       }
     }
+    
+    // 构建树形结构
+    tableData.value = buildTaskTree(tasks)
     
     pagination.total = data.total || 0
   } catch (error) {
@@ -633,10 +640,14 @@ const loadTaskTree = async (projectId, excludeTaskId = null) => {
 const buildTaskTree = (tasks, parentId = 0, excludeTaskId = null) => {
   return tasks
     .filter(task => task.parentId === parentId && task.id !== excludeTaskId)
-    .map(task => ({
-      ...task,
-      children: buildTaskTree(tasks, task.id, excludeTaskId)
-    }))
+    .map(task => {
+      const children = buildTaskTree(tasks, task.id, excludeTaskId)
+      return {
+        ...task,
+        children,
+        hasChildren: children.length > 0
+      }
+    })
 }
 
 const handleParentChange = (val) => {
@@ -1423,7 +1434,8 @@ onMounted(async () => {
 
 <style scoped>
 .task-list {
-  padding: 10px;
+  width: 100%;
+  height: 100%;
 }
 
 .card-header {
@@ -1433,292 +1445,165 @@ onMounted(async () => {
 }
 
 .search-form {
-  margin-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.task-name-container {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+  transition: all 0.3s ease;
+}
+
+.task-name-container:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+  padding-left: 4px;
+}
+
+.task-name {
+  flex: 1;
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .pinned-task {
-  color: #f56c6c;
-  font-weight: bold;
+  font-weight: 600;
 }
 
-/* 操作列按钮强制在一行显示 */
-:deep(.el-table__cell:last-child) {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.parent-task .task-name {
+  font-weight: 500;
+  color: #409EFF;
 }
 
-/* 操作按钮样式调整 */
-:deep(.el-table__cell:last-child .el-button) {
-  margin-right: 5px;
-  padding: 0 8px;
-  font-size: 12px;
+/* 自定义树形表格的样式 */
+:deep(.el-table__row) {
+  transition: all 0.3s ease;
 }
 
-/* 确保操作列内容容器不换行 */
-:deep(.el-table__cell:last-child) > div {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+:deep(.el-table__row:hover) {
+  background-color: rgba(64, 158, 255, 0.05) !important;
 }
 
-/* 对话框内容样式，防止横向滚动 */
-:deep(.el-dialog__body) {
-  overflow-x: hidden !important;
-  padding: 20px;
+:deep(.el-table__expand-icon) {
+  font-size: 16px;
+  transition: transform 0.3s ease;
 }
 
-/* 暂无数据样式 */
-.no-data {
-  padding: 10px;
-  text-align: center;
-  color: #909399;
-  font-size: 14px;
-  background-color: #f9f9f9;
+:deep(.el-table__expand-icon--expanded) {
+  transform: rotate(90deg);
+}
+
+/* 优化任务优先级和状态的显示 */
+:deep(.el-tag) {
+  margin-right: 0;
+}
+
+/* 优化操作按钮的显示 */
+:deep(.el-button--small) {
+  margin-right: 8px;
+}
+
+/* 任务详情面板样式 */
+.task-info-panel {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f5f7fa;
   border-radius: 4px;
-  border: 1px solid #e4e7ed;
 }
 
-/* 更新内容区域样式 */
-.update-content {
-  width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
+.task-description {
+  margin-bottom: 20px;
 }
 
-/* 描述内容自适应 */
-.update-description {
-  width: 100%;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  box-sizing: border-box;
+.task-attachments {
+  margin-bottom: 20px;
 }
 
-/* 富文本编辑器内容自适应 */
-.update-description :deep(img) {
-  max-width: 100%;
-  height: auto;
+.task-stakeholders {
+  margin-bottom: 20px;
 }
 
-.update-description :deep(table) {
-  max-width: 100%;
-  overflow-x: auto;
-  display: block;
-}
-
-/* 附件区域自适应 */
-.update-attachments {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* 附件容器，使用block布局支持垂直排列 */
 .attachments-container {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* 附件图片样式 */
-.attachment-image {
-  width: 120px;
-  height: 120px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.attachment-image:hover {
-  transform: scale(1.05);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .attachment-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  flex: 0 0 calc(33.333% - 10px);
+  min-width: 200px;
   padding: 10px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-  width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-  margin-bottom: 10px;
   border: 1px solid #e4e7ed;
-  transition: all 0.3s;
-}
-
-.attachment-item:hover {
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  background-color: #fff;
 }
 
 .attachment-file {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 1;
-  overflow: hidden;
+  margin-bottom: 8px;
 }
 
 .file-icon {
+  margin-right: 8px;
   color: #409EFF;
-  font-size: 20px;
 }
 
 .file-name {
   font-size: 14px;
-  color: #303133;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 500;
 }
 
 .attachment-info {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 15px;
 }
 
 .attachment-name {
-  font-size: 14px;
-  color: #303133;
+  font-size: 12px;
+  color: #606266;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 300px;
 }
 
 .attachment-actions {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
-.attachment-actions .el-button {
-  padding: 0 12px;
-}
-
-/* 确保附件容器的布局正确 */
-.attachments-container {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* 时间线内容自适应 */
-:deep(.el-timeline-item__content) {
-  width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-/* 卡片内容自适应 */
-:deep(.el-card__body) {
-  width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
-  padding: 15px;
-}
-
-/* 任务信息面板自适应 */
-.task-info-panel {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* 确保行和列布局自适应 */
-:deep(.el-row) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-:deep(.el-col) {
-  box-sizing: border-box;
-}
-
-/* 描述列表自适应 */
-:deep(.el-descriptions) {
-  width: 100%;
-}
-
-:deep(.el-descriptions__body) {
-  width: 100%;
-}
-
-/* 分割线自适应 */
-:deep(.el-divider) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* 确保富文本内容中的图片自适应容器宽度 */
-.update-description img,
-:deep(.ql-editor img) {
-  max-width: 100% !important;
-  height: auto !important;
-  display: block !important;
-  margin: 0 auto !important;
-  box-sizing: border-box !important;
-}
-
-/* 确保富文本编辑器容器宽度自适应 */
-.rich-text-editor {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.editor-container {
-  width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-/* 表单样式 */
-:deep(el-form) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-:deep(el-form-item) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* 富文本编辑器样式 */
-:deep(.rich-text-editor) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-:deep(.editor-container) {
-  width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-/* 附件上传样式 */
-:deep(.el-upload) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-:deep(.el-upload-list) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* 对话框内容样式，防止横向滚动 */
-:deep(.el-dialog__body) {
-  overflow-x: hidden !important;
-  padding: 20px;
-}
-
-/* 暂无数据样式 */
 .no-data {
-  padding: 10px;
-  text-align: center;
   color: #909399;
   font-size: 14px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-  border: 1px solid #e4e7ed;
+  padding: 10px 0;
+}
+
+/* 进度更新历史时间线样式 */
+:deep(.el-timeline-item__timestamp) {
+  font-size: 12px;
+  color: #909399;
+}
+
+.update-content {
+  width: 100%;
+}
+
+.update-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.update-description {
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.update-attachments {
+  margin-top: 10px;
 }
 </style>
