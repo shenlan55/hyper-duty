@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -50,7 +51,112 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
 
     @Override
     public List<PmTask> getProjectTasks(Long projectId) {
-        return baseMapper.selectByProjectId(projectId);
+        List<PmTask> allTasks = baseMapper.selectByProjectId(projectId);
+        
+        // 先修正所有任务的 taskLevel
+        fixTaskLevels(allTasks);
+        
+        return buildTaskTree(allTasks);
+    }
+
+    /**
+     * 修正所有任务的层级
+     * @param allTasks 所有任务列表
+     */
+    private void fixTaskLevels(List<PmTask> allTasks) {
+        // 构建 ID 到任务的映射
+        Map<Long, PmTask> idToTaskMap = new java.util.HashMap<>();
+        for (PmTask task : allTasks) {
+            idToTaskMap.put(task.getId(), task);
+        }
+        
+        // 递归修正每个任务的层级
+        for (PmTask task : allTasks) {
+            fixTaskLevel(task, idToTaskMap);
+        }
+    }
+    
+    /**
+     * 修正单个任务的层级
+     * @param task 任务
+     * @param idToTaskMap ID 到任务的映射
+     */
+    private void fixTaskLevel(PmTask task, Map<Long, PmTask> idToTaskMap) {
+        if (task.getParentId() == null || task.getParentId() == 0) {
+            // 根任务，层级为 1
+            task.setTaskLevel(1);
+        } else {
+            // 查找父任务
+            PmTask parentTask = idToTaskMap.get(task.getParentId());
+            if (parentTask != null) {
+                // 确保父任务的层级已经修正
+                if (parentTask.getTaskLevel() == null) {
+                    fixTaskLevel(parentTask, idToTaskMap);
+                }
+                // 设置当前任务的层级为父任务层级 + 1
+                task.setTaskLevel(parentTask.getTaskLevel() + 1);
+            } else {
+                // 找不到父任务，作为根任务处理
+                task.setParentId(0L);
+                task.setTaskLevel(1);
+            }
+        }
+    }
+
+    private List<PmTask> buildTaskTree(List<PmTask> allTasks) {
+        List<PmTask> result = new java.util.ArrayList<>();
+        Map<Long, List<PmTask>> parentIdToChildrenMap = new java.util.HashMap<>();
+        
+        for (PmTask task : allTasks) {
+            Long parentId = task.getParentId() != null ? task.getParentId() : 0L;
+            if (!parentIdToChildrenMap.containsKey(parentId)) {
+                parentIdToChildrenMap.put(parentId, new java.util.ArrayList<>());
+            }
+            parentIdToChildrenMap.get(parentId).add(task);
+        }
+        
+        List<PmTask> rootTasks = parentIdToChildrenMap.getOrDefault(0L, new java.util.ArrayList<>());
+        rootTasks.sort((a, b) -> {
+            int pinnedCompare = (b.getIsPinned() != null ? b.getIsPinned() : 0) - (a.getIsPinned() != null ? a.getIsPinned() : 0);
+            if (pinnedCompare != 0) return pinnedCompare;
+            
+            int statusCompare = getStatusOrder(a.getStatus()) - getStatusOrder(b.getStatus());
+            if (statusCompare != 0) return statusCompare;
+            
+            int priorityCompare = (a.getPriority() != null ? a.getPriority() : 999) - (b.getPriority() != null ? b.getPriority() : 999);
+            if (priorityCompare != 0) return priorityCompare;
+            
+            return a.getCreateTime().compareTo(b.getCreateTime());
+        });
+        
+        for (PmTask rootTask : rootTasks) {
+            addTaskToResult(result, rootTask, parentIdToChildrenMap);
+        }
+        
+        return result;
+    }
+
+    private int getStatusOrder(Integer status) {
+        if (status == null) return 3;
+        switch (status) {
+            case 1: case 2: return 0;
+            case 3: return 1;
+            case 4: return 2;
+            default: return 3;
+        }
+    }
+
+    private void addTaskToResult(List<PmTask> result, PmTask task, Map<Long, List<PmTask>> parentIdToChildrenMap) {
+        result.add(task);
+        List<PmTask> children = parentIdToChildrenMap.getOrDefault(task.getId(), new java.util.ArrayList<>());
+        children.sort((a, b) -> {
+            int priorityCompare = (a.getPriority() != null ? a.getPriority() : 999) - (b.getPriority() != null ? b.getPriority() : 999);
+            if (priorityCompare != 0) return priorityCompare;
+            return a.getCreateTime().compareTo(b.getCreateTime());
+        });
+        for (PmTask child : children) {
+            addTaskToResult(result, child, parentIdToChildrenMap);
+        }
     }
 
     @Override
@@ -139,6 +245,25 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
         // 获取原任务数据
         PmTask oldTask = getById(task.getId());
         
+        // 更新任务层级
+        if (task.getParentId() == null || task.getParentId() == 0) {
+            task.setParentId(0L);
+            task.setTaskLevel(1);
+        } else {
+            PmTask parentTask = getById(task.getParentId());
+            if (parentTask != null) {
+                task.setTaskLevel(parentTask.getTaskLevel() + 1);
+                if (task.getTaskLevel() > 3) {
+                    throw new RuntimeException("任务层级不能超过3级");
+                }
+            }
+        }
+        
+        // 如果父级发生变化，更新所有子任务的层级
+        if (oldTask != null && !task.getParentId().equals(oldTask.getParentId())) {
+            updateSubTaskLevels(task.getId(), task.getTaskLevel());
+        }
+        
         // 根据状态自动调整进度
         if (task.getStatus() != null && oldTask != null) {
             Integer newStatus = task.getStatus();
@@ -172,6 +297,26 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
         
         log.info("更新任务成功: {}", task.getId());
         return task;
+    }
+    
+    /**
+     * 更新子任务层级
+     * @param parentId 父任务ID
+     * @param parentLevel 父任务层级
+     */
+    private void updateSubTaskLevels(Long parentId, Integer parentLevel) {
+        LambdaQueryWrapper<PmTask> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PmTask::getParentId, parentId);
+        List<PmTask> subTasks = list(wrapper);
+        
+        for (PmTask subTask : subTasks) {
+            subTask.setTaskLevel(parentLevel + 1);
+            subTask.setUpdateTime(LocalDateTime.now());
+            updateById(subTask);
+            
+            // 递归更新子任务的子任务
+            updateSubTaskLevels(subTask.getId(), subTask.getTaskLevel());
+        }
     }
 
     @Override

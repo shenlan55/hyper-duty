@@ -53,8 +53,9 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
-            "WHERE t.project_id = #{projectId} AND t.parent_id = 0 " +
+            "WHERE t.project_id = #{projectId} " +
             "ORDER BY t.is_pinned DESC, " +
+            "t.task_level ASC, " +
             "CASE WHEN t.status IN (1, 2) THEN 0 " +
             "     WHEN t.status = 3 THEN 1 " +
             "     WHEN t.status = 4 THEN 2 " +

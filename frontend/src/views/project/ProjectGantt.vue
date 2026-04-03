@@ -146,10 +146,12 @@ const getBarStyle = (task) => {
   
   const left = startIndex * 40
   const width = (endIndex - startIndex + 1) * 40
+  const progress = task.progress || 0
   
   return {
     left: left + 'px',
-    width: width + 'px'
+    width: width + 'px',
+    '--progress': progress + '%'
   }
 }
 
