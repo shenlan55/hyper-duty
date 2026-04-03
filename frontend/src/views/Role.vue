@@ -92,26 +92,12 @@
     </el-dialog>
     
     <!-- 用户绑定对话框 -->
-    <el-dialog v-model="userBindVisible" title="角色用户绑定" width="600px">
-      <div class="user-bind-container">
-        <el-select
-          v-model="selectedUserIds"
-          multiple
-          filterable
-          remote
-          reserve-keyword
-          placeholder="请选择要绑定的用户"
-          :remote-method="remoteUserSearch"
-          :loading="userLoading"
-          style="width: 100%"
-        >
-          <el-option
-            v-for="user in userList"
-            :key="user.id"
-            :label="user.username + ' (' + (user.employeeName || '未关联') + ')'"
-            :value="user.id"
-          ></el-option>
-        </el-select>
+    <el-dialog v-model="userBindVisible" title="角色用户绑定" width="900px" max-width="90vw">
+      <div class="user-bind-container" style="height: 500px;">
+        <PersonSelector
+          v-model="selectedUsers"
+          @change="handleUserSelectionChange"
+        />
       </div>
       <template #footer>
         <span class="dialog-footer">
@@ -133,6 +119,7 @@ import { formatDateTime } from '../utils/dateUtils'
 import { safeInput } from '../utils/xssUtil'
 import { useSearchPagination } from '../hooks/usePagination'
 import BaseTable from '../components/BaseTable.vue'
+import PersonSelector from '../components/PersonSelector.vue'
 
 // 角色列表数据
 const roleList = ref([])
@@ -216,9 +203,8 @@ const menuTreeProps = {
 
 // 用户绑定相关
 const userBindVisible = ref(false)
-const userList = ref([])
+const selectedUsers = ref([])
 const selectedUserIds = ref([])
-const userLoading = ref(false)
 
 // 加载角色列表
 const loadRoleList = async () => {
@@ -363,45 +349,34 @@ const handleMenuAuthSubmit = async () => {
   }
 }
 
-// 远程搜索用户
-const remoteUserSearch = (query) => {
-  if (userList.value.length === 0) {
-    userLoading.value = true
-    getEmployeeList(1, 1000, '').then(data => {
-      // 过滤掉禁用的用户（status为0）和没有用户名的人员
-      userList.value = data.records.filter(emp => emp.status === 1 && emp.username)
-    }).catch(error => {
-      ElMessage.error('获取用户列表失败：' + error.message)
-    }).finally(() => {
-      userLoading.value = false
-    })
-  }
+// 处理用户选择变化
+const handleUserSelectionChange = (users) => {
+  selectedUsers.value = users
+  selectedUserIds.value = users.map(user => user.id)
 }
 
 // 处理用户绑定
 const handleUserBind = async (row) => {
   currentRoleId.value = row.id
   userBindVisible.value = true
+  selectedUsers.value = []
   selectedUserIds.value = []
-  
-  // 获取所有用户信息
-  if (userList.value.length === 0) {
-    try {
-      userLoading.value = true
-      const userData = await getEmployeeList(1, 1000, '')
-      // 过滤掉禁用的用户（status为0）和没有用户名的人员
-      userList.value = userData.records.filter(emp => emp.status === 1 && emp.username)
-    } catch (error) {
-      ElMessage.error('获取用户列表失败：' + error.message)
-    } finally {
-      userLoading.value = false
-    }
-  }
   
   // 获取角色已有用户
   try {
     const userIds = await getRoleUser(row.id)
     selectedUserIds.value = userIds
+    
+    // 如果有已绑定的用户，获取用户详情
+    if (userIds.length > 0) {
+      try {
+        const userData = await getEmployeeList(1, 1000, '')
+        const allUsers = userData.records || []
+        selectedUsers.value = allUsers.filter(user => userIds.includes(user.id))
+      } catch (error) {
+        console.error('获取用户详情失败：', error)
+      }
+    }
   } catch (error) {
     ElMessage.error('获取角色用户失败：' + error.message)
   }

@@ -79,6 +79,9 @@ public class SysRoleServiceImpl extends CacheableServiceImpl<SysRoleMapper, SysR
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean saveRoleUser(Long roleId, List<Long> userIds) {
+        // 获取原有用户ID列表
+        List<Long> oldUserIds = baseMapper.selectUserIdsByRoleId(roleId);
+        
         // 删除原有角色用户关联
         baseMapper.deleteUserByRoleId(roleId);
         
@@ -95,11 +98,27 @@ public class SysRoleServiceImpl extends CacheableServiceImpl<SysRoleMapper, SysR
             if (result) {
                 // 清除缓存
                 CacheUtil.delete("role::user_ids_" + roleId);
+                
+                // 清除所有相关用户的菜单缓存
+                // 包括原有用户和新添加的用户
+                for (Long userId : oldUserIds) {
+                    CacheUtil.delete("menu::user_" + userId);
+                }
+                for (Long userId : userIds) {
+                    CacheUtil.delete("menu::user_" + userId);
+                }
             }
             return result;
+        } else {
+            // 清除缓存
+            CacheUtil.delete("role::user_ids_" + roleId);
+            
+            // 清除原有用户的菜单缓存
+            for (Long userId : oldUserIds) {
+                CacheUtil.delete("menu::user_" + userId);
+            }
+            return true;
         }
-        
-        return true;
     }
 
     @Override
