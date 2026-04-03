@@ -26,6 +26,7 @@
           clearable
           size="small"
           @input="handleSearch"
+          @keyup.enter="handleSearchEnter"
           style="width: 180px; margin-left: 10px"
         />
       </div>
@@ -107,7 +108,7 @@
 <script setup>
 import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { getDeptTree } from '@/api/dept'
-import { getEmployeesByDeptId } from '@/api/employee'
+import { getEmployeesByDeptId, getEmployeeList } from '@/api/employee'
 
 const props = defineProps({
   modelValue: {
@@ -196,6 +197,8 @@ const loadEmployeesByDept = async (deptId) => {
 const handleDeptClick = (node) => {
   selectedDeptId.value = node.id
   loadEmployeesByDept(node.id)
+  // 重置全量搜索状态
+  isFullSearch.value = false
 }
 
 // 处理人员选择变化
@@ -211,6 +214,90 @@ const handleSelectedSelectionChange = (rows) => {
 // 处理搜索
 const handleSearch = () => {
   // 搜索逻辑已在computed中处理
+  // 重置全量搜索状态
+  isFullSearch.value = false
+}
+
+// 处理搜索框回车事件
+const isFullSearch = ref(false)
+
+const handleSearchEnter = async () => {
+  console.log('handleSearchEnter called')
+  if (!searchKeyword.value.trim()) {
+    console.log('Search keyword is empty')
+    return
+  }
+  
+  console.log('Search keyword:', searchKeyword.value)
+  console.log('isFullSearch:', isFullSearch.value)
+  
+  if (!isFullSearch.value) {
+    // 第一次回车：跳到对应部门，展示部门下所有人
+    try {
+      console.log('Searching for employee and navigating to department...')
+      // 调用全量搜索API
+      const response = await getEmployeeList(1, 1000, searchKeyword.value)
+      console.log('API response:', response)
+      const employees = response?.records || []
+      console.log('Employees:', employees)
+      
+      if (employees.length > 0) {
+        // 找到第一个匹配人员所在的部门
+        const firstEmployee = employees[0]
+        const deptId = firstEmployee.deptId
+        console.log('Found employee:', firstEmployee)
+        console.log('Employee deptId:', deptId)
+        
+        // 找到对应的部门节点并选中
+        const selectDeptNode = (nodes, targetDeptId) => {
+          for (const node of nodes) {
+            if (node.id === targetDeptId) {
+              return node
+            }
+            if (node.children && node.children.length > 0) {
+              const found = selectDeptNode(node.children, targetDeptId)
+              if (found) {
+                return found
+              }
+            }
+          }
+          return null
+        }
+        
+        const deptNode = selectDeptNode(deptTree.value, deptId)
+        console.log('Found dept node:', deptNode)
+        
+        if (deptNode) {
+          // 选中该部门
+          selectedDeptId.value = deptId
+          console.log('Selected dept ID:', deptId)
+          // 加载该部门下的所有人员
+          await loadEmployeesByDept(deptId)
+          console.log('Loaded employees for dept:', deptId)
+        } else {
+          // 如果没找到对应部门，显示全量搜索结果
+          const filteredData = employees.filter(emp => 
+            !selectedEmployees.value.some(selected => selected.id === emp.id)
+          )
+          employeeList.value = filteredData
+        }
+      } else {
+        // 没有找到匹配的人员
+        employeeList.value = []
+      }
+      
+      isFullSearch.value = true
+      console.log('isFullSearch set to:', isFullSearch.value)
+    } catch (error) {
+      console.error('搜索人员失败', error)
+    }
+  } else {
+    // 第二次回车：在当前部门下过滤人员
+    console.log('Performing local filter in current department...')
+    // 搜索逻辑已在computed中处理，只需触发重新计算
+    employeeList.value = [...employeeList.value]
+    console.log('Local filter applied')
+  }
 }
 
 // 转移到右侧
