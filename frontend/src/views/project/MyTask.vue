@@ -206,7 +206,7 @@ import { getMyProjects } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { getCurrentUserId } from '@/utils/jwt'
 import { useUserStore } from '@/stores/user'
-import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, formatDateTime, getProgressStatus } from '@/utils/taskUtils'
+import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, formatDateTime, getProgressStatus, sortTasks } from '@/utils/taskUtils'
 
 const userStore = useUserStore()
 
@@ -315,7 +315,7 @@ const loadData = async () => {
       data = data.filter(task => task.status === 2)
     }
 
-    tableData.value = data
+    tableData.value = sortTasks(data)
     pagination.total = data.length
 
     updateStats(data)

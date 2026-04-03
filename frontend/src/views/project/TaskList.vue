@@ -450,7 +450,7 @@ import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
-import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime } from '@/utils/taskUtils'
+import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime, sortTasks } from '@/utils/taskUtils'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -591,8 +591,11 @@ const loadData = async () => {
       }
     }
     
+    // 对任务进行排序
+    const sortedTasks = sortTasks(tasks)
+    
     // 构建树形结构
-    tableData.value = buildTaskTree(tasks)
+    tableData.value = buildTaskTree(sortedTasks)
     
     pagination.total = data.total || 0
   } catch (error) {
@@ -638,16 +641,16 @@ const loadTaskTree = async (projectId, excludeTaskId = null) => {
 }
 
 const buildTaskTree = (tasks, parentId = 0, excludeTaskId = null) => {
-  return tasks
-    .filter(task => task.parentId === parentId && task.id !== excludeTaskId)
-    .map(task => {
-      const children = buildTaskTree(tasks, task.id, excludeTaskId)
-      return {
-        ...task,
-        children,
-        hasChildren: children.length > 0
-      }
-    })
+  const filteredTasks = tasks.filter(task => task.parentId === parentId && task.id !== excludeTaskId)
+  const sortedFilteredTasks = sortTasks(filteredTasks)
+  return sortedFilteredTasks.map(task => {
+    const children = buildTaskTree(tasks, task.id, excludeTaskId)
+    return {
+      ...task,
+      children,
+      hasChildren: children.length > 0
+    }
+  })
 }
 
 const handleParentChange = (val) => {

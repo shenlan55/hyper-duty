@@ -172,7 +172,7 @@ import { getTaskPage, createProgressUpdate, getTaskProgressUpdates, getTaskDetai
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
-import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime } from '@/utils/taskUtils'
+import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime, sortTasks } from '@/utils/taskUtils'
 
 const loading = ref(false)
 const selectedProject = ref(null)
@@ -247,7 +247,8 @@ const handleProjectChange = () => {
 }
 
 const getMemberTasks = (memberId) => {
-  return tasks.value.filter(task => task.assigneeId === memberId || task.ownerId === memberId)
+  const memberTasks = tasks.value.filter(task => task.assigneeId === memberId || task.ownerId === memberId)
+  return sortTasks(memberTasks)
 }
 
 const getMemberTaskCount = (memberId) => {
