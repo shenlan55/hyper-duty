@@ -22,45 +22,47 @@
       </div>
 
       <div v-else class="gantt-container">
-        <div class="gantt-header">
-          <div class="gantt-task-header">任务名称</div>
-          <div class="gantt-timeline-header">
-            <div
-              v-for="date in dateList"
-              :key="date"
-              class="timeline-cell"
-              :class="{ 'is-today': isToday(date), 'is-weekend': isWeekend(date) }"
-            >
-              {{ formatDate(date) }}
-            </div>
-          </div>
-        </div>
-
-        <div class="gantt-body">
-          <div
-            v-for="task in taskList"
-            :key="task.id"
-            class="gantt-row"
-          >
-            <div class="gantt-task-cell" :style="{ paddingLeft: (task.taskLevel - 1) * 20 + 'px' }">
-              <span :class="{ 'pinned-task': task.isPinned === 1 }">
-                {{ task.taskName }}
-              </span>
-            </div>
-            <div class="gantt-timeline-cell">
+        <div class="gantt-scroll-wrapper">
+          <div class="gantt-header">
+            <div class="gantt-task-header">任务名称</div>
+            <div class="gantt-timeline-header">
               <div
                 v-for="date in dateList"
                 :key="date"
                 class="timeline-cell"
                 :class="{ 'is-today': isToday(date), 'is-weekend': isWeekend(date) }"
-              />
-              <div
-                v-if="task.startDate && task.endDate"
-                class="gantt-bar"
-                :class="getBarClass(task)"
-                :style="getBarStyle(task)"
               >
-                <span class="bar-text">{{ task.progress }}%</span>
+                {{ formatDate(date) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="gantt-body">
+            <div
+              v-for="task in taskList"
+              :key="task.id"
+              class="gantt-row"
+            >
+              <div class="gantt-task-cell" :style="{ paddingLeft: (task.taskLevel - 1) * 20 + 'px' }">
+                <span :class="{ 'pinned-task': task.isPinned === 1 }">
+                  {{ task.taskName }}
+                </span>
+              </div>
+              <div class="gantt-timeline-cell">
+                <div
+                  v-for="date in dateList"
+                  :key="date"
+                  class="timeline-cell"
+                  :class="{ 'is-today': isToday(date), 'is-weekend': isWeekend(date) }"
+                />
+                <div
+                  v-if="task.startDate && task.endDate"
+                  class="gantt-bar"
+                  :class="getBarClass(task)"
+                  :style="getBarStyle(task)"
+                >
+                  <span class="bar-text">{{ task.progress }}%</span>
+                </div>
               </div>
             </div>
           </div>
@@ -217,7 +219,13 @@ onMounted(() => {
 }
 
 .gantt-container {
+  overflow: hidden;
+}
+
+.gantt-scroll-wrapper {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 500px;
 }
 
 .gantt-header {
@@ -226,7 +234,7 @@ onMounted(() => {
   background: #f5f7fa;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 20;
 }
 
 .gantt-task-header {
@@ -235,6 +243,10 @@ onMounted(() => {
   padding: 10px;
   font-weight: bold;
   border-right: 1px solid #ebeef5;
+  position: sticky;
+  left: 0;
+  z-index: 30;
+  background: #f5f7fa;
 }
 
 .gantt-timeline-header {
@@ -261,8 +273,7 @@ onMounted(() => {
 }
 
 .gantt-body {
-  max-height: 500px;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .gantt-row {
@@ -282,6 +293,14 @@ onMounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: #fff;
+}
+
+.gantt-row:hover .gantt-task-cell {
+  background: #f5f7fa;
 }
 
 .gantt-timeline-cell {
