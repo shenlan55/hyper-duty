@@ -56,13 +56,13 @@ export const formatDateTime = (dateTime) => {
   })
 }
 
-// 任务状态排序优先级
-const statusOrder = {
-  1: 0, // 未开始
-  2: 1, // 进行中
-  3: 2, // 已完成
-  4: 3, // 已暂停
-  5: 4  // 已取消
+// 任务状态分组排序优先级
+const statusGroupOrder = {
+  1: 0, // 未开始 - 第一组
+  2: 0, // 进行中 - 第一组
+  3: 1, // 已完成 - 第二组
+  4: 2, // 已暂停 - 第三组
+  5: 3  // 已取消 - 第四组
 }
 
 // 任务优先级排序优先级
@@ -75,19 +75,19 @@ const priorityOrder = {
 // 任务排序函数
 export const sortTasks = (tasks) => {
   return [...tasks].sort((a, b) => {
-    // 首先按置顶排序，置顶的任务排最前面
+    // 1. 首先按置顶排序，置顶的任务排最前面
     const isPinnedA = a.isPinned === 1 ? 0 : 1
     const isPinnedB = b.isPinned === 1 ? 0 : 1
     if (isPinnedA !== isPinnedB) {
       return isPinnedA - isPinnedB
     }
-    // 置顶状态相同则按状态排序
-    const statusA = statusOrder[a.status] ?? 999
-    const statusB = statusOrder[b.status] ?? 999
-    if (statusA !== statusB) {
-      return statusA - statusB
+    // 2. 置顶状态相同则按状态分组排序
+    const statusGroupA = statusGroupOrder[a.status] ?? 999
+    const statusGroupB = statusGroupOrder[b.status] ?? 999
+    if (statusGroupA !== statusGroupB) {
+      return statusGroupA - statusGroupB
     }
-    // 状态相同则按优先级排序
+    // 3. 状态分组相同则按优先级排序
     const priorityA = priorityOrder[a.priority] ?? 999
     const priorityB = priorityOrder[b.priority] ?? 999
     return priorityA - priorityB

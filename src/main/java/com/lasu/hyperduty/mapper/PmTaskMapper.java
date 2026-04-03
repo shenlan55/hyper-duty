@@ -22,7 +22,12 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "<if test='status != null'> AND t.status = #{status}</if>" +
             "<if test='priority != null'> AND t.priority = #{priority}</if>" +
             "</where>" +
-            "ORDER BY t.is_pinned DESC, t.priority ASC, t.end_date ASC" +
+            "ORDER BY t.is_pinned DESC, " +
+            "CASE WHEN t.status IN (1, 2) THEN 0 " +
+            "     WHEN t.status = 3 THEN 1 " +
+            "     WHEN t.status = 4 THEN 2 " +
+            "     ELSE 3 END, " +
+            "t.priority ASC" +
             "</script>")
     List<PmTask> selectTaskPage(@Param("projectId") Long projectId,
                                   @Param("assigneeId") Long assigneeId,
@@ -49,7 +54,12 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
             "WHERE t.project_id = #{projectId} AND t.parent_id = 0 " +
-            "ORDER BY t.is_pinned DESC, t.priority ASC, t.end_date ASC")
+            "ORDER BY t.is_pinned DESC, " +
+            "CASE WHEN t.status IN (1, 2) THEN 0 " +
+            "     WHEN t.status = 3 THEN 1 " +
+            "     WHEN t.status = 4 THEN 2 " +
+            "     ELSE 3 END, " +
+            "t.priority ASC")
     List<PmTask> selectByProjectId(@Param("projectId") Long projectId);
 
     @Select("SELECT t.*, e.employee_name as owner_name " +
@@ -66,7 +76,12 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
             "WHERE t.assignee_id = #{employeeId} OR t.stakeholders LIKE CONCAT('%', #{employeeId}, '%') " +
-            "ORDER BY t.is_pinned DESC, t.priority ASC, t.end_date ASC")
+            "ORDER BY t.is_pinned DESC, " +
+            "CASE WHEN t.status IN (1, 2) THEN 0 " +
+            "     WHEN t.status = 3 THEN 1 " +
+            "     WHEN t.status = 4 THEN 2 " +
+            "     ELSE 3 END, " +
+            "t.priority ASC")
     List<PmTask> selectMyTasks(@Param("employeeId") Long employeeId);
 
     @Select("SELECT t.*, e.employee_name as owner_name, p.project_name, " +
@@ -76,7 +91,12 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
             "WHERE t.project_id = #{projectId} AND (t.assignee_id = #{employeeId} OR t.stakeholders LIKE CONCAT('%', #{employeeId}, '%')) " +
-            "ORDER BY t.is_pinned DESC, t.priority ASC, t.end_date ASC")
+            "ORDER BY t.is_pinned DESC, " +
+            "CASE WHEN t.status IN (1, 2) THEN 0 " +
+            "     WHEN t.status = 3 THEN 1 " +
+            "     WHEN t.status = 4 THEN 2 " +
+            "     ELSE 3 END, " +
+            "t.priority ASC")
     List<PmTask> selectMyTasksByProject(@Param("employeeId") Long employeeId, @Param("projectId") Long projectId);
 
     @Select("SELECT t.*, e.employee_name as owner_name, p.project_name, pt.task_name as parentTaskName " +
@@ -91,7 +111,12 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "WHERE t.status = #{status} " +
-            "ORDER BY t.is_pinned DESC, t.priority ASC, t.end_date ASC")
+            "ORDER BY t.is_pinned DESC, " +
+            "CASE WHEN t.status IN (1, 2) THEN 0 " +
+            "     WHEN t.status = 3 THEN 1 " +
+            "     WHEN t.status = 4 THEN 2 " +
+            "     ELSE 3 END, " +
+            "t.priority ASC")
     List<PmTask> selectByStatus(@Param("status") Integer status);
 
     @Select("SELECT t.*, e.employee_name as owner_name " +
