@@ -165,6 +165,9 @@
             <el-option label="已暂停" :value="4" />
           </el-select>
         </el-form-item>
+        <el-form-item label="进度">
+          <el-slider v-model="form.progress" :min="0" :max="100" show-input style="width: 300px;" />
+        </el-form-item>
         <el-form-item label="负责人" prop="assigneeId">
           <el-input
             v-model="assigneeName"
@@ -435,7 +438,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, ElPopover } from 'element-plus'
 import { Star, Document, UserFilled } from '@element-plus/icons-vue'
@@ -450,7 +453,7 @@ import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
-import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime, sortTasks } from '@/utils/taskUtils'
+import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime, sortTasks, getStatusByProgress, getProgressByStatus } from '@/utils/taskUtils'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -507,12 +510,39 @@ const form = reactive({
   taskName: '',
   priority: 2,
   status: 1,
+  progress: 0,
   assigneeId: null,
   startDate: '',
   endDate: '',
   description: '',
   stakeholders: [],
   attachments: []
+})
+
+// 保存编辑任务时的原始状态
+let originalTaskStatus = null
+
+// 保存编辑任务时的原始进度
+let originalTaskProgress = null
+
+// 监听状态变化，自动调整进度
+watch(() => form.status, (newStatus) => {
+  // 只有在编辑模式且状态发生变化时才自动调整
+  if (form.id && originalTaskStatus !== null && newStatus !== originalTaskStatus) {
+    const newProgress = getProgressByStatus(newStatus, form.progress)
+    if (newProgress !== null) {
+      form.progress = newProgress
+    }
+  }
+})
+
+// 监听进度变化，自动调整状态（仅在编辑任务时，且用户手动调整进度时）
+watch(() => form.progress, (newProgress) => {
+  // 只有在编辑模式且进度发生变化时才自动调整
+  if (form.id && originalTaskProgress !== null && newProgress !== originalTaskProgress) {
+    const newStatus = getStatusByProgress(newProgress)
+    form.status = newStatus
+  }
 })
 
 const progressForm = reactive({
@@ -717,6 +747,11 @@ const handleEdit = async (row) => {
   form.parentId = row.parentId || 0
   form.parentIdPath = row.parentId && row.parentId > 0 ? row.parentId : null
   form.assigneeId = row.assigneeId || row.ownerId || null
+  form.progress = row.progress || 0
+  
+  // 保存原始状态和进度，用于判断是否需要自动调整
+  originalTaskStatus = row.status
+  originalTaskProgress = row.progress || 0
   
   // 确保attachments是数组类型
   if (row.attachments) {
@@ -1412,6 +1447,7 @@ const resetForm = () => {
   form.taskName = ''
   form.priority = 2
   form.status = 1
+  form.progress = 0
   form.assigneeId = null
   form.startDate = ''
   form.endDate = ''
@@ -1419,6 +1455,10 @@ const resetForm = () => {
   form.stakeholders = []
   form.attachments = []
   formRef.value?.resetFields()
+  
+  // 重置原始状态和进度
+  originalTaskStatus = null
+  originalTaskProgress = null
   
   // 重置选择的人员
   selectedAssignees.value = []

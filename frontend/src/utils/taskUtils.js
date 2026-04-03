@@ -93,3 +93,28 @@ export const sortTasks = (tasks) => {
     return priorityA - priorityB
   })
 }
+
+// 根据进度获取对应的状态
+export const getStatusByProgress = (progress) => {
+  if (progress >= 100) {
+    return 3 // 已完成
+  } else if (progress <= 0) {
+    return 1 // 未开始
+  } else {
+    return 2 // 进行中
+  }
+}
+
+// 根据状态获取对应的进度（保留原进度的情况返回null）
+export const getProgressByStatus = (status, currentProgress = 0) => {
+  switch (status) {
+    case 1: // 未开始
+      return 0
+    case 3: // 已完成
+      return 100
+    case 2: // 进行中
+    case 4: // 已暂停
+    default:
+      return null // 返回null表示不修改进度
+  }
+}

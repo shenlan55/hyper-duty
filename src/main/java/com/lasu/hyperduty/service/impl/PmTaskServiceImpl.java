@@ -136,6 +136,35 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     @Override
     @Transactional
     public PmTask updateTask(PmTask task) {
+        // 获取原任务数据
+        PmTask oldTask = getById(task.getId());
+        
+        // 根据状态自动调整进度
+        if (task.getStatus() != null && oldTask != null) {
+            Integer newStatus = task.getStatus();
+            Integer oldStatus = oldTask.getStatus();
+            
+            // 只有当状态发生变化时才调整进度
+            if (!newStatus.equals(oldStatus)) {
+                switch (newStatus) {
+                    case 1: // 未开始
+                        task.setProgress(0);
+                        break;
+                    case 3: // 已完成
+                        task.setProgress(100);
+                        break;
+                    case 2: // 进行中
+                    case 4: // 已暂停
+                    default:
+                        // 进行中和已暂停状态，保留原进度
+                        if (task.getProgress() == null) {
+                            task.setProgress(oldTask.getProgress());
+                        }
+                        break;
+                }
+            }
+        }
+        
         task.setUpdateTime(LocalDateTime.now());
         updateById(task);
         
@@ -153,10 +182,13 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             task.setProgress(progress);
             task.setUpdateTime(LocalDateTime.now());
             
+            // 根据进度自动设置状态
             if (progress >= 100) {
-                task.setStatus(3);
-            } else if (progress > 0) {
-                task.setStatus(2);
+                task.setStatus(3); // 已完成
+            } else if (progress <= 0) {
+                task.setStatus(1); // 未开始
+            } else {
+                task.setStatus(2); // 进行中
             }
             
             updateById(task);
