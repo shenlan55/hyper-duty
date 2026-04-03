@@ -215,8 +215,10 @@ const loadProjectList = async () => {
 const loadTeamMembers = async () => {
   try {
     const data = await getEmployeeList(1, 1000) // 获取足够多的员工数据
-    teamMembers.value = data?.records || []
-    employeeList.value = data?.records || []
+    const allEmployees = data?.records || []
+    // 过滤掉名称为"管理员"的用户
+    teamMembers.value = allEmployees.filter(emp => emp.employeeName !== '管理员')
+    employeeList.value = allEmployees
   } catch (error) {
     console.error('加载团队成员失败', error)
     teamMembers.value = []
