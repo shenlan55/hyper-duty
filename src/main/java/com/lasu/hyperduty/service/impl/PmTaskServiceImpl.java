@@ -249,8 +249,7 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     @Override
     public Integer calculateProjectProgress(Long projectId) {
         LambdaQueryWrapper<PmTask> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(PmTask::getProjectId, projectId)
-               .eq(PmTask::getTaskLevel, 1);
+        wrapper.eq(PmTask::getProjectId, projectId);
         
         List<PmTask> tasks = list(wrapper);
         
@@ -267,7 +266,7 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     }
 
     private Integer calculateTaskProgress(PmTask task) {
-        if (task.getProgress() != null && task.getProgress() >= 100) {
+        if (task.getStatus() != null && task.getStatus() == 3) {
             return 100;
         }
         
