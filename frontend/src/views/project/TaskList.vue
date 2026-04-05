@@ -53,6 +53,9 @@
         row-key="id"
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         :indent="20"
+        :backend-pagination="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
         style="width: 100%;"
       >
         <template #taskName="{ row, level }">
@@ -508,6 +511,7 @@ const form = reactive({
   parentId: 0,
   parentIdPath: null,
   taskName: '',
+  taskCode: '',
   priority: 2,
   status: 1,
   progress: 0,
@@ -1445,6 +1449,7 @@ const resetForm = () => {
   form.parentId = 0
   form.parentIdPath = null
   form.taskName = ''
+  form.taskCode = ''
   form.priority = 2
   form.status = 1
   form.progress = 0

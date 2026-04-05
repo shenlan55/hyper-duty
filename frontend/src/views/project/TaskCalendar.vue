@@ -4,14 +4,16 @@
       <template #header>
         <div class="card-header">
           <span>任务日历</span>
-          <el-select v-model="selectedProject" placeholder="选择项目" clearable @change="handleProjectChange">
-            <el-option
-              v-for="project in projectList"
-              :key="project.id"
-              :label="project.projectName"
-              :value="project.id"
-            />
-          </el-select>
+          <div class="header-actions">
+            <el-select v-model="selectedProject" placeholder="选择项目" clearable @change="handleProjectChange">
+              <el-option
+                v-for="project in projectList"
+                :key="project.id"
+                :label="project.projectName"
+                :value="project.id"
+              />
+            </el-select>
+          </div>
         </div>
       </template>
 
@@ -145,6 +147,11 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .calendar-container {
