@@ -30,23 +30,84 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     public Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long assigneeId, Integer status, Integer priority) {
         Page<PmTask> page = new Page<>(pageNum, pageSize);
         
-        // 查询总记录数
-        Long total = baseMapper.selectTaskCount(projectId, assigneeId, status, priority);
-        page.setTotal(total);
+        // 查询所有符合条件的任务
+        List<PmTask> allTasks = baseMapper.selectTaskPage(projectId, assigneeId, status, priority);
         
-        // 查询带关联的数据
-        List<PmTask> records = baseMapper.selectTaskPage(projectId, assigneeId, status, priority);
+        // 修正所有任务的层级
+        fixTaskLevels(allTasks);
         
-        // 手动分页
+        // 构建完整的树形结构，得到根任务列表
+        List<PmTask> rootTasks = buildFlatRootTasks(allTasks);
+        
+        // 只对根任务进行分页
+        page.setTotal(rootTasks.size());
+        
+        // 手动对根任务分页
         int fromIndex = (pageNum - 1) * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, records.size());
-        if (fromIndex < records.size()) {
-            page.setRecords(records.subList(fromIndex, toIndex));
+        int toIndex = Math.min(fromIndex + pageSize, rootTasks.size());
+        
+        if (fromIndex < rootTasks.size()) {
+            // 获取当前页的根任务
+            List<PmTask> pageRootTasks = rootTasks.subList(fromIndex, toIndex);
+            
+            // 为每个根任务加载所有子任务，构建完整的树
+            List<PmTask> result = new java.util.ArrayList<>();
+            Map<Long, List<PmTask>> parentIdToChildrenMap = new java.util.HashMap<>();
+            
+            for (PmTask task : allTasks) {
+                Long parentId = task.getParentId() != null ? task.getParentId() : 0L;
+                if (!parentIdToChildrenMap.containsKey(parentId)) {
+                    parentIdToChildrenMap.put(parentId, new java.util.ArrayList<>());
+                }
+                parentIdToChildrenMap.get(parentId).add(task);
+            }
+            
+            for (PmTask rootTask : pageRootTasks) {
+                addTaskToResult(result, rootTask, parentIdToChildrenMap);
+            }
+            
+            page.setRecords(result);
         } else {
             page.setRecords(new java.util.ArrayList<>());
         }
         
         return page;
+    }
+    
+    /**
+     * 从完整任务列表中提取所有根任务（parentId为0的任务）
+     * @param allTasks 所有任务列表
+     * @return 根任务列表
+     */
+    private List<PmTask> buildFlatRootTasks(List<PmTask> allTasks) {
+        List<PmTask> rootTasks = new java.util.ArrayList<>();
+        Map<Long, List<PmTask>> parentIdToChildrenMap = new java.util.HashMap<>();
+        
+        for (PmTask task : allTasks) {
+            Long parentId = task.getParentId() != null ? task.getParentId() : 0L;
+            if (!parentIdToChildrenMap.containsKey(parentId)) {
+                parentIdToChildrenMap.put(parentId, new java.util.ArrayList<>());
+            }
+            parentIdToChildrenMap.get(parentId).add(task);
+        }
+        
+        List<PmTask> rawRootTasks = parentIdToChildrenMap.getOrDefault(0L, new java.util.ArrayList<>());
+        rawRootTasks.sort((a, b) -> {
+            int pinnedCompare = (b.getIsPinned() != null ? b.getIsPinned() : 0) - (a.getIsPinned() != null ? a.getIsPinned() : 0);
+            if (pinnedCompare != 0) return pinnedCompare;
+            
+            int statusCompare = getStatusOrder(a.getStatus()) - getStatusOrder(b.getStatus());
+            if (statusCompare != 0) return statusCompare;
+            
+            int priorityCompare = (a.getPriority() != null ? a.getPriority() : 999) - (b.getPriority() != null ? b.getPriority() : 999);
+            if (priorityCompare != 0) return priorityCompare;
+            
+            return a.getCreateTime().compareTo(b.getCreateTime());
+        });
+        
+        rootTasks.addAll(rawRootTasks);
+        
+        return rootTasks;
     }
 
     @Override
