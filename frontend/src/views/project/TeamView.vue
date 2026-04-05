@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>团队视图</span>
-          <el-select v-model="selectedProject" placeholder="选择项目" clearable @change="handleProjectChange">
+          <el-select v-model="selectedProject" placeholder="选择项目" clearable @change="handleProjectChange" style="width: 250px;">
             <el-option
               v-for="project in projectList"
               :key="project.id"
@@ -169,13 +169,14 @@ import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import ProgressHistory from '@/components/ProgressHistory.vue'
 import { getTaskPage, createProgressUpdate, getTaskProgressUpdates, getTaskDetail } from '@/api/task'
-import { getProjectPage } from '@/api/project'
+import { getProjectPage, getProjectDetail } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
 import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime, sortTasks } from '@/utils/taskUtils'
 
 const loading = ref(false)
 const selectedProject = ref(null)
+const currentProject = ref(null)
 const projectList = ref([])
 const teamMembers = ref([])
 const employeeList = ref([])
@@ -214,11 +215,61 @@ const loadProjectList = async () => {
 
 const loadTeamMembers = async () => {
   try {
-    const data = await getEmployeeList(1, 1000) // 获取足够多的员工数据
+    const data = await getEmployeeList(1, 1000)
     const allEmployees = data?.records || []
-    // 过滤掉名称为"管理员"的用户
-    teamMembers.value = allEmployees.filter(emp => emp.employeeName !== '管理员')
     employeeList.value = allEmployees
+
+    if (!selectedProject.value) {
+      // 未选择项目时，加载所有员工（排除管理员）
+      teamMembers.value = allEmployees.filter(emp => emp.employeeName !== '管理员')
+    } else {
+      // 选择项目时，加载项目负责人、代理负责人、参与人
+      if (!currentProject.value) {
+        teamMembers.value = []
+        return
+      }
+
+      const project = currentProject.value
+      const memberIds = new Set()
+
+      // 添加项目负责人
+      if (project.ownerId) {
+        memberIds.add(project.ownerId)
+      }
+
+      // 添加代理负责人
+      if (project.deputyOwnerIds) {
+        let deputyIds = project.deputyOwnerIds
+        if (typeof deputyIds === 'string') {
+          try {
+            deputyIds = JSON.parse(deputyIds)
+          } catch (e) {
+            deputyIds = []
+          }
+        }
+        if (Array.isArray(deputyIds)) {
+          deputyIds.forEach(id => memberIds.add(id))
+        }
+      }
+
+      // 添加参与人
+      if (project.participants) {
+        let participantIds = project.participants
+        if (typeof participantIds === 'string') {
+          try {
+            participantIds = JSON.parse(participantIds)
+          } catch (e) {
+            participantIds = []
+          }
+        }
+        if (Array.isArray(participantIds)) {
+          participantIds.forEach(id => memberIds.add(id))
+        }
+      }
+
+      // 从所有员工中筛选出项目相关人员
+      teamMembers.value = allEmployees.filter(emp => memberIds.has(emp.id))
+    }
   } catch (error) {
     console.error('加载团队成员失败', error)
     teamMembers.value = []
@@ -244,7 +295,18 @@ const loadTasks = async () => {
   }
 }
 
-const handleProjectChange = () => {
+const handleProjectChange = async () => {
+  if (selectedProject.value) {
+    try {
+      currentProject.value = await getProjectDetail(selectedProject.value)
+    } catch (error) {
+      console.error('加载项目详情失败', error)
+      currentProject.value = null
+    }
+  } else {
+    currentProject.value = null
+  }
+  await loadTeamMembers()
   loadTasks()
 }
 
@@ -428,6 +490,13 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  white-space: nowrap;
+}
+
+.card-header span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .team-container {
@@ -586,5 +655,22 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* 团队标签样式 */
+:deep(.el-tabs__nav) {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
+
+:deep(.el-tabs__item) {
+  flex-shrink: 0;
+  min-width: 120px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
