@@ -5,6 +5,10 @@
         <div class="card-header">
           <span>甘特图</span>
           <div class="header-actions">
+            <el-button type="primary" @click="handleExport" :disabled="!selectedProjectId">
+              <el-icon><Download /></el-icon>
+              导出Excel
+            </el-button>
             <el-select v-model="selectedProjectId" placeholder="请选择项目" filterable @change="handleProjectChange">
               <el-option
                 v-for="project in projectList"
@@ -92,8 +96,9 @@
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Download } from '@element-plus/icons-vue'
 import { getProjectPage } from '@/api/project'
-import { getProjectTasks } from '@/api/task'
+import { getProjectTasks, exportGantt } from '@/api/task'
 
 const selectedProjectId = ref(null)
 const projectList = ref([])
@@ -211,6 +216,41 @@ const handleProjectChange = async () => {
 const handleScroll = (e) => {
   if (fixedBodyRef.value) {
     fixedBodyRef.value.scrollTop = e.target.scrollTop
+  }
+}
+
+const handleExport = async () => {
+  if (!selectedProjectId.value) {
+    ElMessage.warning('请先选择项目')
+    return
+  }
+  
+  try {
+    const blob = await exportGantt(selectedProjectId.value)
+    
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    
+    const contentDisposition = blob.headers?.['content-disposition']
+    let fileName = '项目_甘特图.xlsx'
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename\*?=['"]?(?:UTF-8'')?([^;'\s]+)/i)
+      if (fileNameMatch) {
+        fileName = decodeURIComponent(fileNameMatch[1])
+      }
+    }
+    
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
   }
 }
 

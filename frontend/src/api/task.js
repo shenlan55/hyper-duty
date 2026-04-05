@@ -148,3 +148,12 @@ export function hasTaskDeletePermission(taskId, employeeId) {
     method: 'get'
   })
 }
+
+export function exportGantt(projectId) {
+  return request({
+    url: '/duty/export/gantt',
+    method: 'get',
+    params: { projectId },
+    responseType: 'blob'
+  })
+}

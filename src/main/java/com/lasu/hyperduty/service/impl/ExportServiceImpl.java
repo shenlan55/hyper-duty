@@ -4,10 +4,14 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.DutyAssignment;
 import com.lasu.hyperduty.entity.DutyRecord;
 import com.lasu.hyperduty.entity.LeaveRequest;
+import com.lasu.hyperduty.entity.PmProject;
+import com.lasu.hyperduty.entity.PmTask;
 import com.lasu.hyperduty.service.DutyAssignmentService;
 import com.lasu.hyperduty.service.DutyRecordService;
 import com.lasu.hyperduty.service.LeaveRequestService;
 import com.lasu.hyperduty.service.DutyStatisticsService;
+import com.lasu.hyperduty.service.PmProjectService;
+import com.lasu.hyperduty.service.PmTaskService;
 import com.lasu.hyperduty.utils.ExcelExportUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -32,6 +36,12 @@ public class ExportServiceImpl {
     @Autowired
     private DutyStatisticsService dutyStatisticsService;
 
+    @Autowired
+    private PmProjectService pmProjectService;
+
+    @Autowired
+    private PmTaskService pmTaskService;
+
     public void exportDutyAssignments(HttpServletResponse response) throws IOException {
         List<DutyAssignment> assignments = dutyAssignmentService.list();
         ExcelExportUtil.exportDutyAssignments(response, assignments);
@@ -54,5 +64,11 @@ public class ExportServiceImpl {
         statistics.put("shift", dutyStatisticsService.getShiftDistribution());
         statistics.put("trend", dutyStatisticsService.getMonthlyTrend());
         ExcelExportUtil.exportStatistics(response, statistics);
+    }
+
+    public void exportGantt(HttpServletResponse response, Long projectId) throws IOException {
+        PmProject project = pmProjectService.getById(projectId);
+        List<PmTask> tasks = pmTaskService.getProjectTasks(projectId);
+        ExcelExportUtil.exportGantt(response, project, tasks);
     }
 }

@@ -4,21 +4,25 @@ import com.lasu.hyperduty.entity.DutyAssignment;
 import com.lasu.hyperduty.entity.DutyRecord;
 import com.lasu.hyperduty.entity.LeaveRequest;
 import com.lasu.hyperduty.entity.SysEmployee;
+import com.lasu.hyperduty.entity.PmTask;
+import com.lasu.hyperduty.entity.PmProject;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFFont;
-import org.apache.poi.xssf.usermodel.XSSFDataFormat;
-import org.apache.poi.ss.usermodel.IndexedColors;
-import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -261,6 +265,300 @@ public class ExcelExportUtil {
             case 3: return "年假";
             case 4: return "调休";
             case 5: return "其他";
+            default: return "未知";
+        }
+    }
+
+    public static void exportGantt(HttpServletResponse response, PmProject project, List<PmTask> tasks) throws IOException {
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet sheet = workbook.createSheet("甘特图");
+
+        if (tasks == null || tasks.isEmpty()) {
+            String[] headers = {"提示"};
+            createHeaderRow(sheet, headers);
+            sheet.createRow(1).createCell(0).setCellValue("暂无任务数据");
+            autoSizeColumns(sheet);
+            writeResponse(response, workbook, project);
+            return;
+        }
+
+        LocalDate minDate = null;
+        LocalDate maxDate = null;
+        
+        for (PmTask task : tasks) {
+            if (task.getStartDate() != null) {
+                if (minDate == null || task.getStartDate().isBefore(minDate)) {
+                    minDate = task.getStartDate();
+                }
+            }
+            if (task.getEndDate() != null) {
+                if (maxDate == null || task.getEndDate().isAfter(maxDate)) {
+                    maxDate = task.getEndDate();
+                }
+            }
+        }
+
+        if (minDate == null || maxDate == null) {
+            String[] headers = {"提示"};
+            createHeaderRow(sheet, headers);
+            sheet.createRow(1).createCell(0).setCellValue("任务缺少日期信息");
+            autoSizeColumns(sheet);
+            writeResponse(response, workbook, project);
+            return;
+        }
+
+        minDate = minDate.minusDays(3);
+        maxDate = maxDate.plusDays(3);
+
+        List<LocalDate> dateList = new java.util.ArrayList<>();
+        LocalDate current = minDate;
+        while (!current.isAfter(maxDate)) {
+            dateList.add(current);
+            current = current.plusDays(1);
+        }
+
+        int taskColCount = 4;
+        int totalCols = taskColCount + dateList.size();
+
+        XSSFCellStyle headerStyle = createHeaderStyle(workbook);
+        XSSFCellStyle dateHeaderStyle = createDateHeaderStyle(workbook);
+        XSSFCellStyle weekendStyle = createWeekendStyle(workbook);
+        XSSFCellStyle todayStyle = createTodayStyle(workbook);
+        XSSFCellStyle taskNameStyle = createTaskNameStyle(workbook);
+
+        XSSFRow headerRow = sheet.createRow(0);
+        
+        String[] taskHeaders = {"任务名称", "优先级", "状态", "进度"};
+        for (int i = 0; i < taskHeaders.length; i++) {
+            XSSFCell cell = headerRow.createCell(i);
+            cell.setCellValue(taskHeaders[i]);
+            cell.setCellStyle(headerStyle);
+        }
+
+        for (int i = 0; i < dateList.size(); i++) {
+            LocalDate date = dateList.get(i);
+            XSSFCell cell = headerRow.createCell(taskColCount + i);
+            cell.setCellValue(date.getMonthValue() + "/" + date.getDayOfMonth());
+            
+            if (date.getDayOfWeek().getValue() >= 6) {
+                cell.setCellStyle(weekendStyle);
+            } else if (date.equals(LocalDate.now())) {
+                cell.setCellStyle(todayStyle);
+            } else {
+                cell.setCellStyle(dateHeaderStyle);
+            }
+        }
+
+        for (int i = 0; i < tasks.size(); i++) {
+            PmTask task = tasks.get(i);
+            XSSFRow row = sheet.createRow(i + 1);
+            
+            String taskNameWithIndent = "";
+            if (task.getTaskLevel() != null) {
+                for (int j = 1; j < task.getTaskLevel(); j++) {
+                    taskNameWithIndent += "  ";
+                }
+            }
+            taskNameWithIndent += task.getTaskName() != null ? task.getTaskName() : "";
+            
+            XSSFCell taskNameCell = row.createCell(0);
+            taskNameCell.setCellValue(taskNameWithIndent);
+            taskNameCell.setCellStyle(taskNameStyle);
+            
+            row.createCell(1).setCellValue(getPriorityName(task.getPriority()));
+            row.createCell(2).setCellValue(getTaskStatusName(task.getStatus()));
+            row.createCell(3).setCellValue(task.getProgress() != null ? task.getProgress() + "%" : "0%");
+            
+            if (task.getStartDate() != null && task.getEndDate() != null) {
+                int startIndex = dateList.indexOf(task.getStartDate());
+                int endIndex = dateList.indexOf(task.getEndDate());
+                
+                if (startIndex != -1 && endIndex != -1) {
+                    for (int j = startIndex; j <= endIndex; j++) {
+                        XSSFCell cell = row.createCell(taskColCount + j);
+                        XSSFCellStyle style = createBarStyle(workbook, task.getStatus(), task.getProgress(), j == startIndex, j == endIndex);
+                        cell.setCellStyle(style);
+                    }
+                    
+                    if (task.getProgress() != null && task.getProgress() > 0) {
+                        int progressEndIndex = startIndex + (int) Math.round((endIndex - startIndex + 1) * task.getProgress() / 100.0);
+                        int actualProgressEnd = Math.min(progressEndIndex, endIndex);
+                        
+                        for (int j = startIndex; j <= actualProgressEnd; j++) {
+                            XSSFCell cell = row.getCell(taskColCount + j);
+                            if (cell != null) {
+                                XSSFCellStyle style = createProgressStyle(workbook, task.getStatus(), task.getProgress(), j == startIndex, j == actualProgressEnd);
+                                cell.setCellStyle(style);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < taskColCount; i++) {
+            sheet.setColumnWidth(i, 4000);
+        }
+        for (int i = 0; i < dateList.size(); i++) {
+            sheet.setColumnWidth(taskColCount + i, 800);
+        }
+
+        sheet.createFreezePane(taskColCount, 1);
+
+        writeResponse(response, workbook, project);
+    }
+
+    private static void writeResponse(HttpServletResponse response, XSSFWorkbook workbook, PmProject project) throws IOException {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding("utf-8");
+        String fileName = URLEncoder.encode((project != null ? project.getProjectName() : "项目") + "_甘特图.xlsx", StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+        response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName);
+
+        workbook.write(response.getOutputStream());
+        workbook.close();
+    }
+
+    private static XSSFCellStyle createHeaderStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle style = workbook.createCellStyle();
+        XSSFFont font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private static XSSFCellStyle createDateHeaderStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle style = workbook.createCellStyle();
+        XSSFFont font = workbook.createFont();
+        font.setBold(true);
+        font.setFontHeightInPoints((short) 9);
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        return style;
+    }
+
+    private static XSSFCellStyle createWeekendStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle style = workbook.createCellStyle();
+        XSSFFont font = workbook.createFont();
+        font.setBold(true);
+        font.setFontHeightInPoints((short) 9);
+        font.setColor(IndexedColors.GREY_50_PERCENT.getIndex());
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        return style;
+    }
+
+    private static XSSFCellStyle createTodayStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle style = workbook.createCellStyle();
+        XSSFFont font = workbook.createFont();
+        font.setBold(true);
+        font.setFontHeightInPoints((short) 9);
+        font.setColor(IndexedColors.WHITE.getIndex());
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        return style;
+    }
+
+    private static XSSFCellStyle createTaskNameStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle style = workbook.createCellStyle();
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private static XSSFCellStyle createBarStyle(XSSFWorkbook workbook, Integer status, Integer progress, boolean isStart, boolean isEnd) {
+        XSSFCellStyle style = workbook.createCellStyle();
+        IndexedColors color;
+        if (status != null && status == 3) {
+            color = IndexedColors.BRIGHT_GREEN;
+        } else if (status != null && status == 4) {
+            color = IndexedColors.GREY_50_PERCENT;
+        } else {
+            color = IndexedColors.GREY_25_PERCENT;
+        }
+        style.setFillForegroundColor(color.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        if (isStart) {
+            style.setBorderLeft(BorderStyle.THIN);
+        }
+        if (isEnd) {
+            style.setBorderRight(BorderStyle.THIN);
+        }
+        return style;
+    }
+
+    private static XSSFCellStyle createProgressStyle(XSSFWorkbook workbook, Integer status, Integer progress, boolean isStart, boolean isEnd) {
+        XSSFCellStyle style = workbook.createCellStyle();
+        IndexedColors color;
+        if (status != null && status == 3) {
+            color = IndexedColors.BRIGHT_GREEN;
+        } else if (status != null && status == 4) {
+            color = IndexedColors.GREY_50_PERCENT;
+        } else if (progress != null && progress >= 60) {
+            color = IndexedColors.BRIGHT_GREEN;
+        } else if (progress != null && progress >= 30) {
+            color = IndexedColors.GOLD;
+        } else {
+            color = IndexedColors.RED;
+        }
+        style.setFillForegroundColor(color.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        if (isStart) {
+            style.setBorderLeft(BorderStyle.THIN);
+        }
+        if (isEnd) {
+            style.setBorderRight(BorderStyle.THIN);
+        }
+        return style;
+    }
+
+    private static String getPriorityName(Integer priority) {
+        if (priority == null) return "";
+        switch (priority) {
+            case 1: return "高";
+            case 2: return "中";
+            case 3: return "低";
+            default: return "未知";
+        }
+    }
+
+    private static String getTaskStatusName(Integer status) {
+        if (status == null) return "";
+        switch (status) {
+            case 1: return "未开始";
+            case 2: return "进行中";
+            case 3: return "已完成";
+            case 4: return "已暂停";
+            case 5: return "已取消";
             default: return "未知";
         }
     }

@@ -33,4 +33,9 @@ public class ExportController {
     public void exportStatistics(HttpServletResponse response) throws IOException {
         exportService.exportStatistics(response);
     }
+
+    @GetMapping("/gantt")
+    public void exportGantt(HttpServletResponse response, @RequestParam Long projectId) throws IOException {
+        exportService.exportGantt(response, projectId);
+    }
 }
