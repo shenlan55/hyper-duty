@@ -271,7 +271,11 @@ public class ExcelExportUtil {
 
     public static void exportGantt(HttpServletResponse response, PmProject project, List<PmTask> tasks) throws IOException {
         XSSFWorkbook workbook = new XSSFWorkbook();
-        XSSFSheet sheet = workbook.createSheet("甘特图");
+        String sheetName = (project != null && project.getProjectName() != null) ? project.getProjectName() : "甘特图";
+        if (sheetName.length() > 31) {
+            sheetName = sheetName.substring(0, 28) + "...";
+        }
+        XSSFSheet sheet = workbook.createSheet(sheetName);
 
         if (tasks == null || tasks.isEmpty()) {
             String[] headers = {"提示"};
@@ -349,6 +353,8 @@ public class ExcelExportUtil {
             }
         }
 
+        XSSFCellStyle borderedStyle = createBorderedStyle(workbook);
+        
         for (int i = 0; i < tasks.size(); i++) {
             PmTask task = tasks.get(i);
             XSSFRow row = sheet.createRow(i + 1);
@@ -365,9 +371,17 @@ public class ExcelExportUtil {
             taskNameCell.setCellValue(taskNameWithIndent);
             taskNameCell.setCellStyle(taskNameStyle);
             
-            row.createCell(1).setCellValue(getPriorityName(task.getPriority()));
-            row.createCell(2).setCellValue(getTaskStatusName(task.getStatus()));
-            row.createCell(3).setCellValue(task.getProgress() != null ? task.getProgress() + "%" : "0%");
+            XSSFCell priorityCell = row.createCell(1);
+            priorityCell.setCellValue(getPriorityName(task.getPriority()));
+            priorityCell.setCellStyle(borderedStyle);
+            
+            XSSFCell statusCell = row.createCell(2);
+            statusCell.setCellValue(getTaskStatusName(task.getStatus()));
+            statusCell.setCellStyle(borderedStyle);
+            
+            XSSFCell progressCell = row.createCell(3);
+            progressCell.setCellValue(task.getProgress() != null ? task.getProgress() + "%" : "0%");
+            progressCell.setCellStyle(borderedStyle);
             
             if (task.getStartDate() != null && task.getEndDate() != null) {
                 int startIndex = dateList.indexOf(task.getStartDate());
@@ -483,6 +497,15 @@ public class ExcelExportUtil {
     }
 
     private static XSSFCellStyle createTaskNameStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle style = workbook.createCellStyle();
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private static XSSFCellStyle createBorderedStyle(XSSFWorkbook workbook) {
         XSSFCellStyle style = workbook.createCellStyle();
         style.setBorderBottom(BorderStyle.THIN);
         style.setBorderTop(BorderStyle.THIN);
