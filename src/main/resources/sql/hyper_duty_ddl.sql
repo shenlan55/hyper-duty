@@ -6469,6 +6469,145 @@ CREATE TABLE IF NOT EXISTS public.pm_project_deputy_owner (
 CREATE INDEX IF NOT EXISTS idx_pm_project_deputy_owner_project_id ON public.pm_project_deputy_owner(project_id);
 CREATE INDEX IF NOT EXISTS idx_pm_project_deputy_owner_employee_id ON public.pm_project_deputy_owner(employee_id);
 
+--
+-- 自定义表格功能表
+--
+
+-- 自定义表格配置表
+CREATE SEQUENCE public.pm_custom_table_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE public.pm_custom_table (
+    id bigint NOT NULL,
+    table_name character varying(100) NOT NULL,
+    table_code character varying(50) NOT NULL,
+    project_id bigint,
+    description character varying(500),
+    status smallint DEFAULT 1,
+    create_by bigint,
+    create_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    update_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.pm_custom_table OWNER TO postgres;
+ALTER TABLE ONLY public.pm_custom_table ALTER COLUMN id SET DEFAULT nextval('public.pm_custom_table_id_seq'::regclass);
+ALTER TABLE ONLY public.pm_custom_table ADD CONSTRAINT pm_custom_table_pkey PRIMARY KEY (id);
+CREATE INDEX idx_pm_custom_table_project_id ON public.pm_custom_table(project_id);
+CREATE INDEX idx_pm_custom_table_code ON public.pm_custom_table(table_code);
+
+COMMENT ON TABLE public.pm_custom_table IS '自定义表格配置表';
+COMMENT ON COLUMN public.pm_custom_table.id IS '表格ID';
+COMMENT ON COLUMN public.pm_custom_table.table_name IS '表格名称';
+COMMENT ON COLUMN public.pm_custom_table.table_code IS '表格编码';
+COMMENT ON COLUMN public.pm_custom_table.project_id IS '关联项目ID';
+COMMENT ON COLUMN public.pm_custom_table.description IS '表格描述';
+COMMENT ON COLUMN public.pm_custom_table.status IS '状态：0禁用，1启用';
+COMMENT ON COLUMN public.pm_custom_table.create_by IS '创建人ID';
+COMMENT ON COLUMN public.pm_custom_table.create_time IS '创建时间';
+COMMENT ON COLUMN public.pm_custom_table.update_time IS '更新时间';
+
+-- 自定义表格列表
+CREATE SEQUENCE public.pm_custom_table_column_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE public.pm_custom_table_column (
+    id bigint NOT NULL,
+    table_id bigint NOT NULL,
+    column_name character varying(100) NOT NULL,
+    column_code character varying(50) NOT NULL,
+    column_type character varying(20) DEFAULT 'text',
+    column_width integer DEFAULT 150,
+    required smallint DEFAULT 0,
+    sort_order integer DEFAULT 0,
+    options json,
+    create_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.pm_custom_table_column OWNER TO postgres;
+ALTER TABLE ONLY public.pm_custom_table_column ALTER COLUMN id SET DEFAULT nextval('public.pm_custom_table_column_id_seq'::regclass);
+ALTER TABLE ONLY public.pm_custom_table_column ADD CONSTRAINT pm_custom_table_column_pkey PRIMARY KEY (id);
+CREATE INDEX idx_pm_custom_table_column_table_id ON public.pm_custom_table_column(table_id);
+
+COMMENT ON TABLE public.pm_custom_table_column IS '自定义表格列表';
+COMMENT ON COLUMN public.pm_custom_table_column.id IS '列ID';
+COMMENT ON COLUMN public.pm_custom_table_column.table_id IS '关联表格ID';
+COMMENT ON COLUMN public.pm_custom_table_column.column_name IS '列名称';
+COMMENT ON COLUMN public.pm_custom_table_column.column_code IS '列编码';
+COMMENT ON COLUMN public.pm_custom_table_column.column_type IS '列类型：text文本，number数字，date日期，select下拉，person人员';
+COMMENT ON COLUMN public.pm_custom_table_column.column_width IS '列宽度';
+COMMENT ON COLUMN public.pm_custom_table_column.required IS '是否必填：0否，1是';
+COMMENT ON COLUMN public.pm_custom_table_column.sort_order IS '排序';
+COMMENT ON COLUMN public.pm_custom_table_column.options IS '下拉选项（JSON格式）';
+COMMENT ON COLUMN public.pm_custom_table_column.create_time IS '创建时间';
+
+-- 自定义表格数据行
+CREATE SEQUENCE public.pm_custom_table_row_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE public.pm_custom_table_row (
+    id bigint NOT NULL,
+    table_id bigint NOT NULL,
+    row_data json,
+    create_by bigint,
+    create_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    update_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.pm_custom_table_row OWNER TO postgres;
+ALTER TABLE ONLY public.pm_custom_table_row ALTER COLUMN id SET DEFAULT nextval('public.pm_custom_table_row_id_seq'::regclass);
+ALTER TABLE ONLY public.pm_custom_table_row ADD CONSTRAINT pm_custom_table_row_pkey PRIMARY KEY (id);
+CREATE INDEX idx_pm_custom_table_row_table_id ON public.pm_custom_table_row(table_id);
+
+COMMENT ON TABLE public.pm_custom_table_row IS '自定义表格数据行';
+COMMENT ON COLUMN public.pm_custom_table_row.id IS '行ID';
+COMMENT ON COLUMN public.pm_custom_table_row.table_id IS '关联表格ID';
+COMMENT ON COLUMN public.pm_custom_table_row.row_data IS '行数据（JSON格式）';
+COMMENT ON COLUMN public.pm_custom_table_row.create_by IS '创建人ID';
+COMMENT ON COLUMN public.pm_custom_table_row.create_time IS '创建时间';
+COMMENT ON COLUMN public.pm_custom_table_row.update_time IS '更新时间';
+
+-- 任务与自定义行关联表
+CREATE SEQUENCE public.pm_task_custom_row_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE public.pm_task_custom_row (
+    id bigint NOT NULL,
+    task_id bigint NOT NULL,
+    table_id bigint NOT NULL,
+    row_id bigint NOT NULL,
+    create_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.pm_task_custom_row OWNER TO postgres;
+ALTER TABLE ONLY public.pm_task_custom_row ALTER COLUMN id SET DEFAULT nextval('public.pm_task_custom_row_id_seq'::regclass);
+ALTER TABLE ONLY public.pm_task_custom_row ADD CONSTRAINT pm_task_custom_row_pkey PRIMARY KEY (id);
+CREATE INDEX idx_pm_task_custom_row_task_id ON public.pm_task_custom_row(task_id);
+CREATE INDEX idx_pm_task_custom_row_table_id ON public.pm_task_custom_row(table_id);
+CREATE INDEX idx_pm_task_custom_row_row_id ON public.pm_task_custom_row(row_id);
+
+COMMENT ON TABLE public.pm_task_custom_row IS '任务与自定义行关联表';
+COMMENT ON COLUMN public.pm_task_custom_row.id IS '关联ID';
+COMMENT ON COLUMN public.pm_task_custom_row.task_id IS '任务ID';
+COMMENT ON COLUMN public.pm_task_custom_row.table_id IS '自定义表格ID';
+COMMENT ON COLUMN public.pm_task_custom_row.row_id IS '自定义表格行ID';
+COMMENT ON COLUMN public.pm_task_custom_row.create_time IS '创建时间';
+
 -- Completed on 2026-02-24 20:59:48
 
 --

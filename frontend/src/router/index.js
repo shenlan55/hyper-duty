@@ -191,6 +191,12 @@ const routes = [
             name: 'TeamView',
             component: () => import('../views/project/TeamView.vue'),
             meta: { title: '团队视图' }
+          },
+          {
+            path: 'custom-table',
+            name: 'CustomTable',
+            component: () => import('../views/project/CustomTable.vue'),
+            meta: { title: '自定义表格' }
           }
         ]
       }
