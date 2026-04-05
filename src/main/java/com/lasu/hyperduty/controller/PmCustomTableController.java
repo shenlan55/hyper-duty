@@ -2,6 +2,7 @@ package com.lasu.hyperduty.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.ResponseResult;
+import com.lasu.hyperduty.dto.TaskBindingDTO;
 import com.lasu.hyperduty.entity.PmCustomTable;
 import com.lasu.hyperduty.entity.PmCustomTableColumn;
 import com.lasu.hyperduty.entity.PmCustomTableRow;
@@ -90,8 +91,8 @@ public class PmCustomTableController {
     }
 
     @GetMapping("/task/{taskId}/bindings")
-    public ResponseResult<List<PmTaskCustomRow>> getTaskBindings(@PathVariable Long taskId) {
-        List<PmTaskCustomRow> bindings = pmCustomTableService.getTaskBindings(taskId);
+    public ResponseResult<List<TaskBindingDTO>> getTaskBindings(@PathVariable Long taskId) {
+        List<TaskBindingDTO> bindings = pmCustomTableService.getTaskBindings(taskId);
         return ResponseResult.success(bindings);
     }
 

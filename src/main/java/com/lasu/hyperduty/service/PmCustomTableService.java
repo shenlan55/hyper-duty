@@ -2,6 +2,7 @@ package com.lasu.hyperduty.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.lasu.hyperduty.dto.TaskBindingDTO;
 import com.lasu.hyperduty.entity.PmCustomTable;
 import com.lasu.hyperduty.entity.PmCustomTableColumn;
 import com.lasu.hyperduty.entity.PmCustomTableRow;
@@ -29,7 +30,7 @@ public interface PmCustomTableService extends IService<PmCustomTable> {
 
     void deleteRow(Long id);
 
-    List<PmTaskCustomRow> getTaskBindings(Long taskId);
+    List<TaskBindingDTO> getTaskBindings(Long taskId);
 
     void bindRow(Long taskId, Long tableId, Long rowId);
 

@@ -3,6 +3,7 @@ package com.lasu.hyperduty.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.lasu.hyperduty.dto.TaskBindingDTO;
 import com.lasu.hyperduty.entity.PmCustomTable;
 import com.lasu.hyperduty.entity.PmCustomTableColumn;
 import com.lasu.hyperduty.entity.PmCustomTableRow;
@@ -14,11 +15,15 @@ import com.lasu.hyperduty.mapper.PmTaskCustomRowMapper;
 import com.lasu.hyperduty.service.PmCustomTableService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -137,8 +142,38 @@ public class PmCustomTableServiceImpl extends ServiceImpl<PmCustomTableMapper, P
     }
 
     @Override
-    public List<PmTaskCustomRow> getTaskBindings(Long taskId) {
-        return taskCustomRowMapper.selectByTaskId(taskId);
+    public List<TaskBindingDTO> getTaskBindings(Long taskId) {
+        List<PmTaskCustomRow> bindings = taskCustomRowMapper.selectByTaskId(taskId);
+        if (bindings == null || bindings.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Long> tableIds = bindings.stream()
+                .map(PmTaskCustomRow::getTableId)
+                .distinct()
+                .collect(Collectors.toList());
+        List<PmCustomTable> tables = this.listByIds(tableIds);
+        Map<Long, String> tableNameMap = tables.stream()
+                .collect(Collectors.toMap(PmCustomTable::getId, PmCustomTable::getTableName));
+
+        List<Long> rowIds = bindings.stream()
+                .map(PmTaskCustomRow::getRowId)
+                .distinct()
+                .collect(Collectors.toList());
+        List<PmCustomTableRow> rows = rowMapper.selectBatchIds(rowIds);
+        Map<Long, String> rowDataMap = rows.stream()
+                .collect(Collectors.toMap(PmCustomTableRow::getId, PmCustomTableRow::getRowData));
+
+        List<TaskBindingDTO> result = new ArrayList<>();
+        for (PmTaskCustomRow binding : bindings) {
+            TaskBindingDTO dto = new TaskBindingDTO();
+            BeanUtils.copyProperties(binding, dto);
+            dto.setTableName(tableNameMap.get(binding.getTableId()));
+            dto.setRowData(rowDataMap.get(binding.getRowId()));
+            result.add(dto);
+        }
+
+        return result;
     }
 
     @Override

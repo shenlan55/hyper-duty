@@ -95,7 +95,7 @@
               更新进度
             </el-button>
             <el-button type="info" size="small" @click="handleViewTaskDetail(row)">详情</el-button>
-            <el-button type="info" size="small" @click="handleViewComments(row)">批注</el-button>
+            <el-button type="info" size="small" @click="handleViewBindings(row)">绑定</el-button>
             <el-button 
               v-if="row.hasPermission " 
               type="warning" 
@@ -240,13 +240,53 @@
       </template>
     </el-dialog>
 
+    <!-- 绑定对话框 -->
     <el-dialog
-      v-model="commentDialogVisible"
-      :title="`任务批注 - ${currentTask?.taskName || ''}`"
-      width="600px"
+      v-model="bindDialogVisible"
+      :title="`绑定表格数据 - ${currentTask?.taskName || ''}`"
+      width="1200px"
     >
-      <TaskComment v-if="currentTask" :task-id="currentTask.id" />
+      <div class="bind-dialog-content">
+        <div class="bind-header">
+          <span>已绑定的数据</span>
+          <el-button type="primary" @click="showBindRowDialog = true">添加绑定</el-button>
+        </div>
+        
+        <div v-if="taskBindings.length > 0" class="bindings-list">
+          <el-card v-for="binding in taskBindings" :key="binding.id" class="binding-item">
+            <div class="binding-info">
+              <span class="binding-table-name">{{ binding.tableName }}</span>
+              <span class="binding-time">{{ formatDateTime(binding.createTime) }}</span>
+            </div>
+            <div class="binding-data">
+              <el-descriptions :column="2" border size="small">
+                <el-descriptions-item 
+                  v-for="(value, key) in binding.rowData" 
+                  :key="key" 
+                  :label="key"
+                >
+                  {{ value }}
+                </el-descriptions-item>
+              </el-descriptions>
+            </div>
+            <div class="binding-actions">
+              <el-button type="danger" size="small" @click="handleUnbind(binding.id)">解除绑定</el-button>
+            </div>
+          </el-card>
+        </div>
+        
+        <div v-else class="no-bindings">
+          暂无绑定数据
+        </div>
+      </div>
     </el-dialog>
+
+    <!-- 绑定表格行对话框 -->
+    <BindCustomRowDialog
+      v-model="showBindRowDialog"
+      :task-id="currentTask?.id"
+      @success="handleBindSuccess"
+    />
 
     <el-dialog
       v-model="progressUpdateDialogVisible"
@@ -446,14 +486,15 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, ElPopover } from 'element-plus'
 import { Star, Document, UserFilled } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
-import TaskComment from '@/components/TaskComment.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import PersonSelector from '@/components/PersonSelector.vue'
+import BindCustomRowDialog from '@/components/BindCustomRowDialog.vue'
 import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, hasTaskPermission, hasTaskDeletePermission, getTaskDetail } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
+import { getTaskBindings, unbindCustomRow } from '@/api/customTable'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
 import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime, sortTasks, getStatusByProgress, getProgressByStatus } from '@/utils/taskUtils'
@@ -468,8 +509,10 @@ const employeeList = ref([])
 const taskTreeData = ref([])
 const dialogVisible = ref(false)
 const progressDialogVisible = ref(false)
-const commentDialogVisible = ref(false)
+const bindDialogVisible = ref(false)
+const showBindRowDialog = ref(false)
 const taskDetailDialogVisible = ref(false)
+const taskBindings = ref([])
 const currentTask = ref(null)
 const currentTaskForDetail = ref(null)
 const dialogTitle = ref('新建任务')
@@ -1290,9 +1333,49 @@ const handleSubmitProgress = async () => {
   }
 }
 
-const handleViewComments = (row) => {
+const handleViewBindings = async (row) => {
   currentTask.value = row
-  commentDialogVisible.value = true
+  await loadTaskBindings(row.id)
+  bindDialogVisible.value = true
+}
+
+const loadTaskBindings = async (taskId) => {
+  try {
+    const data = await getTaskBindings(taskId)
+    taskBindings.value = (data || []).map(binding => ({
+      ...binding,
+      rowData: binding.rowData ? JSON.parse(binding.rowData) : {}
+    }))
+  } catch (error) {
+    ElMessage.error('加载绑定数据失败')
+    taskBindings.value = []
+  }
+}
+
+const handleBindSuccess = () => {
+  showBindRowDialog.value = false
+  if (currentTask.value) {
+    loadTaskBindings(currentTask.value.id)
+  }
+}
+
+const handleUnbind = async (bindingId) => {
+  try {
+    await ElMessageBox.confirm('确定要解除绑定吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await unbindCustomRow(currentTask.value.id, bindingId)
+    ElMessage.success('解除绑定成功')
+    if (currentTask.value) {
+      loadTaskBindings(currentTask.value.id)
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('解除绑定失败')
+    }
+  }
 }
 
 const hasPermission = async (task) => {
@@ -1653,5 +1736,71 @@ onMounted(async () => {
 
 .update-attachments {
   margin-top: 10px;
+}
+
+/* 绑定对话框样式 */
+.bind-dialog-content {
+  padding: 10px 0;
+}
+
+.bind-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.bindings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.binding-item {
+  transition: all 0.3s;
+}
+
+.binding-item:hover {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.binding-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.binding-table-name {
+  font-weight: bold;
+  color: #409EFF;
+  font-size: 14px;
+}
+
+.binding-time {
+  font-size: 12px;
+  color: #909399;
+}
+
+.binding-data {
+  margin-bottom: 15px;
+}
+
+.binding-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.no-bindings {
+  text-align: center;
+  padding: 40px 0;
+  color: #909399;
+  font-size: 14px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
 }
 </style>
