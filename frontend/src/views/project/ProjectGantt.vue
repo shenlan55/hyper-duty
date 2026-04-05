@@ -285,7 +285,7 @@ onMounted(() => {
 
 .gantt-wrapper {
   display: flex;
-  max-height: 500px;
+  max-height: 600px;
   border: 1px solid #ebeef5;
 }
 

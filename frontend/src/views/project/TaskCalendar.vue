@@ -5,7 +5,7 @@
         <div class="card-header">
           <span>任务日历</span>
           <div class="header-actions">
-            <el-select v-model="selectedProject" placeholder="选择项目" clearable @change="handleProjectChange">
+            <el-select v-model="selectedProject" placeholder="选择项目" clearable style="width: 220px;" @change="handleProjectChange">
               <el-option
                 v-for="project in projectList"
                 :key="project.id"
