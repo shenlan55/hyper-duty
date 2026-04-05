@@ -26,6 +26,9 @@
             {{ row.status === 1 ? '启用' : '禁用' }}
           </el-tag>
         </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
         <template #actions="{ row }">
           <el-button type="primary" size="small" @click="viewTable(row)">查看</el-button>
           <el-button type="primary" size="small" @click="openTableDialog(row)">编辑</el-button>
@@ -178,13 +181,14 @@ import {
   deleteTableRow
 } from '@/api/customTable'
 import { getEmployeeList } from '@/api/employee'
+import { formatDateTime } from '@/utils/dateUtils'
 
 const tableColumns = [
   { prop: 'tableName', label: '表格名称', width: 180 },
   { prop: 'tableCode', label: '表格编码', width: 150 },
   { prop: 'description', label: '描述', minWidth: 200 },
   { prop: 'status', label: '状态', width: 100, slot: 'status' },
-  { prop: 'createTime', label: '创建时间', width: 180 },
+  { prop: 'createTime', label: '创建时间', width: 180, slot: 'createTime' },
   { prop: 'actions', label: '操作', width: 240, slot: 'actions', fixed: 'right' }
 ]
 

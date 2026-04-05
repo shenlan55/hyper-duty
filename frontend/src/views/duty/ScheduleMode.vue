@@ -38,6 +38,9 @@
             @change="handleStatusChange(row)"
           />
         </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
         <template #operation="{ row }">
           <el-button type="primary" size="small" @click="handleEdit(row)">
             编辑
@@ -73,6 +76,7 @@ import { scheduleModeApi } from '@/api/duty/scheduleMode'
 import BaseTable from '@/components/BaseTable.vue'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
+import { formatDateTime } from '@/utils/dateUtils'
 
 const loading = ref(false)
 const modeList = ref([])
@@ -93,7 +97,7 @@ const columns = [
   { prop: 'modeCode', label: '编码', width: '120' },
   { prop: 'modeType', label: '类型', width: '100' },
   { prop: 'status', label: '状态', width: '80' },
-  { prop: 'createTime', label: '创建时间', width: '180' },
+  { prop: 'createTime', label: '创建时间', width: '180', slotName: 'createTime' },
   { type: 'operation', label: '操作', width: '180', fixed: 'right' }
 ]
 
@@ -231,7 +235,7 @@ const handleExport = () => {
       '类型': getModeTypeName(item.modeType),
       '状态': item.status === '1' ? '启用' : '禁用',
       '排序': item.sort,
-      '创建时间': item.createTime
+      '创建时间': formatDateTime(item.createTime)
     }))
     
     // 创建工作表
