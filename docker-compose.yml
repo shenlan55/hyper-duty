@@ -42,7 +42,7 @@ services:
       - RUSTFS_BUCKET=hyper-duty
       - RUSTFS_REGION=us-east-1
       - CORS_ALLOWED_ORIGINS=*
-      - KKFILEVIEW_ENDPOINT=http://kkfileview:8012
+      - KKFILEVIEW_ENDPOINT=http://songfu.asia:8012
       - FRONTEND_URL=http://frontend:80
       - TZ=Asia/Shanghai
       - LANG=C.UTF-8
