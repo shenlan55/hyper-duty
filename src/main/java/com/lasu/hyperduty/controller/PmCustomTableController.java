@@ -100,7 +100,7 @@ public class PmCustomTableController {
     public ResponseResult<Void> bindRow(
             @PathVariable Long taskId,
             @RequestBody BindRequest request) {
-        pmCustomTableService.bindRow(taskId, request.getTableId(), request.getRowId());
+        pmCustomTableService.bindRow(taskId, request.getTableId(), request.getRowId(), request.getOrderNo());
         return ResponseResult.success();
     }
 
@@ -127,5 +127,6 @@ public class PmCustomTableController {
     public static class BindRequest {
         private Long tableId;
         private Long rowId;
+        private String orderNo;
     }
 }

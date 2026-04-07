@@ -82,11 +82,11 @@ export function getTaskBindings(taskId) {
   })
 }
 
-export function bindCustomRow(taskId, tableId, rowId) {
+export function bindCustomRow(taskId, tableId, rowId, orderNo) {
   return request({
     url: `/pm/custom-table/task/${taskId}/bind`,
     method: 'post',
-    data: { tableId, rowId }
+    data: { tableId, rowId, orderNo }
   })
 }
 

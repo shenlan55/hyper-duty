@@ -256,6 +256,7 @@
           <el-card v-for="binding in taskBindings" :key="binding.id" class="binding-item">
             <div class="binding-info">
               <span class="binding-table-name">{{ binding.tableName }}</span>
+              <span v-if="binding.orderNo" class="binding-order-no">单号: {{ binding.orderNo }}</span>
               <span class="binding-time">{{ formatDateTime(binding.createTime) }}</span>
             </div>
             <div class="binding-data">
@@ -263,7 +264,7 @@
                 <el-descriptions-item 
                   v-for="(value, key) in binding.rowData" 
                   :key="key" 
-                  :label="key"
+                  :label="getColumnLabel(binding.tableId, key)"
                 >
                   {{ value }}
                 </el-descriptions-item>
@@ -494,7 +495,7 @@ import BindCustomRowDialog from '@/components/BindCustomRowDialog.vue'
 import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, hasTaskPermission, hasTaskDeletePermission, getTaskDetail } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
-import { getTaskBindings, unbindCustomRow } from '@/api/customTable'
+import { getTaskBindings, unbindCustomRow, getCustomTableColumns } from '@/api/customTable'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
 import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime, sortTasks, getStatusByProgress, getProgressByStatus } from '@/utils/taskUtils'
@@ -513,6 +514,7 @@ const bindDialogVisible = ref(false)
 const showBindRowDialog = ref(false)
 const taskDetailDialogVisible = ref(false)
 const taskBindings = ref([])
+const tableColumnMap = ref(new Map())
 const currentTask = ref(null)
 const currentTaskForDetail = ref(null)
 const dialogTitle = ref('新建任务')
@@ -1339,10 +1341,38 @@ const handleViewBindings = async (row) => {
   bindDialogVisible.value = true
 }
 
+const getColumnLabel = (tableId, columnCode) => {
+  const columnMap = tableColumnMap.value.get(tableId)
+  if (columnMap && columnMap.has(columnCode)) {
+    return columnMap.get(columnCode)
+  }
+  return columnCode
+}
+
 const loadTaskBindings = async (taskId) => {
   try {
     const data = await getTaskBindings(taskId)
-    taskBindings.value = (data || []).map(binding => ({
+    const bindings = data || []
+    
+    for (const binding of bindings) {
+      const tableId = binding.tableId
+      if (tableId && !tableColumnMap.value.has(tableId)) {
+        try {
+          const columns = await getCustomTableColumns(tableId)
+          const columnMap = new Map()
+          if (columns && Array.isArray(columns)) {
+            columns.forEach(col => {
+              columnMap.set(col.columnCode, col.columnName)
+            })
+          }
+          tableColumnMap.value.set(tableId, columnMap)
+        } catch (err) {
+          console.error('获取表格列配置失败', err)
+        }
+      }
+    }
+    
+    taskBindings.value = bindings.map(binding => ({
       ...binding,
       rowData: binding.rowData ? JSON.parse(binding.rowData) : {}
     }))
@@ -1779,6 +1809,12 @@ onMounted(async () => {
   font-weight: bold;
   color: #409EFF;
   font-size: 14px;
+}
+
+.binding-order-no {
+  font-size: 14px;
+  color: #67C23A;
+  font-weight: 500;
 }
 
 .binding-time {

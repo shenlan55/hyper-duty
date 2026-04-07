@@ -177,11 +177,12 @@ public class PmCustomTableServiceImpl extends ServiceImpl<PmCustomTableMapper, P
     }
 
     @Override
-    public void bindRow(Long taskId, Long tableId, Long rowId) {
+    public void bindRow(Long taskId, Long tableId, Long rowId, String orderNo) {
         PmTaskCustomRow binding = new PmTaskCustomRow();
         binding.setTaskId(taskId);
         binding.setTableId(tableId);
         binding.setRowId(rowId);
+        binding.setOrderNo(orderNo);
         binding.setCreateTime(LocalDateTime.now());
         taskCustomRowMapper.insert(binding);
     }

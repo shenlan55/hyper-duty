@@ -125,42 +125,36 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="viewDialogVisible" :title="currentTable?.tableName" width="1000px">
+    <el-dialog v-model="viewDialogVisible" :title="currentTable?.tableName" width="1200px">
       <div class="view-dialog-content">
         <div class="view-header">
           <span>数据管理</span>
-          <el-button type="primary" size="small" @click="openRowDialog">添加数据</el-button>
+          <div style="display: flex; gap: 10px;">
+            <el-button type="primary" size="small" @click="addNewRow">添加数据</el-button>
+            <el-button type="success" size="small" @click="saveAllRows">保存</el-button>
+          </div>
         </div>
         <el-table :data="rowList" border style="width: 100%; margin-top: 10px;">
-          <el-table-column v-for="column in currentColumns" :key="column.columnCode" :prop="column.columnCode" :label="column.columnName" :width="column.columnWidth" />
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column v-for="column in currentColumns" :key="column.columnCode" :prop="column.columnCode" :label="column.columnName" :width="column.columnWidth">
             <template #default="{ row }">
-              <el-button type="primary" size="small" @click="openRowDialog(row)">编辑</el-button>
-              <el-button type="danger" size="small" @click="deleteRow(row.id)">删除</el-button>
+              <el-input v-if="column.columnType === 'text'" v-model="row[column.columnCode]" :placeholder="`请输入${column.columnName}`" size="small" />
+              <el-input-number v-else-if="column.columnType === 'number'" v-model="row[column.columnCode]" :placeholder="`请输入${column.columnName}`" style="width: 100%;" size="small" />
+              <el-date-picker v-else-if="column.columnType === 'date'" v-model="row[column.columnCode]" type="date" :placeholder="`请选择${column.columnName}`" style="width: 100%;" value-format="YYYY-MM-DD" size="small" />
+              <el-select v-else-if="column.columnType === 'select'" v-model="row[column.columnCode]" :placeholder="`请选择${column.columnName}`" style="width: 100%;" size="small">
+                <el-option v-for="opt in parseOptions(column.options)" :key="opt.value" :label="opt.label" :value="opt.value" />
+              </el-select>
+              <el-select v-else-if="column.columnType === 'person'" v-model="row[column.columnCode]" :placeholder="`请选择${column.columnName}`" style="width: 100%;" filterable size="small">
+                <el-option v-for="emp in employeeList" :key="emp.id" :label="emp.employeeName" :value="emp.id" />
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row, $index }">
+              <el-button type="danger" size="small" @click="deleteRow($index)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
       </div>
-    </el-dialog>
-
-    <el-dialog v-model="rowDialogVisible" :title="isEditRow ? '编辑数据' : '添加数据'" width="600px" @close="resetRowForm">
-      <el-form :model="rowForm" ref="rowFormRef" label-width="100px">
-        <el-form-item v-for="column in currentColumns" :key="column.columnCode" :label="column.columnName" :required="column.required === 1">
-          <el-input v-if="column.columnType === 'text'" v-model="rowForm[column.columnCode]" :placeholder="`请输入${column.columnName}`" />
-          <el-input-number v-else-if="column.columnType === 'number'" v-model="rowForm[column.columnCode]" :placeholder="`请输入${column.columnName}`" style="width: 100%;" />
-          <el-date-picker v-else-if="column.columnType === 'date'" v-model="rowForm[column.columnCode]" type="date" :placeholder="`请选择${column.columnName}`" style="width: 100%;" value-format="YYYY-MM-DD" />
-          <el-select v-else-if="column.columnType === 'select'" v-model="rowForm[column.columnCode]" :placeholder="`请选择${column.columnName}`" style="width: 100%;">
-            <el-option v-for="opt in parseOptions(column.options)" :key="opt.value" :label="opt.label" :value="opt.value" />
-          </el-select>
-          <el-select v-else-if="column.columnType === 'person'" v-model="rowForm[column.columnCode]" :placeholder="`请选择${column.columnName}`" style="width: 100%;" filterable>
-            <el-option v-for="emp in employeeList" :key="emp.id" :label="emp.employeeName" :value="emp.id" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="rowDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveRow">保存</el-button>
-      </template>
     </el-dialog>
   </div>
 </template>
@@ -205,11 +199,8 @@ const pagination = reactive({
 
 const tableDialogVisible = ref(false)
 const viewDialogVisible = ref(false)
-const rowDialogVisible = ref(false)
 const isEdit = ref(false)
-const isEditRow = ref(false)
 const tableFormRef = ref(null)
-const rowFormRef = ref(null)
 
 const tableForm = reactive({
   id: null,
@@ -228,8 +219,7 @@ const tableRules = {
 const currentTable = ref(null)
 const currentColumns = ref([])
 const rowList = ref([])
-const rowForm = reactive({})
-const currentEditRowId = ref(null)
+const originalRowList = ref([])
 
 const loadTables = async () => {
   loading.value = true
@@ -388,61 +378,73 @@ const viewTable = async (row) => {
       id: r.id,
       ...JSON.parse(r.rowData || '{}')
     }))
+    originalRowList.value = JSON.parse(JSON.stringify(rowList.value))
     viewDialogVisible.value = true
   } catch (error) {
     ElMessage.error('加载数据失败')
   }
 }
 
-const openRowDialog = (row = null) => {
-  if (row) {
-    isEditRow.value = true
-    currentEditRowId.value = row?.id || null
-    const rowData = { ...row }
-    delete rowData.id
-    Object.assign(rowForm, rowData)
-  } else {
-    isEditRow.value = false
-    currentEditRowId.value = null
-    resetRowForm()
-  }
-  rowDialogVisible.value = true
+const addNewRow = () => {
+  const newRow = {}
+  currentColumns.value.forEach(column => {
+    newRow[column.columnCode] = ''
+  })
+  rowList.value.push(newRow)
 }
 
-const saveRow = async () => {
+const saveAllRows = async () => {
   try {
-    const rowData = JSON.stringify(rowForm)
-    const isUpdate = isEditRow.value && currentEditRowId.value
-    if (isUpdate) {
-      await updateTableRow(currentEditRowId.value, rowData)
-      ElMessage.success('更新成功')
-    } else {
-      await createTableRow(currentTable.value.id, rowData)
-      ElMessage.success('创建成功')
+    const savePromises = []
+
+    for (const row of rowList.value) {
+      const rowId = row.id
+      const rowData = {}
+      
+      currentColumns.value.forEach(column => {
+        if (row[column.columnCode] !== undefined) {
+          rowData[column.columnCode] = row[column.columnCode]
+        }
+      })
+
+      if (rowId) {
+        const originalRow = originalRowList.value.find(r => r.id === rowId)
+        const isModified = JSON.stringify(originalRow) !== JSON.stringify(row)
+        if (isModified) {
+          savePromises.push(updateTableRow(rowId, JSON.stringify(rowData)))
+        }
+      } else {
+        savePromises.push(createTableRow(currentTable.value.id, JSON.stringify(rowData)))
+      }
     }
-    rowDialogVisible.value = false
-    viewTable(currentTable.value)
+
+    await Promise.all(savePromises)
+    ElMessage.success('保存成功')
+    await viewTable(currentTable.value)
   } catch (error) {
-    const isUpdate = isEditRow.value && currentEditRowId.value
-    ElMessage.error(isUpdate ? '更新失败' : '创建失败')
+    ElMessage.error('保存失败')
   }
 }
 
-const deleteRow = async (id) => {
-  try {
-    await ElMessageBox.confirm('确定要删除这条数据吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await deleteTableRow(id)
-    ElMessage.success('删除成功')
-    viewTable(currentTable.value)
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+const deleteRow = async (index) => {
+  const row = rowList.value[index]
+  if (row.id) {
+    try {
+      await ElMessageBox.confirm('确定要删除这条数据吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+      await deleteTableRow(row.id)
+      ElMessage.success('删除成功')
+    } catch (error) {
+      if (error !== 'cancel') {
+        ElMessage.error('删除失败')
+        return
+      }
     }
   }
+  rowList.value.splice(index, 1)
 }
 
 const parseOptions = (optionsStr) => {
@@ -464,11 +466,6 @@ const resetTableForm = () => {
     columns: []
   })
   tableFormRef.value?.resetFields()
-}
-
-const resetRowForm = () => {
-  Object.assign(rowForm, {})
-  rowFormRef.value?.resetFields()
 }
 
 const loadEmployees = async () => {

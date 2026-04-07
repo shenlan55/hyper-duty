@@ -39,6 +39,22 @@
       <el-button @click="visible = false">取消</el-button>
     </template>
   </el-dialog>
+
+  <el-dialog
+    v-model="orderNoDialogVisible"
+    title="录入单号"
+    width="500px"
+  >
+    <el-form :model="orderNoForm" label-width="80px">
+      <el-form-item label="单号">
+        <el-input v-model="orderNoForm.orderNo" placeholder="请输入单号" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="orderNoDialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="confirmBind">确定</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -71,6 +87,11 @@ const tableList = ref([])
 const tableColumnsMap = ref({})
 const tableRowsMap = ref({})
 const activeTab = ref('')
+const orderNoDialogVisible = ref(false)
+const orderNoForm = reactive({
+  orderNo: ''
+})
+const pendingBindData = ref(null)
 
 const loadTables = async () => {
   loading.value = true
@@ -107,10 +128,23 @@ const getTableRows = (tableId) => {
 const handleRowClick = (row) => {
 }
 
-const handleSelect = async (row, tableId) => {
+const handleSelect = (row, tableId) => {
+  pendingBindData.value = { row, tableId }
+  orderNoForm.orderNo = ''
+  orderNoDialogVisible.value = true
+}
+
+const confirmBind = async () => {
   try {
-    await bindCustomRow(props.taskId, tableId, row.id)
+    if (!orderNoForm.orderNo) {
+      ElMessage.warning('请输入单号')
+      return
+    }
+    
+    const { row, tableId } = pendingBindData.value
+    await bindCustomRow(props.taskId, tableId, row.id, orderNoForm.orderNo)
     ElMessage.success('绑定成功')
+    orderNoDialogVisible.value = false
     visible.value = false
     emit('success')
   } catch (error) {
