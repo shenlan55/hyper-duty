@@ -266,16 +266,22 @@ public class FileController {
 
     /**
      * 生成KKFileView预览URL
-     * @param fileUrl 文件访问URL
+     * @param fileUrl 文件路径
      * @param fileName 文件名
      * @return KKFileView预览URL
      */
     private String generateKKFileViewUrl(String fileUrl, String fileName) {
         try {
-            log.info("RustFS Endpoint: {}", rustFSConfig.getEndpoint());
-            log.info("RustFS Bucket: {}", rustFSConfig.getBucketName());
-            String fullFileUrl = rustFSConfig.getEndpoint() + "/" + rustFSConfig.getBucketName() + "/" + fileUrl;
-            log.info("Generated File URL: {}", fullFileUrl);
+            String fullFileUrl;
+            String backendUrl = System.getenv("BACKEND_URL");
+            if (backendUrl == null || backendUrl.isEmpty()) {
+                backendUrl = "http://backend:8080/api";
+            }
+            fullFileUrl = backendUrl + "/file/preview?filePath=" + java.net.URLEncoder.encode(fileUrl, StandardCharsets.UTF_8.toString());
+            if (fileName != null && !fileName.isEmpty()) {
+                fullFileUrl += "&fileName=" + java.net.URLEncoder.encode(fileName, StandardCharsets.UTF_8.toString());
+            }
+            log.info("Generated File URL for KKFileView: {}", fullFileUrl);
             byte[] urlBytes = fullFileUrl.getBytes(StandardCharsets.UTF_8);
             String base64Url = Base64.getEncoder().encodeToString(urlBytes);
             String previewUrl = kkFileViewConfig.getEndpoint() + kkFileViewConfig.getPreviewPath() + "?url=" + base64Url;
