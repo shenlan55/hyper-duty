@@ -2,12 +2,16 @@ package com.lasu.hyperduty.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.ResponseResult;
+import com.lasu.hyperduty.dto.WorkloadDTO;
 import com.lasu.hyperduty.entity.PmTask;
 import com.lasu.hyperduty.service.PmTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -127,5 +131,21 @@ public class PmTaskController {
     public ResponseResult<Void> recalculateAllProjectProgress() {
         pmTaskService.recalculateAllProjectProgress();
         return ResponseResult.success();
+    }
+
+    @GetMapping("/workload/page")
+    public ResponseResult<Page<WorkloadDTO>> getWorkloadPage(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String taskName,
+            @RequestParam(required = false) Long assigneeId,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate taskStartDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate taskEndDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime bindStartTime,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime bindEndTime) {
+        
+        Page<WorkloadDTO> page = pmTaskService.getWorkloadPage(pageNum, pageSize, projectId, taskName, assigneeId, taskStartDate, taskEndDate, bindStartTime, bindEndTime);
+        return ResponseResult.success(page);
     }
 }

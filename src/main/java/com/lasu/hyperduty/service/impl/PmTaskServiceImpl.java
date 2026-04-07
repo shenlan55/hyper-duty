@@ -3,10 +3,10 @@ package com.lasu.hyperduty.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.lasu.hyperduty.entity.PmProject;
-import com.lasu.hyperduty.entity.PmTask;
-import com.lasu.hyperduty.mapper.PmProjectMapper;
-import com.lasu.hyperduty.mapper.PmTaskMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lasu.hyperduty.dto.WorkloadDTO;
+import com.lasu.hyperduty.entity.*;
+import com.lasu.hyperduty.mapper.*;
 import com.lasu.hyperduty.service.PmProjectDeputyOwnerService;
 import com.lasu.hyperduty.service.PmTaskService;
 import lombok.RequiredArgsConstructor;
@@ -14,9 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -25,6 +26,12 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
 
     private final PmProjectMapper projectMapper;
     private final PmProjectDeputyOwnerService pmProjectDeputyOwnerService;
+    private final PmTaskCustomRowMapper taskCustomRowMapper;
+    private final PmCustomTableMapper customTableMapper;
+    private final PmCustomTableRowMapper customTableRowMapper;
+    private final PmCustomTableColumnMapper customTableColumnMapper;
+    private final SysEmployeeMapper sysEmployeeMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long assigneeId, Integer status, Integer priority) {
@@ -630,5 +637,142 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
         
         // 任务干系人没有删除权限
         return false;
+    }
+
+    @Override
+    public Page<WorkloadDTO> getWorkloadPage(Integer pageNum, Integer pageSize, Long projectId, String taskName, Long assigneeId, LocalDate taskStartDate, LocalDate taskEndDate, LocalDateTime bindStartTime, LocalDateTime bindEndTime) {
+        Page<WorkloadDTO> resultPage = new Page<>(pageNum, pageSize);
+
+        LambdaQueryWrapper<PmTask> taskWrapper = new LambdaQueryWrapper<>();
+        if (projectId != null) {
+            taskWrapper.eq(PmTask::getProjectId, projectId);
+        }
+        if (taskName != null && !taskName.isEmpty()) {
+            taskWrapper.like(PmTask::getTaskName, taskName);
+        }
+        if (assigneeId != null) {
+            taskWrapper.eq(PmTask::getAssigneeId, assigneeId);
+        }
+        if (taskStartDate != null) {
+            taskWrapper.ge(PmTask::getStartDate, taskStartDate);
+        }
+        if (taskEndDate != null) {
+            taskWrapper.le(PmTask::getEndDate, taskEndDate);
+        }
+        taskWrapper.orderByDesc(PmTask::getCreateTime);
+
+        List<PmTask> allTasks = list(taskWrapper);
+
+        List<Long> taskIds = allTasks.stream().map(PmTask::getId).collect(Collectors.toList());
+
+        Map<Long, List<PmTaskCustomRow>> taskBindingsMap = new HashMap<>();
+        if (!taskIds.isEmpty()) {
+            LambdaQueryWrapper<PmTaskCustomRow> bindingWrapper = new LambdaQueryWrapper<>();
+            bindingWrapper.in(PmTaskCustomRow::getTaskId, taskIds);
+            if (bindStartTime != null) {
+                bindingWrapper.ge(PmTaskCustomRow::getCreateTime, bindStartTime);
+            }
+            if (bindEndTime != null) {
+                bindingWrapper.le(PmTaskCustomRow::getCreateTime, bindEndTime);
+            }
+            List<PmTaskCustomRow> bindings = taskCustomRowMapper.selectList(bindingWrapper);
+            taskBindingsMap = bindings.stream().collect(Collectors.groupingBy(PmTaskCustomRow::getTaskId));
+        }
+
+        List<Long> projectIds = allTasks.stream().map(PmTask::getProjectId).distinct().collect(Collectors.toList());
+        Map<Long, PmProject> projectMap = new HashMap<>();
+        if (!projectIds.isEmpty()) {
+            List<PmProject> projects = projectMapper.selectBatchIds(projectIds);
+            projectMap = projects.stream().collect(Collectors.toMap(PmProject::getId, p -> p));
+        }
+
+        List<Long> employeeIds = allTasks.stream().map(PmTask::getAssigneeId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        Map<Long, SysEmployee> employeeMap = new HashMap<>();
+        if (!employeeIds.isEmpty()) {
+            LambdaQueryWrapper<SysEmployee> employeeWrapper = new LambdaQueryWrapper<>();
+            employeeWrapper.in(SysEmployee::getId, employeeIds);
+            List<SysEmployee> employees = sysEmployeeMapper.selectList(employeeWrapper);
+            employeeMap = employees.stream().collect(Collectors.toMap(SysEmployee::getId, e -> e));
+        }
+
+        List<WorkloadDTO> workloadList = new ArrayList<>();
+        for (PmTask task : allTasks) {
+            WorkloadDTO dto = new WorkloadDTO();
+            dto.setId(task.getId());
+            dto.setProjectId(task.getProjectId());
+            dto.setTaskId(task.getId());
+            dto.setTaskName(task.getTaskName());
+            dto.setTaskStatus(task.getStatus());
+            dto.setTaskStatusText(getTaskStatusText(task.getStatus()));
+            dto.setStartDate(task.getStartDate());
+            dto.setEndDate(task.getEndDate());
+            dto.setProgress(task.getProgress());
+            dto.setAssigneeId(task.getAssigneeId());
+
+            PmProject project = projectMap.get(task.getProjectId());
+            if (project != null) {
+                dto.setProjectName(project.getProjectName());
+            }
+
+            SysEmployee employee = employeeMap.get(task.getAssigneeId());
+            if (employee != null) {
+                dto.setAssigneeName(employee.getEmployeeName());
+            }
+
+            List<PmTaskCustomRow> bindings = taskBindingsMap.getOrDefault(task.getId(), new ArrayList<>());
+            List<WorkloadDTO.BindingInfo> bindingInfos = new ArrayList<>();
+            for (PmTaskCustomRow binding : bindings) {
+                WorkloadDTO.BindingInfo bindingInfo = new WorkloadDTO.BindingInfo();
+                bindingInfo.setId(binding.getId());
+                bindingInfo.setTableId(binding.getTableId());
+                bindingInfo.setRowId(binding.getRowId());
+                bindingInfo.setOrderNo(binding.getOrderNo());
+                bindingInfo.setCreateTime(binding.getCreateTime());
+
+                PmCustomTable table = customTableMapper.selectById(binding.getTableId());
+                if (table != null) {
+                    bindingInfo.setTableName(table.getTableName());
+                }
+
+                PmCustomTableRow row = customTableRowMapper.selectById(binding.getRowId());
+                if (row != null && row.getRowData() != null) {
+                    try {
+                        Map<String, Object> rowDataMap = objectMapper.readValue(row.getRowData(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                        bindingInfo.setRowData(rowDataMap);
+                    } catch (Exception e) {
+                        log.error("解析行数据失败", e);
+                    }
+                }
+
+                bindingInfos.add(bindingInfo);
+            }
+            dto.setBindings(bindingInfos);
+
+            workloadList.add(dto);
+        }
+
+        int total = workloadList.size();
+        resultPage.setTotal(total);
+
+        int fromIndex = (pageNum - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, total);
+        if (fromIndex < total) {
+            resultPage.setRecords(workloadList.subList(fromIndex, toIndex));
+        } else {
+            resultPage.setRecords(new ArrayList<>());
+        }
+
+        return resultPage;
+    }
+
+    private String getTaskStatusText(Integer status) {
+        if (status == null) return "未知";
+        switch (status) {
+            case 1: return "未开始";
+            case 2: return "进行中";
+            case 3: return "已完成";
+            case 4: return "已暂停";
+            default: return "未知";
+        }
     }
 }

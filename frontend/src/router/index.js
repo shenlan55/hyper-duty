@@ -197,6 +197,12 @@ const routes = [
             name: 'CustomTable',
             component: () => import('../views/project/CustomTable.vue'),
             meta: { title: '自定义表格' }
+          },
+          {
+            path: 'workload-query',
+            name: 'WorkloadQuery',
+            component: () => import('../views/project/WorkloadQuery.vue'),
+            meta: { title: '工作量查询' }
           }
         ]
       }

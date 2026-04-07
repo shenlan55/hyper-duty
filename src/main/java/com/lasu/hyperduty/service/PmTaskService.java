@@ -41,4 +41,6 @@ public interface PmTaskService extends IService<PmTask> {
     boolean hasTaskPermission(Long taskId, Long employeeId);
 
     boolean hasTaskDeletePermission(Long taskId, Long employeeId);
+
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<com.lasu.hyperduty.dto.WorkloadDTO> getWorkloadPage(Integer pageNum, Integer pageSize, Long projectId, String taskName, Long assigneeId, java.time.LocalDate taskStartDate, java.time.LocalDate taskEndDate, java.time.LocalDateTime bindStartTime, java.time.LocalDateTime bindEndTime);
 }

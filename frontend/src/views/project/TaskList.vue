@@ -1771,6 +1771,22 @@ onMounted(async () => {
 /* 绑定对话框样式 */
 .bind-dialog-content {
   padding: 10px 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.bind-dialog-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.bind-dialog-content::-webkit-scrollbar-thumb {
+  background-color: #c0c4cc;
+  border-radius: 4px;
+}
+
+.bind-dialog-content::-webkit-scrollbar-track {
+  background-color: #f5f7fa;
 }
 
 .bind-header {
@@ -1780,6 +1796,33 @@ onMounted(async () => {
   margin-bottom: 20px;
   font-weight: bold;
   font-size: 16px;
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 10;
+  padding-top: 5px;
+}
+
+.bindings-list-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-height: 450px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.bindings-list-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.bindings-list-scroll::-webkit-scrollbar-thumb {
+  background-color: #c0c4cc;
+  border-radius: 3px;
+}
+
+.bindings-list-scroll::-webkit-scrollbar-track {
+  background-color: #f5f7fa;
 }
 
 .bindings-list {

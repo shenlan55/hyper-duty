@@ -157,3 +157,11 @@ export function exportGantt(projectId) {
     responseType: 'blob'
   })
 }
+
+export function getWorkloadPage(params) {
+  return request({
+    url: '/pm/task/workload/page',
+    method: 'get',
+    params
+  })
+}

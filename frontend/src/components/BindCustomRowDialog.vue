@@ -2,38 +2,44 @@
   <el-dialog
     v-model="visible"
     title="绑定表格数据"
-    width="1000px"
+    width="1200px"
+    :close-on-click-modal="false"
     @close="reset"
   >
-    <el-tabs v-model="activeTab">
-      <el-tab-pane
-        v-for="table in tableList"
-        :key="table.id"
-        :label="table.tableName"
-        :name="String(table.id)"
-      >
-        <el-table
-          :data="getTableRows(table.id)"
-          border
-          style="width: 100%; margin-top: 10px;"
-          @row-click="handleRowClick"
-          highlight-current-row
+    <div class="dialog-content">
+      <el-tabs v-model="activeTab">
+        <el-tab-pane
+          v-for="table in tableList"
+          :key="table.id"
+          :label="table.tableName"
+          :name="String(table.id)"
         >
-          <el-table-column
-            v-for="column in getTableColumns(table.id)"
-            :key="column.columnCode"
-            :prop="column.columnCode"
-            :label="column.columnName"
-            :width="column.columnWidth"
-          />
-          <el-table-column label="操作" width="100" fixed="right">
-            <template #default="{ row }">
-              <el-button type="primary" size="small" @click="handleSelect(row, table.id)">选择</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
-    </el-tabs>
+          <div class="table-container">
+            <el-table
+              :data="getTableRows(table.id)"
+              border
+              style="width: 100%; margin-top: 10px;"
+              @row-click="handleRowClick"
+              highlight-current-row
+            >
+              <el-table-column
+                v-for="column in getTableColumns(table.id)"
+                :key="column.columnCode"
+                :prop="column.columnCode"
+                :label="column.columnName"
+                :width="column.columnWidth"
+                show-overflow-tooltip
+              />
+              <el-table-column label="操作" width="100" fixed="right">
+                <template #default="{ row }">
+                  <el-button type="primary" size="small" @click="handleSelect(row, table.id)">选择</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+    </div>
 
     <template #footer>
       <el-button @click="visible = false">取消</el-button>
@@ -169,4 +175,41 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.dialog-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.dialog-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dialog-content::-webkit-scrollbar-thumb {
+  background-color: #c0c4cc;
+  border-radius: 4px;
+}
+
+.dialog-content::-webkit-scrollbar-track {
+  background-color: #f5f7fa;
+}
+
+.table-container {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.table-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background-color: #c0c4cc;
+  border-radius: 3px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background-color: #f5f7fa;
+}
 </style>
