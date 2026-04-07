@@ -135,15 +135,52 @@
           </div>
         </div>
         <el-table :data="rowList" :row-key="(row) => row.id || row._tempId" border style="width: 100%; margin-top: 10px;">
-          <el-table-column v-for="column in currentColumns" :key="column.columnCode" :prop="column.columnCode" :label="column.columnName" :width="column.columnWidth">
-            <template #default="{ row }">
-              <el-input v-if="column.columnType === 'text'" v-model="row[column.columnCode]" :placeholder="`请输入${column.columnName}`" size="small" />
-              <el-input-number v-else-if="column.columnType === 'number'" v-model="row[column.columnCode]" :placeholder="`请输入${column.columnName}`" style="width: 100%;" size="small" />
-              <el-date-picker v-else-if="column.columnType === 'date'" v-model="row[column.columnCode]" type="date" :placeholder="`请选择${column.columnName}`" style="width: 100%;" value-format="YYYY-MM-DD" size="small" />
-              <el-select v-else-if="column.columnType === 'select'" v-model="row[column.columnCode]" :placeholder="`请选择${column.columnName}`" style="width: 100%;" size="small">
+          <el-table-column v-for="column in currentColumns" :key="'col-' + column.columnCode" :label="column.columnName" :width="column.columnWidth">
+            <template #default="{ row, $index }">
+              <el-input 
+                v-if="column.columnType === 'text'" 
+                :key="'text-' + (row.id || row._tempId) + '-' + column.columnCode"
+                v-model="row[column.columnCode]" 
+                :placeholder="`请输入${column.columnName}`" 
+                size="small" 
+              />
+              <el-input-number 
+                v-else-if="column.columnType === 'number'" 
+                :key="'num-' + (row.id || row._tempId) + '-' + column.columnCode"
+                v-model="row[column.columnCode]" 
+                :placeholder="`请输入${column.columnName}`" 
+                style="width: 100%;" 
+                size="small" 
+              />
+              <el-date-picker 
+                v-else-if="column.columnType === 'date'" 
+                :key="'date-' + (row.id || row._tempId) + '-' + column.columnCode"
+                v-model="row[column.columnCode]" 
+                type="date" 
+                :placeholder="`请选择${column.columnName}`" 
+                style="width: 100%;" 
+                value-format="YYYY-MM-DD" 
+                size="small" 
+              />
+              <el-select 
+                v-else-if="column.columnType === 'select'" 
+                :key="'sel-' + (row.id || row._tempId) + '-' + column.columnCode"
+                v-model="row[column.columnCode]" 
+                :placeholder="`请选择${column.columnName}`" 
+                style="width: 100%;" 
+                size="small"
+              >
                 <el-option v-for="opt in parseOptions(column.options)" :key="opt.value" :label="opt.label" :value="opt.value" />
               </el-select>
-              <el-select v-else-if="column.columnType === 'person'" v-model="row[column.columnCode]" :placeholder="`请选择${column.columnName}`" style="width: 100%;" filterable size="small">
+              <el-select 
+                v-else-if="column.columnType === 'person'" 
+                :key="'per-' + (row.id || row._tempId) + '-' + column.columnCode"
+                v-model="row[column.columnCode]" 
+                :placeholder="`请选择${column.columnName}`" 
+                style="width: 100%;" 
+                filterable 
+                size="small"
+              >
                 <el-option v-for="emp in employeeList" :key="emp.id" :label="emp.employeeName" :value="emp.id" />
               </el-select>
             </template>
@@ -374,10 +411,13 @@ const viewTable = async (row) => {
     const columns = await getCustomTableColumns(row.id)
     currentColumns.value = columns || []
     const rows = await getCustomTableRows(row.id)
-    rowList.value = rows.map(r => ({
-      id: r.id,
-      ...JSON.parse(r.rowData || '{}')
-    }))
+    rowList.value = rows.map(r => {
+      const rowData = JSON.parse(r.rowData || '{}')
+      return JSON.parse(JSON.stringify({
+        id: r.id,
+        ...rowData
+      }))
+    })
     originalRowList.value = JSON.parse(JSON.stringify(rowList.value))
     viewDialogVisible.value = true
   } catch (error) {
@@ -386,13 +426,12 @@ const viewTable = async (row) => {
 }
 
 const addNewRow = () => {
-  const newRow = {
-    _tempId: Date.now() + Math.random()
-  }
+  const newRow = {}
+  newRow._tempId = Date.now() + '_' + Math.random().toString(36).substr(2, 9)
   currentColumns.value.forEach(column => {
     newRow[column.columnCode] = ''
   })
-  rowList.value.push(newRow)
+  rowList.value.push(JSON.parse(JSON.stringify(newRow)))
 }
 
 const saveAllRows = async () => {
