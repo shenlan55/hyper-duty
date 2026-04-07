@@ -22,6 +22,12 @@ public class WorkloadDTO {
     private Long assigneeId;
     private String assigneeName;
     private List<BindingInfo> bindings;
+    
+    private Long tableId;
+    private String tableName;
+    private String orderNo;
+    private LocalDateTime bindTime;
+    private Map<String, Object> bindData;
 
     @Data
     public static class BindingInfo {

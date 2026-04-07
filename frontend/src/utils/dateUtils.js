@@ -5,9 +5,9 @@ export function formatDate(date, format = 'YYYY-MM-DD') {
   return dayjs(date).format(format)
 }
 
-export function formatDateTime(date) {
+export function formatDateTime(date, format = 'YYYY-MM-DD HH:mm:ss') {
   if (!date) return ''
-  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+  return dayjs(date).format(format)
 }
 
 export function formatTime(date) {

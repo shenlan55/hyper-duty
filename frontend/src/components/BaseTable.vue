@@ -122,6 +122,7 @@
           :filter-multiple="column.filterable !== false"
           :filter-method="column.filterable ? (value, row) => handleColumnFilter(column.prop, value) : undefined"
           :filters="column.filterOptions"
+          :show-overflow-tooltip="column.showOverflowTooltip"
         >
           <template #default="scope">
             <div class="tree-node-content" :style="column.indent ? { marginLeft: `${scope.row.level * 20}px` } : {}">
@@ -139,7 +140,7 @@
               <!-- 内容 -->
               <span class="node-content">
                 <slot :name="column.slot || column.slotName || column.prop" v-bind="scope">
-                  {{ scope.row[column.prop] }}
+                  {{ column.formatter ? column.formatter(scope.row) : scope.row[column.prop] }}
                 </slot>
               </span>
             </div>

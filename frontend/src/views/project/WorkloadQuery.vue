@@ -61,7 +61,7 @@
 
       <BaseTable
         :data="tableData"
-        :columns="columns"
+        :columns="dynamicColumns"
         :loading="loading"
         :pagination="{
           currentPage: pagination.currentPage,
@@ -71,8 +71,10 @@
         }"
         row-key="id"
         :backend-pagination="true"
+        :show-export="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
+        @export="handleExport"
         style="width: 100%;"
       >
         <template #taskStatus="{ row }">
@@ -81,90 +83,29 @@
         <template #progress="{ row }">
           <el-progress :percentage="row.progress" :status="getProgressStatus(row.progress)" />
         </template>
-        <template #bindings="{ row }">
-          <div class="bindings-cell">
-            <div v-if="row.bindings && row.bindings.length > 0" class="bindings-list">
-              <el-tag v-for="binding in row.bindings" :key="binding.id" size="small" style="margin: 2px;">
-                {{ binding.tableName || '表格' }}
-                <span v-if="binding.orderNo" style="margin-left: 4px;">({{ binding.orderNo }})</span>
-              </el-tag>
-              <el-button type="primary" link size="small" @click="handleViewBindings(row)">查看详情</el-button>
-            </div>
-            <span v-else style="color: #909399;">暂无绑定</span>
-          </div>
-        </template>
       </BaseTable>
     </el-card>
-
-    <el-dialog
-      v-model="bindingDialogVisible"
-      title="绑定详情"
-      width="1200px"
-    >
-      <div v-if="currentWorkload" class="binding-detail">
-        <div class="task-info">
-          <h4>任务信息</h4>
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="项目">{{ currentWorkload.projectName }}</el-descriptions-item>
-            <el-descriptions-item label="任务名称">{{ currentWorkload.taskName }}</el-descriptions-item>
-            <el-descriptions-item label="状态">{{ currentWorkload.taskStatusText }}</el-descriptions-item>
-            <el-descriptions-item label="负责人">{{ currentWorkload.assigneeName }}</el-descriptions-item>
-            <el-descriptions-item label="开始日期">{{ currentWorkload.startDate }}</el-descriptions-item>
-            <el-descriptions-item label="结束日期">{{ currentWorkload.endDate }}</el-descriptions-item>
-          </el-descriptions>
-        </div>
-        <el-divider />
-        <div class="bindings-info">
-          <h4>绑定数据</h4>
-          <div v-if="currentWorkload.bindings && currentWorkload.bindings.length > 0">
-            <el-card v-for="binding in currentWorkload.bindings" :key="binding.id" class="binding-card" style="margin-bottom: 16px;">
-              <div class="binding-header">
-                <span class="binding-table-name">{{ binding.tableName || '自定义表格' }}</span>
-                <span v-if="binding.orderNo" class="binding-order-no">单号: {{ binding.orderNo }}</span>
-                <span class="binding-time">{{ formatDateTime(binding.createTime) }}</span>
-              </div>
-              <div v-if="binding.rowData" class="binding-data">
-                <el-descriptions :column="2" border size="small">
-                  <el-descriptions-item 
-                    v-for="(value, key) in binding.rowData" 
-                    :key="key" 
-                    :label="key"
-                  >
-                    {{ value }}
-                  </el-descriptions-item>
-                </el-descriptions>
-              </div>
-            </el-card>
-          </div>
-          <div v-else class="no-bindings">
-            暂无绑定数据
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="bindingDialogVisible = false">关闭</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import BaseTable from '@/components/BaseTable.vue'
 import { getWorkloadPage } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
+import { getCustomTableColumns } from '@/api/customTable'
 import { formatDateTime } from '@/utils/dateUtils'
 
 const loading = ref(false)
 const tableData = ref([])
 const projectList = ref([])
 const employeeList = ref([])
-const bindingDialogVisible = ref(false)
-const currentWorkload = ref(null)
 const taskDateRange = ref([])
 const bindDateRange = ref([])
+const bindColumns = ref([])
+const currentTableId = ref(null)
 
 const searchForm = reactive({
   projectId: null,
@@ -183,16 +124,110 @@ const pagination = reactive({
   total: 0
 })
 
-const columns = [
-  { prop: 'projectName', label: '项目', width: 180 },
-  { prop: 'taskName', label: '任务名', minWidth: 200 },
-  { prop: 'taskStatus', label: '状态', width: 100, slot: 'taskStatus' },
-  { prop: 'progress', label: '进度', width: 120, slot: 'progress' },
-  { prop: 'assigneeName', label: '责任人', width: 120 },
-  { prop: 'startDate', label: '开始日期', width: 120 },
-  { prop: 'endDate', label: '结束日期', width: 120 },
-  { prop: 'bindings', label: '绑定信息', minWidth: 250, slot: 'bindings' }
+const baseColumns = [
+  { prop: 'projectName', label: '项目', width: 180, fixed: 'left', showOverflowTooltip: true },
+  { prop: 'taskName', label: '任务名', minWidth: 200, fixed: 'left', showOverflowTooltip: true },
+  { prop: 'taskStatus', label: '状态', width: 100, slot: 'taskStatus', fixed: 'left' },
+  { prop: 'progress', label: '进度', width: 120, slot: 'progress', fixed: 'left' },
+  { prop: 'assigneeName', label: '责任人', width: 120, fixed: 'left', showOverflowTooltip: true },
+  { prop: 'startDate', label: '开始日期', width: 120, fixed: 'left', showOverflowTooltip: true },
+  { prop: 'endDate', label: '结束日期', width: 120, fixed: 'left', showOverflowTooltip: true }
 ]
+
+const bindingInfoColumns = [
+  { prop: 'orderNo', label: '单号', width: 150, showOverflowTooltip: true },
+  { 
+    prop: 'bindTime', 
+    label: '绑定时间', 
+    width: 180,
+    showOverflowTooltip: true,
+    formatter: (row) => formatDateTime(row.bindTime)
+  }
+]
+
+const dynamicColumns = computed(() => {
+  const result = [...baseColumns]
+  
+  if (bindColumns.value && bindColumns.value.length > 0) {
+    result.push(...bindingInfoColumns)
+    
+    bindColumns.value.forEach(col => {
+      result.push({
+        prop: col.columnCode,
+        label: col.columnName,
+        width: col.columnWidth || 150,
+        showOverflowTooltip: true
+      })
+    })
+  }
+  
+  return result
+})
+
+const exportAllData = async () => {
+  try {
+    loading.value = true
+    const params = {
+      pageNum: 1,
+      pageSize: 10000,
+      ...searchForm
+    }
+    const data = await getWorkloadPage(params)
+    return (data.records || []).map(row => {
+      const flattened = { ...row }
+      if (row.bindData) {
+        Object.keys(row.bindData).forEach(key => {
+          flattened[key] = row.bindData[key]
+        })
+      }
+      return flattened
+    })
+  } catch (error) {
+    ElMessage.error('导出数据失败')
+    return []
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleExport = async ({ format, data, columns }) => {
+  try {
+    loading.value = true
+    
+    let exportData = data
+    if (data.length < pagination.total) {
+      exportData = await exportAllData()
+    }
+    
+    const exportColumns = dynamicColumns.value.filter(col => col.prop)
+    const exportDataList = exportData.map(row => {
+      const result = {}
+      exportColumns.forEach(col => {
+        let value
+        if (col.prop === 'bindTime') {
+          value = row.bindTime ? formatDateTime(row.bindTime) : ''
+        } else {
+          value = row[col.prop] !== undefined && row[col.prop] !== null ? row[col.prop] : ''
+        }
+        result[col.label] = value
+      })
+      return result
+    })
+    
+    const XLSX = await import('xlsx')
+    const worksheet = XLSX.utils.json_to_sheet(exportDataList)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, '工作量查询')
+    XLSX.writeFile(workbook, `工作量查询_${formatDateTime(new Date(), 'YYYYMMDDHHmmss')}.xlsx`)
+    
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('导出失败', error)
+    ElMessage.error('导出失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 const loadData = async () => {
   loading.value = true
@@ -203,12 +238,37 @@ const loadData = async () => {
       ...searchForm
     }
     const data = await getWorkloadPage(params)
-    tableData.value = data.records || []
+    tableData.value = (data.records || []).map(row => {
+      const flattened = { ...row }
+      if (row.bindData) {
+        Object.keys(row.bindData).forEach(key => {
+          flattened[key] = row.bindData[key]
+        })
+      }
+      return flattened
+    })
     pagination.total = data.total || 0
+    
+    if (tableData.value.length > 0 && !currentTableId.value) {
+      const firstRow = tableData.value.find(row => row.tableId)
+      if (firstRow) {
+        currentTableId.value = firstRow.tableId
+        await loadBindColumns(currentTableId.value)
+      }
+    }
   } catch (error) {
     ElMessage.error('加载数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+const loadBindColumns = async (tableId) => {
+  try {
+    const columns = await getCustomTableColumns(tableId)
+    bindColumns.value = columns || []
+  } catch (error) {
+    console.error('加载绑定表格列失败', error)
   }
 }
 
@@ -252,6 +312,8 @@ const handleBindDateChange = (val) => {
 
 const handleSearch = () => {
   pagination.currentPage = 1
+  bindColumns.value = []
+  currentTableId.value = null
   loadData()
 }
 
@@ -276,11 +338,6 @@ const handleSizeChange = (val) => {
 const handleCurrentChange = (val) => {
   pagination.currentPage = val
   loadData()
-}
-
-const handleViewBindings = (row) => {
-  currentWorkload.value = row
-  bindingDialogVisible.value = true
 }
 
 const getTaskStatusType = (status) => {
@@ -322,89 +379,18 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
-.bindings-cell {
-  min-height: 40px;
+:deep(.el-table .el-table__row) {
+  height: 40px !important;
 }
 
-.bindings-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
+:deep(.el-table .el-table__cell) {
+  padding: 8px 0 !important;
 }
 
-.binding-detail {
-  max-height: 60vh;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-.binding-detail::-webkit-scrollbar {
-  width: 8px;
-}
-
-.binding-detail::-webkit-scrollbar-thumb {
-  background-color: #c0c4cc;
-  border-radius: 4px;
-}
-
-.binding-detail::-webkit-scrollbar-track {
-  background-color: #f5f7fa;
-}
-
-.binding-detail .task-info,
-.binding-detail .bindings-info {
-  margin-bottom: 16px;
-}
-
-.binding-detail h4 {
-  margin-bottom: 12px;
-}
-
-.bindings-scroll {
-  max-height: 400px;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-.bindings-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.bindings-scroll::-webkit-scrollbar-thumb {
-  background-color: #c0c4cc;
-  border-radius: 3px;
-}
-
-.bindings-scroll::-webkit-scrollbar-track {
-  background-color: #f5f7fa;
-}
-
-.binding-card .binding-header {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.binding-table-name {
-  font-weight: bold;
-  color: #303133;
-}
-
-.binding-order-no {
-  color: #409eff;
-}
-
-.binding-time {
-  color: #909399;
-  font-size: 12px;
-}
-
-.no-bindings {
-  color: #909399;
-  text-align: center;
-  padding: 20px;
+:deep(.el-table .cell) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 </style>

@@ -748,6 +748,15 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             }
             dto.setBindings(bindingInfos);
 
+            if (!bindingInfos.isEmpty()) {
+                WorkloadDTO.BindingInfo firstBinding = bindingInfos.get(0);
+                dto.setTableId(firstBinding.getTableId());
+                dto.setTableName(firstBinding.getTableName());
+                dto.setOrderNo(firstBinding.getOrderNo());
+                dto.setBindTime(firstBinding.getCreateTime());
+                dto.setBindData(firstBinding.getRowData());
+            }
+
             workloadList.add(dto);
         }
 
