@@ -134,19 +134,19 @@
             <el-button type="success" size="small" @click="saveAllRows">保存</el-button>
           </div>
         </div>
-        <el-table :data="rowList" :row-key="(row) => row.id || row._tempId" border style="width: 100%; margin-top: 10px;">
+        <el-table :data="rowList" :row-key="getRowKey" border style="width: 100%; margin-top: 10px;">
           <el-table-column v-for="column in currentColumns" :key="'col-' + column.columnCode" :label="column.columnName" :width="column.columnWidth">
-            <template #default="{ row, $index }">
+            <template #default="{ row }">
               <el-input 
                 v-if="column.columnType === 'text'" 
-                :key="'text-' + (row.id || row._tempId) + '-' + column.columnCode"
+                :key="'text-' + getRowKey(row) + '-' + column.columnCode"
                 v-model="row[column.columnCode]" 
                 :placeholder="`请输入${column.columnName}`" 
                 size="small" 
               />
               <el-input-number 
                 v-else-if="column.columnType === 'number'" 
-                :key="'num-' + (row.id || row._tempId) + '-' + column.columnCode"
+                :key="'num-' + getRowKey(row) + '-' + column.columnCode"
                 v-model="row[column.columnCode]" 
                 :placeholder="`请输入${column.columnName}`" 
                 style="width: 100%;" 
@@ -154,7 +154,7 @@
               />
               <el-date-picker 
                 v-else-if="column.columnType === 'date'" 
-                :key="'date-' + (row.id || row._tempId) + '-' + column.columnCode"
+                :key="'date-' + getRowKey(row) + '-' + column.columnCode"
                 v-model="row[column.columnCode]" 
                 type="date" 
                 :placeholder="`请选择${column.columnName}`" 
@@ -164,7 +164,7 @@
               />
               <el-select 
                 v-else-if="column.columnType === 'select'" 
-                :key="'sel-' + (row.id || row._tempId) + '-' + column.columnCode"
+                :key="'sel-' + getRowKey(row) + '-' + column.columnCode"
                 v-model="row[column.columnCode]" 
                 :placeholder="`请选择${column.columnName}`" 
                 style="width: 100%;" 
@@ -174,7 +174,7 @@
               </el-select>
               <el-select 
                 v-else-if="column.columnType === 'person'" 
-                :key="'per-' + (row.id || row._tempId) + '-' + column.columnCode"
+                :key="'per-' + getRowKey(row) + '-' + column.columnCode"
                 v-model="row[column.columnCode]" 
                 :placeholder="`请选择${column.columnName}`" 
                 style="width: 100%;" 
@@ -186,7 +186,7 @@
             </template>
           </el-table-column>
           <el-table-column label="操作" width="120" fixed="right">
-            <template #default="{ row, $index }">
+            <template #default="{ $index }">
               <el-button type="danger" size="small" @click="deleteRow($index)">删除</el-button>
             </template>
           </el-table-column>
@@ -413,12 +413,12 @@ const viewTable = async (row) => {
     const rows = await getCustomTableRows(row.id)
     rowList.value = rows.map(r => {
       const rowData = JSON.parse(r.rowData || '{}')
-      return JSON.parse(JSON.stringify({
+      return {
         id: r.id,
         ...rowData
-      }))
+      }
     })
-    originalRowList.value = JSON.parse(JSON.stringify(rowList.value))
+    originalRowList.value = rowList.value.map(row => ({ ...row }))
     viewDialogVisible.value = true
   } catch (error) {
     ElMessage.error('加载数据失败')
@@ -427,11 +427,11 @@ const viewTable = async (row) => {
 
 const addNewRow = () => {
   const newRow = {}
-  newRow._tempId = Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+  newRow._tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`
   currentColumns.value.forEach(column => {
     newRow[column.columnCode] = ''
   })
-  rowList.value.push(JSON.parse(JSON.stringify(newRow)))
+  rowList.value.push({ ...newRow })
 }
 
 const saveAllRows = async () => {
@@ -484,10 +484,19 @@ const deleteRow = async (index) => {
       if (error !== 'cancel') {
         ElMessage.error('删除失败')
         return
+      } else {
+        return
       }
     }
   }
   rowList.value.splice(index, 1)
+}
+
+const getRowKey = (row) => {
+  if (row.id) {
+    return `row_${row.id}`
+  }
+  return row._tempId || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`
 }
 
 const parseOptions = (optionsStr) => {
