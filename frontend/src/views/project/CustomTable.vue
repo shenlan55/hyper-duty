@@ -134,7 +134,7 @@
             <el-button type="success" size="small" @click="saveAllRows">保存</el-button>
           </div>
         </div>
-        <el-table :data="rowList" border style="width: 100%; margin-top: 10px;">
+        <el-table :data="rowList" :row-key="(row) => row.id || row._tempId" border style="width: 100%; margin-top: 10px;">
           <el-table-column v-for="column in currentColumns" :key="column.columnCode" :prop="column.columnCode" :label="column.columnName" :width="column.columnWidth">
             <template #default="{ row }">
               <el-input v-if="column.columnType === 'text'" v-model="row[column.columnCode]" :placeholder="`请输入${column.columnName}`" size="small" />
@@ -386,7 +386,9 @@ const viewTable = async (row) => {
 }
 
 const addNewRow = () => {
-  const newRow = {}
+  const newRow = {
+    _tempId: Date.now() + Math.random()
+  }
   currentColumns.value.forEach(column => {
     newRow[column.columnCode] = ''
   })
@@ -409,7 +411,9 @@ const saveAllRows = async () => {
 
       if (rowId) {
         const originalRow = originalRowList.value.find(r => r.id === rowId)
-        const isModified = JSON.stringify(originalRow) !== JSON.stringify(row)
+        const rowCopy = { ...row }
+        delete rowCopy._tempId
+        const isModified = JSON.stringify(originalRow) !== JSON.stringify(rowCopy)
         if (isModified) {
           savePromises.push(updateTableRow(rowId, JSON.stringify(rowData)))
         }
