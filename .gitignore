@@ -6,3 +6,4 @@
 *.class
 *.jar
 *.idea
+/node_modules/
