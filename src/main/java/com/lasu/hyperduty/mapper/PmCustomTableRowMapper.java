@@ -11,6 +11,6 @@ import java.util.List;
 @Mapper
 public interface PmCustomTableRowMapper extends BaseMapper<PmCustomTableRow> {
 
-    @Select("SELECT * FROM pm_custom_table_row WHERE table_id = #{tableId} ORDER BY create_time DESC")
+    @Select("SELECT * FROM pm_custom_table_row WHERE table_id = #{tableId} ORDER BY COALESCE(sort_order, id) ASC")
     List<PmCustomTableRow> selectByTableId(@Param("tableId") Long tableId);
 }

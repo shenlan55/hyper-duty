@@ -115,6 +115,10 @@ public class PmCustomTableServiceImpl extends ServiceImpl<PmCustomTableMapper, P
         PmCustomTableRow row = new PmCustomTableRow();
         row.setTableId(tableId);
         row.setRowData(rowData);
+        
+        List<PmCustomTableRow> existingRows = rowMapper.selectByTableId(tableId);
+        row.setSortOrder(existingRows != null ? existingRows.size() : 0);
+        
         row.setCreateTime(LocalDateTime.now());
         row.setUpdateTime(LocalDateTime.now());
         rowMapper.insert(row);
@@ -139,6 +143,20 @@ public class PmCustomTableServiceImpl extends ServiceImpl<PmCustomTableMapper, P
         wrapper.eq(PmTaskCustomRow::getRowId, id);
         taskCustomRowMapper.delete(wrapper);
         rowMapper.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void reorderRows(Long tableId, List<Long> rowIds) {
+        for (int i = 0; i < rowIds.size(); i++) {
+            Long rowId = rowIds.get(i);
+            PmCustomTableRow row = rowMapper.selectById(rowId);
+            if (row != null) {
+                row.setSortOrder(i);
+                row.setUpdateTime(LocalDateTime.now());
+                rowMapper.updateById(row);
+            }
+        }
     }
 
     @Override

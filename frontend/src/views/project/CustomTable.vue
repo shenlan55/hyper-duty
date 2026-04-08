@@ -135,6 +135,27 @@
           </div>
         </div>
         <el-table :data="rowList" :row-key="(row, index) => getRowKey(row, index)" border style="width: 100%; margin-top: 10px;">
+          <el-table-column label="排序" width="100" align="center">
+            <template #default="{ $index }">
+              <el-button 
+                type="primary" 
+                size="small" 
+                :icon="Top" 
+                circle 
+                :disabled="$index === 0"
+                @click="moveUp($index)"
+              />
+              <el-button 
+                type="primary" 
+                size="small" 
+                :icon="Bottom" 
+                circle 
+                :disabled="$index === rowList.length - 1"
+                @click="moveDown($index)"
+                style="margin-left: 5px;"
+              />
+            </template>
+          </el-table-column>
           <el-table-column v-for="column in currentColumns" :key="'col-' + column.columnCode" :label="column.columnName" :width="column.columnWidth">
             <template #default="{ row, $index }">
               <el-input 
@@ -199,6 +220,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Top, Bottom } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import {
   getCustomTablePage,
@@ -209,7 +231,8 @@ import {
   getCustomTableRows,
   createTableRow,
   updateTableRow,
-  deleteTableRow
+  deleteTableRow,
+  reorderTableRows
 } from '@/api/customTable'
 import { getEmployeeList } from '@/api/employee'
 import { formatDateTime } from '@/utils/dateUtils'
@@ -516,6 +539,33 @@ const getRowKey = (row, index) => {
     return row._tempId
   }
   return `temp_idx_${index}_${Date.now()}`
+}
+
+const moveUp = async (index) => {
+  if (index <= 0) return
+  const temp = rowList.value[index]
+  rowList.value[index] = rowList.value[index - 1]
+  rowList.value[index - 1] = temp
+  await saveOrder()
+}
+
+const moveDown = async (index) => {
+  if (index >= rowList.value.length - 1) return
+  const temp = rowList.value[index]
+  rowList.value[index] = rowList.value[index + 1]
+  rowList.value[index + 1] = temp
+  await saveOrder()
+}
+
+const saveOrder = async () => {
+  try {
+    const rowIds = rowList.value.filter(row => row.id).map(row => row.id)
+    if (rowIds.length > 0 && currentTable.value) {
+      await reorderTableRows(currentTable.value.id, rowIds)
+    }
+  } catch (error) {
+    console.error('保存排序失败', error)
+  }
 }
 
 const parseOptions = (optionsStr) => {

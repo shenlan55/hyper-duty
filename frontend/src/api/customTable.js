@@ -75,6 +75,14 @@ export function deleteTableRow(id) {
   })
 }
 
+export function reorderTableRows(tableId, rowIds) {
+  return request({
+    url: `/pm/custom-table/${tableId}/reorder`,
+    method: 'post',
+    data: { rowIds }
+  })
+}
+
 export function getTaskBindings(taskId) {
   return request({
     url: `/pm/custom-table/task/${taskId}/bindings`,

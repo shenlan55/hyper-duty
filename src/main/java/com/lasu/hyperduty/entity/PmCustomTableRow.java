@@ -21,6 +21,8 @@ public class PmCustomTableRow {
     @TableField(typeHandler = PostgreSqlJsonTypeHandler.class)
     private String rowData;
 
+    private Integer sortOrder;
+
     private Long createBy;
 
     private LocalDateTime createTime;

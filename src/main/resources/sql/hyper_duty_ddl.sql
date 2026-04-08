@@ -6560,6 +6560,7 @@ CREATE TABLE public.pm_custom_table_row (
     id bigint NOT NULL,
     table_id bigint NOT NULL,
     row_data json,
+    sort_order integer DEFAULT 0,
     create_by bigint,
     create_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     update_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP
@@ -6574,6 +6575,7 @@ COMMENT ON TABLE public.pm_custom_table_row IS '自定义表格数据行';
 COMMENT ON COLUMN public.pm_custom_table_row.id IS '行ID';
 COMMENT ON COLUMN public.pm_custom_table_row.table_id IS '关联表格ID';
 COMMENT ON COLUMN public.pm_custom_table_row.row_data IS '行数据（JSON格式）';
+COMMENT ON COLUMN public.pm_custom_table_row.sort_order IS '排序字段';
 COMMENT ON COLUMN public.pm_custom_table_row.create_by IS '创建人ID';
 COMMENT ON COLUMN public.pm_custom_table_row.create_time IS '创建时间';
 COMMENT ON COLUMN public.pm_custom_table_row.update_time IS '更新时间';

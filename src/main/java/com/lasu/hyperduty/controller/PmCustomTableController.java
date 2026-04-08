@@ -90,6 +90,14 @@ public class PmCustomTableController {
         return ResponseResult.success();
     }
 
+    @PostMapping("/{tableId}/reorder")
+    public ResponseResult<Void> reorderRows(
+            @PathVariable Long tableId,
+            @RequestBody ReorderRequest request) {
+        pmCustomTableService.reorderRows(tableId, request.getRowIds());
+        return ResponseResult.success();
+    }
+
     @GetMapping("/task/{taskId}/bindings")
     public ResponseResult<List<TaskBindingDTO>> getTaskBindings(@PathVariable Long taskId) {
         List<TaskBindingDTO> bindings = pmCustomTableService.getTaskBindings(taskId);
@@ -128,5 +136,10 @@ public class PmCustomTableController {
         private Long tableId;
         private Long rowId;
         private String orderNo;
+    }
+
+    @Data
+    public static class ReorderRequest {
+        private List<Long> rowIds;
     }
 }
