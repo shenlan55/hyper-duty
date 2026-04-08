@@ -438,8 +438,8 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     }
 
     @Override
-    public List<PmTask> getUpcomingTasks() {
-        return baseMapper.selectUpcomingTasks();
+    public List<PmTask> getUpcomingTasks(Long employeeId) {
+        return baseMapper.selectUpcomingTasks(employeeId);
     }
 
     @Override

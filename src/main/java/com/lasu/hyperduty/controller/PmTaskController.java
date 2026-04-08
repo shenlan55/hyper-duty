@@ -91,9 +91,9 @@ public class PmTaskController {
         return ResponseResult.success();
     }
 
-    @GetMapping("/upcoming")
-    public ResponseResult<List<PmTask>> getUpcomingTasks() {
-        List<PmTask> tasks = pmTaskService.getUpcomingTasks();
+    @GetMapping("/upcoming/{employeeId}")
+    public ResponseResult<List<PmTask>> getUpcomingTasks(@PathVariable Long employeeId) {
+        List<PmTask> tasks = pmTaskService.getUpcomingTasks(employeeId);
         return ResponseResult.success(tasks);
     }
 

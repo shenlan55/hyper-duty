@@ -74,9 +74,9 @@ export function deleteTask(id) {
   })
 }
 
-export function getUpcomingTasks() {
+export function getUpcomingTasks(employeeId) {
   return request({
-    url: '/pm/task/upcoming',
+    url: `/pm/task/upcoming/${employeeId}`,
     method: 'get'
   })
 }

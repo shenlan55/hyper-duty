@@ -28,7 +28,7 @@ public interface PmTaskService extends IService<PmTask> {
 
     void deleteTask(Long id);
 
-    List<PmTask> getUpcomingTasks();
+    List<PmTask> getUpcomingTasks(Long employeeId);
 
     List<PmTask> getTasksByStatus(Integer status);
 

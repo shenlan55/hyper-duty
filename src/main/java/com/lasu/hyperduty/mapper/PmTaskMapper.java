@@ -120,10 +120,12 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "t.priority ASC")
     List<PmTask> selectByStatus(@Param("status") Integer status);
 
-    @Select("SELECT t.*, e.employee_name as owner_name " +
+    @Select("SELECT t.*, e.employee_name as owner_name, p.project_name " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
+            "LEFT JOIN pm_project p ON t.project_id = p.id " +
             "WHERE t.end_date <= CURRENT_DATE + INTERVAL '3 days' AND t.status != 3 " +
+            "AND (t.assignee_id = #{employeeId} OR t.stakeholders LIKE CONCAT('%', #{employeeId}, '%')) " +
             "ORDER BY t.end_date ASC, t.priority ASC")
-    List<PmTask> selectUpcomingTasks();
+    List<PmTask> selectUpcomingTasks(@Param("employeeId") Long employeeId);
 }

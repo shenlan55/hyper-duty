@@ -300,7 +300,7 @@ const loadData = async () => {
 
     let data = []
     if (activeTab.value === 'upcoming') {
-      data = await getUpcomingTasks()
+      data = await getUpcomingTasks(employeeId)
     } else {
       if (selectedProjectId.value === '0') {
         data = await getMyTasks(employeeId)
