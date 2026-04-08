@@ -315,9 +315,9 @@ const getColumns = async (tableId) => {
   }
   try {
     const data = await getCustomTableColumns(tableId)
-    tableForm.columns = (data || []).map(col => ({
+    tableForm.columns = (data || []).map((col, index) => ({
       columnName: col.columnName,
-      columnCode: col.columnCode,
+      columnCode: col.columnCode || `col_${Date.now()}_${index}`,
       columnType: col.columnType,
       columnWidth: col.columnWidth,
       required: col.required,
@@ -330,13 +330,14 @@ const getColumns = async (tableId) => {
 }
 
 const addColumn = () => {
+  const index = tableForm.columns.length
   tableForm.columns.push({
     columnName: '',
-    columnCode: '',
+    columnCode: `col_${Date.now()}_${index}`,
     columnType: 'text',
     columnWidth: 150,
     required: 0,
-    sortOrder: tableForm.columns.length,
+    sortOrder: index,
     options: null
   })
 }
@@ -409,7 +410,10 @@ const viewTable = async (row) => {
   currentTable.value = row
   try {
     const columns = await getCustomTableColumns(row.id)
-    currentColumns.value = columns || []
+    currentColumns.value = (columns || []).map((col, index) => ({
+      ...col,
+      columnCode: col.columnCode || `col_${Date.now()}_${index}`
+    }))
     const rows = await getCustomTableRows(row.id)
     rowList.value = rows.map(r => {
       const rowData = JSON.parse(r.rowData || '{}')
