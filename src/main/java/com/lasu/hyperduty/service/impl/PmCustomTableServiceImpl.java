@@ -13,6 +13,7 @@ import com.lasu.hyperduty.mapper.PmCustomTableMapper;
 import com.lasu.hyperduty.mapper.PmCustomTableRowMapper;
 import com.lasu.hyperduty.mapper.PmTaskCustomRowMapper;
 import com.lasu.hyperduty.service.PmCustomTableService;
+import com.lasu.hyperduty.service.PmTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -33,6 +34,7 @@ public class PmCustomTableServiceImpl extends ServiceImpl<PmCustomTableMapper, P
     private final PmCustomTableColumnMapper columnMapper;
     private final PmCustomTableRowMapper rowMapper;
     private final PmTaskCustomRowMapper taskCustomRowMapper;
+    private final PmTaskService pmTaskService;
 
     @Override
     public Page<PmCustomTable> pageList(Integer pageNum, Integer pageSize, Long projectId) {
@@ -160,7 +162,7 @@ public class PmCustomTableServiceImpl extends ServiceImpl<PmCustomTableMapper, P
     }
 
     @Override
-    public List<TaskBindingDTO> getTaskBindings(Long taskId) {
+    public List<TaskBindingDTO> getTaskBindings(Long taskId, Long employeeId) {
         List<PmTaskCustomRow> bindings = taskCustomRowMapper.selectByTaskId(taskId);
         if (bindings == null || bindings.isEmpty()) {
             return new ArrayList<>();
@@ -195,7 +197,11 @@ public class PmCustomTableServiceImpl extends ServiceImpl<PmCustomTableMapper, P
     }
 
     @Override
-    public void bindRow(Long taskId, Long tableId, Long rowId, String orderNo) {
+    public void bindRow(Long taskId, Long tableId, Long rowId, String orderNo, Long employeeId) {
+        if (!pmTaskService.hasTaskPermission(taskId, employeeId)) {
+            throw new RuntimeException("您没有权限绑定此任务的数据");
+        }
+        
         PmTaskCustomRow binding = new PmTaskCustomRow();
         binding.setTaskId(taskId);
         binding.setTableId(tableId);
@@ -206,7 +212,11 @@ public class PmCustomTableServiceImpl extends ServiceImpl<PmCustomTableMapper, P
     }
 
     @Override
-    public void unbindRow(Long bindingId) {
+    public void unbindRow(Long bindingId, Long taskId, Long employeeId) {
+        if (!pmTaskService.hasTaskPermission(taskId, employeeId)) {
+            throw new RuntimeException("您没有权限解除此任务的绑定");
+        }
+        
         taskCustomRowMapper.deleteById(bindingId);
     }
 }

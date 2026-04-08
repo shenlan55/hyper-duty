@@ -1,16 +1,20 @@
 package com.lasu.hyperduty.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.dto.TaskBindingDTO;
 import com.lasu.hyperduty.entity.PmCustomTable;
 import com.lasu.hyperduty.entity.PmCustomTableColumn;
 import com.lasu.hyperduty.entity.PmCustomTableRow;
-import com.lasu.hyperduty.entity.PmTaskCustomRow;
+import com.lasu.hyperduty.entity.SysEmployee;
 import com.lasu.hyperduty.service.PmCustomTableService;
+import com.lasu.hyperduty.service.SysEmployeeService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +26,7 @@ import java.util.List;
 public class PmCustomTableController {
 
     private final PmCustomTableService pmCustomTableService;
+    private final SysEmployeeService sysEmployeeService;
 
     @GetMapping("/page")
     public ResponseResult<Page<PmCustomTable>> pageList(
@@ -98,9 +103,25 @@ public class PmCustomTableController {
         return ResponseResult.success();
     }
 
+    /**
+     * 获取当前登录用户的 employeeId
+     */
+    private Long getCurrentEmployeeId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return null;
+        }
+        String username = authentication.getName();
+        LambdaQueryWrapper<SysEmployee> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysEmployee::getUsername, username);
+        SysEmployee employee = sysEmployeeService.getOne(wrapper);
+        return employee != null ? employee.getId() : null;
+    }
+
     @GetMapping("/task/{taskId}/bindings")
     public ResponseResult<List<TaskBindingDTO>> getTaskBindings(@PathVariable Long taskId) {
-        List<TaskBindingDTO> bindings = pmCustomTableService.getTaskBindings(taskId);
+        Long employeeId = getCurrentEmployeeId();
+        List<TaskBindingDTO> bindings = pmCustomTableService.getTaskBindings(taskId, employeeId);
         return ResponseResult.success(bindings);
     }
 
@@ -108,7 +129,8 @@ public class PmCustomTableController {
     public ResponseResult<Void> bindRow(
             @PathVariable Long taskId,
             @RequestBody BindRequest request) {
-        pmCustomTableService.bindRow(taskId, request.getTableId(), request.getRowId(), request.getOrderNo());
+        Long employeeId = getCurrentEmployeeId();
+        pmCustomTableService.bindRow(taskId, request.getTableId(), request.getRowId(), request.getOrderNo(), employeeId);
         return ResponseResult.success();
     }
 
@@ -116,7 +138,8 @@ public class PmCustomTableController {
     public ResponseResult<Void> unbindRow(
             @PathVariable Long taskId,
             @PathVariable Long bindingId) {
-        pmCustomTableService.unbindRow(bindingId);
+        Long employeeId = getCurrentEmployeeId();
+        pmCustomTableService.unbindRow(bindingId, taskId, employeeId);
         return ResponseResult.success();
     }
 

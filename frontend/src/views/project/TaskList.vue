@@ -95,7 +95,7 @@
               更新进度
             </el-button>
             <el-button type="info" size="small" @click="handleViewTaskDetail(row)">详情</el-button>
-            <el-button type="info" size="small" @click="handleViewBindings(row)">绑定</el-button>
+            <el-button v-if="row.hasPermission" type="info" size="small" @click="handleViewBindings(row)">绑定</el-button>
             <el-button 
               v-if="row.hasPermission " 
               type="warning" 
@@ -284,8 +284,9 @@
 
     <!-- 绑定表格行对话框 -->
     <BindCustomRowDialog
+      v-if="currentTask && currentTask.id"
       v-model="showBindRowDialog"
-      :task-id="currentTask?.id"
+      :task-id="currentTask.id"
       @success="handleBindSuccess"
     />
 
@@ -1390,6 +1391,10 @@ const handleBindSuccess = () => {
 }
 
 const handleUnbind = async (bindingId) => {
+  if (!(await hasPermission(currentTask.value))) {
+    ElMessage.warning('您没有权限解除此任务的绑定')
+    return
+  }
   try {
     await ElMessageBox.confirm('确定要解除绑定吗？', '提示', {
       confirmButtonText: '确定',

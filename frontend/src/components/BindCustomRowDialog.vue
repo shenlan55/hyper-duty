@@ -2,7 +2,7 @@
   <el-dialog
     v-model="visible"
     title="绑定表格数据"
-    width="1200px"
+    width="1500px"
     :close-on-click-modal="false"
     @close="reset"
   >
@@ -195,7 +195,7 @@ onMounted(() => {
 }
 
 .table-container {
-  max-height: 400px;
+  max-height: 600px;
   overflow-y: auto;
   padding-right: 8px;
 }
