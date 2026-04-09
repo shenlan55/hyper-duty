@@ -26,6 +26,7 @@ public class WorkloadDTO {
     private Long tableId;
     private String tableName;
     private String orderNo;
+    private String title;
     private LocalDateTime bindTime;
     private Map<String, Object> bindData;
 
@@ -36,6 +37,7 @@ public class WorkloadDTO {
         private String tableName;
         private Long rowId;
         private String orderNo;
+        private String title;
         private Map<String, Object> rowData;
         private LocalDateTime createTime;
     }

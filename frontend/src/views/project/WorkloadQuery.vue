@@ -136,6 +136,7 @@ const baseColumns = [
 
 const bindingInfoColumns = [
   { prop: 'orderNo', label: '单号', width: 150, showOverflowTooltip: true },
+  { prop: 'title', label: '标题', width: 200, showOverflowTooltip: true },
   { 
     prop: 'bindTime', 
     label: '绑定时间', 
