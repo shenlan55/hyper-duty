@@ -13,5 +13,6 @@ public class TaskBindingDTO {
     private String tableName;
     private String rowData;
     private String orderNo;
+    private String title;
     private LocalDateTime createTime;
 }

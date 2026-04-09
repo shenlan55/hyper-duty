@@ -22,5 +22,7 @@ public class PmTaskCustomRow {
 
     private String orderNo;
 
+    private String title;
+
     private LocalDateTime createTime;
 }

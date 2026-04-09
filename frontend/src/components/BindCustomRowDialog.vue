@@ -51,9 +51,16 @@
     title="录入单号"
     width="500px"
   >
-    <el-form :model="orderNoForm" label-width="80px">
-      <el-form-item label="单号">
+    <el-form :model="orderNoForm" :rules="orderNoRules" ref="orderNoFormRef" label-width="80px" hide-required-asterisk>
+      <el-form-item prop="orderNo">
+        <template #label>
+          <span style="color: #f56c6c; margin-right: 4px;">*</span>
+          单号
+        </template>
         <el-input v-model="orderNoForm.orderNo" placeholder="请输入单号" />
+      </el-form-item>
+      <el-form-item label="标题">
+        <el-input v-model="orderNoForm.title" placeholder="请输入标题" />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -95,8 +102,13 @@ const tableRowsMap = ref({})
 const activeTab = ref('')
 const orderNoDialogVisible = ref(false)
 const orderNoForm = reactive({
-  orderNo: ''
+  orderNo: '',
+  title: ''
 })
+const orderNoFormRef = ref(null)
+const orderNoRules = {
+  orderNo: [{ required: true, message: '请输入单号', trigger: 'blur' }]
+}
 const pendingBindData = ref(null)
 
 const loadTables = async () => {
@@ -137,24 +149,24 @@ const handleRowClick = (row) => {
 const handleSelect = (row, tableId) => {
   pendingBindData.value = { row, tableId }
   orderNoForm.orderNo = ''
+  orderNoForm.title = ''
   orderNoDialogVisible.value = true
 }
 
 const confirmBind = async () => {
   try {
-    if (!orderNoForm.orderNo) {
-      ElMessage.warning('请输入单号')
-      return
-    }
+    await orderNoFormRef.value.validate()
     
     const { row, tableId } = pendingBindData.value
-    await bindCustomRow(props.taskId, tableId, row.id, orderNoForm.orderNo)
+    await bindCustomRow(props.taskId, tableId, row.id, orderNoForm.orderNo, orderNoForm.title)
     ElMessage.success('绑定成功')
     orderNoDialogVisible.value = false
     visible.value = false
     emit('success')
   } catch (error) {
-    ElMessage.error('绑定失败')
+    if (error !== false) {
+      ElMessage.error('绑定失败')
+    }
   }
 }
 

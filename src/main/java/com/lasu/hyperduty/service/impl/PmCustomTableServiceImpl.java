@@ -197,7 +197,7 @@ public class PmCustomTableServiceImpl extends ServiceImpl<PmCustomTableMapper, P
     }
 
     @Override
-    public void bindRow(Long taskId, Long tableId, Long rowId, String orderNo, Long employeeId) {
+    public void bindRow(Long taskId, Long tableId, Long rowId, String orderNo, String title, Long employeeId) {
         if (!pmTaskService.hasTaskPermission(taskId, employeeId)) {
             throw new RuntimeException("您没有权限绑定此任务的数据");
         }
@@ -207,6 +207,7 @@ public class PmCustomTableServiceImpl extends ServiceImpl<PmCustomTableMapper, P
         binding.setTableId(tableId);
         binding.setRowId(rowId);
         binding.setOrderNo(orderNo);
+        binding.setTitle(title);
         binding.setCreateTime(LocalDateTime.now());
         taskCustomRowMapper.insert(binding);
     }

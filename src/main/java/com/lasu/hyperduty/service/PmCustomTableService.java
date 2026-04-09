@@ -34,7 +34,7 @@ public interface PmCustomTableService extends IService<PmCustomTable> {
 
     List<TaskBindingDTO> getTaskBindings(Long taskId, Long employeeId);
 
-    void bindRow(Long taskId, Long tableId, Long rowId, String orderNo, Long employeeId);
+    void bindRow(Long taskId, Long tableId, Long rowId, String orderNo, String title, Long employeeId);
 
     void unbindRow(Long bindingId, Long taskId, Long employeeId);
 }

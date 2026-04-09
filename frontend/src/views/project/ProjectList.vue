@@ -10,7 +10,9 @@
 
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="项目名称">
-          <el-input v-model="searchForm.projectName" placeholder="请输入项目名称" clearable />
+          <el-select v-model="searchForm.projectName" placeholder="请选择项目" clearable filterable style="width: 250px;" @change="handleProjectChange">
+            <el-option v-for="project in allProjectList" :key="project.id" :label="project.projectName" :value="project.projectName" />
+          </el-select>
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 120px;">
@@ -242,6 +244,7 @@ const userStore = useUserStore()
 
 const loading = ref(false)
 const tableData = ref([])
+const allProjectList = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('新建项目')
 const formRef = ref(null)
@@ -404,6 +407,24 @@ const handleReset = () => {
   searchForm.projectName = ''
   searchForm.status = null
   handleSearch()
+}
+
+const handleProjectChange = () => {
+  handleSearch()
+}
+
+const loadAllProjects = async () => {
+  try {
+    const params = {
+      pageNum: 1,
+      pageSize: 1000,
+      showArchived: true
+    }
+    const data = await getProjectPage(params)
+    allProjectList.value = data.records || []
+  } catch (error) {
+    console.error('加载项目列表失败', error)
+  }
 }
 
 const handleSizeChange = (val) => {
@@ -732,6 +753,7 @@ const canArchiveProject = (project) => {
 onMounted(() => {
   loadData()
   loadEmployeeList()
+  loadAllProjects()
 })
 </script>
 

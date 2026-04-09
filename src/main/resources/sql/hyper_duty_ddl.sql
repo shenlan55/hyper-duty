@@ -6594,6 +6594,7 @@ CREATE TABLE public.pm_task_custom_row (
     table_id bigint NOT NULL,
     row_id bigint NOT NULL,
     order_no character varying(255),
+    title character varying(500),
     create_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -6610,6 +6611,7 @@ COMMENT ON COLUMN public.pm_task_custom_row.task_id IS '任务ID';
 COMMENT ON COLUMN public.pm_task_custom_row.table_id IS '自定义表格ID';
 COMMENT ON COLUMN public.pm_task_custom_row.row_id IS '自定义表格行ID';
 COMMENT ON COLUMN public.pm_task_custom_row.order_no IS '单号';
+COMMENT ON COLUMN public.pm_task_custom_row.title IS '标题';
 COMMENT ON COLUMN public.pm_task_custom_row.create_time IS '创建时间';
 
 -- Completed on 2026-02-24 20:59:48

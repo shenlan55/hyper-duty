@@ -257,6 +257,7 @@
             <div class="binding-info">
               <span class="binding-table-name">{{ binding.tableName }}</span>
               <span v-if="binding.orderNo" class="binding-order-no">单号: {{ binding.orderNo }}</span>
+              <span v-if="binding.title" class="binding-title">标题: {{ binding.title }}</span>
               <span class="binding-time">{{ formatDateTime(binding.createTime) }}</span>
             </div>
             <div class="binding-data">
