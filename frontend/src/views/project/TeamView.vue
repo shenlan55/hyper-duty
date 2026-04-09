@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>团队视图</span>
-          <el-select v-model="selectedProject" placeholder="选择项目" clearable @change="handleProjectChange" style="width: 250px;">
+          <el-select v-model="selectedProject" placeholder="选择项目" clearable filterable @change="handleProjectChange" style="width: 250px;">
             <el-option
               v-for="project in projectList"
               :key="project.id"

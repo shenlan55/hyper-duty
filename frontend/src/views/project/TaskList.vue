@@ -10,7 +10,7 @@
 
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="项目">
-          <el-select v-model="searchForm.projectId" placeholder="请选择项目" clearable filterable>
+          <el-select v-model="searchForm.projectId" placeholder="请选择项目" clearable filterable @change="handleProjectChange">
             <el-option
               v-for="project in projectList"
               :key="project.id"
@@ -756,6 +756,11 @@ const handleSearch = () => {
   loadData()
 }
 
+const handleProjectChange = () => {
+  pagination.currentPage = 1
+  loadData()
+}
+
 const handleReset = () => {
   searchForm.projectId = null
   searchForm.status = null
@@ -1441,17 +1446,30 @@ const hasDeletePermission = async (task) => {
 
 const canCreateTask = computed(() => {
   if (!searchForm.projectId) return false
-  const currentProject = projectList.value.find(p => p.id === searchForm.projectId)
+  const currentProject = projectList.value.find(p => String(p.id) === String(searchForm.projectId))
   if (!currentProject) return false
   
   // 项目负责人可以创建任务
-  if (currentProject.ownerId === userStore.employeeId) return true
+  if (String(currentProject.ownerId) === String(userStore.employeeId)) return true
+  
+  // 项目代理负责人可以创建任务
+  if (currentProject.deputyOwnerIds && Array.isArray(currentProject.deputyOwnerIds)) {
+    if (currentProject.deputyOwnerIds.some(id => String(id) === String(userStore.employeeId))) return true
+  }
   
   // 项目参与人员可以创建任务
   if (currentProject.participants) {
-    const participants = typeof currentProject.participants === 'string' ? 
-      JSON.parse(currentProject.participants) : currentProject.participants
-    return Array.isArray(participants) && participants.includes(userStore.employeeId)
+    let participants
+    if (typeof currentProject.participants === 'string') {
+      try {
+        participants = JSON.parse(currentProject.participants)
+      } catch (e) {
+        participants = []
+      }
+    } else {
+      participants = currentProject.participants
+    }
+    return Array.isArray(participants) && participants.some(id => String(id) === String(userStore.employeeId))
   }
   
   return false

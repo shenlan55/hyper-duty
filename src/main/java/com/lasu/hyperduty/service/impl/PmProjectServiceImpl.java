@@ -56,7 +56,7 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
         
         Page<PmProject> result = baseMapper.selectPage(page, wrapper);
         
-        // 填充负责人名称和代理负责人名称
+        // 填充负责人名称、代理负责人名称和参与者
         if (result.getRecords() != null && !result.getRecords().isEmpty()) {
             for (PmProject project : result.getRecords()) {
                 if (project.getOwnerId() != null) {
@@ -78,6 +78,9 @@ public class PmProjectServiceImpl extends ServiceImpl<PmProjectMapper, PmProject
                     }
                     project.setDeputyOwnerNames(deputyOwnerNames);
                 }
+                // 加载项目参与者
+                List<Long> participantIds = pmProjectEmployeeService.getEmployeeIdsByProjectId(project.getId());
+                project.setParticipants(participantIds);
             }
         }
         

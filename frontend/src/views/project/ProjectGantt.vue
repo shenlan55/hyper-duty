@@ -9,7 +9,7 @@
               <el-icon><Download /></el-icon>
               导出Excel
             </el-button>
-            <el-select v-model="selectedProjectId" placeholder="请选择项目" filterable @change="handleProjectChange">
+            <el-select v-model="selectedProjectId" placeholder="请选择项目" clearable filterable @change="handleProjectChange">
               <el-option
                 v-for="project in projectList"
                 :key="project.id"

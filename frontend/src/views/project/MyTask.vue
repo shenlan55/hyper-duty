@@ -39,7 +39,7 @@
       <template #header>
         <div class="card-header">
           <span>我的任务</span>
-          <el-select v-model="selectedProjectId" placeholder="选择项目" style="width: 200px; margin-left: 20px;" @change="handleProjectChange">
+          <el-select v-model="selectedProjectId" placeholder="选择项目" clearable filterable style="width: 200px; margin-left: 20px;" @change="handleProjectChange">
             <el-option label="所有项目" value="0" />
             <el-option v-for="project in projects" :key="project.id" :label="project.projectName" :value="project.id" />
           </el-select>

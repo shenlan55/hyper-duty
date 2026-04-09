@@ -9,7 +9,7 @@
 
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="项目">
-          <el-select v-model="searchForm.projectId" placeholder="请选择项目" clearable filterable>
+          <el-select v-model="searchForm.projectId" placeholder="请选择项目" clearable filterable @change="handleProjectChange">
             <el-option
               v-for="project in projectList"
               :key="project.id"
@@ -311,6 +311,13 @@ const handleBindDateChange = (val) => {
 }
 
 const handleSearch = () => {
+  pagination.currentPage = 1
+  bindColumns.value = []
+  currentTableId.value = null
+  loadData()
+}
+
+const handleProjectChange = () => {
   pagination.currentPage = 1
   bindColumns.value = []
   currentTableId.value = null
