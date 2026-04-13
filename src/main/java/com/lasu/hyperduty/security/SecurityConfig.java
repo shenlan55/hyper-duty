@@ -11,10 +11,16 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import com.lasu.hyperduty.security.EmployeeUserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -69,14 +75,19 @@ public class SecurityConfig {
                 }))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                    // 认证接口放行
                     .requestMatchers("/auth/login", "/auth/logout", "/auth/refresh-token").permitAll()
+                    // Swagger文档放行
                     .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                    // Druid监控放行
                     .requestMatchers("/druid/**").permitAll()
-                    .requestMatchers("/static/**").permitAll()
-                    .requestMatchers("/file/preview", "/file/download", "/file/check", "/file/upload-chunk", "/file/merge").permitAll()
-                    .requestMatchers("/api/file/preview", "/api/file/download", "/api/file/check", "/api/file/upload-chunk", "/api/file/merge").permitAll()
-                    // 其他接口需要认证
-                    .anyRequest().authenticated())
+                    // 文件相关接口放行
+                    .requestMatchers("/file/**").permitAll()
+                    .requestMatchers("/api/file/**").permitAll()
+                    // 只保护 /api/** 开头的接口
+                    .requestMatchers("/api/**").authenticated()
+                    // 其他所有请求都放行（包括前端静态资源和SPA路由）
+                    .anyRequest().permitAll())
                 // 添加JWT认证过滤器
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
