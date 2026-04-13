@@ -8,15 +8,15 @@ import java.util.List;
 
 public interface PmTaskService extends IService<PmTask> {
 
-    Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long assigneeId, Integer status, Integer priority);
+    Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long assigneeId, Integer status, Integer priority, String taskName, String assigneeName);
 
     List<PmTask> getProjectTasks(Long projectId);
 
     List<PmTask> getSubTasks(Long parentId);
 
-    List<PmTask> getMyTasks(Long employeeId);
+    List<PmTask> getMyTasks(Long employeeId, String taskName);
 
-    List<PmTask> getMyTasksByProject(Long employeeId, Long projectId);
+    List<PmTask> getMyTasksByProject(Long employeeId, Long projectId, String taskName);
 
     PmTask getTaskDetail(Long id);
 

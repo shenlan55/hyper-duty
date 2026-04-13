@@ -34,11 +34,11 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long assigneeId, Integer status, Integer priority) {
+    public Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long assigneeId, Integer status, Integer priority, String taskName, String assigneeName) {
         Page<PmTask> page = new Page<>(pageNum, pageSize);
         
         // 查询所有符合条件的任务
-        List<PmTask> allTasks = baseMapper.selectTaskPage(projectId, assigneeId, status, priority);
+        List<PmTask> allTasks = baseMapper.selectTaskPage(projectId, assigneeId, status, priority, taskName, assigneeName);
         
         // 修正所有任务的层级
         fixTaskLevels(allTasks);
@@ -233,13 +233,13 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     }
 
     @Override
-    public List<PmTask> getMyTasks(Long employeeId) {
-        return baseMapper.selectMyTasks(employeeId);
+    public List<PmTask> getMyTasks(Long employeeId, String taskName) {
+        return baseMapper.selectMyTasks(employeeId, taskName);
     }
 
     @Override
-    public List<PmTask> getMyTasksByProject(Long employeeId, Long projectId) {
-        return baseMapper.selectMyTasksByProject(employeeId, projectId);
+    public List<PmTask> getMyTasksByProject(Long employeeId, Long projectId, String taskName) {
+        return baseMapper.selectMyTasksByProject(employeeId, projectId, taskName);
     }
 
     @Override

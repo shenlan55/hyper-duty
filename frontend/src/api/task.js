@@ -22,17 +22,19 @@ export function getSubTasks(parentId) {
   })
 }
 
-export function getMyTasks(employeeId) {
+export function getMyTasks(employeeId, taskName) {
   return request({
     url: `/pm/task/my/${employeeId}`,
-    method: 'get'
+    method: 'get',
+    params: { taskName }
   })
 }
 
-export function getMyTasksByProject(employeeId, projectId) {
+export function getMyTasksByProject(employeeId, projectId, taskName) {
   return request({
     url: `/pm/task/my/${employeeId}/project/${projectId}`,
-    method: 'get'
+    method: 'get',
+    params: { taskName }
   })
 }
 

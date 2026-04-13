@@ -39,10 +39,13 @@
       <template #header>
         <div class="card-header">
           <span>我的任务</span>
-          <el-select v-model="selectedProjectId" placeholder="选择项目" clearable filterable style="width: 200px; margin-left: 20px;" @change="handleProjectChange">
-            <el-option label="所有项目" value="0" />
-            <el-option v-for="project in projects" :key="project.id" :label="project.projectName" :value="project.id" />
-          </el-select>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <el-input v-model="searchForm.taskName" placeholder="请输入任务名称" clearable style="width: 200px;" />
+            <el-select v-model="selectedProjectId" placeholder="选择项目" clearable filterable style="width: 200px;" @change="handleProjectChange">
+              <el-option label="所有项目" value="0" />
+              <el-option v-for="project in projects" :key="project.id" :label="project.projectName" :value="project.id" />
+            </el-select>
+          </div>
         </div>
       </template>
 
@@ -194,7 +197,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Star, Document } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
@@ -217,6 +220,10 @@ const activeTab = ref('all')
 const projects = ref([])
 const selectedProjectId = ref('0')
 const employeeList = ref([])
+
+const searchForm = reactive({
+  taskName: ''
+})
 
 const stats = reactive({
   total: 0,
@@ -303,9 +310,9 @@ const loadData = async () => {
       data = await getUpcomingTasks(employeeId)
     } else {
       if (selectedProjectId.value === '0') {
-        data = await getMyTasks(employeeId)
+        data = await getMyTasks(employeeId, searchForm.taskName)
       } else {
-        data = await getMyTasksByProject(employeeId, selectedProjectId.value)
+        data = await getMyTasksByProject(employeeId, selectedProjectId.value, searchForm.taskName)
       }
     }
 
@@ -342,6 +349,12 @@ const handleProjectChange = () => {
   pagination.currentPage = 1
   loadData()
 }
+
+// 监听任务名称搜索框变化
+watch(() => searchForm.taskName, () => {
+  pagination.currentPage = 1
+  loadData()
+})
 
 const handleSizeChange = (val) => {
   pagination.pageSize = val

@@ -29,9 +29,11 @@ public class PmTaskController {
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) Long assigneeId,
             @RequestParam(required = false) Integer status,
-            @RequestParam(required = false) Integer priority) {
+            @RequestParam(required = false) Integer priority,
+            @RequestParam(required = false) String taskName,
+            @RequestParam(required = false) String assigneeName) {
         
-        Page<PmTask> page = pmTaskService.pageList(pageNum, pageSize, projectId, assigneeId, status, priority);
+        Page<PmTask> page = pmTaskService.pageList(pageNum, pageSize, projectId, assigneeId, status, priority, taskName, assigneeName);
         return ResponseResult.success(page);
     }
 
@@ -48,14 +50,19 @@ public class PmTaskController {
     }
 
     @GetMapping("/my/{employeeId}")
-    public ResponseResult<List<PmTask>> getMyTasks(@PathVariable Long employeeId) {
-        List<PmTask> tasks = pmTaskService.getMyTasks(employeeId);
+    public ResponseResult<List<PmTask>> getMyTasks(
+            @PathVariable Long employeeId,
+            @RequestParam(required = false) String taskName) {
+        List<PmTask> tasks = pmTaskService.getMyTasks(employeeId, taskName);
         return ResponseResult.success(tasks);
     }
 
     @GetMapping("/my/{employeeId}/project/{projectId}")
-    public ResponseResult<List<PmTask>> getMyTasksByProject(@PathVariable Long employeeId, @PathVariable Long projectId) {
-        List<PmTask> tasks = pmTaskService.getMyTasksByProject(employeeId, projectId);
+    public ResponseResult<List<PmTask>> getMyTasksByProject(
+            @PathVariable Long employeeId,
+            @PathVariable Long projectId,
+            @RequestParam(required = false) String taskName) {
+        List<PmTask> tasks = pmTaskService.getMyTasksByProject(employeeId, projectId, taskName);
         return ResponseResult.success(tasks);
     }
 

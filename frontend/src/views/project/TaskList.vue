@@ -19,6 +19,12 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="任务名称">
+          <el-input v-model="searchForm.taskName" placeholder="请输入任务名称" clearable style="width: 200px;" />
+        </el-form-item>
+        <el-form-item label="负责人">
+          <el-input v-model="searchForm.assigneeName" placeholder="请输入负责人" clearable style="width: 150px;" />
+        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 120px;">
             <el-option label="未开始" :value="1" />
@@ -541,6 +547,8 @@ const selectedStakeholders = ref([])
 
 const searchForm = reactive({
   projectId: null,
+  taskName: '',
+  assigneeName: '',
   status: null,
   priority: null
 })
@@ -764,6 +772,8 @@ const handleProjectChange = () => {
 
 const handleReset = () => {
   searchForm.projectId = null
+  searchForm.taskName = ''
+  searchForm.assigneeName = ''
   searchForm.status = null
   searchForm.priority = null
   handleSearch()

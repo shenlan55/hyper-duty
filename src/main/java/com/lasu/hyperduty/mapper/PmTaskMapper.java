@@ -21,6 +21,8 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "<if test='assigneeId != null'> AND t.assignee_id = #{assigneeId}</if>" +
             "<if test='status != null'> AND t.status = #{status}</if>" +
             "<if test='priority != null'> AND t.priority = #{priority}</if>" +
+            "<if test='taskName != null and taskName != \"\"'> AND t.task_name LIKE CONCAT('%', #{taskName}, '%')</if>" +
+            "<if test='assigneeName != null and assigneeName != \"\"'> AND e.employee_name LIKE CONCAT('%', #{assigneeName}, '%')</if>" +
             "</where>" +
             "ORDER BY t.is_pinned DESC, " +
             "CASE WHEN t.status IN (1, 2) THEN 0 " +
@@ -32,7 +34,9 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
     List<PmTask> selectTaskPage(@Param("projectId") Long projectId,
                                   @Param("assigneeId") Long assigneeId,
                                   @Param("status") Integer status,
-                                  @Param("priority") Integer priority);
+                                  @Param("priority") Integer priority,
+                                  @Param("taskName") String taskName,
+                                  @Param("assigneeName") String assigneeName);
 
     @Select("<script>" +
             "SELECT COUNT(*) " +
@@ -70,35 +74,41 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "ORDER BY t.priority ASC, t.end_date ASC")
     List<PmTask> selectByParentId(@Param("parentId") Long parentId);
 
-    @Select("SELECT t.*, e.employee_name as owner_name, p.project_name, " +
+    @Select("<script>" +
+            "SELECT t.*, e.employee_name as owner_name, p.project_name, " +
             "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id) as sub_task_count, " +
             "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id AND sub.status = 3) as completed_sub_task_count " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
-            "WHERE t.assignee_id = #{employeeId} OR t.stakeholders LIKE CONCAT('%', #{employeeId}, '%') " +
+            "WHERE (t.assignee_id = #{employeeId} OR t.stakeholders LIKE CONCAT('%', #{employeeId}, '%')) " +
+            "<if test='taskName != null and taskName != \"\"'> AND t.task_name LIKE CONCAT('%', #{taskName}, '%')</if>" +
             "ORDER BY t.is_pinned DESC, " +
             "CASE WHEN t.status IN (1, 2) THEN 0 " +
             "     WHEN t.status = 3 THEN 1 " +
             "     WHEN t.status = 4 THEN 2 " +
             "     ELSE 3 END, " +
-            "t.priority ASC")
-    List<PmTask> selectMyTasks(@Param("employeeId") Long employeeId);
+            "t.priority ASC" +
+            "</script>")
+    List<PmTask> selectMyTasks(@Param("employeeId") Long employeeId, @Param("taskName") String taskName);
 
-    @Select("SELECT t.*, e.employee_name as owner_name, p.project_name, " +
+    @Select("<script>" +
+            "SELECT t.*, e.employee_name as owner_name, p.project_name, " +
             "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id) as sub_task_count, " +
             "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id AND sub.status = 3) as completed_sub_task_count " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
             "WHERE t.project_id = #{projectId} AND (t.assignee_id = #{employeeId} OR t.stakeholders LIKE CONCAT('%', #{employeeId}, '%')) " +
+            "<if test='taskName != null and taskName != \"\"'> AND t.task_name LIKE CONCAT('%', #{taskName}, '%')</if>" +
             "ORDER BY t.is_pinned DESC, " +
             "CASE WHEN t.status IN (1, 2) THEN 0 " +
             "     WHEN t.status = 3 THEN 1 " +
             "     WHEN t.status = 4 THEN 2 " +
             "     ELSE 3 END, " +
-            "t.priority ASC")
-    List<PmTask> selectMyTasksByProject(@Param("employeeId") Long employeeId, @Param("projectId") Long projectId);
+            "t.priority ASC" +
+            "</script>")
+    List<PmTask> selectMyTasksByProject(@Param("employeeId") Long employeeId, @Param("projectId") Long projectId, @Param("taskName") String taskName);
 
     @Select("SELECT t.*, e.employee_name as owner_name, p.project_name, pt.task_name as parentTaskName " +
             "FROM pm_task t " +
