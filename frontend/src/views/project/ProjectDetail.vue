@@ -20,7 +20,7 @@
             </el-tag>
           </div>
           <div class="project-actions" v-if="project.projectName">
-            <el-button v-if="canAddTask" type="primary" @click="handleAddTask">
+            <el-button v-if="canAddTask" type="primary" @click="handleAddTask(1)">
               <el-icon><Plus /></el-icon>
               添加任务
             </el-button>
@@ -184,6 +184,17 @@
             <el-option label="中" :value="2" />
             <el-option label="低" :value="3" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="taskForm.status" placeholder="请选择状态" style="width: 120px;">
+            <el-option label="未开始" :value="1" />
+            <el-option label="进行中" :value="2" />
+            <el-option label="已完成" :value="3" />
+            <el-option label="已暂停" :value="4" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="进度">
+          <el-slider v-model="taskForm.progress" :min="0" :max="100" show-input style="width: 300px;" />
         </el-form-item>
         <el-form-item label="负责人" prop="assigneeId">
           <el-input
@@ -559,7 +570,8 @@ const taskForm = reactive({
   description: '',
   attachments: [],
   stakeholders: [],
-  status: 1
+  status: 1,
+  progress: 0
 })
 
 const taskRules = {
@@ -1060,6 +1072,13 @@ const handleTaskSubmit = async () => {
       submitData.status = 1
     }
     
+    // 添加进度数据
+    if (taskForm.progress !== undefined && taskForm.progress !== null) {
+      submitData.progress = Number(taskForm.progress)
+    } else {
+      submitData.progress = 0
+    }
+    
     // 添加创建人ID
     if (userStore.employeeId) {
       submitData.createBy = Number(userStore.employeeId)
@@ -1128,6 +1147,7 @@ const handleProjectDialogClose = () => {
 }
 
 const resetTaskForm = () => {
+  taskFormRef.value?.resetFields()
   taskForm.id = null
   taskForm.projectId = null
   taskForm.parentId = null
@@ -1141,13 +1161,13 @@ const resetTaskForm = () => {
   taskForm.attachments = []
   taskForm.stakeholders = []
   taskForm.status = defaultStatus.value || 1
+  taskForm.progress = 0
   assigneeName.value = ''
   selectedAssignees.value = []
   assigneeDialogVisible.value = false
   stakeholderNames.value = ''
   selectedStakeholders.value = []
   stakeholderDialogVisible.value = false
-  taskFormRef.value?.resetFields()
 }
 
 const resetProjectForm = () => {

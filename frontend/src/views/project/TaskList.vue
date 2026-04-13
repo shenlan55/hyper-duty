@@ -1581,6 +1581,7 @@ const handleDialogClose = () => {
 }
 
 const resetForm = () => {
+  formRef.value?.resetFields()
   form.id = null
   form.projectId = null
   form.parentId = 0
@@ -1596,7 +1597,6 @@ const resetForm = () => {
   form.description = ''
   form.stakeholders = []
   form.attachments = []
-  formRef.value?.resetFields()
   
   // 重置原始状态和进度
   originalTaskStatus = null
