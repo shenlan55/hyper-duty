@@ -31,6 +31,12 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="单号">
+          <el-input v-model="searchForm.orderNo" placeholder="请输入单号" clearable />
+        </el-form-item>
+        <el-form-item label="标题">
+          <el-input v-model="searchForm.title" placeholder="请输入标题" clearable />
+        </el-form-item>
         <el-form-item label="任务时间">
           <el-date-picker
             v-model="taskDateRange"
@@ -111,6 +117,8 @@ const searchForm = reactive({
   projectId: null,
   taskName: '',
   assigneeId: null,
+  orderNo: '',
+  title: '',
   taskStartDate: null,
   taskEndDate: null,
   bindStartTime: null,
@@ -174,7 +182,18 @@ const exportAllData = async () => {
       ...searchForm
     }
     const data = await getWorkloadPage(params)
-    return (data.records || []).map(row => {
+    
+    const records = data.records || []
+    
+    if (records.length > 0 && !currentTableId.value) {
+      const firstRow = records.find(row => row.tableId)
+      if (firstRow) {
+        currentTableId.value = firstRow.tableId
+        await loadBindColumns(currentTableId.value)
+      }
+    }
+    
+    return records.map(row => {
       const flattened = { ...row }
       if (row.bindData) {
         Object.keys(row.bindData).forEach(key => {
@@ -250,9 +269,9 @@ const loadData = async () => {
     })
     pagination.total = data.total || 0
     
-    if (tableData.value.length > 0 && !currentTableId.value) {
+    if (tableData.value.length > 0) {
       const firstRow = tableData.value.find(row => row.tableId)
-      if (firstRow) {
+      if (firstRow && firstRow.tableId !== currentTableId.value) {
         currentTableId.value = firstRow.tableId
         await loadBindColumns(currentTableId.value)
       }
@@ -270,6 +289,26 @@ const loadBindColumns = async (tableId) => {
     bindColumns.value = columns || []
   } catch (error) {
     console.error('加载绑定表格列失败', error)
+  }
+}
+
+const preloadBindColumns = async () => {
+  try {
+    const params = {
+      pageNum: 1,
+      pageSize: 100
+    }
+    const data = await getWorkloadPage(params)
+    const records = data.records || []
+    if (records.length > 0) {
+      const firstRow = records.find(row => row.tableId)
+      if (firstRow) {
+        currentTableId.value = firstRow.tableId
+        await loadBindColumns(currentTableId.value)
+      }
+    }
+  } catch (error) {
+    console.error('预加载绑定列失败', error)
   }
 }
 
@@ -313,15 +352,11 @@ const handleBindDateChange = (val) => {
 
 const handleSearch = () => {
   pagination.currentPage = 1
-  bindColumns.value = []
-  currentTableId.value = null
   loadData()
 }
 
 const handleProjectChange = () => {
   pagination.currentPage = 1
-  bindColumns.value = []
-  currentTableId.value = null
   loadData()
 }
 
@@ -329,6 +364,8 @@ const handleReset = () => {
   searchForm.projectId = null
   searchForm.taskName = ''
   searchForm.assigneeId = null
+  searchForm.orderNo = ''
+  searchForm.title = ''
   searchForm.taskStartDate = null
   searchForm.taskEndDate = null
   searchForm.bindStartTime = null
@@ -365,9 +402,10 @@ const getProgressStatus = (progress) => {
   return 'exception'
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadProjectList()
   loadEmployeeList()
+  await preloadBindColumns()
   loadData()
 })
 </script>

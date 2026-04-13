@@ -643,7 +643,7 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     }
 
     @Override
-    public Page<WorkloadDTO> getWorkloadPage(Integer pageNum, Integer pageSize, Long projectId, String taskName, Long assigneeId, LocalDate taskStartDate, LocalDate taskEndDate, LocalDateTime bindStartTime, LocalDateTime bindEndTime) {
+    public Page<WorkloadDTO> getWorkloadPage(Integer pageNum, Integer pageSize, Long projectId, String taskName, Long assigneeId, LocalDate taskStartDate, LocalDate taskEndDate, LocalDateTime bindStartTime, LocalDateTime bindEndTime, String orderNo, String title) {
         Page<WorkloadDTO> resultPage = new Page<>(pageNum, pageSize);
 
         LambdaQueryWrapper<PmTask> taskWrapper = new LambdaQueryWrapper<>();
@@ -678,6 +678,12 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             if (bindEndTime != null) {
                 bindingWrapper.le(PmTaskCustomRow::getCreateTime, bindEndTime);
             }
+            if (orderNo != null && !orderNo.isEmpty()) {
+                bindingWrapper.like(PmTaskCustomRow::getOrderNo, orderNo);
+            }
+            if (title != null && !title.isEmpty()) {
+                bindingWrapper.like(PmTaskCustomRow::getTitle, title);
+            }
             allBindings = taskCustomRowMapper.selectList(bindingWrapper);
         }
 
@@ -701,7 +707,11 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
 
         List<WorkloadDTO> workloadList = new ArrayList<>();
 
-        if (bindStartTime != null || bindEndTime != null) {
+        boolean hasBindingFilter = bindStartTime != null || bindEndTime != null 
+            || (orderNo != null && !orderNo.isEmpty()) 
+            || (title != null && !title.isEmpty());
+
+        if (hasBindingFilter) {
             for (PmTaskCustomRow binding : allBindings) {
                 PmTask task = taskMap.get(binding.getTaskId());
                 if (task == null) continue;

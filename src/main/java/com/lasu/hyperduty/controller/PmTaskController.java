@@ -150,9 +150,11 @@ public class PmTaskController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate taskStartDate,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate taskEndDate,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime bindStartTime,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime bindEndTime) {
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime bindEndTime,
+            @RequestParam(required = false) String orderNo,
+            @RequestParam(required = false) String title) {
         
-        Page<WorkloadDTO> page = pmTaskService.getWorkloadPage(pageNum, pageSize, projectId, taskName, assigneeId, taskStartDate, taskEndDate, bindStartTime, bindEndTime);
+        Page<WorkloadDTO> page = pmTaskService.getWorkloadPage(pageNum, pageSize, projectId, taskName, assigneeId, taskStartDate, taskEndDate, bindStartTime, bindEndTime, orderNo, title);
         return ResponseResult.success(page);
     }
 }
