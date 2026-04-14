@@ -82,15 +82,25 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
         for (RootTaskRange range : rootTaskRanges) {
             int taskCount = range.endIndex - range.startIndex;
             
-            // 如果当前页已经有任务，且添加这个根任务会超过pageSize，则新开一页
-            if (!currentPageRootTasks.isEmpty() && currentPageTaskCount + taskCount > pageSize) {
-                pagesRootTasks.add(new java.util.ArrayList<>(currentPageRootTasks));
-                currentPageRootTasks.clear();
-                currentPageTaskCount = 0;
+            // 如果当前页是空的，直接添加这个根任务
+            if (currentPageRootTasks.isEmpty()) {
+                currentPageRootTasks.add(range);
+                currentPageTaskCount += taskCount;
+            } else {
+                // 当前页已有任务，先添加这个根任务
+                currentPageRootTasks.add(range);
+                currentPageTaskCount += taskCount;
+                
+                // 添加后检查是否超过pageSize
+                if (currentPageTaskCount > pageSize) {
+                    // 超过了，当前页还是保留这个根任务，然后保存当前页
+                    pagesRootTasks.add(new java.util.ArrayList<>(currentPageRootTasks));
+                    
+                    // 新开一页
+                    currentPageRootTasks.clear();
+                    currentPageTaskCount = 0;
+                }
             }
-            
-            currentPageRootTasks.add(range);
-            currentPageTaskCount += taskCount;
         }
         
         // 添加最后一页
