@@ -56,65 +56,80 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             parentIdToChildrenMap.get(parentId).add(task);
         }
         
-        // 计算每个根任务及其所有子任务的总条数
-        List<RootTaskInfo> rootTaskInfos = new java.util.ArrayList<>();
-        int totalCount = 0;
+        // 第一步：构建完整的扁平任务列表（按树形结构展开）
+        List<PmTask> flatAllTasks = new java.util.ArrayList<>();
         for (PmTask rootTask : rootTasks) {
-            int count = countTaskAndChildren(rootTask, parentIdToChildrenMap);
-            rootTaskInfos.add(new RootTaskInfo(rootTask, count, totalCount));
-            totalCount += count;
+            addTaskToResult(flatAllTasks, rootTask, parentIdToChildrenMap);
         }
         
         // 设置总条数
-        page.setTotal(totalCount);
+        page.setTotal(flatAllTasks.size());
         
-        // 计算分页：确定当前页应该包含哪些根任务
-        List<RootTaskInfo> pageRootTaskInfos = new java.util.ArrayList<>();
-        int startPosition = (pageNum - 1) * pageSize;
-        int endPosition = pageNum * pageSize;
-        
-        // 找到第一个应该包含在当前页的根任务
-        int firstRootIndex = -1;
-        for (int i = 0; i < rootTaskInfos.size(); i++) {
-            RootTaskInfo info = rootTaskInfos.get(i);
-            if (info.startPosition + info.count > startPosition) {
-                firstRootIndex = i;
-                break;
-            }
+        // 第二步：确定每个根任务在扁平列表中的起始和结束索引
+        List<RootTaskRange> rootTaskRanges = new java.util.ArrayList<>();
+        int currentIndex = 0;
+        for (PmTask rootTask : rootTasks) {
+            int count = countTaskAndChildren(rootTask, parentIdToChildrenMap);
+            rootTaskRanges.add(new RootTaskRange(rootTask, currentIndex, currentIndex + count));
+            currentIndex += count;
         }
         
-        // 如果没有找到，说明超出了范围
-        if (firstRootIndex == -1) {
-            page.setRecords(new java.util.ArrayList<>());
-            return page;
-        }
+        // 第三步：预先计算好每页应该显示哪些根任务
+        List<List<RootTaskRange>> pagesRootTasks = new java.util.ArrayList<>();
+        List<RootTaskRange> currentPageRootTasks = new java.util.ArrayList<>();
+        int currentPageTaskCount = 0;
         
-        // 从第一个根任务开始，添加到当前页，直到超过endPosition
-        int currentPosition = rootTaskInfos.get(firstRootIndex).startPosition;
-        for (int i = firstRootIndex; i < rootTaskInfos.size(); i++) {
-            RootTaskInfo info = rootTaskInfos.get(i);
+        for (RootTaskRange range : rootTaskRanges) {
+            int taskCount = range.endIndex - range.startIndex;
             
-            // 如果当前根任务的起始位置已经超过了endPosition，就不再添加
-            if (info.startPosition >= endPosition) {
-                break;
+            // 如果当前页已经有任务，且添加这个根任务会超过pageSize，则新开一页
+            if (!currentPageRootTasks.isEmpty() && currentPageTaskCount + taskCount > pageSize) {
+                pagesRootTasks.add(new java.util.ArrayList<>(currentPageRootTasks));
+                currentPageRootTasks.clear();
+                currentPageTaskCount = 0;
             }
             
-            pageRootTaskInfos.add(info);
-            currentPosition += info.count;
+            currentPageRootTasks.add(range);
+            currentPageTaskCount += taskCount;
         }
         
-        // 构建结果列表
-        if (!pageRootTaskInfos.isEmpty()) {
-            List<PmTask> result = new java.util.ArrayList<>();
-            for (RootTaskInfo info : pageRootTaskInfos) {
-                addTaskToResult(result, info.rootTask, parentIdToChildrenMap);
-            }
-            page.setRecords(result);
-        } else {
-            page.setRecords(new java.util.ArrayList<>());
+        // 添加最后一页
+        if (!currentPageRootTasks.isEmpty()) {
+            pagesRootTasks.add(currentPageRootTasks);
         }
+        
+        // 第四步：获取当前页的根任务
+        List<PmTask> pageRootTasks = new java.util.ArrayList<>();
+        if (pageNum <= pagesRootTasks.size()) {
+            List<RootTaskRange> targetPageRanges = pagesRootTasks.get(pageNum - 1);
+            for (RootTaskRange range : targetPageRanges) {
+                pageRootTasks.add(range.rootTask);
+            }
+        }
+        
+        // 第五步：构建结果列表
+        List<PmTask> result = new java.util.ArrayList<>();
+        for (PmTask rootTask : pageRootTasks) {
+            addTaskToResult(result, rootTask, parentIdToChildrenMap);
+        }
+        page.setRecords(result);
         
         return page;
+    }
+    
+    /**
+     * 根任务范围类，记录根任务在扁平列表中的起始和结束索引
+     */
+    private static class RootTaskRange {
+        PmTask rootTask;
+        int startIndex;
+        int endIndex;
+        
+        RootTaskRange(PmTask rootTask, int startIndex, int endIndex) {
+            this.rootTask = rootTask;
+            this.startIndex = startIndex;
+            this.endIndex = endIndex;
+        }
     }
     
     /**
@@ -128,21 +143,7 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
         }
         return count;
     }
-    
-    /**
-     * 根任务信息类，包含根任务及其子任务总条数
-     */
-    private static class RootTaskInfo {
-        PmTask rootTask;
-        int count;
-        int startPosition;
-        
-        RootTaskInfo(PmTask rootTask, int count, int startPosition) {
-            this.rootTask = rootTask;
-            this.count = count;
-            this.startPosition = startPosition;
-        }
-    }
+
     
     /**
      * 从完整任务列表中提取所有根任务（parentId为0的任务）
