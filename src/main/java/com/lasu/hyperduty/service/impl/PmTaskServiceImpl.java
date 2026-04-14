@@ -46,39 +46,89 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
         // 构建完整的树形结构，得到根任务列表
         List<PmTask> rootTasks = buildFlatRootTasks(allTasks);
         
-        // 只对根任务进行分页
-        page.setTotal(rootTasks.size());
+        // 构建父子关系映射
+        Map<Long, List<PmTask>> parentIdToChildrenMap = new java.util.HashMap<>();
+        for (PmTask task : allTasks) {
+            Long parentId = task.getParentId() != null ? task.getParentId() : 0L;
+            if (!parentIdToChildrenMap.containsKey(parentId)) {
+                parentIdToChildrenMap.put(parentId, new java.util.ArrayList<>());
+            }
+            parentIdToChildrenMap.get(parentId).add(task);
+        }
         
-        // 手动对根任务分页
-        int fromIndex = (pageNum - 1) * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, rootTasks.size());
+        // 计算每个根任务及其所有子任务的总条数
+        List<RootTaskInfo> rootTaskInfos = new java.util.ArrayList<>();
+        for (PmTask rootTask : rootTasks) {
+            int count = countTaskAndChildren(rootTask, parentIdToChildrenMap);
+            rootTaskInfos.add(new RootTaskInfo(rootTask, count));
+        }
         
-        if (fromIndex < rootTasks.size()) {
-            // 获取当前页的根任务
-            List<PmTask> pageRootTasks = rootTasks.subList(fromIndex, toIndex);
+        // 计算分页：按根任务分组，确保每个根任务及其子任务完整显示在同一页
+        List<RootTaskInfo> pageRootTaskInfos = new java.util.ArrayList<>();
+        int currentCount = 0;
+        int startPage = (pageNum - 1) * pageSize;
+        int endPage = pageNum * pageSize;
+        
+        // 首先计算所有根任务的累计条数，确定当前页包含哪些根任务
+        int cumulativeCount = 0;
+        int pageStartIndex = -1;
+        int pageEndIndex = -1;
+        
+        for (int i = 0; i < rootTaskInfos.size(); i++) {
+            RootTaskInfo info = rootTaskInfos.get(i);
+            int prevCumulative = cumulativeCount;
+            cumulativeCount += info.count;
             
-            // 为每个根任务加载所有子任务，构建完整的树
-            List<PmTask> result = new java.util.ArrayList<>();
-            Map<Long, List<PmTask>> parentIdToChildrenMap = new java.util.HashMap<>();
-            
-            for (PmTask task : allTasks) {
-                Long parentId = task.getParentId() != null ? task.getParentId() : 0L;
-                if (!parentIdToChildrenMap.containsKey(parentId)) {
-                    parentIdToChildrenMap.put(parentId, new java.util.ArrayList<>());
+            // 检查这个根任务是否与当前页有交集
+            if (prevCumulative < endPage && cumulativeCount > startPage) {
+                if (pageStartIndex == -1) {
+                    pageStartIndex = i;
                 }
-                parentIdToChildrenMap.get(parentId).add(task);
+                pageEndIndex = i;
+                pageRootTaskInfos.add(info);
             }
-            
-            for (PmTask rootTask : pageRootTasks) {
-                addTaskToResult(result, rootTask, parentIdToChildrenMap);
+        }
+        
+        // 设置总条数
+        page.setTotal(cumulativeCount);
+        
+        // 构建结果列表
+        if (!pageRootTaskInfos.isEmpty()) {
+            List<PmTask> result = new java.util.ArrayList<>();
+            for (RootTaskInfo info : pageRootTaskInfos) {
+                addTaskToResult(result, info.rootTask, parentIdToChildrenMap);
             }
-            
             page.setRecords(result);
         } else {
             page.setRecords(new java.util.ArrayList<>());
         }
         
         return page;
+    }
+    
+    /**
+     * 计算任务及其所有子任务的总条数
+     */
+    private int countTaskAndChildren(PmTask task, Map<Long, List<PmTask>> parentIdToChildrenMap) {
+        int count = 1; // 当前任务本身
+        List<PmTask> children = parentIdToChildrenMap.getOrDefault(task.getId(), new java.util.ArrayList<>());
+        for (PmTask child : children) {
+            count += countTaskAndChildren(child, parentIdToChildrenMap);
+        }
+        return count;
+    }
+    
+    /**
+     * 根任务信息类，包含根任务及其子任务总条数
+     */
+    private static class RootTaskInfo {
+        PmTask rootTask;
+        int count;
+        
+        RootTaskInfo(PmTask rootTask, int count) {
+            this.rootTask = rootTask;
+            this.count = count;
+        }
     }
     
     /**
