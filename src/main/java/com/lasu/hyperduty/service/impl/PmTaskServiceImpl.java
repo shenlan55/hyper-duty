@@ -105,18 +105,8 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             pagesRootTasks.add(currentPageRootTasks);
         }
         
-        // 第四步：计算最后一页的实际任务数，调整total使得前端显示的总页数等于pagesRootTasks.size()
-        int adjustedTotal = flatAllTasks.size();
-        if (!pagesRootTasks.isEmpty()) {
-            // 计算最后一页的实际任务数
-            List<RootTaskRange> lastPageRanges = pagesRootTasks.get(pagesRootTasks.size() - 1);
-            int lastPageTaskCount = 0;
-            for (RootTaskRange range : lastPageRanges) {
-                lastPageTaskCount += range.endIndex - range.startIndex;
-            }
-            // 调整total，使得前端显示的总页数等于pagesRootTasks.size()
-            adjustedTotal = (pagesRootTasks.size() - 1) * pageSize + lastPageTaskCount;
-        }
+        // 第四步：调整total使得前端显示的总页数等于pagesRootTasks.size()
+        int adjustedTotal = pagesRootTasks.size() * pageSize;
         page.setTotal(adjustedTotal);
         
         // 第五步：获取当前页的根任务
