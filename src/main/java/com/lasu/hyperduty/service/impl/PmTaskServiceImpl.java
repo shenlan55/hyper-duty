@@ -58,39 +58,50 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
         
         // 计算每个根任务及其所有子任务的总条数
         List<RootTaskInfo> rootTaskInfos = new java.util.ArrayList<>();
+        int totalCount = 0;
         for (PmTask rootTask : rootTasks) {
             int count = countTaskAndChildren(rootTask, parentIdToChildrenMap);
-            rootTaskInfos.add(new RootTaskInfo(rootTask, count));
-        }
-        
-        // 计算分页：按根任务分组，确保每个根任务及其子任务完整显示在同一页
-        List<RootTaskInfo> pageRootTaskInfos = new java.util.ArrayList<>();
-        int currentCount = 0;
-        int startPage = (pageNum - 1) * pageSize;
-        int endPage = pageNum * pageSize;
-        
-        // 首先计算所有根任务的累计条数，确定当前页包含哪些根任务
-        int cumulativeCount = 0;
-        int pageStartIndex = -1;
-        int pageEndIndex = -1;
-        
-        for (int i = 0; i < rootTaskInfos.size(); i++) {
-            RootTaskInfo info = rootTaskInfos.get(i);
-            int prevCumulative = cumulativeCount;
-            cumulativeCount += info.count;
-            
-            // 检查这个根任务是否与当前页有交集
-            if (prevCumulative < endPage && cumulativeCount > startPage) {
-                if (pageStartIndex == -1) {
-                    pageStartIndex = i;
-                }
-                pageEndIndex = i;
-                pageRootTaskInfos.add(info);
-            }
+            rootTaskInfos.add(new RootTaskInfo(rootTask, count, totalCount));
+            totalCount += count;
         }
         
         // 设置总条数
-        page.setTotal(cumulativeCount);
+        page.setTotal(totalCount);
+        
+        // 计算分页：确定当前页应该包含哪些根任务
+        List<RootTaskInfo> pageRootTaskInfos = new java.util.ArrayList<>();
+        int startPosition = (pageNum - 1) * pageSize;
+        int endPosition = pageNum * pageSize;
+        
+        // 找到第一个应该包含在当前页的根任务
+        int firstRootIndex = -1;
+        for (int i = 0; i < rootTaskInfos.size(); i++) {
+            RootTaskInfo info = rootTaskInfos.get(i);
+            if (info.startPosition + info.count > startPosition) {
+                firstRootIndex = i;
+                break;
+            }
+        }
+        
+        // 如果没有找到，说明超出了范围
+        if (firstRootIndex == -1) {
+            page.setRecords(new java.util.ArrayList<>());
+            return page;
+        }
+        
+        // 从第一个根任务开始，添加到当前页，直到超过endPosition
+        int currentPosition = rootTaskInfos.get(firstRootIndex).startPosition;
+        for (int i = firstRootIndex; i < rootTaskInfos.size(); i++) {
+            RootTaskInfo info = rootTaskInfos.get(i);
+            
+            // 如果当前根任务的起始位置已经超过了endPosition，就不再添加
+            if (info.startPosition >= endPosition) {
+                break;
+            }
+            
+            pageRootTaskInfos.add(info);
+            currentPosition += info.count;
+        }
         
         // 构建结果列表
         if (!pageRootTaskInfos.isEmpty()) {
@@ -124,10 +135,12 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     private static class RootTaskInfo {
         PmTask rootTask;
         int count;
+        int startPosition;
         
-        RootTaskInfo(PmTask rootTask, int count) {
+        RootTaskInfo(PmTask rootTask, int count, int startPosition) {
             this.rootTask = rootTask;
             this.count = count;
+            this.startPosition = startPosition;
         }
     }
     
