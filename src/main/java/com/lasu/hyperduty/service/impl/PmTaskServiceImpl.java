@@ -62,9 +62,6 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             addTaskToResult(flatAllTasks, rootTask, parentIdToChildrenMap);
         }
         
-        // 设置总条数
-        page.setTotal(flatAllTasks.size());
-        
         // 第二步：确定每个根任务在扁平列表中的起始和结束索引
         List<RootTaskRange> rootTaskRanges = new java.util.ArrayList<>();
         int currentIndex = 0;
@@ -108,7 +105,21 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             pagesRootTasks.add(currentPageRootTasks);
         }
         
-        // 第四步：获取当前页的根任务
+        // 第四步：计算最后一页的实际任务数，调整total使得前端显示的总页数等于pagesRootTasks.size()
+        int adjustedTotal = flatAllTasks.size();
+        if (!pagesRootTasks.isEmpty()) {
+            // 计算最后一页的实际任务数
+            List<RootTaskRange> lastPageRanges = pagesRootTasks.get(pagesRootTasks.size() - 1);
+            int lastPageTaskCount = 0;
+            for (RootTaskRange range : lastPageRanges) {
+                lastPageTaskCount += range.endIndex - range.startIndex;
+            }
+            // 调整total，使得前端显示的总页数等于pagesRootTasks.size()
+            adjustedTotal = (pagesRootTasks.size() - 1) * pageSize + lastPageTaskCount;
+        }
+        page.setTotal(adjustedTotal);
+        
+        // 第五步：获取当前页的根任务
         List<PmTask> pageRootTasks = new java.util.ArrayList<>();
         if (pageNum <= pagesRootTasks.size()) {
             List<RootTaskRange> targetPageRanges = pagesRootTasks.get(pageNum - 1);
@@ -117,7 +128,7 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             }
         }
         
-        // 第五步：构建结果列表
+        // 第六步：构建结果列表
         List<PmTask> result = new java.util.ArrayList<>();
         for (PmTask rootTask : pageRootTasks) {
             addTaskToResult(result, rootTask, parentIdToChildrenMap);
