@@ -154,6 +154,24 @@ request.interceptors.response.use(
       // 服务器返回错误状态码
       switch (error.response.status) {
         case 401:
+          // 检查是否是不需要认证的接口
+          const url = error.config.url
+          const noAuthUrls = [
+            '/auth/login', 
+            '/auth/refresh-token', 
+            '/mail-config/current', 
+            '/mail-config/send-code'
+          ]
+          
+          if (noAuthUrls.some(noAuthUrl => url.includes(noAuthUrl))) {
+            // 对于不需要认证的接口，直接返回错误
+            const data = error.response.data
+            if (data && data.message) {
+              ElMessage.error(data.message)
+            }
+            return Promise.reject(new Error(data?.message || '未授权'))
+          }
+          
           // 未授权，尝试刷新令牌
           try {
             // 刷新令牌

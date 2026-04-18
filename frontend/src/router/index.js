@@ -73,6 +73,12 @@ const routes = [
             component: () => import('../views/system/ScheduleJob.vue'),
             meta: { title: '定时任务' }
           },
+          {
+            path: 'mail-config',
+            name: 'MailConfig',
+            component: () => import('../views/system/MailConfig.vue'),
+            meta: { title: '邮件配置' }
+          },
 
         ]
       },

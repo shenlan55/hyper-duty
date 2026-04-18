@@ -77,15 +77,16 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                     // 认证接口放行
                     .requestMatchers("/auth/login", "/auth/logout", "/auth/refresh-token").permitAll()
+                    // 邮件配置相关接口（获取配置和发送验证码）放行
+                    .requestMatchers("/mail-config/current", "/mail-config/send-code").permitAll()
                     // Swagger文档放行
                     .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                     // Druid监控放行
                     .requestMatchers("/druid/**").permitAll()
                     // 文件相关接口放行
                     .requestMatchers("/file/**").permitAll()
-                    .requestMatchers("/api/file/**").permitAll()
-                    // 只保护 /api/** 开头的接口
-                    .requestMatchers("/api/**").authenticated()
+                    // 只保护需要认证的接口
+                    .requestMatchers("/employee/**", "/system/**", "/duty/**", "/pm/**", "/notification/**", "/export/**", "/operation-log/**").authenticated()
                     // 其他所有请求都放行（包括前端静态资源和SPA路由）
                     .anyRequest().permitAll())
                 // 添加JWT认证过滤器

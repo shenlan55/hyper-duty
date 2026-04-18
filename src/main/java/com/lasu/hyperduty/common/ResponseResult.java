@@ -21,6 +21,10 @@ public class ResponseResult<T> implements Serializable {
         return new ResponseResult<>(200, "success", null);
     }
 
+    public static <T> ResponseResult<T> success(String message) {
+        return new ResponseResult<>(200, message, null);
+    }
+
     public static <T> ResponseResult<T> success(T data) {
         return new ResponseResult<>(200, "success", data);
     }
@@ -35,6 +39,10 @@ public class ResponseResult<T> implements Serializable {
 
     public static <T> ResponseResult<T> error(String message) {
         return new ResponseResult<>(500, message, null);
+    }
+
+    public static <T> ResponseResult<T> error(String message, T data) {
+        return new ResponseResult<>(500, message, data);
     }
 
     public static <T> ResponseResult<T> error(Integer code, String message) {

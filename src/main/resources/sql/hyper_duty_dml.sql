@@ -383,6 +383,7 @@ INSERT INTO public.sys_menu VALUES (33, '日历视图', 26, '/project/calendar',
 INSERT INTO public.sys_menu VALUES (34, '团队视图', 26, '/project/team', 'views/project/TeamView.vue', 'project:team:view', 2, 'UserFilled', 8, 1, '2026-02-24 20:30:00', '2026-02-24 20:30:00');
 INSERT INTO public.sys_menu VALUES (36, '自定义表格', 26, '/project/custom-table', 'views/project/CustomTable.vue', 'project:custom:table', 2, 'Document', 9, 1, '2026-04-05 00:00:00', '2026-04-05 00:00:00');
 INSERT INTO public.sys_menu VALUES (37, '工作量查询', 26, '/project/workload-query', 'views/project/WorkloadQuery.vue', 'project:workload:query', 2, 'DataLine', 10, 1, '2026-04-07 00:00:00', '2026-04-07 00:00:00');
+INSERT INTO public.sys_menu VALUES (38, '邮件配置', 2, '/system/mail-config', 'views/system/MailConfig.vue', 'sys:mail:config', 2, 'Message', 9, 1, '2026-04-18 00:00:00', '2026-04-18 00:00:00');
 INSERT INTO public.sys_menu VALUES (1, '首页', 0, '/dashboard', 'views/Dashboard.vue', '', 1, 'HomeFilled', 1, 1, '2026-02-22 23:21:27', '2026-02-22 23:21:27');
 
 
@@ -489,6 +490,7 @@ INSERT INTO public.sys_role_menu VALUES (597, 1, 33, '2026-02-24 20:30:00');
 INSERT INTO public.sys_role_menu VALUES (598, 1, 34, '2026-02-24 20:30:00');
 INSERT INTO public.sys_role_menu VALUES (623, 1, 36, '2026-04-05 00:00:00');
 INSERT INTO public.sys_role_menu VALUES (625, 1, 37, '2026-04-07 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (630, 1, 38, '2026-04-18 00:00:00');
 INSERT INTO public.sys_role_menu VALUES (586, 14, 14, '2026-02-24 10:28:32.524782');
 INSERT INTO public.sys_role_menu VALUES (587, 14, 15, '2026-02-24 10:28:32.524782');
 INSERT INTO public.sys_role_menu VALUES (588, 14, 16, '2026-02-24 10:28:32.524782');

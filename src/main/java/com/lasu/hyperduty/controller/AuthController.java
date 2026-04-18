@@ -3,6 +3,9 @@ package com.lasu.hyperduty.controller;
 import com.lasu.hyperduty.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.dto.LoginDTO;
+import com.lasu.hyperduty.entity.SysEmployee;
+import com.lasu.hyperduty.entity.SysMailConfig;
+import com.lasu.hyperduty.service.SysMailConfigService;
 import com.lasu.hyperduty.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,9 +39,54 @@ public class AuthController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private SysMailConfigService mailConfigService;
+
     @PostMapping("/login")
     @RateLimit(window = 60, max = 10, message = "登录尝试过于频繁，请60秒后再试")
     public ResponseResult<Map<String, Object>> login(@Validated @RequestBody LoginDTO loginDTO) {
+        // 检查是否需要验证码验证
+        SysMailConfig mailConfig = mailConfigService.getActiveConfig();
+        if (mailConfig != null && mailConfig.getEnableEmailLogin() != null && mailConfig.getEnableEmailLogin() == 1) {
+            // 需要验证码
+            String code = loginDTO.getCode();
+            if (code == null || code.isEmpty()) {
+                // 没有验证码，先验证用户名密码是否正确
+                SysEmployee employee = sysEmployeeService.lambdaQuery()
+                        .eq(SysEmployee::getUsername, loginDTO.getUsername())
+                        .one();
+                
+                if (employee == null) {
+                    return ResponseResult.error("用户不存在");
+                }
+                
+                if (!passwordEncoder.matches(loginDTO.getPassword(), employee.getPassword())) {
+                    return ResponseResult.error("密码错误");
+                }
+                
+                // 密码正确，需要验证码
+                Map<String, Object> result = new HashMap<>();
+                result.put("needCode", true);
+                return ResponseResult.success("请输入验证码", result);
+            }
+
+            // 有验证码，继续验证
+            // 获取用户信息用于验证
+            SysEmployee employee = sysEmployeeService.lambdaQuery()
+                    .eq(SysEmployee::getUsername, loginDTO.getUsername())
+                    .one();
+
+            if (employee == null || employee.getEmail() == null) {
+                return ResponseResult.error("用户不存在或未配置邮箱");
+            }
+
+            // 验证验证码
+            boolean codeValid = mailConfigService.verifyCode(employee.getEmail(), code);
+            if (!codeValid) {
+                return ResponseResult.error("验证码错误或已过期");
+            }
+        }
+
         // 进行认证
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginDTO.getUsername(), loginDTO.getPassword())

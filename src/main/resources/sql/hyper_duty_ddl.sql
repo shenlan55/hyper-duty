@@ -6617,6 +6617,58 @@ COMMENT ON COLUMN public.pm_task_custom_row.create_time IS '创建时间';
 -- Completed on 2026-02-24 20:59:48
 
 --
+-- 邮件服务配置表
+--
+
+CREATE SEQUENCE public.sys_mail_config_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE public.sys_mail_config (
+    id bigint NOT NULL,
+    smtp_host character varying(255) NOT NULL,
+    smtp_port integer NOT NULL,
+    enable_ssl smallint DEFAULT 0,
+    enable_tls smallint DEFAULT 0,
+    from_email character varying(255) NOT NULL,
+    from_name character varying(255),
+    auth_password character varying(255) NOT NULL,
+    login_code_template text,
+    password_reset_template text,
+    remote_login_template text,
+    enable_email_login smallint DEFAULT 0,
+    code_expire_minutes integer DEFAULT 5,
+    create_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    update_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    remark text
+);
+
+ALTER TABLE public.sys_mail_config OWNER TO postgres;
+ALTER TABLE ONLY public.sys_mail_config ALTER COLUMN id SET DEFAULT nextval('public.sys_mail_config_id_seq'::regclass);
+ALTER TABLE ONLY public.sys_mail_config ADD CONSTRAINT sys_mail_config_pkey PRIMARY KEY (id);
+
+COMMENT ON TABLE public.sys_mail_config IS '邮件服务配置表';
+COMMENT ON COLUMN public.sys_mail_config.id IS '主键ID';
+COMMENT ON COLUMN public.sys_mail_config.smtp_host IS 'SMTP服务器地址';
+COMMENT ON COLUMN public.sys_mail_config.smtp_port IS 'SMTP端口';
+COMMENT ON COLUMN public.sys_mail_config.enable_ssl IS '是否启用SSL：0否，1是';
+COMMENT ON COLUMN public.sys_mail_config.enable_tls IS '是否启用TLS：0否，1是';
+COMMENT ON COLUMN public.sys_mail_config.from_email IS '发件人邮箱';
+COMMENT ON COLUMN public.sys_mail_config.from_name IS '发件人名称';
+COMMENT ON COLUMN public.sys_mail_config.auth_password IS '授权码/密码';
+COMMENT ON COLUMN public.sys_mail_config.login_code_template IS '登录验证码模板';
+COMMENT ON COLUMN public.sys_mail_config.password_reset_template IS '密码找回模板';
+COMMENT ON COLUMN public.sys_mail_config.remote_login_template IS '异地登录提醒模板';
+COMMENT ON COLUMN public.sys_mail_config.enable_email_login IS '是否启用邮件验证码登录：0否，1是';
+COMMENT ON COLUMN public.sys_mail_config.code_expire_minutes IS '验证码有效期（分钟）';
+COMMENT ON COLUMN public.sys_mail_config.create_time IS '创建时间';
+COMMENT ON COLUMN public.sys_mail_config.update_time IS '更新时间';
+COMMENT ON COLUMN public.sys_mail_config.remark IS '备注';
+
+--
 -- PostgreSQL database dump complete
 --
 
