@@ -75,11 +75,9 @@
               :key="menu.path"
               :index="menu.path"
             >
-              <template #icon>
-                <el-icon>
-                  <component :is="menu.icon && iconMap[menu.icon] ? iconMap[menu.icon] : Menu" />
-                </el-icon>
-              </template>
+              <el-icon>
+                <component :is="getMenuIcon(menu.icon)" />
+              </el-icon>
               <span>{{ menu.name }}</span>
             </el-menu-item>
           </template>
@@ -100,9 +98,7 @@
               :key="menu.id"
               :index="menu.id"
             >
-              <template #icon>
-                <el-icon><component :is="menu.icon && iconMap[menu.icon] ? iconMap[menu.icon] : House" /></el-icon>
-              </template>
+              <el-icon><component :is="getMenuIcon(menu.icon)" /></el-icon>
               <span>{{ menu.name }}</span>
             </el-menu-item>
           </el-menu>
@@ -151,7 +147,10 @@ import {
   SwitchButton, HomeFilled, Operation, Edit, Delete, Plus, Check, Search,
   ArrowUp, ArrowLeft, ArrowRight, DocumentCopy, List, View, Calendar, Document,
   Avatar, WarningFilled, InfoFilled, SuccessFilled, QuestionFilled, StarFilled,
-  Clock, CircleCheck, Refresh, DataAnalysis
+  Clock, CircleCheck, Refresh, DataAnalysis, Bell, Message, ChatDotRound, Phone, 
+  Location, Link, Star, Lock, Unlock, Warning, Close, ZoomIn, ZoomOut, FullScreen, 
+  Download, Upload, Sort, Filter, Share, Printer, Files, Folder, FolderOpened, 
+  Notebook, Briefcase
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -297,7 +296,39 @@ const iconMap = {
   'Clock': Clock,
   'CircleCheck': CircleCheck,
   'Refresh': Refresh,
-  'DataAnalysis': DataAnalysis
+  'DataAnalysis': DataAnalysis,
+  'Bell': Bell,
+  'Message': Message,
+  'ChatDotRound': ChatDotRound,
+  'Phone': Phone,
+  'Location': Location,
+  'Link': Link,
+  'Star': Star,
+  'Lock': Lock,
+  'Unlock': Unlock,
+  'Warning': Warning,
+  'Close': Close,
+  'ZoomIn': ZoomIn,
+  'ZoomOut': ZoomOut,
+  'FullScreen': FullScreen,
+  'Download': Download,
+  'Upload': Upload,
+  'Sort': Sort,
+  'Filter': Filter,
+  'Share': Share,
+  'Printer': Printer,
+  'Files': Files,
+  'Folder': Folder,
+  'FolderOpened': FolderOpened,
+  'Notebook': Notebook,
+  'Briefcase': Briefcase
+}
+
+// 获取图标组件的辅助函数
+const getMenuIcon = (iconName) => {
+  if (!iconName) return Menu
+  if (iconMap[iconName]) return iconMap[iconName]
+  return Menu
 }
 
 // 路由名称映射
@@ -485,7 +516,7 @@ const useDefaultMenus = () => {
       id: 'project',
       name: '项目管理',
       path: '/project',
-      icon: 'List',
+      icon: 'Briefcase',
       children: [
         {
           name: '项目列表',
@@ -706,7 +737,7 @@ onMounted(async () => {
 .header {
   background-color: #fff;
   border-bottom: 1px solid #e6e6e6;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.09);
   padding: 0 20px;
   height: 60px;
   display: flex;
@@ -740,7 +771,7 @@ onMounted(async () => {
 .top-menu-bar {
   background-color: #fff;
   border-bottom: 1px solid #e6e6e6;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.09);
   height: 60px;
 }
 
@@ -756,8 +787,6 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-
-
 .top-menu :deep(.el-menu) {
   height: 60px;
   line-height: 60px;
@@ -767,7 +796,7 @@ onMounted(async () => {
 .tab-container {
   background-color: #fff;
   border-bottom: 1px solid #e6e6e6;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.09);
   height: 40px;
 }
 
@@ -779,138 +808,138 @@ onMounted(async () => {
 }
 
 .tabs-wrapper :deep(.el-tabs) {
-  flex: 1;
+  flex:1;
 }
 
 .refresh-btn {
   margin-left: 10px;
-  padding: 0 10px;
+  padding:0 10px;
   height: 32px;
   line-height: 32px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius:4px;
   transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 .refresh-btn:hover {
-  background-color: #f5f7fa;
-  color: #1890ff;
+  background-color:#f5f7fa;
+  color:#1890ff;
 }
 
 .tab-container :deep(.el-tabs__header) {
   margin: 0;
   padding: 0;
   border-bottom: none;
-  height: 40px;
-  line-height: 40px;
+  height:40px;
+  line-height:40px;
 }
 
 .tab-container :deep(.el-tabs__nav-wrap) {
-  margin: 0;
-  height: 40px;
+  margin:0;
+  height:40px;
 }
 
 .tab-container :deep(.el-tabs__nav-scroll) {
-  height: 40px;
+  height:40px;
 }
 
 .tab-container :deep(.el-tabs__item) {
-  height: 40px;
-  line-height: 40px;
-  font-size: 14px;
+  height:40px;
+  line-height:40px;
+  font-size:14px;
 }
 
 .tab-container :deep(.el-tabs__nav) {
-  height: 40px;
+  height:40px;
 }
 
 .tab-container :deep(.el-tabs__active-bar) {
-  bottom: 0;
+  bottom:0;
 }
 
 .header-right {
-  display: flex;
-  align-items: center;
+  display:flex;
+  align-items:center;
 }
 
 .user-info {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  padding: 0 10px;
-  height: 40px;
-  border-radius: 4px;
+  display:flex;
+  align-items:center;
+  cursor:pointer;
+  padding:0 10px;
+  height:40px;
+  border-radius:4px;
   transition: background-color 0.3s;
 }
 
 .user-info:hover {
-  background-color: #f5f7fa;
+  background-color:#f5f7fa;
 }
 
 .username {
-  margin: 0 8px;
-  font-size: 14px;
+  margin:0 8px;
+  font-size:14px;
 }
 
 .arrow-down {
-  font-size: 12px;
+  font-size:12px;
 }
 
 .main-wrapper {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
+  display:flex;
+  flex:1;
+  overflow:hidden;
 }
 
 .sidebar {
-  background-color: #fff;
-  color: #303133;
-  height: 100%;
-  overflow-y: auto;
-  transition: width 0.3s;
-  border-right: 1px solid #e6e6e6;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.09);
+  background-color:#fff;
+  color:#303133;
+  height:100%;
+  overflow-y:auto;
+  transition:width 0.3s;
+  border-right:1px solid #e6e6e6;
+  box-shadow:2px 0 8px rgba(0,0,0,0.09);
 }
 
 .right-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  overflow:hidden;
 }
 
 .sidebar-menu {
-  border-right: none;
-  background-color: transparent;
-  height: 100%;
+  border-right:none;
+  background-color:transparent;
+  height:100%;
 }
 
 .sidebar-menu :deep(.el-menu-item) {
-  height: 50px;
-  line-height: 50px;
+  height:50px;
+  line-height:50px;
 }
 
 .sidebar-menu :deep(.el-menu-item .el-icon) {
-  font-size: 18px;
-  width: 20px;
-  text-align: center;
+  font-size:18px;
+  width:20px;
+  text-align:center;
 }
 
 /* 自定义图标样式，确保与Element Plus图标大小对齐 */
 .custom-icon {
-  font-size: 18px;
-  display: inline-block;
-  width: 20px;
-  text-align: center;
+  font-size:18px;
+  display:inline-block;
+  width:20px;
+  text-align:center;
 }
 
 .content {
-  flex: 1;
-  padding: 10px;
-  overflow-y: auto;
-  background-color: #f5f7fa;
+  flex:1;
+  padding:10px;
+  overflow-y:auto;
+  background-color:#f5f7fa;
 }
 </style>

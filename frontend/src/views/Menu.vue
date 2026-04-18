@@ -151,7 +151,7 @@ import {
   DataAnalysis, Bell, Message, ChatDotRound, Phone, Location, Link, 
   Star, StarFilled, Lock, Unlock, Warning, WarningFilled, InfoFilled, SuccessFilled, QuestionFilled, 
   Close, ZoomIn, ZoomOut, FullScreen, Download, Upload, Sort, 
-  Filter, Share, Printer, Files, Folder, FolderOpened, Notebook
+  Filter, Share, Printer, Files, Folder, FolderOpened, Notebook, Briefcase
 } from '@element-plus/icons-vue'
 import { getMenuList, getMenuById, addMenu, updateMenu, deleteMenu, getMenuTree } from '../api/menu'
 import { safeInput } from '../utils/xssUtil'
@@ -239,6 +239,7 @@ const iconList = [
   { name: 'User', label: '用户', component: User },
   { name: 'Avatar', label: '头像', component: Avatar },
   { name: 'OfficeBuilding', label: '部门', component: OfficeBuilding },
+  { name: 'Briefcase', label: '公文包', component: Briefcase },
   { name: 'DocumentCopy', label: '文档副本', component: DocumentCopy },
   { name: 'Document', label: '文档', component: Document },
   { name: 'Files', label: '文件', component: Files },
