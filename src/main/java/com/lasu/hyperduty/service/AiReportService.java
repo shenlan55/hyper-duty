@@ -12,23 +12,23 @@ public interface AiReportService {
     /**
      * 生成日报
      * @param reportDate 报告日期
-     * @param projectId 项目ID（可选）
+     * @param projectIds 项目ID列表（可选）
      * @param configId 配置ID（可选）
      * @param employeeId 操作人ID
      * @return 生成的报告
      */
-    AiReport generateDailyReport(LocalDate reportDate, Long projectId, Long configId, Long employeeId);
+    AiReport generateDailyReport(LocalDate reportDate, List<Long> projectIds, Long configId, Long employeeId);
 
     /**
      * 生成周报
      * @param startDate 开始日期
      * @param endDate 结束日期
-     * @param projectId 项目ID（可选）
+     * @param projectIds 项目ID列表（可选）
      * @param configId 配置ID（可选）
      * @param employeeId 操作人ID
      * @return 生成的报告
      */
-    AiReport generateWeeklyReport(LocalDate startDate, LocalDate endDate, Long projectId, Long configId, Long employeeId);
+    AiReport generateWeeklyReport(LocalDate startDate, LocalDate endDate, List<Long> projectIds, Long configId, Long employeeId);
 
     /**
      * 获取报告分页列表

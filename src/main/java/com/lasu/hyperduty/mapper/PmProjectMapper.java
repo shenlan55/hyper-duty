@@ -34,4 +34,13 @@ public interface PmProjectMapper extends BaseMapper<PmProject> {
             "LEFT JOIN sys_employee e ON p.owner_id = e.id " +
             "WHERE p.id = #{id}")
     PmProject selectProjectById(@Param("id") Long id);
+
+    @Select("SELECT p.*, e.employee_name as owner_name " +
+            "FROM pm_project p " +
+            "LEFT JOIN sys_employee e ON p.owner_id = e.id " +
+            "WHERE p.id IN " +
+            "<foreach item='id' collection='ids' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>")
+    List<PmProject> selectProjectByIds(@Param("ids") List<Long> ids);
 }

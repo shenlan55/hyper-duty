@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -52,12 +53,12 @@ public class AiReportServiceImpl extends ServiceImpl<AiReportMapper, AiReport> i
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Override
-    public AiReport generateDailyReport(LocalDate reportDate, Long projectId, Long configId, Long employeeId) {
+    public AiReport generateDailyReport(LocalDate reportDate, List<Long> projectIds, Long configId, Long employeeId) {
         // 获取配置
         AiReportConfig config = getConfig(configId, "daily");
 
         // 聚合数据
-        Map<String, String> data = reportDataAggregationService.aggregateDailyData(reportDate, projectId);
+        Map<String, String> data = reportDataAggregationService.aggregateDailyData(reportDate, projectIds);
 
         // 构建提示词
         String prompt = buildPrompt(config.getPromptTemplate(), data);
@@ -70,12 +71,12 @@ public class AiReportServiceImpl extends ServiceImpl<AiReportMapper, AiReport> i
         report.setReportTitle(reportDate.format(DATE_FORMATTER) + " 日报");
         report.setReportType("daily");
         report.setReportDate(reportDate);
-        report.setProjectId(projectId);
-        if (projectId != null) {
-            PmProject project = pmProjectMapper.selectProjectById(projectId);
-            if (project != null) {
-                report.setProjectName(project.getProjectName());
-            }
+        // 设置项目信息（只保存第一个项目ID用于筛选，项目名称保存多个）
+        if (projectIds != null && !projectIds.isEmpty()) {
+            report.setProjectId(projectIds.get(0));
+            List<PmProject> projects = pmProjectMapper.selectProjectByIds(projectIds);
+            String projectNames = projects.stream().map(PmProject::getProjectName).collect(Collectors.joining(", "));
+            report.setProjectName(projectNames);
         }
         report.setReportContent(reportContent);
         report.setConfigId(config.getId());
@@ -88,12 +89,12 @@ public class AiReportServiceImpl extends ServiceImpl<AiReportMapper, AiReport> i
     }
 
     @Override
-    public AiReport generateWeeklyReport(LocalDate startDate, LocalDate endDate, Long projectId, Long configId, Long employeeId) {
+    public AiReport generateWeeklyReport(LocalDate startDate, LocalDate endDate, List<Long> projectIds, Long configId, Long employeeId) {
         // 获取配置
         AiReportConfig config = getConfig(configId, "weekly");
 
         // 聚合数据
-        Map<String, String> data = reportDataAggregationService.aggregateWeeklyData(startDate, endDate, projectId);
+        Map<String, String> data = reportDataAggregationService.aggregateWeeklyData(startDate, endDate, projectIds);
 
         // 构建提示词
         String prompt = buildPrompt(config.getPromptTemplate(), data);
@@ -107,12 +108,12 @@ public class AiReportServiceImpl extends ServiceImpl<AiReportMapper, AiReport> i
         report.setReportType("weekly");
         report.setStartDate(startDate);
         report.setEndDate(endDate);
-        report.setProjectId(projectId);
-        if (projectId != null) {
-            PmProject project = pmProjectMapper.selectProjectById(projectId);
-            if (project != null) {
-                report.setProjectName(project.getProjectName());
-            }
+        // 设置项目信息（只保存第一个项目ID用于筛选，项目名称保存多个）
+        if (projectIds != null && !projectIds.isEmpty()) {
+            report.setProjectId(projectIds.get(0));
+            List<PmProject> projects = pmProjectMapper.selectProjectByIds(projectIds);
+            String projectNames = projects.stream().map(PmProject::getProjectName).collect(Collectors.joining(", "));
+            report.setProjectName(projectNames);
         }
         report.setReportContent(reportContent);
         report.setConfigId(config.getId());
@@ -197,9 +198,9 @@ public class AiReportServiceImpl extends ServiceImpl<AiReportMapper, AiReport> i
             // 如果没有配置，使用默认提示词
             config = new AiReportConfig();
             if ("daily".equals(reportType)) {
-                config.setPromptTemplate("请基于以下项目任务数据，按GOC调度、架构治理、入网管理、变更管控、故障治理、运营治理、数智化研运七大维度，生成一份结构化的日报：\n\n【项目信息】\n{projectInfo}\n\n【今日任务更新】\n{taskUpdates}\n\n要求：\n1. 严格按照\"一、二、三\"\"1.2.3.\"\"①②③\"的三级层级输出\n2. 每个维度下分\"今日已完成\"\"今日进行中\"\"明日计划\"三部分\n3. 语言简洁，突出重点\n4. 按项目和维度分组\n5. 特别注意：任务分为\"重点任务\"和\"其他任务\"两部分，请分别在报告中展示\"重点任务\"区域和\"其他任务\"区域，重点任务放在前面");
+                config.setPromptTemplate("请基于以下项目任务数据，按项目分组，生成一份结构化的日报：\n\n【项目信息】\n{projectInfo}\n\n【今日任务更新】\n{taskUpdates}\n\n重要要求：\n1. 按项目分组，每个项目独立成一个大章节\n2. 每个项目下分\"今日已完成\"\"今日进行中\"\"明日计划\"三部分\n3. 严格按照\"一、二、三\"\"1.2.3.\"\"①②③\"的三级层级输出\n4. 语言简洁，突出重点\n5. 特别注意：任务分为\"重点任务\"和\"其他任务\"两部分，请分别在报告中展示\"重点任务\"区域和\"其他任务\"区域，重点任务放在前面\n6. 只展示你选择的项目的内容，不要展示其他项目的内容！");
             } else {
-                config.setPromptTemplate("请基于以下一周的任务数据，按GOC调度、架构治理、入网管理、变更管控、故障治理、运营治理、数智化研运七大维度，生成一份结构化的周报：\n\n【项目信息】\n{projectInfo}\n\n【本周任务汇总】\n{weeklyTaskData}\n\n要求：\n1. 严格按照\"一、二、三\"\"1.2.3.\"\"①②③\"的三级层级输出\n2. 包含\"一、周报基本信息\"\"二、本周核心成果（按维度）\"\"三、本周工作进度复盘\"\"四、项目风险与问题\"\"五、下周工作计划（按维度）\"\n3. 突出亮点和关键里程碑\n4. 按项目和维度分组\n5. 特别注意：任务分为\"重点任务\"和\"其他任务\"两部分，请分别在报告中展示\"重点任务\"区域和\"其他任务\"区域，重点任务放在前面");
+                config.setPromptTemplate("请基于以下一周的任务数据，按项目分组，生成一份结构化的周报：\n\n【项目信息】\n{projectInfo}\n\n【本周任务汇总】\n{weeklyTaskData}\n\n重要要求：\n1. 按项目分组，每个项目独立成一个大章节\n2. 包含\"一、周报基本信息\"\"二、本周核心成果（按项目）\"\"三、本周工作进度复盘\"\"四、项目风险与问题\"\"五、下周工作计划（按项目）\"\n3. 严格按照\"一、二、三\"\"1.2.3.\"\"①②③\"的三级层级输出\n4. 突出亮点和关键里程碑\n5. 特别注意：任务分为\"重点任务\"和\"其他任务\"两部分，请分别在报告中展示\"重点任务\"区域和\"其他任务\"区域，重点任务放在前面\n6. 只展示你选择的项目的内容，不要展示其他项目的内容！");
             }
             config.setId(0L);
         }

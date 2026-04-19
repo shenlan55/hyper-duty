@@ -31,7 +31,7 @@ public class AiReportController {
     @PostMapping("/daily")
     public ResponseResult<Map<String, Object>> generateDailyReport(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate reportDate,
-            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) List<Long> projectIds,
             @RequestParam(required = false) Long configId,
             @RequestParam(required = false) Long employeeId) {
         Long finalEmployeeId = employeeId != null ? employeeId : 1L;
@@ -39,7 +39,7 @@ public class AiReportController {
         // 异步生成报告
         CompletableFuture.runAsync(() -> {
             try {
-                aiReportService.generateDailyReport(reportDate, projectId, configId, finalEmployeeId);
+                aiReportService.generateDailyReport(reportDate, projectIds, configId, finalEmployeeId);
             } catch (Exception e) {
                 log.error("生成日报失败", e);
             }
@@ -58,7 +58,7 @@ public class AiReportController {
     public ResponseResult<Map<String, Object>> generateWeeklyReport(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
-            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) List<Long> projectIds,
             @RequestParam(required = false) Long configId,
             @RequestParam(required = false) Long employeeId) {
         Long finalEmployeeId = employeeId != null ? employeeId : 1L;
@@ -66,7 +66,7 @@ public class AiReportController {
         // 异步生成报告
         CompletableFuture.runAsync(() -> {
             try {
-                aiReportService.generateWeeklyReport(startDate, endDate, projectId, configId, finalEmployeeId);
+                aiReportService.generateWeeklyReport(startDate, endDate, projectIds, configId, finalEmployeeId);
             } catch (Exception e) {
                 log.error("生成周报失败", e);
             }

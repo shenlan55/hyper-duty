@@ -33,11 +33,11 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Override
-    public Map<String, String> aggregateDailyData(LocalDate reportDate, Long projectId) {
+    public Map<String, String> aggregateDailyData(LocalDate reportDate, List<Long> projectIds) {
         Map<String, String> result = new HashMap<>();
 
         // 获取项目信息
-        List<PmProject> projects = getProjects(projectId);
+        List<PmProject> projects = getProjects(projectIds);
         String projectInfo = buildProjectInfo(projects);
         result.put("projectInfo", projectInfo);
 
@@ -51,11 +51,11 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
     }
 
     @Override
-    public Map<String, String> aggregateWeeklyData(LocalDate startDate, LocalDate endDate, Long projectId) {
+    public Map<String, String> aggregateWeeklyData(LocalDate startDate, LocalDate endDate, List<Long> projectIds) {
         Map<String, String> result = new HashMap<>();
 
         // 获取项目信息
-        List<PmProject> projects = getProjects(projectId);
+        List<PmProject> projects = getProjects(projectIds);
         String projectInfo = buildProjectInfo(projects);
         result.put("projectInfo", projectInfo);
 
@@ -68,10 +68,9 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
         return result;
     }
 
-    private List<PmProject> getProjects(Long projectId) {
-        if (projectId != null) {
-            PmProject project = pmProjectMapper.selectProjectById(projectId);
-            return project != null ? Collections.singletonList(project) : Collections.emptyList();
+    private List<PmProject> getProjects(List<Long> projectIds) {
+        if (projectIds != null && !projectIds.isEmpty()) {
+            return pmProjectMapper.selectProjectByIds(projectIds);
         } else {
             return pmProjectMapper.selectProjectsWithOwner();
         }

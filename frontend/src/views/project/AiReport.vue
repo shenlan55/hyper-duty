@@ -21,7 +21,7 @@
               />
             </el-form-item>
             <el-form-item label="项目">
-              <el-select v-model="dailyForm.projectId" placeholder="全部项目" clearable style="width: 250px;">
+              <el-select v-model="dailyForm.projectIds" placeholder="全部项目" clearable multiple style="width: 350px;">
                 <el-option v-for="project in projectList" :key="project.id" :label="project.projectName" :value="project.id" />
               </el-select>
             </el-form-item>
@@ -46,7 +46,7 @@
               />
             </el-form-item>
             <el-form-item label="项目">
-              <el-select v-model="weeklyForm.projectId" placeholder="全部项目" clearable style="width: 250px;">
+              <el-select v-model="weeklyForm.projectIds" placeholder="全部项目" clearable multiple style="width: 350px;">
                 <el-option v-for="project in projectList" :key="project.id" :label="project.projectName" :value="project.id" />
               </el-select>
             </el-form-item>
@@ -162,12 +162,12 @@ const projectList = ref([])
 
 const dailyForm = reactive({
   reportDate: new Date().toISOString().split('T')[0],
-  projectId: null
+  projectIds: []
 })
 
 const weeklyForm = reactive({
   dateRange: [],
-  projectId: null
+  projectIds: []
 })
 
 const searchForm = reactive({
@@ -231,7 +231,7 @@ const handleGenerateDaily = async () => {
     const employeeId = userStore.userInfo?.id || 1
     const res = await generateDailyReport({
       reportDate: dailyForm.reportDate,
-      projectId: dailyForm.projectId,
+      projectIds: dailyForm.projectIds?.length > 0 ? dailyForm.projectIds : null,
       employeeId
     })
     ElMessage.success(res?.message || '日报生成中，请稍后在历史报告中查看')
@@ -262,7 +262,7 @@ const handleGenerateWeekly = async () => {
     const res = await generateWeeklyReport({
       startDate: weeklyForm.dateRange[0],
       endDate: weeklyForm.dateRange[1],
-      projectId: weeklyForm.projectId,
+      projectIds: weeklyForm.projectIds?.length > 0 ? weeklyForm.projectIds : null,
       employeeId
     })
     ElMessage.success(res?.message || '周报生成中，请稍后在历史报告中查看')
