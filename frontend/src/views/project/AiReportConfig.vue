@@ -43,6 +43,12 @@
             </el-tooltip>
           </div>
         </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
+        <template #updateTime="{ row }">
+          {{ formatDateTime(row.updateTime) }}
+        </template>
         <template #operation="{ row }">
           <el-button type="primary" size="small" @click="handleEdit(row)">
             <el-icon><Edit /></el-icon>
@@ -224,6 +230,7 @@ import {
   Plus, Edit, Delete, DocumentCopy, Refresh, Check, Close, QuestionFilled 
 } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
+import { formatDateTime } from '@/utils/dateUtils'
 import {
   getConfigList,
   getConfigById,
@@ -280,9 +287,9 @@ const columns = [
   { prop: 'promptTemplate', label: '提示词模板', minWidth: 200, slot: 'promptTemplate' },
   { prop: 'modelName', label: '模型名称', width: 120 },
   { prop: 'status', label: '状态', width: 80, slot: 'status' },
-  { prop: 'createTime', label: '创建时间', width: 180 },
-  { prop: 'updateTime', label: '更新时间', width: 180 },
-  { prop: 'operation', label: '操作', width: 200, slot: 'operation', fixed: 'right' }
+  { prop: 'createTime', label: '创建时间', width: 180, slot: 'createTime' },
+  { prop: 'updateTime', label: '更新时间', width: 180, slot: 'updateTime' },
+  { prop: 'operation', label: '操作', width: 250, slot: 'operation', fixed: 'right' }
 ]
 
 // 默认模板
