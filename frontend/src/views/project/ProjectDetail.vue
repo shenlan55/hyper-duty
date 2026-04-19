@@ -193,6 +193,10 @@
             <el-option label="已暂停" :value="4" />
           </el-select>
         </el-form-item>
+        <el-form-item label="是否重点">
+          <el-switch v-model="taskForm.isFocus" :active-value="1" :inactive-value="0" />
+          <span style="margin-left: 8px; color: #909399;">标记为重点任务</span>
+        </el-form-item>
         <el-form-item label="进度">
           <el-slider v-model="taskForm.progress" :min="0" :max="100" show-input style="width: 300px;" />
         </el-form-item>
@@ -571,7 +575,8 @@ const taskForm = reactive({
   attachments: [],
   stakeholders: [],
   status: 1,
-  progress: 0
+  progress: 0,
+  isFocus: 0
 })
 
 const taskRules = {
@@ -1079,6 +1084,13 @@ const handleTaskSubmit = async () => {
       submitData.progress = 0
     }
     
+    // 添加是否重点数据
+    if (taskForm.isFocus !== undefined && taskForm.isFocus !== null) {
+      submitData.isFocus = Number(taskForm.isFocus)
+    } else {
+      submitData.isFocus = 0
+    }
+    
     // 添加创建人ID
     if (userStore.employeeId) {
       submitData.createBy = Number(userStore.employeeId)
@@ -1162,6 +1174,7 @@ const resetTaskForm = () => {
   taskForm.stakeholders = []
   taskForm.status = defaultStatus.value || 1
   taskForm.progress = 0
+  taskForm.isFocus = 0
   assigneeName.value = ''
   selectedAssignees.value = []
   assigneeDialogVisible.value = false

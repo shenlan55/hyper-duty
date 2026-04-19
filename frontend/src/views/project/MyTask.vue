@@ -84,6 +84,11 @@
         <template #priority="{ row }">
           <el-tag :type="getTaskPriorityType(row.priority)">{{ getTaskPriorityText(row.priority) }}</el-tag>
         </template>
+        <template #isFocus="{ row }">
+          <el-tag :type="row.isFocus === 1 ? 'warning' : 'info'">
+            {{ row.isFocus === 1 ? '重点' : '普通' }}
+          </el-tag>
+        </template>
         <template #endDate="{ row }">
           <span :class="{ 'overdue': isOverdue(row) }">{{ row.endDate }}</span>
         </template>
@@ -91,6 +96,9 @@
           <el-button type="success" size="small" @click="handleUpdateProgress(row)">更新进度</el-button>
           <el-button type="warning" size="small" @click="handlePin(row)" style="width: 70px;">
             {{ row.isPinned === 1 ? '取消置顶' : '置顶' }}
+          </el-button>
+          <el-button type="danger" size="small" @click="handleToggleFocus(row)" style="width: 80px;">
+            {{ row.isFocus === 1 ? '取消重点' : '标记重点' }}
           </el-button>
         </template>
       </BaseTable>
@@ -204,7 +212,7 @@ import BaseTable from '@/components/BaseTable.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import ProgressHistory from '@/components/ProgressHistory.vue'
 import FileUpload from '@/components/FileUpload.vue'
-import { getMyTasks, getMyTasksByProject, pinTask, getUpcomingTasks, createProgressUpdate, getTaskProgressUpdates, getTaskDetail } from '@/api/task'
+import { getMyTasks, getMyTasksByProject, pinTask, getUpcomingTasks, createProgressUpdate, getTaskProgressUpdates, getTaskDetail, updateTask } from '@/api/task'
 import { getMyProjects } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { getCurrentUserId } from '@/utils/jwt'
@@ -251,11 +259,12 @@ const columns = [
   { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName' },
   { prop: 'projectName', label: '所属项目', width: 180 },
   { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
+  { prop: 'isFocus', label: '是否重点', width: 90, slot: 'isFocus' },
   { prop: 'status', label: '状态', width: 100, slot: 'status' },
   { prop: 'progress', label: '进度', width: 150, slot: 'progress' },
   { prop: 'startDate', label: '开始日期', width: 110 },
   { prop: 'endDate', label: '结束日期', width: 110, slot: 'endDate' },
-  { prop: 'operation', label: '操作', width: 220, fixed: 'right', slot: 'operation' }
+  { prop: 'operation', label: '操作', width: 310, fixed: 'right', slot: 'operation' }
 ]
 
 
@@ -503,6 +512,20 @@ const handlePin = async (row) => {
     const pinned = row.isPinned === 1 ? false : true
     await pinTask(row.id, pinned)
     ElMessage.success(pinned ? '置顶成功' : '取消置顶成功')
+    loadData()
+  } catch (error) {
+    ElMessage.error('操作失败')
+  }
+}
+
+const handleToggleFocus = async (row) => {
+  try {
+    const focus = row.isFocus === 1 ? 0 : 1
+    await updateTask({
+      id: row.id,
+      isFocus: focus
+    })
+    ElMessage.success(focus === 1 ? '标记重点成功' : '取消重点成功')
     loadData()
   } catch (error) {
     ElMessage.error('操作失败')

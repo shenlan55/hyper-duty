@@ -116,6 +116,9 @@
             {{ row.reportType === 'daily' ? '日报' : '周报' }}
           </el-tag>
         </template>
+        <template #createTime="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
         <template #operation="{ row }">
           <el-button type="info" size="small" @click="handleView(row)">查看</el-button>
           <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
@@ -149,6 +152,7 @@ import {
 } from '@/api/ai-report'
 import { getProjectPage } from '@/api/project'
 import { useUserStore } from '@/stores/user'
+import { formatDateTime } from '@/utils/dateUtils'
 
 const userStore = useUserStore()
 
@@ -188,7 +192,7 @@ const columns = [
   { prop: 'reportType', label: '报告类型', width: 100, slot: 'reportType' },
   { prop: 'projectName', label: '项目名称', width: 200 },
   { prop: 'reportDate', label: '报告日期', width: 120 },
-  { prop: 'createTime', label: '创建时间', width: 180 },
+  { prop: 'createTime', label: '创建时间', width: 180, slot: 'createTime' },
   { prop: 'operation', label: '操作', width: 150, slot: 'operation', fixed: 'right' }
 ]
 

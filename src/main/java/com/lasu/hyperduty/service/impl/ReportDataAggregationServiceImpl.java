@@ -123,9 +123,11 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
             Map<Long, List<PmTaskProgressUpdate>> updatesByTask = updates.stream()
                     .collect(Collectors.groupingBy(PmTaskProgressUpdate::getTaskId));
 
-            // 重点任务
+            // 重点任务 - 更明显的标记
             if (!focusTasks.isEmpty()) {
-                sb.append("\n===== 重点任务 =====\n");
+                sb.append("\n=======================================\n");
+                sb.append("★★★ 重点任务区域 ★★★\n");
+                sb.append("=======================================\n");
                 for (PmTask task : focusTasks) {
                     appendTaskInfo(sb, task, updatesByTask);
                 }
@@ -133,7 +135,9 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
 
             // 非重点任务
             if (!normalTasks.isEmpty()) {
-                sb.append("\n===== 其他任务 =====\n");
+                sb.append("\n=======================================\n");
+                sb.append("◆◆◆ 其他任务区域 ◆◆◆\n");
+                sb.append("=======================================\n");
                 for (PmTask task : normalTasks) {
                     appendTaskInfo(sb, task, updatesByTask);
                 }
@@ -201,9 +205,11 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
             Map<LocalDate, List<PmTaskProgressUpdate>> updatesByDate = updates.stream()
                     .collect(Collectors.groupingBy(u -> u.getCreateTime().toLocalDate()));
 
-            // 重点任务
+            // 重点任务 - 更明显的标记
             if (!focusTasks.isEmpty()) {
-                sb.append("\n===== 重点任务 =====\n");
+                sb.append("\n=======================================\n");
+                sb.append("★★★ 重点任务区域 ★★★\n");
+                sb.append("=======================================\n");
                 sb.append("  本周任务进度：\n");
                 for (PmTask task : focusTasks) {
                     sb.append("    - ").append(task.getTaskName());
@@ -214,7 +220,9 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
 
             // 非重点任务
             if (!normalTasks.isEmpty()) {
-                sb.append("\n===== 其他任务 =====\n");
+                sb.append("\n=======================================\n");
+                sb.append("◆◆◆ 其他任务区域 ◆◆◆\n");
+                sb.append("=======================================\n");
                 sb.append("  本周任务进度：\n");
                 for (PmTask task : normalTasks) {
                     sb.append("    - ").append(task.getTaskName());
