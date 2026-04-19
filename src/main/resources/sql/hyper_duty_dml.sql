@@ -884,12 +884,17 @@ INSERT INTO public.ai_report_config (id, config_name, config_code, report_type, 
 6. 只展示你选择的项目的内容，不要展示其他项目的内容！
 7. 对于重点任务，要详细描述一周的整体进展；对于高优先级任务，也要适当展开，但篇幅可以相对短一些！', 'glm-4-flash', 1, 'SRE项目周报生成配置', 1, CURRENT_TIMESTAMP);
 
--- AI报告菜单（如果菜单表中不存在则添加）
--- 注意：需要检查是否已存在，避免重复
--- 建议单独执行 update_add_ai_report_menu.sql 中的菜单添加语句，或者手动在系统中添加
+-- AI报告菜单数据
+INSERT INTO public.sys_menu (id, menu_name, parent_id, path, component, perms, menu_type, icon, order_num, status, create_time, update_time)
+VALUES (39, 'AI报告配置', 26, '/project/ai-report-config', 'views/project/AiReportConfig.vue', 'project:aiReportConfig:list', 2, 'Setting', 11, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- AI报告菜单权限分配
+INSERT INTO public.sys_role_menu (role_id, menu_id, create_time)
+VALUES (1, 39, CURRENT_TIMESTAMP);
 
 -- 序列设置
 SELECT pg_catalog.setval('public.ai_report_config_id_seq', 2, true);
 SELECT pg_catalog.setval('public.ai_report_id_seq', 1, false);
+SELECT pg_catalog.setval('public.sys_menu_id_seq', 39, true);
 
 
