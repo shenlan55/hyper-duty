@@ -3,7 +3,8 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>AI 报告生成</span>
+          <span>AI报告生成</span>
+          <el-button @click="goToConfig">配置管理</el-button>
         </div>
       </template>
 
@@ -19,6 +20,11 @@
                 format="YYYY-MM-DD"
                 value-format="YYYY-MM-DD"
               />
+            </el-form-item>
+            <el-form-item label="配置模板">
+              <el-select v-model="dailyForm.configId" placeholder="选择模板" clearable style="width: 250px;">
+                <el-option v-for="config in dailyConfigList" :key="config.id" :label="config.configName" :value="config.id" />
+              </el-select>
             </el-form-item>
             <el-form-item label="项目">
               <el-select v-model="dailyForm.projectIds" placeholder="全部项目" clearable multiple style="width: 350px;">
@@ -44,6 +50,11 @@
                 format="YYYY-MM-DD"
                 value-format="YYYY-MM-DD"
               />
+            </el-form-item>
+            <el-form-item label="配置模板">
+              <el-select v-model="weeklyForm.configId" placeholder="选择模板" clearable style="width: 250px;">
+                <el-option v-for="config in weeklyConfigList" :key="config.id" :label="config.configName" :value="config.id" />
+              </el-select>
             </el-form-item>
             <el-form-item label="项目">
               <el-select v-model="weeklyForm.projectIds" placeholder="全部项目" clearable multiple style="width: 350px;">
@@ -142,18 +153,21 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import BaseTable from '@/components/BaseTable.vue'
 import {
   generateDailyReport,
   generateWeeklyReport,
   getReportPage,
   getReportById,
-  deleteReport
+  deleteReport,
+  getConfigList
 } from '@/api/ai-report'
 import { getProjectPage } from '@/api/project'
 import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/dateUtils'
 
+const router = useRouter()
 const userStore = useUserStore()
 
 const activeTab = ref('daily')
@@ -163,14 +177,25 @@ const currentReport = ref(null)
 const viewDialogVisible = ref(false)
 const viewReport = ref(null)
 const projectList = ref([])
+const configList = ref([])
+
+const dailyConfigList = computed(() => {
+  return configList.value.filter(c => c.reportType === 'daily')
+})
+
+const weeklyConfigList = computed(() => {
+  return configList.value.filter(c => c.reportType === 'weekly')
+})
 
 const dailyForm = reactive({
   reportDate: new Date().toISOString().split('T')[0],
+  configId: null,
   projectIds: []
 })
 
 const weeklyForm = reactive({
   dateRange: [],
+  configId: null,
   projectIds: []
 })
 
@@ -205,6 +230,19 @@ const loadProjects = async () => {
   }
 }
 
+const loadConfigs = async () => {
+  try {
+    const data = await getConfigList()
+    configList.value = data || []
+  } catch (error) {
+    console.error('加载配置列表失败', error)
+  }
+}
+
+const goToConfig = () => {
+  router.push('/project/ai-report-config')
+}
+
 const loadReports = async () => {
   loading.value = true
   try {
@@ -235,6 +273,7 @@ const handleGenerateDaily = async () => {
     const employeeId = userStore.userInfo?.id || 1
     const res = await generateDailyReport({
       reportDate: dailyForm.reportDate,
+      configId: dailyForm.configId,
       projectIds: dailyForm.projectIds?.length > 0 ? dailyForm.projectIds : null,
       employeeId
     })
@@ -266,6 +305,7 @@ const handleGenerateWeekly = async () => {
     const res = await generateWeeklyReport({
       startDate: weeklyForm.dateRange[0],
       endDate: weeklyForm.dateRange[1],
+      configId: weeklyForm.configId,
       projectIds: weeklyForm.projectIds?.length > 0 ? weeklyForm.projectIds : null,
       employeeId
     })
@@ -344,6 +384,7 @@ const handleCurrentChange = (currentPage) => {
 
 onMounted(() => {
   loadProjects()
+  loadConfigs()
   loadReports()
 })
 </script>

@@ -215,6 +215,12 @@ const routes = [
             name: 'AiReport',
             component: () => import('../views/project/AiReport.vue'),
             meta: { title: 'AI报告生成' }
+          },
+          {
+            path: 'ai-report-config',
+            name: 'AiReportConfig',
+            component: () => import('../views/project/AiReportConfig.vue'),
+            meta: { title: 'AI报告配置' }
           }
         ]
       }

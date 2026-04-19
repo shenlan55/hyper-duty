@@ -16,6 +16,8 @@ import com.lasu.hyperduty.service.ReportDataAggregationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -152,6 +154,7 @@ public class AiReportServiceImpl extends ServiceImpl<AiReportMapper, AiReport> i
     }
 
     @Override
+    @Cacheable(value = "aiReport", key = "'configList'")
     public List<AiReportConfig> getConfigList() {
         LambdaQueryWrapper<AiReportConfig> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AiReportConfig::getStatus, 1);
@@ -160,11 +163,13 @@ public class AiReportServiceImpl extends ServiceImpl<AiReportMapper, AiReport> i
     }
 
     @Override
+    @Cacheable(value = "aiReport", key = "'config:' + #id")
     public AiReportConfig getConfigById(Long id) {
         return aiReportConfigMapper.selectById(id);
     }
 
     @Override
+    @CacheEvict(value = "aiReport", allEntries = true)
     public AiReportConfig saveConfig(AiReportConfig config) {
         if (config.getId() == null) {
             config.setCreateTime(LocalDateTime.now());
@@ -178,6 +183,7 @@ public class AiReportServiceImpl extends ServiceImpl<AiReportMapper, AiReport> i
     }
 
     @Override
+    @CacheEvict(value = "aiReport", allEntries = true)
     public void deleteConfig(Long id) {
         aiReportConfigMapper.deleteById(id);
     }
