@@ -70,8 +70,10 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
 
     private List<PmProject> getProjects(List<Long> projectIds) {
         if (projectIds != null && !projectIds.isEmpty()) {
+            log.info("查询指定项目，projectIds={}", projectIds);
             return pmProjectMapper.selectProjectByIds(projectIds);
         } else {
+            log.info("查询所有项目");
             return pmProjectMapper.selectProjectsWithOwner();
         }
     }

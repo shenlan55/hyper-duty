@@ -2,16 +2,17 @@ package com.lasu.hyperduty.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.ResponseResult;
+import com.lasu.hyperduty.dto.GenerateDailyReportDTO;
+import com.lasu.hyperduty.dto.GenerateWeeklyReportDTO;
 import com.lasu.hyperduty.entity.AiReport;
 import com.lasu.hyperduty.entity.AiReportConfig;
 import com.lasu.hyperduty.service.AiReportService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,17 +30,15 @@ public class AiReportController {
      * 生成日报 - 异步处理
      */
     @PostMapping("/daily")
-    public ResponseResult<Map<String, Object>> generateDailyReport(
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate reportDate,
-            @RequestParam(required = false) List<Long> projectIds,
-            @RequestParam(required = false) Long configId,
-            @RequestParam(required = false) Long employeeId) {
-        Long finalEmployeeId = employeeId != null ? employeeId : 1L;
+    public ResponseResult<Map<String, Object>> generateDailyReport(@Valid @RequestBody GenerateDailyReportDTO dto) {
+        Long finalEmployeeId = dto.getEmployeeId() != null ? dto.getEmployeeId() : 1L;
+        
+        log.info("开始生成日报，reportDate={}, projectIds={}", dto.getReportDate(), dto.getProjectIds());
         
         // 异步生成报告
         CompletableFuture.runAsync(() -> {
             try {
-                aiReportService.generateDailyReport(reportDate, projectIds, configId, finalEmployeeId);
+                aiReportService.generateDailyReport(dto.getReportDate(), dto.getProjectIds(), dto.getConfigId(), finalEmployeeId);
             } catch (Exception e) {
                 log.error("生成日报失败", e);
             }
@@ -55,18 +54,15 @@ public class AiReportController {
      * 生成周报 - 异步处理
      */
     @PostMapping("/weekly")
-    public ResponseResult<Map<String, Object>> generateWeeklyReport(
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
-            @RequestParam(required = false) List<Long> projectIds,
-            @RequestParam(required = false) Long configId,
-            @RequestParam(required = false) Long employeeId) {
-        Long finalEmployeeId = employeeId != null ? employeeId : 1L;
+    public ResponseResult<Map<String, Object>> generateWeeklyReport(@Valid @RequestBody GenerateWeeklyReportDTO dto) {
+        Long finalEmployeeId = dto.getEmployeeId() != null ? dto.getEmployeeId() : 1L;
+        
+        log.info("开始生成周报，startDate={}, endDate={}, projectIds={}", dto.getStartDate(), dto.getEndDate(), dto.getProjectIds());
         
         // 异步生成报告
         CompletableFuture.runAsync(() -> {
             try {
-                aiReportService.generateWeeklyReport(startDate, endDate, projectIds, configId, finalEmployeeId);
+                aiReportService.generateWeeklyReport(dto.getStartDate(), dto.getEndDate(), dto.getProjectIds(), dto.getConfigId(), finalEmployeeId);
             } catch (Exception e) {
                 log.error("生成周报失败", e);
             }

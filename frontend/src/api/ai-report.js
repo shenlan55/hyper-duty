@@ -4,7 +4,7 @@ export const generateDailyReport = (data) => {
   return request({
     url: '/ai/report/daily',
     method: 'post',
-    params: data,
+    data,
     timeout: 120000 // 2分钟超时
   })
 }
@@ -13,7 +13,7 @@ export const generateWeeklyReport = (data) => {
   return request({
     url: '/ai/report/weekly',
     method: 'post',
-    params: data,
+    data,
     timeout: 120000 // 2分钟超时
   })
 }
