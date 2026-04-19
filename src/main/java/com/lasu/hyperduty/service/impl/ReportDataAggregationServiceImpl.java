@@ -1,6 +1,8 @@
 package com.lasu.hyperduty.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lasu.hyperduty.dto.AiReportDataDTO;
 import com.lasu.hyperduty.entity.PmProject;
 import com.lasu.hyperduty.entity.PmTask;
 import com.lasu.hyperduty.entity.PmTaskProgressUpdate;
@@ -29,43 +31,51 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
     private final PmTaskMapper pmTaskMapper;
     private final PmTaskProgressUpdateMapper pmTaskProgressUpdateMapper;
     private final SysEmployeeMapper sysEmployeeMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
-    public Map<String, String> aggregateDailyData(LocalDate reportDate, List<Long> projectIds) {
-        Map<String, String> result = new HashMap<>();
-
-        // 获取项目信息
+    public AiReportDataDTO aggregateDailyData(LocalDate reportDate, List<Long> projectIds) {
         List<PmProject> projects = getProjects(projectIds);
-        String projectInfo = buildProjectInfo(projects);
-        result.put("projectInfo", projectInfo);
+        List<AiReportDataDTO.ProjectInfoDTO> projectInfoList = buildProjectInfoList(projects);
 
-        // 获取该日期的任务更新
         LocalDateTime startOfDay = reportDate.atStartOfDay();
         LocalDateTime endOfDay = reportDate.atTime(23, 59, 59);
-        String taskUpdates = buildTaskUpdates(projects, startOfDay, endOfDay);
-        result.put("taskUpdates", taskUpdates);
 
-        return result;
+        AiReportDataDTO.DailyTaskDataDTO dailyTaskData = buildDailyTaskData(projects, startOfDay, endOfDay);
+
+        return AiReportDataDTO.builder()
+                .projectInfo(projectInfoList)
+                .dailyTaskData(dailyTaskData)
+                .build();
     }
 
     @Override
-    public Map<String, String> aggregateWeeklyData(LocalDate startDate, LocalDate endDate, List<Long> projectIds) {
-        Map<String, String> result = new HashMap<>();
-
-        // 获取项目信息
+    public AiReportDataDTO aggregateWeeklyData(LocalDate startDate, LocalDate endDate, List<Long> projectIds) {
         List<PmProject> projects = getProjects(projectIds);
-        String projectInfo = buildProjectInfo(projects);
-        result.put("projectInfo", projectInfo);
+        List<AiReportDataDTO.ProjectInfoDTO> projectInfoList = buildProjectInfoList(projects);
 
-        // 获取该周的任务更新
         LocalDateTime startOfWeek = startDate.atStartOfDay();
         LocalDateTime endOfWeek = endDate.atTime(23, 59, 59);
-        String weeklyTaskData = buildWeeklyTaskData(projects, startOfWeek, endOfWeek);
-        result.put("weeklyTaskData", weeklyTaskData);
 
-        return result;
+        AiReportDataDTO.WeeklyTaskDataDTO weeklyTaskData = buildWeeklyTaskData(projects, startOfWeek, endOfWeek);
+
+        return AiReportDataDTO.builder()
+                .projectInfo(projectInfoList)
+                .weeklyTaskData(weeklyTaskData)
+                .build();
+    }
+
+    @Override
+    public String toJsonString(AiReportDataDTO data) {
+        try {
+            return objectMapper.writeValueAsString(data);
+        } catch (Exception e) {
+            log.error("转换JSON失败", e);
+            return "{}";
+        }
     }
 
     private List<PmProject> getProjects(List<Long> projectIds) {
@@ -78,51 +88,45 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
         }
     }
 
-    private String buildProjectInfo(List<PmProject> projects) {
-        StringBuilder sb = new StringBuilder();
-        for (PmProject project : projects) {
-            sb.append("- 项目名称：").append(project.getProjectName()).append("\n");
-            sb.append("  项目编码：").append(project.getProjectCode() != null ? project.getProjectCode() : "").append("\n");
-            sb.append("  负责人：").append(project.getOwnerName() != null ? project.getOwnerName() : "").append("\n");
-            sb.append("  当前进度：").append(project.getProgress() != null ? project.getProgress() : 0).append("%\n");
-            sb.append("\n");
-        }
-        return sb.toString();
+    private List<AiReportDataDTO.ProjectInfoDTO> buildProjectInfoList(List<PmProject> projects) {
+        return projects.stream()
+                .map(project -> AiReportDataDTO.ProjectInfoDTO.builder()
+                        .projectId(project.getId())
+                        .projectName(project.getProjectName())
+                        .projectCode(project.getProjectCode())
+                        .ownerName(project.getOwnerName())
+                        .progress(project.getProgress() != null ? project.getProgress() : 0)
+                        .description(project.getDescription())
+                        .build())
+                .collect(Collectors.toList());
     }
 
-    private String buildTaskUpdates(List<PmProject> projects, LocalDateTime startTime, LocalDateTime endTime) {
-        StringBuilder sb = new StringBuilder();
+    private AiReportDataDTO.DailyTaskDataDTO buildDailyTaskData(List<PmProject> projects, LocalDateTime startTime, LocalDateTime endTime) {
+        List<AiReportDataDTO.TaskDTO> allFocusTasks = new ArrayList<>();
+        List<AiReportDataDTO.TaskDTO> allHighPriorityTasks = new ArrayList<>();
 
         for (PmProject project : projects) {
-            sb.append("【").append(project.getProjectName()).append("】\n");
-
-            // 获取该项目在该时间段的任务
             LambdaQueryWrapper<PmTask> taskWrapper = new LambdaQueryWrapper<>();
             taskWrapper.eq(PmTask::getProjectId, project.getId());
             List<PmTask> tasks = pmTaskMapper.selectList(taskWrapper);
 
             if (tasks.isEmpty()) {
-                sb.append("  暂无任务更新\n\n");
                 continue;
             }
 
-            // 筛选任务：
-            // 1. 重点任务 (isFocus = 1) - 全部展示
             List<PmTask> focusTasks = tasks.stream()
                     .filter(t -> t.getIsFocus() != null && t.getIsFocus() == 1)
                     .collect(Collectors.toList());
-            
-            // 2. 其他任务中，只展示高优先级任务 (priority = 1 或 高优先级)
+
             List<PmTask> highPriorityNormalTasks = tasks.stream()
                     .filter(t -> (t.getIsFocus() == null || t.getIsFocus() != 1))
                     .filter(t -> t.getPriority() != null && t.getPriority() == 1)
                     .collect(Collectors.toList());
 
-            // 获取这些任务在该时间段的进度更新
             Set<Long> displayTaskIds = new HashSet<>();
             displayTaskIds.addAll(focusTasks.stream().map(PmTask::getId).collect(Collectors.toSet()));
             displayTaskIds.addAll(highPriorityNormalTasks.stream().map(PmTask::getId).collect(Collectors.toSet()));
-            
+
             LambdaQueryWrapper<PmTaskProgressUpdate> updateWrapper = new LambdaQueryWrapper<>();
             updateWrapper.in(PmTaskProgressUpdate::getTaskId, displayTaskIds);
             updateWrapper.ge(PmTaskProgressUpdate::getCreateTime, startTime);
@@ -130,89 +134,51 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
             updateWrapper.orderByDesc(PmTaskProgressUpdate::getCreateTime);
             List<PmTaskProgressUpdate> updates = pmTaskProgressUpdateMapper.selectList(updateWrapper);
 
-            // 按任务分组更新
             Map<Long, List<PmTaskProgressUpdate>> updatesByTask = updates.stream()
                     .collect(Collectors.groupingBy(PmTaskProgressUpdate::getTaskId));
 
-            // 重点任务 - 更明显的标记
-            if (!focusTasks.isEmpty()) {
-                sb.append("\n=======================================\n");
-                sb.append("★★★ 重点任务区域 ★★★\n");
-                sb.append("=======================================\n");
-                for (PmTask task : focusTasks) {
-                    appendTaskInfo(sb, task, updatesByTask);
-                }
+            for (PmTask task : focusTasks) {
+                allFocusTasks.add(buildTaskDTO(task, updatesByTask));
             }
-
-            // 高优先级任务
-            if (!highPriorityNormalTasks.isEmpty()) {
-                sb.append("\n=======================================\n");
-                sb.append("◆◆◆ 高优先级任务区域 ◆◆◆\n");
-                sb.append("=======================================\n");
-                for (PmTask task : highPriorityNormalTasks) {
-                    appendTaskInfo(sb, task, updatesByTask);
-                }
+            for (PmTask task : highPriorityNormalTasks) {
+                allHighPriorityTasks.add(buildTaskDTO(task, updatesByTask));
             }
         }
 
-        return sb.toString();
+        return AiReportDataDTO.DailyTaskDataDTO.builder()
+                .focusTasks(allFocusTasks)
+                .highPriorityTasks(allHighPriorityTasks)
+                .build();
     }
 
-    private void appendTaskInfo(StringBuilder sb, PmTask task, Map<Long, List<PmTaskProgressUpdate>> updatesByTask) {
-        sb.append("  - 任务名称：").append(task.getTaskName()).append("\n");
-        sb.append("    当前状态：").append(getStatusText(task.getStatus())).append("\n");
-        sb.append("    当前进度：").append(task.getProgress() != null ? task.getProgress() : 0).append("%\n");
-
-        List<PmTaskProgressUpdate> taskUpdates = updatesByTask.get(task.getId());
-        if (taskUpdates != null && !taskUpdates.isEmpty()) {
-            sb.append("    今日更新：\n");
-            for (PmTaskProgressUpdate update : taskUpdates) {
-                String employeeName = getEmployeeName(update.getEmployeeId());
-                sb.append("      - [").append(employeeName).append("] ");
-                sb.append("进度更新至").append(update.getProgress()).append("%");
-                if (update.getDescription() != null) {
-                    sb.append("：").append(update.getDescription());
-                }
-                sb.append("\n");
-            }
-        }
-        sb.append("\n");
-    }
-
-    private String buildWeeklyTaskData(List<PmProject> projects, LocalDateTime startTime, LocalDateTime endTime) {
-        StringBuilder sb = new StringBuilder();
+    private AiReportDataDTO.WeeklyTaskDataDTO buildWeeklyTaskData(List<PmProject> projects, LocalDateTime startTime, LocalDateTime endTime) {
+        List<AiReportDataDTO.TaskDTO> allFocusTasks = new ArrayList<>();
+        List<AiReportDataDTO.TaskDTO> allHighPriorityTasks = new ArrayList<>();
+        List<AiReportDataDTO.DailyUpdateDTO> allDailyUpdates = new ArrayList<>();
+        List<PmTaskProgressUpdate> allUpdates = new ArrayList<>();
 
         for (PmProject project : projects) {
-            sb.append("【").append(project.getProjectName()).append("】\n");
-
-            // 获取该项目的任务
             LambdaQueryWrapper<PmTask> taskWrapper = new LambdaQueryWrapper<>();
             taskWrapper.eq(PmTask::getProjectId, project.getId());
             List<PmTask> tasks = pmTaskMapper.selectList(taskWrapper);
 
             if (tasks.isEmpty()) {
-                sb.append("  暂无任务\n\n");
                 continue;
             }
 
-            // 筛选任务：
-            // 1. 重点任务 (isFocus = 1) - 全部展示
             List<PmTask> focusTasks = tasks.stream()
                     .filter(t -> t.getIsFocus() != null && t.getIsFocus() == 1)
                     .collect(Collectors.toList());
-            
-            // 2. 其他任务中，只展示高优先级任务 (priority = 1 或 高优先级)
+
             List<PmTask> highPriorityNormalTasks = tasks.stream()
                     .filter(t -> (t.getIsFocus() == null || t.getIsFocus() != 1))
                     .filter(t -> t.getPriority() != null && t.getPriority() == 1)
                     .collect(Collectors.toList());
 
-            // 收集需要展示的任务ID
             Set<Long> displayTaskIds = new HashSet<>();
             displayTaskIds.addAll(focusTasks.stream().map(PmTask::getId).collect(Collectors.toSet()));
             displayTaskIds.addAll(highPriorityNormalTasks.stream().map(PmTask::getId).collect(Collectors.toSet()));
 
-            // 获取该时间段的进度更新（只包含筛选后的任务）
             LambdaQueryWrapper<PmTaskProgressUpdate> updateWrapper = new LambdaQueryWrapper<>();
             updateWrapper.in(PmTaskProgressUpdate::getTaskId, displayTaskIds);
             updateWrapper.ge(PmTaskProgressUpdate::getCreateTime, startTime);
@@ -220,60 +186,72 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
             updateWrapper.orderByDesc(PmTaskProgressUpdate::getCreateTime);
             List<PmTaskProgressUpdate> updates = pmTaskProgressUpdateMapper.selectList(updateWrapper);
 
-            // 按任务分组
+            allUpdates.addAll(updates);
+
             Map<Long, List<PmTaskProgressUpdate>> updatesByTask = updates.stream()
                     .collect(Collectors.groupingBy(PmTaskProgressUpdate::getTaskId));
 
-            // 按日期分组
-            Map<LocalDate, List<PmTaskProgressUpdate>> updatesByDate = updates.stream()
-                    .collect(Collectors.groupingBy(u -> u.getCreateTime().toLocalDate()));
-
-            // 重点任务 - 更明显的标记
-            if (!focusTasks.isEmpty()) {
-                sb.append("\n=======================================\n");
-                sb.append("★★★ 重点任务区域 ★★★\n");
-                sb.append("=======================================\n");
-                sb.append("  本周任务进度：\n");
-                for (PmTask task : focusTasks) {
-                    sb.append("    - ").append(task.getTaskName());
-                    sb.append(" [").append(getStatusText(task.getStatus())).append("]");
-                    sb.append(" 进度：").append(task.getProgress() != null ? task.getProgress() : 0).append("%\n");
-                }
+            for (PmTask task : focusTasks) {
+                allFocusTasks.add(buildTaskDTO(task, updatesByTask));
             }
-
-            // 高优先级任务
-            if (!highPriorityNormalTasks.isEmpty()) {
-                sb.append("\n=======================================\n");
-                sb.append("◆◆◆ 高优先级任务区域 ◆◆◆\n");
-                sb.append("=======================================\n");
-                sb.append("  本周任务进度：\n");
-                for (PmTask task : highPriorityNormalTasks) {
-                    sb.append("    - ").append(task.getTaskName());
-                    sb.append(" [").append(getStatusText(task.getStatus())).append("]");
-                    sb.append(" 进度：").append(task.getProgress() != null ? task.getProgress() : 0).append("%\n");
-                }
+            for (PmTask task : highPriorityNormalTasks) {
+                allHighPriorityTasks.add(buildTaskDTO(task, updatesByTask));
             }
-
-            sb.append("\n  本周更新记录：\n");
-            for (Map.Entry<LocalDate, List<PmTaskProgressUpdate>> entry : updatesByDate.entrySet().stream()
-                    .sorted(Map.Entry.comparingByKey()).toList()) {
-                sb.append("    ").append(entry.getKey().format(DATE_FORMATTER)).append("：\n");
-                for (PmTaskProgressUpdate update : entry.getValue()) {
-                    PmTask task = tasks.stream().filter(t -> t.getId().equals(update.getTaskId())).findFirst().orElse(null);
-                    String taskName = task != null ? task.getTaskName() : "未知任务";
-                    String employeeName = getEmployeeName(update.getEmployeeId());
-                    sb.append("      - [").append(employeeName).append("] [").append(taskName).append("] ");
-                    sb.append("进度更新至").append(update.getProgress()).append("%");
-                    if (update.getDescription() != null) {
-                        sb.append("：").append(update.getDescription());
-                    }
-                    sb.append("\n");
-                }
-            }
-            sb.append("\n");
         }
 
-        return sb.toString();
+        Map<LocalDate, List<PmTaskProgressUpdate>> updatesByDate = allUpdates.stream()
+                .collect(Collectors.groupingBy(u -> u.getCreateTime().toLocalDate()));
+
+        for (Map.Entry<LocalDate, List<PmTaskProgressUpdate>> entry : updatesByDate.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey()).toList()) {
+            List<AiReportDataDTO.TaskUpdateDTO> updateDTOs = entry.getValue().stream()
+                    .map(this::buildTaskUpdateDTO)
+                    .collect(Collectors.toList());
+            allDailyUpdates.add(AiReportDataDTO.DailyUpdateDTO.builder()
+                    .date(entry.getKey().format(DATE_FORMATTER))
+                    .updates(updateDTOs)
+                    .build());
+        }
+
+        return AiReportDataDTO.WeeklyTaskDataDTO.builder()
+                .focusTasks(allFocusTasks)
+                .highPriorityTasks(allHighPriorityTasks)
+                .dailyUpdates(allDailyUpdates)
+                .build();
+    }
+
+    private AiReportDataDTO.TaskDTO buildTaskDTO(PmTask task, Map<Long, List<PmTaskProgressUpdate>> updatesByTask) {
+        List<AiReportDataDTO.TaskUpdateDTO> updateDTOs = new ArrayList<>();
+        List<PmTaskProgressUpdate> updates = updatesByTask.get(task.getId());
+        if (updates != null) {
+            updateDTOs = updates.stream()
+                    .map(this::buildTaskUpdateDTO)
+                    .collect(Collectors.toList());
+        }
+
+        return AiReportDataDTO.TaskDTO.builder()
+                .taskId(task.getId())
+                .taskName(task.getTaskName())
+                .status(task.getStatus())
+                .statusText(getStatusText(task.getStatus()))
+                .progress(task.getProgress() != null ? task.getProgress() : 0)
+                .priority(task.getPriority())
+                .isFocus(task.getIsFocus())
+                .description(task.getDescription())
+                .updates(updateDTOs)
+                .build();
+    }
+
+    private AiReportDataDTO.TaskUpdateDTO buildTaskUpdateDTO(PmTaskProgressUpdate update) {
+        return AiReportDataDTO.TaskUpdateDTO.builder()
+                .updateId(update.getId())
+                .taskId(update.getTaskId())
+                .employeeId(update.getEmployeeId())
+                .employeeName(getEmployeeName(update.getEmployeeId()))
+                .progress(update.getProgress())
+                .description(update.getDescription())
+                .updateTime(update.getCreateTime().format(DATETIME_FORMATTER))
+                .build();
     }
 
     private String getStatusText(Integer status) {

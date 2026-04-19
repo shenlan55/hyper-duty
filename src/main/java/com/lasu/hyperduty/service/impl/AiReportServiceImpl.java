@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lasu.hyperduty.dto.AiReportDataDTO;
 import com.lasu.hyperduty.entity.AiReport;
 import com.lasu.hyperduty.entity.AiReportConfig;
 import com.lasu.hyperduty.entity.PmProject;
@@ -26,10 +27,7 @@ import org.springframework.web.client.RestTemplate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -56,75 +54,219 @@ public class AiReportServiceImpl extends ServiceImpl<AiReportMapper, AiReport> i
 
     @Override
     public AiReport generateDailyReport(LocalDate reportDate, List<Long> projectIds, Long configId, Long employeeId) {
-        // 获取配置
         AiReportConfig config = getConfig(configId, "daily");
+        AiReportDataDTO data = reportDataAggregationService.aggregateDailyData(reportDate, projectIds);
+        String reportContent = generateReportWithRetry(config, data, "daily");
+        return saveReport(reportContent, reportDate, null, projectIds, "daily", config.getId(), employeeId);
+    }
 
-        // 聚合数据
-        Map<String, String> data = reportDataAggregationService.aggregateDailyData(reportDate, projectIds);
+    @Override
+    public AiReport generateWeeklyReport(LocalDate startDate, LocalDate endDate, List<Long> projectIds, Long configId, Long employeeId) {
+        AiReportConfig config = getConfig(configId, "weekly");
+        AiReportDataDTO data = reportDataAggregationService.aggregateWeeklyData(startDate, endDate, projectIds);
+        String reportContent = generateReportWithRetry(config, data, "weekly");
+        return saveReport(reportContent, startDate, endDate, projectIds, "weekly", config.getId(), employeeId);
+    }
 
-        // 构建提示词
-        String prompt = buildPrompt(config.getPromptTemplate(), data);
+    private String generateReportWithRetry(AiReportConfig config, AiReportDataDTO data, String reportType) {
+        int maxRetries = config.getMaxRetries() != null ? config.getMaxRetries() : 3;
+        String lastError = "";
 
-        // 调用AI生成报告
-        String reportContent = callAi(prompt);
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                log.info("生成报告尝试 {}/{}", attempt, maxRetries);
+                String prompt = buildPrompt(config, data, reportType, attempt > 1, lastError);
+                String output = callAi(config, prompt);
 
-        // 保存报告
+                if (isValidOutput(output)) {
+                    log.info("报告生成成功");
+                    return output;
+                } else {
+                    lastError = "输出格式不符合要求，缺少关键结构或内容太短";
+                    log.warn("第{}次尝试失败：{}", attempt, lastError);
+                }
+            } catch (Exception e) {
+                lastError = e.getMessage();
+                log.error("第{}次尝试异常", attempt, e);
+            }
+        }
+
+        log.error("所有重试都失败，返回降级报告");
+        return generateFallbackReport(data, reportType);
+    }
+
+    private String buildPrompt(AiReportConfig config, AiReportDataDTO data, String reportType, boolean isRetry, String lastError) {
+        String dataJson = reportDataAggregationService.toJsonString(data);
+        String userPrompt = config.getPromptTemplate()
+                .replace("{projectInfo}", "") // 占位符已不需要，数据全在JSON里
+                .replace("{taskUpdates}", "")
+                .replace("{weeklyTaskData}", "");
+
+        StringBuilder promptBuilder = new StringBuilder();
+        promptBuilder.append("【项目数据】\n").append(dataJson).append("\n\n");
+        promptBuilder.append("【报告要求】\n").append(userPrompt).append("\n\n");
+
+        if (isRetry && StringUtils.hasText(lastError)) {
+            promptBuilder.append("【反馈信息】\n上次生成失败，原因：").append(lastError).append("\n请重新生成，确保输出格式正确且内容完整。\n\n");
+        }
+
+        return promptBuilder.toString();
+    }
+
+    private String callAi(AiReportConfig config, String prompt) {
+        if (!StringUtils.hasText(zhipuApiKey)) {
+            log.warn("智谱AI API Key未配置，返回模拟数据");
+            return generateMockReport(prompt);
+        }
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(zhipuApiKey);
+
+            List<Map<String, Object>> messages = new ArrayList<>();
+
+            String systemPrompt = config.getSystemPrompt();
+            if (!StringUtils.hasText(systemPrompt)) {
+                systemPrompt = getDefaultSystemPrompt();
+            }
+            Map<String, Object> systemMessage = new HashMap<>();
+            systemMessage.put("role", "system");
+            systemMessage.put("content", systemPrompt);
+            messages.add(systemMessage);
+
+            Map<String, Object> userMessage = new HashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", prompt);
+            messages.add(userMessage);
+
+            Map<String, Object> requestBody = new HashMap<>();
+            String modelName = StringUtils.hasText(config.getModelName()) ? config.getModelName() : zhipuModel;
+            requestBody.put("model", modelName);
+            requestBody.put("messages", messages);
+
+            if (config.getTemperature() != null) {
+                requestBody.put("temperature", config.getTemperature());
+            }
+            if (config.getMaxTokens() != null) {
+                requestBody.put("max_tokens", config.getMaxTokens());
+            }
+            if (config.getTopP() != null) {
+                requestBody.put("top_p", config.getTopP());
+            }
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            ResponseEntity<String> response = restTemplate.exchange(zhipuApiUrl, HttpMethod.POST, entity, String.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                JsonNode choices = root.path("choices");
+                if (choices.isArray() && choices.size() > 0) {
+                    JsonNode messageNode = choices.get(0).path("message");
+                    return messageNode.path("content").asText();
+                }
+            }
+            throw new RuntimeException("AI返回无效响应");
+        } catch (Exception e) {
+            log.error("调用AI失败", e);
+            throw new RuntimeException("AI调用异常: " + e.getMessage());
+        }
+    }
+
+    private boolean isValidOutput(String output) {
+        if (!StringUtils.hasText(output)) return false;
+        if (output.length() < 100) return false;
+        return output.contains("一、") || output.contains("1.") || output.contains("#") || output.contains("★");
+    }
+
+    private String generateFallbackReport(AiReportDataDTO data, String reportType) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("【报告生成说明】\n由于AI服务暂时不可用，以下是基于原始数据的简要报告。\n\n");
+
+        if (data.getProjectInfo() != null) {
+            sb.append("一、项目概览\n");
+            for (AiReportDataDTO.ProjectInfoDTO project : data.getProjectInfo()) {
+                sb.append("• ").append(project.getProjectName());
+                sb.append(" (进度: ").append(project.getProgress()).append("%)\n");
+            }
+            sb.append("\n");
+        }
+
+        if ("daily".equals(reportType) && data.getDailyTaskData() != null) {
+            AiReportDataDTO.DailyTaskDataDTO daily = data.getDailyTaskData();
+            if (daily.getFocusTasks() != null && !daily.getFocusTasks().isEmpty()) {
+                sb.append("二、重点任务\n");
+                for (AiReportDataDTO.TaskDTO task : daily.getFocusTasks()) {
+                    sb.append("• ").append(task.getTaskName());
+                    sb.append(" [").append(task.getStatusText()).append("] ");
+                    sb.append(task.getProgress()).append("%\n");
+                }
+                sb.append("\n");
+            }
+        } else if ("weekly".equals(reportType) && data.getWeeklyTaskData() != null) {
+            AiReportDataDTO.WeeklyTaskDataDTO weekly = data.getWeeklyTaskData();
+            if (weekly.getFocusTasks() != null && !weekly.getFocusTasks().isEmpty()) {
+                sb.append("二、本周重点任务\n");
+                for (AiReportDataDTO.TaskDTO task : weekly.getFocusTasks()) {
+                    sb.append("• ").append(task.getTaskName());
+                    sb.append(" [").append(task.getStatusText()).append("] ");
+                    sb.append(task.getProgress()).append("%\n");
+                }
+                sb.append("\n");
+            }
+        }
+
+        sb.append("请检查AI配置后重试生成高质量报告。");
+        return sb.toString();
+    }
+
+    private String getDefaultSystemPrompt() {
+        return "你是一位专业的项目管理报告专家，擅长从项目任务数据中提炼有价值的洞察。\n" +
+                "你的职责是：\n" +
+                "1. 理解并分析提供的JSON格式项目数据\n" +
+                "2. 生成结构清晰、内容详实的项目报告\n" +
+                "3. 突出重点任务和关键里程碑\n" +
+                "4. 语言精炼专业，避免简单罗列\n" +
+                "5. 严格按照用户要求的格式输出\n\n" +
+                "报告风格要求：\n" +
+                "• 使用清晰的层级结构（一、二、三 → 1.2.3. → (1)(2)(3)）\n" +
+                "• 重点内容用★标记\n" +
+                "• 保持客观专业的语气";
+    }
+
+    private AiReport saveReport(String content, LocalDate startDate, LocalDate endDate, List<Long> projectIds, String type, Long configId, Long employeeId) {
         AiReport report = new AiReport();
-        report.setReportTitle(reportDate.format(DATE_FORMATTER) + " 日报");
-        report.setReportType("daily");
-        report.setReportDate(reportDate);
-        // 设置项目信息（只保存第一个项目ID用于筛选，项目名称保存多个）
+        if ("daily".equals(type)) {
+            report.setReportTitle(startDate.format(DATE_FORMATTER) + " 日报");
+            report.setReportDate(startDate);
+        } else {
+            report.setReportTitle(startDate.format(DATE_FORMATTER) + " 至 " + endDate.format(DATE_FORMATTER) + " 周报");
+            report.setStartDate(startDate);
+            report.setEndDate(endDate);
+        }
+        report.setReportType(type);
+        report.setReportContent(content);
+        report.setConfigId(configId);
+        report.setCreateBy(employeeId);
+        report.setCreateTime(LocalDateTime.now());
+        report.setUpdateTime(LocalDateTime.now());
+
         if (projectIds != null && !projectIds.isEmpty()) {
             report.setProjectId(projectIds.get(0));
             List<PmProject> projects = pmProjectMapper.selectProjectByIds(projectIds);
             String projectNames = projects.stream().map(PmProject::getProjectName).collect(Collectors.joining(", "));
             report.setProjectName(projectNames);
         }
-        report.setReportContent(reportContent);
-        report.setConfigId(config.getId());
-        report.setCreateBy(employeeId);
-        report.setCreateTime(LocalDateTime.now());
-        report.setUpdateTime(LocalDateTime.now());
 
         save(report);
         return report;
     }
 
-    @Override
-    public AiReport generateWeeklyReport(LocalDate startDate, LocalDate endDate, List<Long> projectIds, Long configId, Long employeeId) {
-        // 获取配置
-        AiReportConfig config = getConfig(configId, "weekly");
-
-        // 聚合数据
-        Map<String, String> data = reportDataAggregationService.aggregateWeeklyData(startDate, endDate, projectIds);
-
-        // 构建提示词
-        String prompt = buildPrompt(config.getPromptTemplate(), data);
-
-        // 调用AI生成报告
-        String reportContent = callAi(prompt);
-
-        // 保存报告
-        AiReport report = new AiReport();
-        report.setReportTitle(startDate.format(DATE_FORMATTER) + " 至 " + endDate.format(DATE_FORMATTER) + " 周报");
-        report.setReportType("weekly");
-        report.setStartDate(startDate);
-        report.setEndDate(endDate);
-        // 设置项目信息（只保存第一个项目ID用于筛选，项目名称保存多个）
-        if (projectIds != null && !projectIds.isEmpty()) {
-            report.setProjectId(projectIds.get(0));
-            List<PmProject> projects = pmProjectMapper.selectProjectByIds(projectIds);
-            String projectNames = projects.stream().map(PmProject::getProjectName).collect(Collectors.joining(", "));
-            report.setProjectName(projectNames);
-        }
-        report.setReportContent(reportContent);
-        report.setConfigId(config.getId());
-        report.setCreateBy(employeeId);
-        report.setCreateTime(LocalDateTime.now());
-        report.setUpdateTime(LocalDateTime.now());
-
-        save(report);
-        return report;
+    private String generateMockReport(String prompt) {
+        return "【模拟生成的报告】\n\n" +
+                "由于AI API Key未配置，这是一个模拟报告。\n\n" +
+                "请在配置文件中配置 ai.zhipu.api-key 以使用真实的AI功能。\n\n" +
+                "提示词预览：\n" + prompt.substring(0, Math.min(500, prompt.length())) + "...";
     }
 
     @Override
@@ -201,72 +343,43 @@ public class AiReportServiceImpl extends ServiceImpl<AiReportMapper, AiReport> i
         }
 
         if (config == null) {
-            // 如果没有配置，使用默认提示词
-            config = new AiReportConfig();
-            if ("daily".equals(reportType)) {
-                config.setPromptTemplate("请基于以下项目任务数据，按项目分组，生成一份结构化的日报：\n\n【项目信息】\n{projectInfo}\n\n【今日任务更新】\n{taskUpdates}\n\n重要要求：\n1. 按项目分组，每个项目独立成一个大章节\n2. 每个项目下分\"今日已完成\"\"今日进行中\"\"明日计划\"三部分\n3. 严格按照\"一、二、三\"\"1.2.3.\"\"①②③\"的三级层级输出\n4. 【核心要求】：不要简单罗列任务更新，而是要有总结提炼能力！\n   - 从各个人的任务更新中总结出项目整体的进展\n   - 提取关键点和里程碑成果\n   - 把相似的更新合并，突出整体趋势\n   - 语言要精炼、专业，突出价值\n5. 【非常重要】：任务数据中明确标记了\"★★★ 重点任务区域 ★★★\"和\"◆◆◆ 高优先级任务区域 ◆◆◆\"，请在最终报告中严格保留这两个独立区域的划分，重点任务区域放在前面，两个区域之间用明显的分隔线或标题隔开！\n6. 只展示你选择的项目的内容，不要展示其他项目的内容！\n7. 对于重点任务，要详细描述进展和成果；对于高优先级任务，也要适当展开，但篇幅可以相对短一些！");
-            } else {
-                config.setPromptTemplate("请基于以下一周的任务数据，按项目分组，生成一份结构化的周报：\n\n【项目信息】\n{projectInfo}\n\n【本周任务汇总】\n{weeklyTaskData}\n\n重要要求：\n1. 按项目分组，每个项目独立成一个大章节\n2. 包含\"一、周报基本信息\"\"二、本周核心成果（按项目）\"\"三、本周工作进度复盘\"\"四、项目风险与问题\"\"五、下周工作计划（按项目）\"\n3. 严格按照\"一、二、三\"\"1.2.3.\"\"①②③\"的三级层级输出\n4. 【核心要求】：不要简单罗列每天的任务更新，而是要有总结提炼能力！\n   - 把一周的工作归纳成核心成果，不要流水账\n   - 突出亮点和关键里程碑\n   - 分析进度差异和趋势\n   - 语言要精炼、专业，有高度\n   - 合并相似任务，提炼共同主题\n5. 【非常重要】：任务数据中明确标记了\"★★★ 重点任务区域 ★★★\"和\"◆◆◆ 高优先级任务区域 ◆◆◆\"，请在最终报告中严格保留这两个独立区域的划分，重点任务区域放在前面，两个区域之间用明显的分隔线或标题隔开！\n6. 只展示你选择的项目的内容，不要展示其他项目的内容！\n7. 对于重点任务，要详细描述一周的整体进展；对于高优先级任务，也要适当展开，但篇幅可以相对短一些！");
-            }
-            config.setId(0L);
+            config = createDefaultConfig(reportType);
         }
+
+        if (config.getTemperature() == null) config.setTemperature(0.7);
+        if (config.getMaxTokens() == null) config.setMaxTokens(4000);
+        if (config.getTopP() == null) config.setTopP(0.9);
+        if (config.getMaxRetries() == null) config.setMaxRetries(3);
+        if (!StringUtils.hasText(config.getSystemPrompt())) {
+            config.setSystemPrompt(getDefaultSystemPrompt());
+        }
+
         return config;
     }
 
-    private String buildPrompt(String template, Map<String, String> data) {
-        String prompt = template;
-        for (Map.Entry<String, String> entry : data.entrySet()) {
-            String placeholder = "{" + entry.getKey() + "}";
-            prompt = prompt.replace(placeholder, entry.getValue() != null ? entry.getValue() : "");
+    private AiReportConfig createDefaultConfig(String reportType) {
+        AiReportConfig config = new AiReportConfig();
+        config.setId(0L);
+        config.setReportType(reportType);
+
+        if ("daily".equals(reportType)) {
+            config.setPromptTemplate("请基于上方的JSON项目数据，生成一份高质量的日报。\n\n" +
+                    "报告要求：\n" +
+                    "1. 按项目分组，每个项目独立章节\n" +
+                    "2. 包含「今日完成」、「进行中」、「明日计划」三个部分\n" +
+                    "3. 重点任务（isFocus=1）用★特别标注\n" +
+                    "4. 不要简单罗列，要有总结提炼\n" +
+                    "5. 使用层级结构：一、二、三 → 1.2.3. → (1)(2)(3)\n");
+        } else {
+            config.setPromptTemplate("请基于上方的JSON项目数据，生成一份高质量的周报。\n\n" +
+                    "报告要求：\n" +
+                    "1. 按项目分组，每个项目独立章节\n" +
+                    "2. 包含「周报概览」、「本周成果」、「进度复盘」、「下周计划」\n" +
+                    "3. 重点任务（isFocus=1）用★特别标注\n" +
+                    "4. 要有数据洞察，不要流水账\n" +
+                    "5. 使用层级结构：一、二、三 → 1.2.3. → (1)(2)(3)\n");
         }
-        return prompt;
-    }
 
-    private String callAi(String prompt) {
-        try {
-            if (!StringUtils.hasText(zhipuApiKey)) {
-                log.warn("智谱 AI API Key 未配置，返回模拟数据");
-                return generateMockReport(prompt);
-            }
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(zhipuApiKey);
-
-            Map<String, Object> message = new HashMap<>();
-            message.put("role", "user");
-            message.put("content", prompt);
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", zhipuModel);
-            List<Map<String, Object>> messages = new ArrayList<>();
-            messages.add(message);
-            requestBody.put("messages", messages);
-
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-
-            ResponseEntity<String> response = restTemplate.exchange(zhipuApiUrl, HttpMethod.POST, entity, String.class);
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                JsonNode root = objectMapper.readTree(response.getBody());
-                JsonNode choices = root.path("choices");
-                if (choices.isArray() && choices.size() > 0) {
-                    JsonNode messageNode = choices.get(0).path("message");
-                    return messageNode.path("content").asText();
-                }
-            }
-            return "AI 调用失败，请稍后重试";
-        } catch (Exception e) {
-            log.error("调用 AI 失败", e);
-            return "AI 调用异常：" + e.getMessage() + "\n\n原始数据：\n" + prompt;
-        }
-    }
-
-    private String generateMockReport(String prompt) {
-        return "【模拟生成的报告】\n\n" +
-               "由于 AI API Key 未配置，这是一个模拟报告。\n\n" +
-               "请在配置文件中配置 ai.zhipu.api-key 以使用真实的 AI 功能。\n\n" +
-               "以下是原始数据预览：\n" +
-               prompt.substring(0, Math.min(500, prompt.length())) + "...";
+        return config;
     }
 }

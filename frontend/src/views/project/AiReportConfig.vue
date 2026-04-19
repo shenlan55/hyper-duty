@@ -43,6 +43,11 @@
             </el-tooltip>
           </div>
         </template>
+        <template #modelParams="{ row }">
+          <div class="model-params-preview">
+            T:{{ row.temperature || 0.7 }} | Max:{{ row.maxTokens || 4000 }}
+          </div>
+        </template>
         <template #createTime="{ row }">
           {{ formatDateTime(row.createTime) }}
         </template>
@@ -66,13 +71,12 @@
       </BaseTable>
     </el-card>
 
-    <!-- 编辑对话框 -->
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
       width="900px"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="配置名称" prop="configName">
@@ -96,17 +100,72 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="模型名称" prop="modelName">
-              <el-input v-model="form.modelName" placeholder="请输入模型名称（可选）" />
+              <el-input v-model="form.modelName" placeholder="默认 glm-4-flash" />
             </el-form-item>
           </el-col>
         </el-row>
+
+        <el-divider content-position="left">模型参数</el-divider>
+        <el-row :gutter="20">
+          <el-col :span="6">
+            <el-form-item label="温度">
+              <el-slider
+                v-model="form.temperature"
+                :min="0"
+                :max="1"
+                :step="0.1"
+                :marks="{ 0: '精确', 0.5: '平衡', 1: '创意' }"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="最大Token">
+              <el-input-number
+                v-model="form.maxTokens"
+                :min="500"
+                :max="8000"
+                :step="500"
+                style="width: 100%;"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="Top-P">
+              <el-slider
+                v-model="form.topP"
+                :min="0"
+                :max="1"
+                :step="0.1"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="重试次数">
+              <el-input-number
+                v-model="form.maxRetries"
+                :min="1"
+                :max="5"
+                style="width: 100%;"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-divider content-position="left">System Prompt</el-divider>
+        <el-form-item label="角色设定">
+          <el-input
+            v-model="form.systemPrompt"
+            type="textarea"
+            :rows="4"
+            placeholder="定义AI的角色和行为，留空使用默认值"
+          />
+        </el-form-item>
+
+        <el-divider content-position="left">提示词模板</el-divider>
         <el-form-item label="提示词模板" prop="promptTemplate">
           <div class="template-toolbar">
-            <span class="template-help">快速插入占位符：</span>
-            <el-button type="primary" size="small" @click="insertPlaceholder('{projectInfo}')">项目信息</el-button>
-            <el-button type="primary" size="small" @click="insertPlaceholder('{taskUpdates}')">任务更新</el-button>
-            <el-button type="primary" size="small" @click="insertPlaceholder('{weeklyTaskData}')">周任务数据</el-button>
-            <el-button type="info" size="small" @click="loadDefaultTemplate">
+            <span class="template-help">快速加载模板：</span>
+            <el-button type="primary" size="small" @click="loadDefaultTemplate">
               <el-icon><Refresh /></el-icon>
               加载默认模板
             </el-button>
@@ -114,15 +173,9 @@
           <el-input
             v-model="form.promptTemplate"
             type="textarea"
-            :rows="18"
-            placeholder="请输入提示词模板，支持占位符如 {projectInfo}, {taskUpdates}, {weeklyTaskData} 等"
+            :rows="12"
+            placeholder="请输入提示词模板，数据将以JSON格式提供"
           />
-          <div class="placeholder-info">
-            <p><strong>📝 支持的占位符说明：</strong></p>
-            <p>• <code>{projectInfo}</code> - 项目基本信息</p>
-            <p>• <code>{taskUpdates}</code> - 今日任务更新（日报专用）</p>
-            <p>• <code>{weeklyTaskData}</code> - 一周任务汇总（周报专用）</p>
-          </div>
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
@@ -144,7 +197,6 @@
       </template>
     </el-dialog>
 
-    <!-- 模板预览对话框 -->
     <el-dialog
       v-model="templatePreviewVisible"
       title="提示词模板预览"
@@ -164,58 +216,71 @@
       </template>
     </el-dialog>
 
-    <!-- 帮助对话框 -->
     <el-dialog
       v-model="helpVisible"
       title="模板使用帮助"
       width="700px"
     >
       <div class="help-content">
-        <h3>🎯 占位符说明</h3>
+        <h3>📋 数据说明</h3>
+        <p>现在数据以结构化JSON格式提供给AI，包含以下内容：</p>
         <ul>
-          <li><strong>{projectInfo}</strong> - 项目基本信息，包含项目名称、负责人等</li>
-          <li><strong>{taskUpdates}</strong> - 今日任务更新，用于日报生成</li>
-          <li><strong>{weeklyTaskData}</strong> - 一周任务汇总，用于周报生成</li>
+          <li><strong>projectInfo</strong> - 项目基本信息列表</li>
+          <li><strong>dailyTaskData</strong> - 日报任务数据（重点任务+高优先级）</li>
+          <li><strong>weeklyTaskData</strong> - 周报任务数据（含每日更新）</li>
         </ul>
-        
+
+        <h3>🎛️ 模型参数说明</h3>
+        <ul>
+          <li><strong>温度 (Temperature)</strong> - 0=精确/确定性，1=创意/多样性</li>
+          <li><strong>最大Token</strong> - 限制AI输出的长度</li>
+          <li><strong>Top-P</strong> - 核采样参数，控制输出随机性</li>
+          <li><strong>重试次数</strong> - 生成失败时的自动重试次数</li>
+        </ul>
+
         <h3>💡 使用建议</h3>
         <ul>
-          <li>提示词模板应明确报告的输出格式和结构要求</li>
-          <li>可以指定报告的风格（简洁、详细、技术导向等）</li>
-          <li>建议包含对重点内容的突出显示要求</li>
-          <li>可以指定报告的语言风格（正式、友好、专业等）</li>
+          <li>日报建议温度0.6-0.7，更注重准确性</li>
+          <li>周报建议温度0.7-0.8，可适当发挥总结</li>
+          <li>System Prompt定义AI角色，会显著影响输出风格</li>
+          <li>重点任务在数据中标记为 isFocus=1，可提示AI特别关注</li>
         </ul>
 
-        <h3>📋 默认模板示例</h3>
+        <h3>📝 默认模板示例</h3>
         <el-collapse>
           <el-collapse-item title="日报默认模板">
-            <pre>请基于以下项目任务数据，按项目分组，生成一份结构化的日报：
+            <pre>请基于上方的JSON项目数据，生成一份高质量的日报。
 
-【项目信息】
-{projectInfo}
-
-【今日任务更新】
-{taskUpdates}
-
-重要要求：
-1. 按项目分组，每个项目独立成一个大章节
-2. 每个项目下分"今日已完成"、"今日进行中"、"明日计划"三部分
-3. 严格按照"一、二、三"、"1.2.3."、"①②③"的三级层级输出
-4. 【核心要求】：不要简单罗列任务更新，而是要有总结提炼能力！</pre>
+报告要求：
+1. 按项目分组，每个项目独立章节
+2. 包含「今日完成」、「进行中」、「明日计划」三个部分
+3. 重点任务（isFocus=1）用★特别标注
+4. 不要简单罗列，要有总结提炼
+5. 使用层级结构：一、二、三 → 1.2.3. → (1)(2)(3)</pre>
           </el-collapse-item>
           <el-collapse-item title="周报默认模板">
-            <pre>请基于以下一周的任务数据，按项目分组，生成一份结构化的周报：
+            <pre>请基于上方的JSON项目数据，生成一份高质量的周报。
 
-【项目信息】
-{projectInfo}
+报告要求：
+1. 按项目分组，每个项目独立章节
+2. 包含「周报概览」、「本周成果」、「进度复盘」、「下周计划」
+3. 重点任务（isFocus=1）用★特别标注
+4. 要有数据洞察，不要流水账
+5. 使用层级结构：一、二、三 → 1.2.3. → (1)(2)(3)</pre>
+          </el-collapse-item>
+          <el-collapse-item title="System Prompt默认值">
+            <pre>你是一位专业的项目管理报告专家，擅长从项目任务数据中提炼有价值的洞察。
+你的职责是：
+1. 理解并分析提供的JSON格式项目数据
+2. 生成结构清晰、内容详实的项目报告
+3. 突出重点任务和关键里程碑
+4. 语言精炼专业，避免简单罗列
+5. 严格按照用户要求的格式输出
 
-【本周任务汇总】
-{weeklyTaskData}
-
-重要要求：
-1. 按项目分组，每个项目独立成一个大章节
-2. 包含"一、周报基本信息"、"二、本周核心成果（按项目）"、"三、本周工作进度复盘"等
-3. 【核心要求】：不要简单罗列每天的任务更新，而是要有总结提炼能力！</pre>
+报告风格要求：
+• 使用清晰的层级结构（一、二、三 → 1.2.3. → (1)(2)(3)）
+• 重点内容用★标记
+• 保持客观专业的语气</pre>
           </el-collapse-item>
         </el-collapse>
       </div>
@@ -226,19 +291,11 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
-  Plus, Edit, Delete, DocumentCopy, Refresh, Check, Close, QuestionFilled 
-} from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, DocumentCopy, Refresh, Check, Close, QuestionFilled } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import { formatDateTime } from '@/utils/dateUtils'
-import {
-  getConfigList,
-  getConfigById,
-  saveConfig,
-  deleteConfig
-} from '@/api/ai-report'
+import { getConfigList, getConfigById, saveConfig, deleteConfig } from '@/api/ai-report'
 
-// 响应式数据
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -261,7 +318,11 @@ const form = reactive({
   reportType: 'daily',
   promptTemplate: '',
   modelName: '',
-  modelConfig: null,
+  temperature: 0.7,
+  maxTokens: 4000,
+  topP: 0.9,
+  maxRetries: 3,
+  systemPrompt: '',
   status: 1
 })
 
@@ -282,63 +343,48 @@ const rules = {
 
 const columns = [
   { prop: 'configName', label: '配置名称', minWidth: 150 },
-  { prop: 'configCode', label: '配置编码', width: 150 },
+  { prop: 'configCode', label: '配置编码', width: 120 },
   { prop: 'reportType', label: '报告类型', width: 100, slot: 'reportType' },
+  { prop: 'modelParams', label: '模型参数', width: 150, slot: 'modelParams' },
   { prop: 'promptTemplate', label: '提示词模板', minWidth: 200, slot: 'promptTemplate' },
-  { prop: 'modelName', label: '模型名称', width: 120 },
   { prop: 'status', label: '状态', width: 80, slot: 'status' },
   { prop: 'createTime', label: '创建时间', width: 180, slot: 'createTime' },
   { prop: 'updateTime', label: '更新时间', width: 180, slot: 'updateTime' },
   { prop: 'operation', label: '操作', width: 250, slot: 'operation', fixed: 'right' }
 ]
 
-// 默认模板
 const defaultTemplates = {
-  daily: `请基于以下项目任务数据，按项目分组，生成一份结构化的日报：
+  daily: `请基于上方的JSON项目数据，生成一份高质量的日报。
 
-【项目信息】
-{projectInfo}
+报告要求：
+1. 按项目分组，每个项目独立章节
+2. 包含「今日完成」、「进行中」、「明日计划」三个部分
+3. 重点任务（isFocus=1）用★特别标注
+4. 不要简单罗列，要有总结提炼
+5. 使用层级结构：一、二、三 → 1.2.3. → (1)(2)(3)`,
+  weekly: `请基于上方的JSON项目数据，生成一份高质量的周报。
 
-【今日任务更新】
-{taskUpdates}
-
-重要要求：
-1. 按项目分组，每个项目独立成一个大章节
-2. 每个项目下分"今日已完成"、"今日进行中"、"明日计划"三部分
-3. 严格按照"一、二、三"、"1.2.3."、"①②③"的三级层级输出
-4. 【核心要求】：不要简单罗列任务更新，而是要有总结提炼能力！
-   - 从各个人的任务更新中总结出项目整体的进展
-   - 提取关键点和里程碑成果
-   - 把相似的更新合并，突出整体趋势
-   - 语言要精炼、专业，突出价值
-5. 【非常重要】：任务数据中明确标记了"★★★ 重点任务区域 ★★★"和"◆◆◆ 高优先级任务区域 ◆◆◆"，请在最终报告中严格保留这两个独立区域的划分，重点任务区域放在前面，两个区域之间用明显的分隔线或标题隔开！
-6. 只展示你选择的项目的内容，不要展示其他项目的内容！
-7. 对于重点任务，要详细描述进展和成果；对于高优先级任务，也要适当展开，但篇幅可以相对短一些！`,
-  
-  weekly: `请基于以下一周的任务数据，按项目分组，生成一份结构化的周报：
-
-【项目信息】
-{projectInfo}
-
-【本周任务汇总】
-{weeklyTaskData}
-
-重要要求：
-1. 按项目分组，每个项目独立成一个大章节
-2. 包含"一、周报基本信息"、"二、本周核心成果（按项目）"、"三、本周工作进度复盘"、"四、项目风险与问题"、"五、下周工作计划（按项目）"
-3. 严格按照"一、二、三"、"1.2.3."、"①②③"的三级层级输出
-4. 【核心要求】：不要简单罗列每天的任务更新，而是要有总结提炼能力！
-   - 把一周的工作归纳成核心成果，不要流水账
-   - 突出亮点和关键里程碑
-   - 分析进度差异和趋势
-   - 语言要精炼、专业，有高度
-   - 合并相似任务，提炼共同主题
-5. 【非常重要】：任务数据中明确标记了"★★★ 重点任务区域 ★★★"和"◆◆◆ 高优先级任务区域 ◆◆◆"，请在最终报告中严格保留这两个独立区域的划分，重点任务区域放在前面，两个区域之间用明显的分隔线或标题隔开！
-6. 只展示你选择的项目的内容，不要展示其他项目的内容！
-7. 对于重点任务，要详细描述一周的整体进展；对于高优先级任务，也要适当展开，但篇幅可以相对短一些！`
+报告要求：
+1. 按项目分组，每个项目独立章节
+2. 包含「周报概览」、「本周成果」、「进度复盘」、「下周计划」
+3. 重点任务（isFocus=1）用★特别标注
+4. 要有数据洞察，不要流水账
+5. 使用层级结构：一、二、三 → 1.2.3. → (1)(2)(3)`
 }
 
-// 方法
+const defaultSystemPrompt = `你是一位专业的项目管理报告专家，擅长从项目任务数据中提炼有价值的洞察。
+你的职责是：
+1. 理解并分析提供的JSON格式项目数据
+2. 生成结构清晰、内容详实的项目报告
+3. 突出重点任务和关键里程碑
+4. 语言精炼专业，避免简单罗列
+5. 严格按照用户要求的格式输出
+
+报告风格要求：
+• 使用清晰的层级结构（一、二、三 → 1.2.3. → (1)(2)(3)）
+• 重点内容用★标记
+• 保持客观专业的语气`
+
 const loadData = async () => {
   loading.value = true
   try {
@@ -361,7 +407,11 @@ const handleAdd = () => {
     reportType: 'daily',
     promptTemplate: '',
     modelName: '',
-    modelConfig: null,
+    temperature: 0.7,
+    maxTokens: 4000,
+    topP: 0.9,
+    maxRetries: 3,
+    systemPrompt: '',
     status: 1
   })
   dialogVisible.value = true
@@ -371,7 +421,13 @@ const handleEdit = async (row) => {
   dialogTitle.value = '编辑配置'
   try {
     const data = await getConfigById(row.id)
-    Object.assign(form, data)
+    Object.assign(form, {
+      ...data,
+      temperature: data.temperature ?? 0.7,
+      maxTokens: data.maxTokens ?? 4000,
+      topP: data.topP ?? 0.9,
+      maxRetries: data.maxRetries ?? 3
+    })
     dialogVisible.value = true
   } catch (error) {
     ElMessage.error('获取配置详情失败')
@@ -420,9 +476,17 @@ const handleCurrentChange = (page) => {
   loadData()
 }
 
-// 新增功能方法
 const viewTemplate = (row) => {
-  currentTemplate.value = row.promptTemplate || ''
+  let preview = `【配置名称】${row.configName}\n\n`
+  preview += `【System Prompt】\n${row.systemPrompt || '(使用默认值)'}\n\n`
+  preview += `【提示词模板】\n${row.promptTemplate || ''}\n\n`
+  preview += `【模型参数】\n`
+  preview += `• 温度: ${row.temperature ?? 0.7}\n`
+  preview += `• 最大Token: ${row.maxTokens ?? 4000}\n`
+  preview += `• Top-P: ${row.topP ?? 0.9}\n`
+  preview += `• 重试次数: ${row.maxRetries ?? 3}`
+
+  currentTemplate.value = preview
   templatePreviewVisible.value = true
 }
 
@@ -444,27 +508,10 @@ const copyCurrentTemplate = async () => {
   }
 }
 
-const insertPlaceholder = (placeholder) => {
-  const textarea = document.querySelector('.el-textarea__inner')
-  if (textarea) {
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const text = form.promptTemplate || ''
-    form.promptTemplate = text.substring(0, start) + placeholder + text.substring(end)
-    
-    // 恢复光标位置
-    nextTick(() => {
-      textarea.focus()
-      textarea.setSelectionRange(start + placeholder.length, start + placeholder.length)
-    })
-  } else {
-    form.promptTemplate = (form.promptTemplate || '') + placeholder
-  }
-}
-
 const loadDefaultTemplate = () => {
   const template = defaultTemplates[form.reportType] || ''
   form.promptTemplate = template
+  form.systemPrompt = defaultSystemPrompt
   ElMessage.success('已加载默认模板')
 }
 
@@ -509,29 +556,8 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.placeholder-info {
-  margin-top: 12px;
-  padding: 12px;
-  background: #f0f9ff;
-  border: 1px solid #c6e2ff;
-  border-radius: 4px;
-  font-size: 13px;
-}
-
-.placeholder-info p {
-  margin: 4px 0;
-  color: #606266;
-}
-
-.placeholder-info code {
-  background: #e6f7ff;
-  padding: 2px 6px;
-  border-radius: 3px;
-  color: #1890ff;
-  font-family: 'Consolas', 'Monaco', monospace;
-}
-
-.prompt-preview {
+.prompt-preview,
+.model-params-preview {
   display: flex;
   align-items: center;
   gap: 8px;

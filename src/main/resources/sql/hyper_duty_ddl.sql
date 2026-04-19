@@ -6695,6 +6695,12 @@ CREATE TABLE public.ai_report_config (
     report_type character varying(20) NOT NULL,
     prompt_template text NOT NULL,
     model_name character varying(50) DEFAULT 'glm-4-flash'::character varying,
+    model_config json,
+    temperature double precision DEFAULT 0.7,
+    max_tokens integer DEFAULT 4000,
+    top_p double precision DEFAULT 0.9,
+    max_retries integer DEFAULT 3,
+    system_prompt text,
     status smallint DEFAULT 1,
     remark character varying(500),
     create_by bigint,
@@ -6716,6 +6722,12 @@ COMMENT ON COLUMN public.ai_report_config.config_code IS '配置编码';
 COMMENT ON COLUMN public.ai_report_config.report_type IS '报告类型：daily日报，weekly周报';
 COMMENT ON COLUMN public.ai_report_config.prompt_template IS '提示词模板';
 COMMENT ON COLUMN public.ai_report_config.model_name IS '使用的模型名称';
+COMMENT ON COLUMN public.ai_report_config.model_config IS '模型配置JSON（备用）';
+COMMENT ON COLUMN public.ai_report_config.temperature IS '温度参数：控制输出随机性，0-1之间，越小越确定';
+COMMENT ON COLUMN public.ai_report_config.max_tokens IS '最大token数：限制输出长度';
+COMMENT ON COLUMN public.ai_report_config.top_p IS 'top_p参数：核采样参数，0-1之间';
+COMMENT ON COLUMN public.ai_report_config.max_retries IS '最大重试次数';
+COMMENT ON COLUMN public.ai_report_config.system_prompt IS 'System Prompt：AI的角色设定';
 COMMENT ON COLUMN public.ai_report_config.status IS '状态：0禁用，1启用';
 COMMENT ON COLUMN public.ai_report_config.remark IS '备注';
 COMMENT ON COLUMN public.ai_report_config.create_by IS '创建人';
@@ -6776,6 +6788,25 @@ COMMENT ON COLUMN public.ai_report.create_by IS '创建人';
 COMMENT ON COLUMN public.ai_report.create_time IS '创建时间';
 COMMENT ON COLUMN public.ai_report.update_by IS '更新人';
 COMMENT ON COLUMN public.ai_report.update_time IS '更新时间';
+
+--
+-- 升级脚本：为现有数据库添加新字段
+--
+-- 给 ai_report_config 表添加新字段
+ALTER TABLE public.ai_report_config ADD COLUMN IF NOT EXISTS model_config json;
+ALTER TABLE public.ai_report_config ADD COLUMN IF NOT EXISTS temperature double precision DEFAULT 0.7;
+ALTER TABLE public.ai_report_config ADD COLUMN IF NOT EXISTS max_tokens integer DEFAULT 4000;
+ALTER TABLE public.ai_report_config ADD COLUMN IF NOT EXISTS top_p double precision DEFAULT 0.9;
+ALTER TABLE public.ai_report_config ADD COLUMN IF NOT EXISTS max_retries integer DEFAULT 3;
+ALTER TABLE public.ai_report_config ADD COLUMN IF NOT EXISTS system_prompt text;
+
+-- 添加字段注释（如果字段已存在会跳过，不会报错）
+COMMENT ON COLUMN public.ai_report_config.model_config IS '模型配置JSON（备用）';
+COMMENT ON COLUMN public.ai_report_config.temperature IS '温度参数：控制输出随机性，0-1之间，越小越确定';
+COMMENT ON COLUMN public.ai_report_config.max_tokens IS '最大token数：限制输出长度';
+COMMENT ON COLUMN public.ai_report_config.top_p IS 'top_p参数：核采样参数，0-1之间';
+COMMENT ON COLUMN public.ai_report_config.max_retries IS '最大重试次数';
+COMMENT ON COLUMN public.ai_report_config.system_prompt IS 'System Prompt：AI的角色设定';
 
 \unrestrict Ktio33LCUIbNfkVFWYN0IA5hWYcczvHJovEbN5VPeGIMhr6buT7budcp8qMztfg
 

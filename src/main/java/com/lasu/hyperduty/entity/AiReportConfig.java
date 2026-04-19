@@ -26,6 +26,31 @@ public class AiReportConfig {
 
     private String modelConfig;
 
+    /**
+     * 温度参数：控制输出随机性，0-1之间，越小越确定
+     */
+    private Double temperature;
+
+    /**
+     * 最大token数：限制输出长度
+     */
+    private Integer maxTokens;
+
+    /**
+     * top_p参数：核采样参数，0-1之间
+     */
+    private Double topP;
+
+    /**
+     * 最大重试次数
+     */
+    private Integer maxRetries;
+
+    /**
+     * System Prompt：AI的角色设定
+     */
+    private String systemPrompt;
+
     private Integer status;
 
     private Long createBy;
