@@ -18,6 +18,10 @@
             <el-descriptions-item label="优先级">{{ getTaskPriorityText(task?.priority) }}</el-descriptions-item>
             <el-descriptions-item label="状态">{{ getTaskStatusText(task?.status) }}</el-descriptions-item>
             <el-descriptions-item label="当前进度">{{ task?.progress }}%</el-descriptions-item>
+            <el-descriptions-item label="是否重点">
+              <el-tag v-if="task?.isFocus === 1" type="warning">是</el-tag>
+              <el-tag v-else type="info">否</el-tag>
+            </el-descriptions-item>
           </el-descriptions>
         </el-col>
       </el-row>

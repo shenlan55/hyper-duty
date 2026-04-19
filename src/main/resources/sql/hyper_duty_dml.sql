@@ -836,3 +836,46 @@ SELECT pg_catalog.setval('public.sys_schedule_log_id_seq', 1, true);
 SELECT pg_catalog.setval('public.sys_user_role_id_seq', 74, false);
 
 
+--
+-- AI报告功能数据初始化
+--
+
+-- AI报告配置数据
+INSERT INTO public.ai_report_config (id, config_name, config_code, report_type, prompt_template, model_name, status, remark, create_by, create_time) VALUES
+(1, 'SRE项目日报', 'SRE_DAILY', 'daily', '请基于以下项目任务数据，按GOC调度、架构治理、入网管理、变更管控、故障治理、运营治理、数智化研运七大维度，生成一份结构化的日报：
+
+数据说明：
+1. 报告日期：${reportDate}
+2. 项目范围：${projectScope}
+3. 任务数据：${taskData}
+
+要求：
+1. 格式清晰，使用标题和列表组织内容
+2. 每个维度单独成段，描述当天的工作进展
+3. 突出重点任务的进度和问题
+4. 语言专业简洁，符合工程报告风格
+5. 特别注意：任务分为"重点任务"和"其他任务"两部分，请分别在报告中展示"重点任务"区域和"其他任务"区域，重点任务放在前面', 'glm-4-flash', 1, 'SRE项目日常日报生成配置', 1, CURRENT_TIMESTAMP),
+(2, 'SRE项目周报', 'SRE_WEEKLY', 'weekly', '请基于以下项目任务数据，按GOC调度、架构治理、入网管理、变更管控、故障治理、运营治理、数智化研运七大维度，生成一份结构化的周报：
+
+数据说明：
+1. 报告周期：${startDate} 至 ${endDate}
+2. 项目范围：${projectScope}
+3. 任务数据：${taskData}
+
+要求：
+1. 格式清晰，使用标题和列表组织内容
+2. 每个维度单独成段，描述本周的工作进展
+3. 突出重点任务的进度和问题
+4. 总结本周成果，提出下周计划
+5. 语言专业简洁，符合工程报告风格
+6. 特别注意：任务分为"重点任务"和"其他任务"两部分，请分别在报告中展示"重点任务"区域和"其他任务"区域，重点任务放在前面', 'glm-4-flash', 1, 'SRE项目周报生成配置', 1, CURRENT_TIMESTAMP);
+
+-- AI报告菜单（如果菜单表中不存在则添加）
+-- 注意：需要检查是否已存在，避免重复
+-- 建议单独执行 update_add_ai_report_menu.sql 中的菜单添加语句，或者手动在系统中添加
+
+-- 序列设置
+SELECT pg_catalog.setval('public.ai_report_config_id_seq', 2, true);
+SELECT pg_catalog.setval('public.ai_report_id_seq', 1, false);
+
+

@@ -93,3 +93,10 @@ kkfileview:
 
 frontend:
   url: ${FRONTEND_URL:http://localhost:5173}
+
+# 智谱 AI 配置
+ai:
+  zhipu:
+    api-key: ${ZHIPU_API_KEY:c29d72e0f1764bbcbbdb0211f3d9cc03.kbufMxVYZluOQkaa}
+    api-url: ${ZHIPU_API_URL:https://open.bigmodel.cn/api/paas/v4/chat/completions}
+    model: ${ZHIPU_MODEL:glm-4-flash}

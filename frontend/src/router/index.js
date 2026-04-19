@@ -209,6 +209,12 @@ const routes = [
             name: 'WorkloadQuery',
             component: () => import('../views/project/WorkloadQuery.vue'),
             meta: { title: '工作量查询' }
+          },
+          {
+            path: 'ai-report',
+            name: 'AiReport',
+            component: () => import('../views/project/AiReport.vue'),
+            meta: { title: 'AI报告生成' }
           }
         ]
       }

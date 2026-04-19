@@ -67,7 +67,9 @@
         <template #taskName="{ row, level }">
           <div class="task-name-container" :class="{ 'pinned-task': row.isPinned === 1, 'parent-task': row.hasChildren }">
             <el-icon v-if="row.isPinned === 1" style="color: #f56c6c; margin-right: 4px;"><Star /></el-icon>
+            <el-icon v-if="row.isFocus === 1" style="color: #e6a23c; margin-right: 4px;"><TrendCharts /></el-icon>
             <span class="task-name">{{ row.taskName }}</span>
+            <el-tag v-if="row.isFocus === 1" size="small" type="warning" style="margin-left: 8px;">重点</el-tag>
             <el-tag v-if="row.hasChildren" size="small" type="info" style="margin-left: 8px;">
               {{ row.children ? row.children.length : 0 }}个子任务
             </el-tag>
@@ -201,6 +203,15 @@
             type="date"
             placeholder="请选择结束日期"
             value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item label="是否重点" prop="isFocus">
+          <el-switch
+            v-model="form.isFocus"
+            :active-value="1"
+            :inactive-value="0"
+            active-text="是"
+            inactive-text="否"
           />
         </el-form-item>
         <el-form-item label="任务描述" prop="description">
@@ -493,7 +504,7 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, ElPopover } from 'element-plus'
-import { Star, Document, UserFilled } from '@element-plus/icons-vue'
+import { Star, Document, UserFilled, TrendCharts } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
@@ -575,7 +586,8 @@ const form = reactive({
   endDate: '',
   description: '',
   stakeholders: [],
-  attachments: []
+  attachments: [],
+  isFocus: 0
 })
 
 // 保存编辑任务时的原始状态

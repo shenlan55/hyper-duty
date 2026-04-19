@@ -557,6 +557,11 @@ const useDefaultMenus = () => {
           name: '项目统计',
           path: '/project/statistics',
           icon: 'DataAnalysis'
+        },
+        {
+          name: 'AI报告生成',
+          path: '/project/ai-report',
+          icon: 'ChatDotRound'
         }
       ]
     }
@@ -592,7 +597,8 @@ const useDefaultMenus = () => {
     '/project/gantt': '甘特图',
     '/project/calendar': '日历视图',
     '/project/team': '团队视图',
-    '/project/statistics': '项目统计'
+    '/project/statistics': '项目统计',
+    '/project/ai-report': 'AI报告生成'
   }
   
   // 始终设置首页为默认激活

@@ -46,6 +46,8 @@ public class PmTask {
 
     private Integer isPinned;
 
+    private Integer isFocus;
+
     private Long createBy;
 
     private LocalDateTime createTime;

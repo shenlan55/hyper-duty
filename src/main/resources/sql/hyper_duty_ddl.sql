@@ -6672,5 +6672,110 @@ COMMENT ON COLUMN public.sys_mail_config.remark IS '备注';
 -- PostgreSQL database dump complete
 --
 
+--
+-- AI报告功能扩展
+--
+
+-- 给任务表添加是否重点字段
+ALTER TABLE public.pm_task ADD COLUMN IF NOT EXISTS is_focus smallint DEFAULT 0;
+COMMENT ON COLUMN public.pm_task.is_focus IS '是否重点任务：0否，1是';
+
+-- AI报告配置表
+CREATE SEQUENCE public.ai_report_config_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE public.ai_report_config (
+    id bigint NOT NULL,
+    config_name character varying(100) NOT NULL,
+    config_code character varying(50) NOT NULL,
+    report_type character varying(20) NOT NULL,
+    prompt_template text NOT NULL,
+    model_name character varying(50) DEFAULT 'glm-4-flash'::character varying,
+    status smallint DEFAULT 1,
+    remark character varying(500),
+    create_by bigint,
+    create_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    update_by bigint,
+    update_time timestamp without time zone
+);
+
+ALTER TABLE public.ai_report_config OWNER TO postgres;
+ALTER TABLE ONLY public.ai_report_config ALTER COLUMN id SET DEFAULT nextval('public.ai_report_config_id_seq'::regclass);
+ALTER TABLE ONLY public.ai_report_config ADD CONSTRAINT ai_report_config_pkey PRIMARY KEY (id);
+CREATE INDEX idx_ai_report_config_code ON public.ai_report_config(config_code);
+CREATE INDEX idx_ai_report_config_status ON public.ai_report_config(status);
+
+COMMENT ON TABLE public.ai_report_config IS 'AI报告配置表';
+COMMENT ON COLUMN public.ai_report_config.id IS '主键ID';
+COMMENT ON COLUMN public.ai_report_config.config_name IS '配置名称';
+COMMENT ON COLUMN public.ai_report_config.config_code IS '配置编码';
+COMMENT ON COLUMN public.ai_report_config.report_type IS '报告类型：daily日报，weekly周报';
+COMMENT ON COLUMN public.ai_report_config.prompt_template IS '提示词模板';
+COMMENT ON COLUMN public.ai_report_config.model_name IS '使用的模型名称';
+COMMENT ON COLUMN public.ai_report_config.status IS '状态：0禁用，1启用';
+COMMENT ON COLUMN public.ai_report_config.remark IS '备注';
+COMMENT ON COLUMN public.ai_report_config.create_by IS '创建人';
+COMMENT ON COLUMN public.ai_report_config.create_time IS '创建时间';
+COMMENT ON COLUMN public.ai_report_config.update_by IS '更新人';
+COMMENT ON COLUMN public.ai_report_config.update_time IS '更新时间';
+
+-- AI报告生成记录表
+CREATE SEQUENCE public.ai_report_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE public.ai_report (
+    id bigint NOT NULL,
+    report_title character varying(200) NOT NULL,
+    report_type character varying(20) NOT NULL,
+    report_date date,
+    start_date date,
+    end_date date,
+    project_id bigint,
+    project_name character varying(200),
+    report_content text NOT NULL,
+    config_id bigint,
+    config_name character varying(100),
+    model_name character varying(50),
+    prompt_used text,
+    create_by bigint,
+    create_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    update_by bigint,
+    update_time timestamp without time zone
+);
+
+ALTER TABLE public.ai_report OWNER TO postgres;
+ALTER TABLE ONLY public.ai_report ALTER COLUMN id SET DEFAULT nextval('public.ai_report_id_seq'::regclass);
+ALTER TABLE ONLY public.ai_report ADD CONSTRAINT ai_report_pkey PRIMARY KEY (id);
+CREATE INDEX idx_ai_report_report_date ON public.ai_report(report_date);
+CREATE INDEX idx_ai_report_report_type ON public.ai_report(report_type);
+CREATE INDEX idx_ai_report_project_id ON public.ai_report(project_id);
+
+COMMENT ON TABLE public.ai_report IS 'AI报告生成记录表';
+COMMENT ON COLUMN public.ai_report.id IS '主键ID';
+COMMENT ON COLUMN public.ai_report.report_title IS '报告标题';
+COMMENT ON COLUMN public.ai_report.report_type IS '报告类型：daily日报，weekly周报';
+COMMENT ON COLUMN public.ai_report.report_date IS '报告日期（日报）';
+COMMENT ON COLUMN public.ai_report.start_date IS '开始日期（周报）';
+COMMENT ON COLUMN public.ai_report.end_date IS '结束日期（周报）';
+COMMENT ON COLUMN public.ai_report.project_id IS '项目ID';
+COMMENT ON COLUMN public.ai_report.project_name IS '项目名称';
+COMMENT ON COLUMN public.ai_report.report_content IS '报告内容';
+COMMENT ON COLUMN public.ai_report.config_id IS '使用的配置ID';
+COMMENT ON COLUMN public.ai_report.config_name IS '使用的配置名称';
+COMMENT ON COLUMN public.ai_report.model_name IS '使用的模型名称';
+COMMENT ON COLUMN public.ai_report.prompt_used IS '实际使用的提示词';
+COMMENT ON COLUMN public.ai_report.create_by IS '创建人';
+COMMENT ON COLUMN public.ai_report.create_time IS '创建时间';
+COMMENT ON COLUMN public.ai_report.update_by IS '更新人';
+COMMENT ON COLUMN public.ai_report.update_time IS '更新时间';
+
 \unrestrict Ktio33LCUIbNfkVFWYN0IA5hWYcczvHJovEbN5VPeGIMhr6buT7budcp8qMztfg
 
