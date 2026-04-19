@@ -106,14 +106,25 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
                 continue;
             }
 
-            // 区分重点任务和非重点任务
-            List<PmTask> focusTasks = tasks.stream().filter(t -> t.getIsFocus() != null && t.getIsFocus() == 1).collect(Collectors.toList());
-            List<PmTask> normalTasks = tasks.stream().filter(t -> t.getIsFocus() == null || t.getIsFocus() != 1).collect(Collectors.toList());
+            // 筛选任务：
+            // 1. 重点任务 (isFocus = 1) - 全部展示
+            List<PmTask> focusTasks = tasks.stream()
+                    .filter(t -> t.getIsFocus() != null && t.getIsFocus() == 1)
+                    .collect(Collectors.toList());
+            
+            // 2. 其他任务中，只展示高优先级任务 (priority = 1 或 高优先级)
+            List<PmTask> highPriorityNormalTasks = tasks.stream()
+                    .filter(t -> (t.getIsFocus() == null || t.getIsFocus() != 1))
+                    .filter(t -> t.getPriority() != null && t.getPriority() == 1)
+                    .collect(Collectors.toList());
 
             // 获取这些任务在该时间段的进度更新
-            Set<Long> taskIds = tasks.stream().map(PmTask::getId).collect(Collectors.toSet());
+            Set<Long> displayTaskIds = new HashSet<>();
+            displayTaskIds.addAll(focusTasks.stream().map(PmTask::getId).collect(Collectors.toSet()));
+            displayTaskIds.addAll(highPriorityNormalTasks.stream().map(PmTask::getId).collect(Collectors.toSet()));
+            
             LambdaQueryWrapper<PmTaskProgressUpdate> updateWrapper = new LambdaQueryWrapper<>();
-            updateWrapper.in(PmTaskProgressUpdate::getTaskId, taskIds);
+            updateWrapper.in(PmTaskProgressUpdate::getTaskId, displayTaskIds);
             updateWrapper.ge(PmTaskProgressUpdate::getCreateTime, startTime);
             updateWrapper.le(PmTaskProgressUpdate::getCreateTime, endTime);
             updateWrapper.orderByDesc(PmTaskProgressUpdate::getCreateTime);
@@ -133,12 +144,12 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
                 }
             }
 
-            // 非重点任务
-            if (!normalTasks.isEmpty()) {
+            // 高优先级任务
+            if (!highPriorityNormalTasks.isEmpty()) {
                 sb.append("\n=======================================\n");
-                sb.append("◆◆◆ 其他任务区域 ◆◆◆\n");
+                sb.append("◆◆◆ 高优先级任务区域 ◆◆◆\n");
                 sb.append("=======================================\n");
-                for (PmTask task : normalTasks) {
+                for (PmTask task : highPriorityNormalTasks) {
                     appendTaskInfo(sb, task, updatesByTask);
                 }
             }
@@ -184,14 +195,26 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
                 continue;
             }
 
-            // 区分重点任务和非重点任务
-            List<PmTask> focusTasks = tasks.stream().filter(t -> t.getIsFocus() != null && t.getIsFocus() == 1).collect(Collectors.toList());
-            List<PmTask> normalTasks = tasks.stream().filter(t -> t.getIsFocus() == null || t.getIsFocus() != 1).collect(Collectors.toList());
+            // 筛选任务：
+            // 1. 重点任务 (isFocus = 1) - 全部展示
+            List<PmTask> focusTasks = tasks.stream()
+                    .filter(t -> t.getIsFocus() != null && t.getIsFocus() == 1)
+                    .collect(Collectors.toList());
+            
+            // 2. 其他任务中，只展示高优先级任务 (priority = 1 或 高优先级)
+            List<PmTask> highPriorityNormalTasks = tasks.stream()
+                    .filter(t -> (t.getIsFocus() == null || t.getIsFocus() != 1))
+                    .filter(t -> t.getPriority() != null && t.getPriority() == 1)
+                    .collect(Collectors.toList());
 
-            // 获取该时间段的进度更新
-            Set<Long> taskIds = tasks.stream().map(PmTask::getId).collect(Collectors.toSet());
+            // 收集需要展示的任务ID
+            Set<Long> displayTaskIds = new HashSet<>();
+            displayTaskIds.addAll(focusTasks.stream().map(PmTask::getId).collect(Collectors.toSet()));
+            displayTaskIds.addAll(highPriorityNormalTasks.stream().map(PmTask::getId).collect(Collectors.toSet()));
+
+            // 获取该时间段的进度更新（只包含筛选后的任务）
             LambdaQueryWrapper<PmTaskProgressUpdate> updateWrapper = new LambdaQueryWrapper<>();
-            updateWrapper.in(PmTaskProgressUpdate::getTaskId, taskIds);
+            updateWrapper.in(PmTaskProgressUpdate::getTaskId, displayTaskIds);
             updateWrapper.ge(PmTaskProgressUpdate::getCreateTime, startTime);
             updateWrapper.le(PmTaskProgressUpdate::getCreateTime, endTime);
             updateWrapper.orderByDesc(PmTaskProgressUpdate::getCreateTime);
@@ -218,13 +241,13 @@ public class ReportDataAggregationServiceImpl implements ReportDataAggregationSe
                 }
             }
 
-            // 非重点任务
-            if (!normalTasks.isEmpty()) {
+            // 高优先级任务
+            if (!highPriorityNormalTasks.isEmpty()) {
                 sb.append("\n=======================================\n");
-                sb.append("◆◆◆ 其他任务区域 ◆◆◆\n");
+                sb.append("◆◆◆ 高优先级任务区域 ◆◆◆\n");
                 sb.append("=======================================\n");
                 sb.append("  本周任务进度：\n");
-                for (PmTask task : normalTasks) {
+                for (PmTask task : highPriorityNormalTasks) {
                     sb.append("    - ").append(task.getTaskName());
                     sb.append(" [").append(getStatusText(task.getStatus())).append("]");
                     sb.append(" 进度：").append(task.getProgress() != null ? task.getProgress() : 0).append("%\n");
