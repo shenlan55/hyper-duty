@@ -624,7 +624,9 @@ const progressForm = reactive({
 const rules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
   taskName: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
-  assigneeId: [{ required: true, message: '请选择负责人', trigger: 'change' }]
+  assigneeId: [{ required: true, message: '请选择负责人', trigger: 'change' }],
+  startDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
+  endDate: [{ required: true, message: '请选择结束日期', trigger: 'change' }]
 }
 
 // 计算属性：负责人名称
@@ -651,12 +653,12 @@ const columns = [
   { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName', indent: true },
   { prop: 'projectName', label: '所属项目', width: 180 },
   { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
-  { prop: 'status', label: '状态', width: 100, slot: 'status' },
+  { prop: 'status', label: '状态', width: 90, slot: 'status' },
   { prop: 'progress', label: '进度', width: 120, slot: 'progress' },
-  { prop: 'ownerName', label: '负责人', width: 100 },
+  { prop: 'ownerName', label: '负责人', width: 80 },
   { prop: 'startDate', label: '开始日期', width: 110 },
   { prop: 'endDate', label: '结束日期', width: 110 },
-  { prop: 'operation', label: '操作', width: 520, fixed: 'right', slot: 'operation' }
+  { prop: 'operation', label: '操作', width: 480, fixed: 'right', slot: 'operation' }
 ]
 
 

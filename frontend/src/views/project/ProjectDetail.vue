@@ -194,8 +194,13 @@
           </el-select>
         </el-form-item>
         <el-form-item label="是否重点">
-          <el-switch v-model="taskForm.isFocus" :active-value="1" :inactive-value="0" />
-          <span style="margin-left: 8px; color: #909399;">标记为重点任务</span>
+          <el-switch
+            v-model="taskForm.isFocus"
+            :active-value="1"
+            :inactive-value="0"
+            active-text="是"
+            inactive-text="否"
+          />
         </el-form-item>
         <el-form-item label="进度">
           <el-slider v-model="taskForm.progress" :min="0" :max="100" show-input style="width: 300px;" />
@@ -581,7 +586,9 @@ const taskForm = reactive({
 
 const taskRules = {
   taskName: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
-  assigneeId: [{ required: true, message: '请选择负责人', trigger: 'change' }]
+  assigneeId: [{ required: true, message: '请选择负责人', trigger: 'change' }],
+  startDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
+  endDate: [{ required: true, message: '请选择结束日期', trigger: 'change' }]
 }
 
 const projectForm = reactive({
