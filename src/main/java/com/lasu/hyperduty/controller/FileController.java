@@ -285,7 +285,9 @@ public class FileController {
             log.info("Generated File URL for KKFileView: {}", fullFileUrl);
             byte[] urlBytes = fullFileUrl.getBytes(StandardCharsets.UTF_8);
             String base64Url = Base64.getEncoder().encodeToString(urlBytes);
-            String previewUrl = kkFileViewConfig.getEndpoint() + kkFileViewConfig.getPreviewPath() + "?url=" + base64Url;
+            // 对Base64编码后的字符串进行URI编码，符合KKFileView接入规范
+            String encodedBase64Url = java.net.URLEncoder.encode(base64Url, StandardCharsets.UTF_8.toString());
+            String previewUrl = kkFileViewConfig.getEndpoint() + kkFileViewConfig.getPreviewPath() + "?url=" + encodedBase64Url;
             log.info("Generated Preview URL: {}", previewUrl);
             return previewUrl;
         } catch (Exception e) {

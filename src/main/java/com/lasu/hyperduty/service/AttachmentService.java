@@ -80,7 +80,9 @@ public class AttachmentService {
             }
             byte[] urlBytes = fullFileUrl.getBytes(StandardCharsets.UTF_8);
             String base64Url = Base64.getEncoder().encodeToString(urlBytes);
-            return kkFileViewConfig.getEndpoint() + kkFileViewConfig.getPreviewPath() + "?url=" + base64Url;
+            // 对Base64编码后的字符串进行URI编码，符合KKFileView接入规范
+            String encodedBase64Url = java.net.URLEncoder.encode(base64Url, StandardCharsets.UTF_8.toString());
+            return kkFileViewConfig.getEndpoint() + kkFileViewConfig.getPreviewPath() + "?url=" + encodedBase64Url;
         } catch (Exception e) {
             log.error("生成预览URL失败: {}", e.getMessage(), e);
             return filePath;
