@@ -464,7 +464,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Document, User, Clock } from '@element-plus/icons-vue'
@@ -476,6 +476,7 @@ import { getProjectDetail, updateProject, archiveProject, getProjectPage, create
 import { getProjectTasks, createTask, updateTask } from '@/api/task'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
+import { getStatusByProgress, getProgressByStatus } from '@/utils/taskUtils'
 
 const route = useRoute()
 const router = useRouter()
@@ -582,6 +583,20 @@ const taskForm = reactive({
   status: 1,
   progress: 0,
   isFocus: 0
+})
+
+// 监听状态变化，自动调整进度（新建和编辑时都生效）
+watch(() => taskForm.status, (newStatus) => {
+  const newProgress = getProgressByStatus(newStatus, taskForm.progress)
+  if (newProgress !== null) {
+    taskForm.progress = newProgress
+  }
+})
+
+// 监听进度变化，自动调整状态（新建和编辑时都生效）
+watch(() => taskForm.progress, (newProgress) => {
+  const newStatus = getStatusByProgress(newProgress)
+  taskForm.status = newStatus
 })
 
 const taskRules = {

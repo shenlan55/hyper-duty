@@ -596,24 +596,18 @@ let originalTaskStatus = null
 // 保存编辑任务时的原始进度
 let originalTaskProgress = null
 
-// 监听状态变化，自动调整进度
+// 监听状态变化，自动调整进度（新建和编辑时都生效）
 watch(() => form.status, (newStatus) => {
-  // 只有在编辑模式且状态发生变化时才自动调整
-  if (form.id && originalTaskStatus !== null && newStatus !== originalTaskStatus) {
-    const newProgress = getProgressByStatus(newStatus, form.progress)
-    if (newProgress !== null) {
-      form.progress = newProgress
-    }
+  const newProgress = getProgressByStatus(newStatus, form.progress)
+  if (newProgress !== null) {
+    form.progress = newProgress
   }
 })
 
-// 监听进度变化，自动调整状态（仅在编辑任务时，且用户手动调整进度时）
+// 监听进度变化，自动调整状态（新建和编辑时都生效）
 watch(() => form.progress, (newProgress) => {
-  // 只有在编辑模式且进度发生变化时才自动调整
-  if (form.id && originalTaskProgress !== null && newProgress !== originalTaskProgress) {
-    const newStatus = getStatusByProgress(newProgress)
-    form.status = newStatus
-  }
+  const newStatus = getStatusByProgress(newProgress)
+  form.status = newStatus
 })
 
 const progressForm = reactive({
