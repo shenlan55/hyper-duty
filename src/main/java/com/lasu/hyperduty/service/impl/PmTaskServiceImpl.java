@@ -31,6 +31,7 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     private final PmCustomTableRowMapper customTableRowMapper;
     private final PmCustomTableColumnMapper customTableColumnMapper;
     private final SysEmployeeMapper sysEmployeeMapper;
+    private final com.lasu.hyperduty.service.AttachmentService attachmentService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -39,6 +40,9 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
         
         // 查询所有符合条件的任务
         List<PmTask> allTasks = baseMapper.selectTaskPage(projectId, assigneeId, status, priority, taskName, assigneeName);
+        
+        // 确保所有任务的附件都有previewUrl
+        allTasks = attachmentService.ensureAttachmentsForTaskList(allTasks);
         
         // 修正所有任务的层级
         fixTaskLevels(allTasks);
@@ -320,7 +324,8 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
 
     @Override
     public PmTask getTaskDetail(Long id) {
-        return baseMapper.selectTaskById(id);
+        PmTask task = baseMapper.selectTaskById(id);
+        return attachmentService.ensureAttachmentsHavePreviewUrls(task);
     }
 
     @Override

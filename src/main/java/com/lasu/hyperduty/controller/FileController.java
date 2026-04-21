@@ -161,8 +161,9 @@ public class FileController {
             String encodedFileName = java.net.URLEncoder.encode(displayFileName, StandardCharsets.UTF_8.toString())
                     .replaceAll("\\+", "%20");
             
-            // 设置响应头
-            response.setContentType("application/octet-stream");
+            // 根据文件扩展名设置正确的Content-Type
+            String contentType = getContentType(displayFileName);
+            response.setContentType(contentType);
             response.setHeader("Content-Disposition", "inline; filename*=UTF-8''" + encodedFileName + "; filename=\"" + encodedFileName + "\"");
             
             // 写入响应流
@@ -291,5 +292,47 @@ public class FileController {
             log.error("生成KKFileView预览URL失败: {}", e.getMessage(), e);
             return fileUrl;
         }
+    }
+
+    /**
+     * 根据文件名获取对应的Content-Type
+     * @param fileName 文件名
+     * @return Content-Type字符串
+     */
+    private String getContentType(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return "application/octet-stream";
+        }
+        String lowerName = fileName.toLowerCase();
+        if (lowerName.endsWith(".pdf")) {
+            return "application/pdf";
+        } else if (lowerName.endsWith(".doc") || lowerName.endsWith(".docx")) {
+            return "application/msword";
+        } else if (lowerName.endsWith(".xls") || lowerName.endsWith(".xlsx")) {
+            return "application/vnd.ms-excel";
+        } else if (lowerName.endsWith(".ppt") || lowerName.endsWith(".pptx")) {
+            return "application/vnd.ms-powerpoint";
+        } else if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) {
+            return "image/jpeg";
+        } else if (lowerName.endsWith(".png")) {
+            return "image/png";
+        } else if (lowerName.endsWith(".gif")) {
+            return "image/gif";
+        } else if (lowerName.endsWith(".bmp")) {
+            return "image/bmp";
+        } else if (lowerName.endsWith(".webp")) {
+            return "image/webp";
+        } else if (lowerName.endsWith(".txt")) {
+            return "text/plain";
+        } else if (lowerName.endsWith(".html") || lowerName.endsWith(".htm")) {
+            return "text/html";
+        } else if (lowerName.endsWith(".xml")) {
+            return "application/xml";
+        } else if (lowerName.endsWith(".zip")) {
+            return "application/zip";
+        } else if (lowerName.endsWith(".rar")) {
+            return "application/x-rar-compressed";
+        }
+        return "application/octet-stream";
     }
 }
