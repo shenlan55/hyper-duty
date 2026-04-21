@@ -12,7 +12,8 @@ import java.util.List;
 public interface PmTaskMapper extends BaseMapper<PmTask> {
 
     @Select("<script>" +
-            "SELECT t.*, e.employee_name as owner_name, p.project_name " +
+            "SELECT t.*, e.employee_name as owner_name, p.project_name, " +
+            "(SELECT MAX(create_time) FROM pm_task_progress_update WHERE task_id = t.id) as last_progress_update_time " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
@@ -53,7 +54,8 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
                          @Param("status") Integer status,
                          @Param("priority") Integer priority);
 
-    @Select("SELECT t.*, e.employee_name as owner_name, p.project_name " +
+    @Select("SELECT t.*, e.employee_name as owner_name, p.project_name, " +
+            "(SELECT MAX(create_time) FROM pm_task_progress_update WHERE task_id = t.id) as last_progress_update_time " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
@@ -77,7 +79,8 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
     @Select("<script>" +
             "SELECT t.*, e.employee_name as owner_name, p.project_name, " +
             "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id) as sub_task_count, " +
-            "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id AND sub.status = 3) as completed_sub_task_count " +
+            "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id AND sub.status = 3) as completed_sub_task_count, " +
+            "(SELECT MAX(create_time) FROM pm_task_progress_update WHERE task_id = t.id) as last_progress_update_time " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
@@ -95,7 +98,8 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
     @Select("<script>" +
             "SELECT t.*, e.employee_name as owner_name, p.project_name, " +
             "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id) as sub_task_count, " +
-            "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id AND sub.status = 3) as completed_sub_task_count " +
+            "(SELECT COUNT(*) FROM pm_task sub WHERE sub.parent_id = t.id AND sub.status = 3) as completed_sub_task_count, " +
+            "(SELECT MAX(create_time) FROM pm_task_progress_update WHERE task_id = t.id) as last_progress_update_time " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +

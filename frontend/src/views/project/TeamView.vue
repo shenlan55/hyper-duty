@@ -35,9 +35,12 @@
                 <el-tag :type="getTaskStatusType(row.status)">{{ getTaskStatusText(row.status) }}</el-tag>
               </template>
               <template #priority="{ row }">
-                <el-tag :type="getTaskPriorityType(row.priority)">{{ getTaskPriorityText(row.priority) }}</el-tag>
-              </template>
-              <template #operation="{ row }">
+            <el-tag :type="getTaskPriorityType(row.priority)">{{ getTaskPriorityText(row.priority) }}</el-tag>
+        </template>
+        <template #lastProgressUpdateTime="{ row }">
+            {{ formatDateTime(row.lastProgressUpdateTime) }}
+        </template>
+        <template #operation="{ row }">
                 <el-button type="primary" size="small" @click="handleEditTask(row)">编辑</el-button>
                 <el-button type="success" size="small" @click="handleUpdateProgress(row)">更新进度</el-button>
                 <el-button type="info" size="small" @click="handleViewTask(row)">查看</el-button>
@@ -195,14 +198,15 @@ const progressUpdateForm = reactive({
 const progressUpdates = ref([])
 
 const columns = [
-  { prop: 'taskName', label: '任务名称', minWidth: 200 },
-  { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
-  { prop: 'status', label: '状态', width: 100, slot: 'status' },
-  { prop: 'progress', label: '进度', width: 150, slot: 'progress' },
-  { prop: 'startDate', label: '开始日期', width: 110 },
-  { prop: 'endDate', label: '结束日期', width: 110 },
-  { prop: 'operation', label: '操作', width: 410, fixed: 'right', slot: 'operation' }
-]
+        { prop: 'taskName', label: '任务名称', minWidth: 200 },
+        { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
+        { prop: 'status', label: '状态', width: 100, slot: 'status' },
+        { prop: 'progress', label: '进度', width: 150, slot: 'progress' },
+        { prop: 'startDate', label: '开始日期', width: 110 },
+        { prop: 'endDate', label: '结束日期', width: 110 },
+        { prop: 'lastProgressUpdateTime', label: '更新时间', width: 160, slot: 'lastProgressUpdateTime' },
+        { prop: 'operation', label: '操作', width: 410, fixed: 'right', slot: 'operation' }
+    ]
 
 const loadProjectList = async () => {
   try {

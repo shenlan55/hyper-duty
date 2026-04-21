@@ -90,7 +90,10 @@
           </el-tag>
         </template>
         <template #endDate="{ row }">
-          <span :class="{ 'overdue': isOverdue(row) }">{{ row.endDate }}</span>
+            <span :class="{ 'overdue': isOverdue(row) }">{{ row.endDate }}</span>
+        </template>
+        <template #lastProgressUpdateTime="{ row }">
+            {{ formatDateTime(row.lastProgressUpdateTime) }}
         </template>
         <template #operation="{ row }">
           <el-button type="success" size="small" @click="handleUpdateProgress(row)">更新进度</el-button>
@@ -256,16 +259,17 @@ const progressUpdateForm = reactive({
 const progressUpdates = ref([])
 
 const columns = [
-  { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName' },
-  { prop: 'projectName', label: '所属项目', width: 180 },
-  { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
-  { prop: 'isFocus', label: '是否重点', width: 90, slot: 'isFocus' },
-  { prop: 'status', label: '状态', width: 100, slot: 'status' },
-  { prop: 'progress', label: '进度', width: 150, slot: 'progress' },
-  { prop: 'startDate', label: '开始日期', width: 110 },
-  { prop: 'endDate', label: '结束日期', width: 110, slot: 'endDate' },
-  { prop: 'operation', label: '操作', width: 310, fixed: 'right', slot: 'operation' }
-]
+        { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName' },
+        { prop: 'projectName', label: '所属项目', width: 180 },
+        { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
+        { prop: 'isFocus', label: '是否重点', width: 90, slot: 'isFocus' },
+        { prop: 'status', label: '状态', width: 100, slot: 'status' },
+        { prop: 'progress', label: '进度', width: 150, slot: 'progress' },
+        { prop: 'startDate', label: '开始日期', width: 110 },
+        { prop: 'endDate', label: '结束日期', width: 110, slot: 'endDate' },
+        { prop: 'lastProgressUpdateTime', label: '更新时间', width: 160 },
+        { prop: 'operation', label: '操作', width: 310, fixed: 'right', slot: 'operation' }
+    ]
 
 
 

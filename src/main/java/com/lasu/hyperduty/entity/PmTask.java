@@ -69,5 +69,8 @@ public class PmTask {
     @TableField(exist = false)
     private String parentTaskName;
 
+    @TableField(exist = false)
+    private LocalDateTime lastProgressUpdateTime;
+
     private String stakeholders;
 }
