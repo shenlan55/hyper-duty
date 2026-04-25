@@ -98,26 +98,7 @@
       <!-- 附件列表 -->
       <div class="task-attachments" style="margin-bottom: 20px;">
         <h4 style="margin-bottom: 10px;">附件</h4>
-        <div v-if="currentTaskForUpdate?.attachments && currentTaskForUpdate.attachments.length > 0" class="attachments-container">
-          <div v-for="(attachment, index) in currentTaskForUpdate.attachments" :key="index" class="attachment-item">
-            <div class="attachment-file">
-              <el-icon class="file-icon"><Document /></el-icon>
-              <span class="file-name">{{ attachment.name || '未知文件' }}</span>
-            </div>
-            <div class="attachment-info">
-              <span class="attachment-name">{{ attachment.name || '未知文件' }}</span>
-              <div class="attachment-actions">
-                <el-button size="small" type="primary" @click="handleAttachmentPreview(attachment)">
-                  预览
-                </el-button>
-                <el-button size="small" @click="handleAttachmentDownload(attachment)">
-                  下载
-                </el-button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-else class="no-data">暂无附件</div>
+        <AttachmentList :attachments="currentTaskForUpdate?.attachments || []" />
       </div>
 
       <!-- 参与人列表 -->
@@ -170,6 +151,7 @@ import BaseTable from '@/components/BaseTable.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
+import AttachmentList from '@/components/AttachmentList.vue'
 import ProgressHistory from '@/components/ProgressHistory.vue'
 import { getTaskPage, createProgressUpdate, getTaskProgressUpdates, getTaskDetail } from '@/api/task'
 import { getProjectPage, getProjectDetail } from '@/api/project'

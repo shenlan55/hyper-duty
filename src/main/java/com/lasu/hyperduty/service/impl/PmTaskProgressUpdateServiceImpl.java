@@ -3,6 +3,7 @@ package com.lasu.hyperduty.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lasu.hyperduty.entity.PmTaskProgressUpdate;
 import com.lasu.hyperduty.mapper.PmTaskProgressUpdateMapper;
+import com.lasu.hyperduty.service.AttachmentService;
 import com.lasu.hyperduty.service.PmTaskProgressUpdateService;
 import com.lasu.hyperduty.service.PmTaskService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,6 +22,7 @@ public class PmTaskProgressUpdateServiceImpl extends ServiceImpl<PmTaskProgressU
 
     private final PmTaskProgressUpdateMapper pmTaskProgressUpdateMapper;
     private final PmTaskService pmTaskService;
+    private final AttachmentService attachmentService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -29,6 +31,9 @@ public class PmTaskProgressUpdateServiceImpl extends ServiceImpl<PmTaskProgressU
         try {
             // 设置创建时间
             update.setCreateTime(LocalDateTime.now());
+            
+            // 确保附件包含previewUrl
+            update = attachmentService.ensureProgressUpdateAttachmentsHavePreviewUrls(update);
             
             // 保存任务进展更新
             pmTaskProgressUpdateMapper.insert(update);
@@ -62,6 +67,9 @@ public class PmTaskProgressUpdateServiceImpl extends ServiceImpl<PmTaskProgressU
         try {
             List<PmTaskProgressUpdate> updates = pmTaskProgressUpdateMapper.selectByTaskId(taskId);
             
+            // 确保所有进度更新的附件都包含previewUrl
+            updates = attachmentService.ensureAttachmentsForProgressUpdateList(updates);
+            
             // 解析附件JSON字符串为对象列表
             for (PmTaskProgressUpdate update : updates) {
                 if (update.getAttachments() != null && !update.getAttachments().trim().isEmpty()) {
@@ -89,6 +97,11 @@ public class PmTaskProgressUpdateServiceImpl extends ServiceImpl<PmTaskProgressU
     public PmTaskProgressUpdate getProgressUpdateDetail(Long id) {
         try {
             PmTaskProgressUpdate update = pmTaskProgressUpdateMapper.selectByIdWithEmployeeName(id);
+            
+            // 确保附件包含previewUrl
+            if (update != null) {
+                update = attachmentService.ensureProgressUpdateAttachmentsHavePreviewUrls(update);
+            }
             
             // 解析附件JSON字符串为对象列表
             if (update != null && update.getAttachments() != null && !update.getAttachments().trim().isEmpty()) {

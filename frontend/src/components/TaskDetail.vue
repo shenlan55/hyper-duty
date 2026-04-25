@@ -37,26 +37,7 @@
     <!-- 附件列表 -->
     <div class="task-attachments" style="margin-bottom: 20px;">
       <h4 style="margin-bottom: 10px;">附件</h4>
-      <div v-if="task?.attachments && task.attachments.length > 0" class="attachments-container">
-        <div v-for="(attachment, index) in task.attachments" :key="index" class="attachment-item">
-          <div class="attachment-file">
-            <el-icon class="file-icon"><Document /></el-icon>
-            <span class="file-name">{{ attachment.name || '未知文件' }}</span>
-          </div>
-          <div class="attachment-info">
-            <span class="attachment-name">{{ attachment.name || '未知文件' }}</span>
-            <div class="attachment-actions">
-              <el-button size="small" type="primary" @click="handleAttachmentPreview(attachment)">
-                预览
-              </el-button>
-              <el-button size="small" @click="handleAttachmentDownload(attachment)">
-                下载
-              </el-button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-else class="no-data">暂无附件</div>
+      <AttachmentList :attachments="task?.attachments || []" />
     </div>
 
     <!-- 参与人列表 -->
@@ -112,6 +93,7 @@ import { getEmployeeList } from '@/api/employee'
 import { getTaskBindings } from '@/api/customTable'
 import { getTaskStatusText, getTaskPriorityText, formatDateTime } from '@/utils/taskUtils'
 import ProgressHistory from '@/components/ProgressHistory.vue'
+import AttachmentList from '@/components/AttachmentList.vue'
 
 const employeeList = ref([])
 

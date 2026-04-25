@@ -276,20 +276,19 @@ public class FileController {
             String fullFileUrl;
             String backendUrl = System.getenv("BACKEND_URL");
             if (backendUrl == null || backendUrl.isEmpty()) {
-                backendUrl = "http://backend:8080/api";
+                // 本地开发环境，用 host.docker.internal（启动 KKFileView 时加了 --add-host）
+                backendUrl = "http://host.docker.internal:8080";
             }
-            fullFileUrl = backendUrl + "/file/preview?filePath=" + java.net.URLEncoder.encode(fileUrl, StandardCharsets.UTF_8.toString());
-            if (fileName != null && !fileName.isEmpty()) {
-                fullFileUrl += "&fileName=" + java.net.URLEncoder.encode(fileName, StandardCharsets.UTF_8.toString());
-            }
-            log.info("Generated File URL for KKFileView: {}", fullFileUrl);
-            byte[] urlBytes = fullFileUrl.getBytes(StandardCharsets.UTF_8);
-            String base64Url = Base64.getEncoder().encodeToString(urlBytes);
-            // 对Base64编码后的字符串进行URI编码，符合KKFileView接入规范
-            String encodedBase64Url = java.net.URLEncoder.encode(base64Url, StandardCharsets.UTF_8.toString());
-            String previewUrl = kkFileViewConfig.getEndpoint() + kkFileViewConfig.getPreviewPath() + "?url=" + encodedBase64Url;
-            log.info("Generated Preview URL: {}", previewUrl);
-            return previewUrl;
+
+            // 加上 &fullfilename 参数明确告诉 KKFileView 文件名！
+            fullFileUrl = backendUrl + "/api/file/preview?filePath=" +
+                java.net.URLEncoder.encode(fileUrl, StandardCharsets.UTF_8.toString()) +
+                "&fullfilename=" + java.net.URLEncoder.encode(fileName, StandardCharsets.UTF_8.toString());
+
+            // KKFileView 4.4.0 用 URL 安全 Base64，直接传递
+            String base64Url = Base64.getUrlEncoder().encodeToString(fullFileUrl.getBytes(StandardCharsets.UTF_8));
+            String finalPreviewUrl = kkFileViewConfig.getEndpoint() + kkFileViewConfig.getPreviewPath() + "?url=" + base64Url;
+            return finalPreviewUrl;
         } catch (Exception e) {
             log.error("生成KKFileView预览URL失败: {}", e.getMessage(), e);
             return fileUrl;

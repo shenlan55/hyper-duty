@@ -347,26 +347,7 @@
       <!-- 附件列表 -->
       <div class="task-attachments" style="margin-bottom: 20px;">
         <h4 style="margin-bottom: 10px;">附件</h4>
-        <div v-if="currentTaskForUpdate?.attachments && currentTaskForUpdate.attachments.length > 0" class="attachments-container">
-          <div v-for="(attachment, index) in currentTaskForUpdate.attachments" :key="index" class="attachment-item">
-            <div class="attachment-file">
-              <el-icon class="file-icon"><Document /></el-icon>
-              <span class="file-name">{{ attachment.name || '未知文件' }}</span>
-            </div>
-            <div class="attachment-info">
-              <span class="attachment-name">{{ attachment.name || '未知文件' }}</span>
-              <div class="attachment-actions">
-                <el-button size="small" type="primary" @click="handleAttachmentPreview(attachment)">
-                  预览
-                </el-button>
-                <el-button size="small" @click="handleAttachmentDownload(attachment)">
-                  下载
-                </el-button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-else class="no-data">暂无附件</div>
+        <AttachmentList :attachments="currentTaskForUpdate?.attachments || []" />
       </div>
 
       <!-- 干系人列表 -->
@@ -423,25 +404,7 @@
                 <div class="update-description" v-if="update.description" style="margin-bottom: 10px;" v-html="update.description"></div>
                 <div class="update-attachments" v-if="update.attachmentList && update.attachmentList.length > 0">
                   <el-divider content-position="left">附件</el-divider>
-                  <div class="attachments-container">
-                    <div v-for="(attachment, idx) in update.attachmentList" :key="idx" class="attachment-item">
-                      <div class="attachment-file">
-                        <el-icon class="file-icon"><Document /></el-icon>
-                        <span class="file-name">{{ attachment.name || '未知文件' }}</span>
-                      </div>
-                      <div class="attachment-info">
-                        <span class="attachment-name">{{ attachment.name || '未知文件' }}</span>
-                        <div class="attachment-actions">
-                          <el-button size="small" type="primary" @click="handleAttachmentPreview(attachment)">
-                            预览
-                          </el-button>
-                          <el-button size="small" @click="handleAttachmentDownload(attachment)">
-                            下载
-                          </el-button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <AttachmentList :attachments="update.attachmentList" />
                 </div>
               </div>
             </el-card>
@@ -514,6 +477,7 @@ import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import PersonSelector from '@/components/PersonSelector.vue'
 import BindCustomRowDialog from '@/components/BindCustomRowDialog.vue'
+import AttachmentList from '@/components/AttachmentList.vue'
 import { getTaskPage, createTask, updateTask, deleteTask, updateProgress, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, hasTaskPermission, hasTaskDeletePermission, getTaskDetail } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
@@ -1136,12 +1100,10 @@ const handleSubmitProgressUpdate = async () => {
 
 
 const handlePreview = (file) => {
-  console.log('预览文件', file)
   // 实际项目中应该打开文件预览
 }
 
 const handleRemove = (file, fileList) => {
-  console.log('删除文件', file, fileList)
   // 实际项目中应该处理文件删除逻辑
 }
 
@@ -1505,7 +1467,6 @@ const isImageType = (fileName) => {
 }
 
 const handleAttachmentPreview = (attachment) => {
-  console.log('预览附件', attachment)
   // 强制使用KKFileView预览URL
   if (attachment.previewUrl) {
     window.open(attachment.previewUrl, '_blank')
@@ -1515,17 +1476,11 @@ const handleAttachmentPreview = (attachment) => {
 }
 
 const handleAttachmentDownload = (attachment) => {
-  console.log('下载附件', attachment)
-  console.log('原始 URL:', attachment.url)
-  console.log('文件名:', attachment.name)
-  
   // 将 preview 接口改为 download 接口
   let downloadUrl = attachment.url
   if (downloadUrl.includes('/file/preview')) {
     downloadUrl = downloadUrl.replace('/file/preview', '/file/download')
   }
-  
-  console.log('替换后 URL:', downloadUrl)
   
   // 如果 URL 中已经有 fileName 参数，先移除它
   if (downloadUrl.includes('fileName=')) {
@@ -1539,8 +1494,6 @@ const handleAttachmentDownload = (attachment) => {
     const separator = downloadUrl.includes('?') ? '&' : '?'
     downloadUrl += `${separator}fileName=${encodeURIComponent(attachment.name)}`
   }
-  
-  console.log('最终下载 URL:', downloadUrl)
   
   const link = document.createElement('a')
   link.href = downloadUrl

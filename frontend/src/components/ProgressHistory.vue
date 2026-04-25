@@ -18,25 +18,7 @@
             <div class="update-description" v-if="update.description" style="margin-bottom: 10px;" v-html="update.description"></div>
             <div class="update-attachments" v-if="update.attachmentList && update.attachmentList.length > 0">
               <el-divider content-position="left">附件</el-divider>
-              <div class="attachments-container">
-                <div v-for="(attachment, idx) in update.attachmentList" :key="idx" class="attachment-item">
-                  <div class="attachment-file">
-                    <el-icon class="file-icon"><Document /></el-icon>
-                    <span class="file-name">{{ attachment.name || '未知文件' }}</span>
-                  </div>
-                  <div class="attachment-info">
-                    <span class="attachment-name">{{ attachment.name || '未知文件' }}</span>
-                    <div class="attachment-actions">
-                      <el-button size="small" type="primary" @click="handleAttachmentPreview(attachment)">
-                        预览
-                      </el-button>
-                      <el-button size="small" @click="handleAttachmentDownload(attachment)">
-                        下载
-                      </el-button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <AttachmentList :attachments="update.attachmentList" />
             </div>
           </div>
         </el-card>
@@ -48,6 +30,7 @@
 <script setup>
 import { Document } from '@element-plus/icons-vue'
 import { formatDateTime } from '@/utils/taskUtils'
+import AttachmentList from '@/components/AttachmentList.vue'
 
 const props = defineProps({
   progressUpdates: {
