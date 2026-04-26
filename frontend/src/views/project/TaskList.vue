@@ -195,11 +195,10 @@ import TaskSearchForm from '@/components/TaskSearchForm.vue'
 import TaskEditDialog from '@/components/TaskEditDialog.vue'
 import TaskProgressUpdateDialog from '@/components/TaskProgressUpdateDialog.vue'
 import BindCustomRowDialog from '@/components/BindCustomRowDialog.vue'
-import { getTaskPageV1, deleteTaskV1 } from '@/api/pm-v1'
+import { getTaskPage, deleteTask, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { getTaskBindings, unbindCustomRow, getCustomTableColumns } from '@/api/customTable'
-import { pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
 import { useUserStore } from '@/stores/user'
 import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime, sortTasks } from '@/utils/taskUtils'
 
@@ -266,7 +265,7 @@ const canCreateTask = computed(() => {
   return userStore.employeeId !== null
 })
 
-// 加载数据 - 使用 V1 API
+// 加载数据
 const loadData = async () => {
   loading.value = true
   try {
@@ -275,10 +274,10 @@ const loadData = async () => {
       pageSize: pagination.pageSize,
       ...searchForm
     }
-    const data = await getTaskPageV1(params)
+    const data = await getTaskPage(params)
     const tasks = data.records || []
     
-    // 处理附件和干系人数据，V1 API 已经带权限，无需单独查询
+    // 处理附件和干系人数据
     for (const task of tasks) {
       if (task.attachments && typeof task.attachments === 'string') {
         task._attachments = task.attachments
@@ -537,7 +536,7 @@ const handlePin = async (row) => {
   }
 }
 
-// 删除任务 - 使用 V1 API
+// 删除任务
 const handleDelete = async (row) => {
   if (!row.hasDeletePermission) {
     ElMessage.warning('您没有权限删除此任务')
@@ -549,7 +548,7 @@ const handleDelete = async (row) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    await deleteTaskV1(row.id)
+    await deleteTask(row.id)
     ElMessage.success('删除任务成功')
     loadData()
   } catch (error) {

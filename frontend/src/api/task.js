@@ -1,10 +1,26 @@
 import request from '../utils/request'
 
+/**
+ * 项目管理 API
+ * 使用 DTO 和统一的响应格式
+ */
+
+// ============================================
+// 任务相关 API
+// ============================================
+
 export function getTaskPage(params) {
   return request({
     url: '/pm/task/page',
     method: 'get',
     params
+  })
+}
+
+export function getTaskDetail(id) {
+  return request({
+    url: `/pm/task/detail/${id}`,
+    method: 'get'
   })
 }
 
@@ -38,9 +54,16 @@ export function getMyTasksByProject(employeeId, projectId, taskName) {
   })
 }
 
-export function getTaskDetail(id) {
+export function getUpcomingTasks(employeeId) {
   return request({
-    url: `/pm/task/${id}`,
+    url: `/pm/task/upcoming/${employeeId}`,
+    method: 'get'
+  })
+}
+
+export function getTasksByStatus(status) {
+  return request({
+    url: `/pm/task/status/${status}`,
     method: 'get'
   })
 }
@@ -69,27 +92,6 @@ export function updateProgress(taskId, progress) {
   })
 }
 
-export function deleteTask(id) {
-  return request({
-    url: `/pm/task/${id}`,
-    method: 'delete'
-  })
-}
-
-export function getUpcomingTasks(employeeId) {
-  return request({
-    url: `/pm/task/upcoming/${employeeId}`,
-    method: 'get'
-  })
-}
-
-export function getTasksByStatus(status) {
-  return request({
-    url: `/pm/task/status/${status}`,
-    method: 'get'
-  })
-}
-
 export function pinTask(taskId, pinned) {
   return request({
     url: `/pm/task/pin/${taskId}`,
@@ -97,6 +99,46 @@ export function pinTask(taskId, pinned) {
     params: { pinned }
   })
 }
+
+export function deleteTask(id) {
+  return request({
+    url: `/pm/task/${id}`,
+    method: 'delete'
+  })
+}
+
+export function hasTaskPermission(taskId, employeeId) {
+  return request({
+    url: `/pm/task/permission/${taskId}/${employeeId}`,
+    method: 'get'
+  })
+}
+
+export function hasTaskDeletePermission(taskId, employeeId) {
+  return request({
+    url: `/pm/task/permission/delete/${taskId}/${employeeId}`,
+    method: 'get'
+  })
+}
+
+export function recalculateAllProjectProgress() {
+  return request({
+    url: '/pm/task/recalculate-project-progress',
+    method: 'post'
+  })
+}
+
+export function getWorkloadPage(params) {
+  return request({
+    url: '/pm/task/workload/page',
+    method: 'get',
+    params
+  })
+}
+
+// ============================================
+// 任务评论相关 API
+// ============================================
 
 export function getTaskComments(taskId) {
   return request({
@@ -114,7 +156,10 @@ export function addTaskComment(data) {
   })
 }
 
-// 任务进展更新相关API
+// ============================================
+// 任务进展更新相关 API
+// ============================================
+
 export function createProgressUpdate(data) {
   return request({
     url: '/pm/task/progress/update',
@@ -137,19 +182,9 @@ export function getProgressUpdateDetail(id) {
   })
 }
 
-export function hasTaskPermission(taskId, employeeId) {
-  return request({
-    url: `/pm/task/permission/${taskId}/${employeeId}`,
-    method: 'get'
-  })
-}
-
-export function hasTaskDeletePermission(taskId, employeeId) {
-  return request({
-    url: `/pm/task/permission/delete/${taskId}/${employeeId}`,
-    method: 'get'
-  })
-}
+// ============================================
+// 甘特图导出 API
+// ============================================
 
 export function exportGantt(projectId) {
   return request({
@@ -157,13 +192,5 @@ export function exportGantt(projectId) {
     method: 'get',
     params: { projectId },
     responseType: 'blob'
-  })
-}
-
-export function getWorkloadPage(params) {
-  return request({
-    url: '/pm/task/workload/page',
-    method: 'get',
-    params
   })
 }

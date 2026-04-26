@@ -156,7 +156,7 @@ import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPrior
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import PersonSelector from '@/components/PersonSelector.vue'
-import { createTaskV1, updateTaskV1 } from '@/api/pm-v1'
+import { createTask, updateTask } from '@/api/task'
 
 const props = defineProps({
   modelValue: {
@@ -374,9 +374,9 @@ const handleSubmit = async () => {
     }
     
     if (props.isEdit) {
-      await updateTaskV1(submitData)
+      await updateTask(submitData)
     } else {
-      await createTaskV1(submitData)
+      await createTask(submitData)
     }
     
     emit('submit', submitData)

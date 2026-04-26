@@ -197,7 +197,7 @@ import RichTextEditor from '@/components/RichTextEditor.vue'
 import ProgressHistory from '@/components/ProgressHistory.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
-import { getMyTasks, getMyTasksByProject, pinTask, getUpcomingTasks, createProgressUpdate, getTaskProgressUpdates, getTaskDetail, updateTask } from '@/api/task'
+import { getMyTasks, getMyTasksByProject, pinTask, getUpcomingTasks, getTaskDetail, updateTask, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
 import { getMyProjects } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { getCurrentUserId } from '@/utils/jwt'
@@ -363,7 +363,7 @@ const handleUpdateProgress = async (row) => {
   try {
     // 获取完整的任务详情数据
     const taskDetail = await getTaskDetail(row.id)
-    
+
     // 处理附件数据
     if (taskDetail.attachments) {
       if (typeof taskDetail.attachments === 'string') {
@@ -379,7 +379,7 @@ const handleUpdateProgress = async (row) => {
     } else {
       taskDetail.attachments = []
     }
-    
+
     // 处理参与人数据
     if (taskDetail.stakeholders) {
       if (typeof taskDetail.stakeholders === 'string') {
@@ -395,7 +395,7 @@ const handleUpdateProgress = async (row) => {
     } else {
       taskDetail.stakeholders = []
     }
-    
+
     // 将参与人ID转换为名称
     if (taskDetail.stakeholders && Array.isArray(taskDetail.stakeholders)) {
       taskDetail.stakeholders = taskDetail.stakeholders.map(stakeholderId => {
@@ -403,12 +403,12 @@ const handleUpdateProgress = async (row) => {
         return employee ? employee.employeeName : stakeholderId
       })
     }
-    
+
     currentTaskForUpdate.value = taskDetail
     progressUpdateForm.progress = taskDetail.progress || 0
     progressUpdateForm.description = ''
     progressUpdateForm.attachments = []
-    
+
     // 加载进度更新历史
     try {
       const updates = await getTaskProgressUpdates(row.id)
@@ -416,7 +416,7 @@ const handleUpdateProgress = async (row) => {
     } catch (error) {
       console.error('加载进度更新历史失败', error)
     }
-    
+
     progressUpdateDialogVisible.value = true
   } catch (error) {
     console.error('获取任务详情失败', error)
