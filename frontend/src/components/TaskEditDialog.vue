@@ -156,6 +156,7 @@ import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPrior
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import PersonSelector from '@/components/PersonSelector.vue'
+import { createTaskV1, updateTaskV1 } from '@/api/pm-v1'
 
 const props = defineProps({
   modelValue: {
@@ -372,10 +373,19 @@ const handleSubmit = async () => {
       stakeholders: stakeholdersJson || ''
     }
     
+    if (props.isEdit) {
+      await updateTaskV1(submitData)
+      ElMessage.success('任务更新成功')
+    } else {
+      await createTaskV1(submitData)
+      ElMessage.success('任务创建成功')
+    }
+    
     emit('submit', submitData)
     resetForm()
     dialogVisible.value = false
   } catch (error) {
+    console.error('操作失败', error)
     if (error !== false) {
       ElMessage.error('操作失败')
     }
