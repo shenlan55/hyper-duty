@@ -63,10 +63,12 @@ services:
       - "8012:8012"
     environment:
       - TZ=Asia/Shanghai
-      - KK_OFFICE_SERVER_HOST=kkfileview
-      - KK_OFFICE_SERVER_PORT=8100
       - KK_CONTEXT_PATH=/
       - KK_SERVER_PORT=8012
+    security_opt:
+      - seccomp:unconfined
+    volumes:
+      - /dev/shm:/dev/shm
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
