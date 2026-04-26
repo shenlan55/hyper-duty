@@ -5,12 +5,17 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lasu.hyperduty.dto.WorkloadDTO;
+import com.lasu.hyperduty.dto.pm.TaskCreateDTO;
+import com.lasu.hyperduty.dto.pm.TaskQueryDTO;
+import com.lasu.hyperduty.dto.pm.TaskUpdateDTO;
+import com.lasu.hyperduty.dto.pm.TaskVO;
 import com.lasu.hyperduty.entity.*;
 import com.lasu.hyperduty.mapper.*;
 import com.lasu.hyperduty.service.PmProjectDeputyOwnerService;
 import com.lasu.hyperduty.service.PmTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -893,5 +898,67 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             case 4: return "已暂停";
             default: return "未知";
         }
+    }
+
+    /**
+     * 将 PmTask 转换为 TaskVO
+     */
+    private TaskVO convertToVO(PmTask task, Long currentEmployeeId) {
+        TaskVO vo = new TaskVO();
+        BeanUtils.copyProperties(task, vo);
+        
+        if (currentEmployeeId != null) {
+            vo.setHasPermission(hasTaskPermission(task.getId(), currentEmployeeId));
+            vo.setHasDeletePermission(hasTaskDeletePermission(task.getId(), currentEmployeeId));
+        } else {
+            vo.setHasPermission(false);
+            vo.setHasDeletePermission(false);
+        }
+        
+        return vo;
+    }
+
+    @Override
+    public Page<TaskVO> pageTaskList(TaskQueryDTO query, Long currentEmployeeId) {
+        Page<PmTask> taskPage = pageList(
+            query.getPageNum(),
+            query.getPageSize(),
+            query.getProjectId(),
+            query.getAssigneeId(),
+            query.getStatus(),
+            query.getPriority(),
+            query.getTaskName(),
+            query.getAssigneeName()
+        );
+
+        Page<TaskVO> voPage = new Page<>(query.getPageNum(), query.getPageSize(), taskPage.getTotal());
+        List<TaskVO> voList = taskPage.getRecords().stream()
+            .map(task -> convertToVO(task, currentEmployeeId))
+            .collect(Collectors.toList());
+        voPage.setRecords(voList);
+        return voPage;
+    }
+
+    @Override
+    public TaskVO getTaskDetailWithPermission(Long id, Long currentEmployeeId) {
+        PmTask task = getTaskDetail(id);
+        if (task == null) {
+            return null;
+        }
+        return convertToVO(task, currentEmployeeId);
+    }
+
+    @Override
+    public PmTask createTask(TaskCreateDTO dto) {
+        PmTask task = new PmTask();
+        BeanUtils.copyProperties(dto, task);
+        return createTask(task);
+    }
+
+    @Override
+    public PmTask updateTask(TaskUpdateDTO dto) {
+        PmTask task = new PmTask();
+        BeanUtils.copyProperties(dto, task);
+        return updateTask(task);
     }
 }

@@ -32,7 +32,6 @@ public class PmTaskController {
             @RequestParam(required = false) Integer priority,
             @RequestParam(required = false) String taskName,
             @RequestParam(required = false) String assigneeName) {
-        
         Page<PmTask> page = pmTaskService.pageList(pageNum, pageSize, projectId, assigneeId, status, priority, taskName, assigneeName);
         return ResponseResult.success(page);
     }
@@ -43,9 +42,9 @@ public class PmTaskController {
         return ResponseResult.success(tasks);
     }
 
-    @GetMapping("/sub/{projectId}")
-    public ResponseResult<List<PmTask>> getSubTasks(@PathVariable Long projectId) {
-        List<PmTask> tasks = pmTaskService.getSubTasks(projectId);
+    @GetMapping("/sub/{parentId}")
+    public ResponseResult<List<PmTask>> getSubTasks(@PathVariable Long parentId) {
+        List<PmTask> tasks = pmTaskService.getSubTasks(parentId);
         return ResponseResult.success(tasks);
     }
 
@@ -153,7 +152,6 @@ public class PmTaskController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime bindEndTime,
             @RequestParam(required = false) String orderNo,
             @RequestParam(required = false) String title) {
-        
         Page<WorkloadDTO> page = pmTaskService.getWorkloadPage(pageNum, pageSize, projectId, taskName, assigneeId, taskStartDate, taskEndDate, bindStartTime, bindEndTime, orderNo, title);
         return ResponseResult.success(page);
     }
