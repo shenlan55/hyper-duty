@@ -56,7 +56,7 @@ server:
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
-  type-aliases-package: com.lasu.hyperduty.entity
+  type-aliases-package: com.lasu.hyperduty.system.entity,com.lasu.hyperduty.duty.entity,com.lasu.hyperduty.pm.entity,com.lasu.hyperduty.ai.entity
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

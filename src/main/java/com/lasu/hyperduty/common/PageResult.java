@@ -1,11 +1,18 @@
 package com.lasu.hyperduty.common;
 
+import com.lasu.hyperduty.common.PageResult;
+import java.io.Serializable;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
-import java.util.List;
+
+
+
+
+
+
 
 /**
  * 分页响应结果类

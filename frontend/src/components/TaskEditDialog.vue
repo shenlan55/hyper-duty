@@ -375,10 +375,8 @@ const handleSubmit = async () => {
     
     if (props.isEdit) {
       await updateTaskV1(submitData)
-      ElMessage.success('任务更新成功')
     } else {
       await createTaskV1(submitData)
-      ElMessage.success('任务创建成功')
     }
     
     emit('submit', submitData)

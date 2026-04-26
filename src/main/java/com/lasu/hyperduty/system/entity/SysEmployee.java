@@ -1,0 +1,59 @@
+package com.lasu.hyperduty.system.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.lasu.hyperduty.system.entity.SysEmployee;
+import java.io.Serializable;
+import java.time.LocalDateTime;
+import lombok.Data;
+
+
+
+
+
+
+
+
+
+@Data
+@TableName("sys_employee")
+public class SysEmployee implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
+
+    private String employeeName;
+
+    private Long deptId;
+
+    private String employeeCode;
+
+    private String username;
+
+    private String password;
+
+    private String phone;
+
+    private String email;
+
+    private Integer gender;
+
+    private Long dictTypeId;
+
+    private Long dictDataId;
+
+    private Integer status;
+
+    private LocalDateTime createTime;
+
+    private LocalDateTime updateTime;
+
+    private Integer sort;
+
+    // 当月工时（非持久化字段）
+    private transient Integer monthlyWorkHours;
+
+}

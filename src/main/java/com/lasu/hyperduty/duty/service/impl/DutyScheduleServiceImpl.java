@@ -1,0 +1,140 @@
+package com.lasu.hyperduty.duty.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.lasu.hyperduty.duty.entity.DutySchedule;
+import com.lasu.hyperduty.duty.entity.DutyScheduleEmployee;
+import com.lasu.hyperduty.duty.mapper.DutyScheduleMapper;
+import com.lasu.hyperduty.duty.service.DutyScheduleEmployeeService;
+import com.lasu.hyperduty.duty.service.DutyScheduleService;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+
+
+
+
+
+
+
+@Service
+public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, DutySchedule> implements DutyScheduleService {
+
+    @Autowired
+    private DutyScheduleEmployeeService scheduleEmployeeService;
+
+    @Override
+    public List<Long> getEmployeeIdsByScheduleId(Long scheduleId) {
+        return scheduleEmployeeService.getEmployeeIdsByScheduleId(scheduleId);
+    }
+
+    @Override
+    public List<Long> getLeaderIdsByScheduleId(Long scheduleId) {
+        return scheduleEmployeeService.getLeaderIdsByScheduleId(scheduleId);
+    }
+
+    @Override
+    public List<Map<String, Object>> getScheduleEmployeesWithLeaderInfo(Long scheduleId) {
+        return scheduleEmployeeService.getScheduleEmployeesWithLeaderInfo(scheduleId);
+    }
+
+    @Override
+    public List<Map<String, Object>> getScheduleEmployeesWithDetails(Long scheduleId) {
+        return scheduleEmployeeService.getScheduleEmployeesWithDetails(scheduleId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateEmployees(Long scheduleId, List<Long> employeeIds) {
+        scheduleEmployeeService.deleteByScheduleId(scheduleId);
+        return scheduleEmployeeService.saveBatch(scheduleId, employeeIds);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateLeaders(Long scheduleId, List<Long> leaderIds) {
+        return scheduleEmployeeService.updateLeaders(scheduleId, leaderIds);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateEmployeesAndLeaders(Long scheduleId, List<Long> employeeIds, List<Long> leaderIds) {
+        List<DutyScheduleEmployee> employees = new ArrayList<>();
+        for (int i = 0; i < employeeIds.size(); i++) {
+            DutyScheduleEmployee item = new DutyScheduleEmployee();
+            item.setScheduleId(scheduleId);
+            item.setEmployeeId(employeeIds.get(i));
+            item.setIsLeader(leaderIds != null && leaderIds.contains(employeeIds.get(i)) ? 1 : 0);
+            item.setSortOrder(i);
+            employees.add(item);
+        }
+        
+        scheduleEmployeeService.deleteByScheduleId(scheduleId);
+        return scheduleEmployeeService.saveBatch(employees);
+    }
+
+    @Override
+    public Page<DutySchedule> getScheduleList(Integer pageNum, Integer pageSize, String keyword, String sortField, String sortOrder) {
+        // 创建分页对象
+        Page<DutySchedule> pagination = new Page<>(pageNum, pageSize);
+        
+        // 构建查询条件
+        LambdaQueryWrapper<DutySchedule> queryWrapper = new LambdaQueryWrapper<>();
+        
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.and(wrapper -> 
+                wrapper.like(DutySchedule::getScheduleName, keyword)
+                       .or().like(DutySchedule::getDescription, keyword)
+            );
+        }
+        
+        // 动态排序
+        if (sortField != null && !sortField.isEmpty()) {
+            boolean isAsc = "ascending".equals(sortOrder);
+            switch (sortField) {
+                case "scheduleName":
+                    queryWrapper.orderBy(true, isAsc, DutySchedule::getScheduleName);
+                    break;
+                case "startDate":
+                    queryWrapper.orderBy(true, isAsc, DutySchedule::getStartDate);
+                    break;
+                case "endDate":
+                    queryWrapper.orderBy(true, isAsc, DutySchedule::getEndDate);
+                    break;
+                case "status":
+                    queryWrapper.orderBy(true, isAsc, DutySchedule::getStatus);
+                    break;
+                case "sortOrder":
+                    queryWrapper.orderBy(true, isAsc, DutySchedule::getSortOrder);
+                    break;
+                default:
+                    queryWrapper.orderByAsc(DutySchedule::getSortOrder);
+                    break;
+            }
+        } else {
+            // 默认按排序字段排序
+            queryWrapper.orderByAsc(DutySchedule::getSortOrder);
+        }
+        
+        // 执行分页查询
+        return baseMapper.selectPage(pagination, queryWrapper);
+    }
+
+    @Override
+    public List<DutySchedule> getAllSchedules() {
+        // 构建查询条件
+        LambdaQueryWrapper<DutySchedule> queryWrapper = new LambdaQueryWrapper<>();
+        
+        // 按ID升序排序
+        queryWrapper.orderByAsc(DutySchedule::getId);
+        
+        // 执行查询
+        return baseMapper.selectList(queryWrapper);
+    }
+}

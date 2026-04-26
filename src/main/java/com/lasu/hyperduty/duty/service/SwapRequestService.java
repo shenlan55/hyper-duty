@@ -1,0 +1,55 @@
+package com.lasu.hyperduty.duty.service;
+
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.lasu.hyperduty.duty.entity.SwapRequest;
+import com.lasu.hyperduty.duty.service.SwapRequestService;
+import java.util.List;
+
+
+
+
+
+
+
+
+public interface SwapRequestService extends IService<SwapRequest> {
+
+    String generateRequestNo();
+
+    SwapRequest submitSwapRequest(SwapRequest swapRequest);
+
+    boolean approveSwapRequest(Long requestId, Long approverId, String approvalStatus, String opinion);
+
+    boolean confirmSwapRequest(Long requestId, Long employeeId, String confirmStatus);
+
+    List<SwapRequest> getPendingApprovals(Long approverId);
+
+    List<SwapRequest> getMySwapRequests(Long employeeId);
+
+    /**
+     * 分页获取我的调班申请
+     * @param employeeId 员工ID
+     * @param page 页码
+     * @param size 每页大小
+     * @param approvalStatus 审批状态（可选）
+     * @param scheduleId 值班表ID（可选）
+     * @param startDate 开始日期（可选）
+     * @param endDate 结束日期（可选）
+     * @param searchQuery 搜索关键词（可选）
+     * @return 分页结果
+     */
+    IPage<SwapRequest> getMySwapRequestsPage(Long employeeId, Integer page, Integer size, String approvalStatus, Long scheduleId, String startDate, String endDate, String searchQuery);
+
+    /**
+     * 分页获取待审批调班申请
+     * @param approverId 审批人ID
+     * @param page 页码
+     * @param size 每页大小
+     * @param startDate 开始日期（可选）
+     * @param endDate 结束日期（可选）
+     * @return 分页结果
+     */
+    IPage<SwapRequest> getPendingApprovalsPage(Long approverId, Integer page, Integer size, String startDate, String endDate);
+}
