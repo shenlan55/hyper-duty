@@ -30,18 +30,22 @@ const isJWTExpired = (token) => {
 // 创建axios实例
 const request = axios.create({
   baseURL: '/api', // 后端API基础URL，使用/api前缀，通过Vite代理转发
-  timeout: 10000 // 请求超时时间
+  timeout: 30000, // 请求超时时间增加到30秒
+  headers: {
+    'Content-Type': 'application/json'
+  }
 })
 
 // 创建用于刷新令牌的axios实例（不使用拦截器，避免循环调用）
 const refreshRequest = axios.create({
   baseURL: '/api',
-  timeout: 5000
+  timeout: 10000
 })
 
 // 加载状态管理
 let loadingInstance = null
 let loadingCount = 0
+let loadingTimer = null // 防止loading长时间卡住的定时器
 
 // 显示加载状态
 const showLoading = () => {
@@ -51,6 +55,13 @@ const showLoading = () => {
       text: '加载中...',
       background: 'rgba(0, 0, 0, 0.7)'
     })
+    // 设置超时自动关闭loading，防止页面卡死
+    loadingTimer = setTimeout(() => {
+      if (loadingInstance) {
+        hideLoading()
+        console.warn('Loading超时自动关闭')
+      }
+    }, 30000) // 30秒超时
   }
   loadingCount++
 }
@@ -62,7 +73,25 @@ const hideLoading = () => {
     if (loadingCount === 0 && loadingInstance) {
       loadingInstance.close()
       loadingInstance = null
+      // 清除定时器
+      if (loadingTimer) {
+        clearTimeout(loadingTimer)
+        loadingTimer = null
+      }
     }
+  }
+}
+
+// 强制关闭所有loading
+const forceHideLoading = () => {
+  loadingCount = 0
+  if (loadingInstance) {
+    loadingInstance.close()
+    loadingInstance = null
+  }
+  if (loadingTimer) {
+    clearTimeout(loadingTimer)
+    loadingTimer = null
   }
 }
 
@@ -189,6 +218,8 @@ request.interceptors.response.use(
             localStorage.removeItem('employeeId')
             localStorage.removeItem('employeeName')
             ElMessage.error('登录已过期，请重新登录')
+            // 确保loading被清除
+            forceHideLoading()
             window.location.href = '/login'
             return Promise.reject(refreshError)
           }
@@ -204,6 +235,12 @@ request.interceptors.response.use(
           // 服务器内部错误
           ElMessage.error('服务器内部错误，请稍后重试')
           break
+        case 502:
+        case 503:
+        case 504:
+          // 网关错误、服务不可用、网关超时
+          ElMessage.error('服务暂时不可用，请稍后重试')
+          break
         default:
           // 其他错误
           ElMessage.error(`请求失败：${error.response.status}`)
@@ -211,7 +248,11 @@ request.interceptors.response.use(
       }
     } else if (error.request) {
       // 请求已发送但没有收到响应
-      ElMessage.error('网络错误，请检查网络连接')
+      if (error.code === 'ECONNABORTED') {
+        ElMessage.error('请求超时，请稍后重试')
+      } else {
+        ElMessage.error('网络错误，请检查网络连接')
+      }
     } else {
       // 请求配置错误
       ElMessage.error('请求配置错误')
@@ -222,4 +263,4 @@ request.interceptors.response.use(
 
 // 导出request实例和工具函数
 export default request
-export { decodeJWT, isJWTExpired }
+export { decodeJWT, isJWTExpired, forceHideLoading }

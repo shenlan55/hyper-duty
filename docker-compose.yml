@@ -12,7 +12,8 @@ services:
       - TZ=Asia/Shanghai
       - LANG=C.UTF-8
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - hyper-duty-network
     logging:
@@ -20,6 +21,13 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   backend:
     build:
@@ -47,15 +55,24 @@ services:
       - FRONTEND_URL=http://frontend:80
       - TZ=Asia/Shanghai
       - LANG=C.UTF-8
+      - JAVA_OPTS=-Xms512m -Xmx1024m -XX:+UseG1GC
     networks:
       - hyper-duty-network
     depends_on:
-      - kkfileview
+      kkfileview:
+        condition: service_started
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "5"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/auth/login-page"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   kkfileview:
     image: keking/kkfileview:4.4.0
@@ -78,7 +95,11 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+    restart: unless-stopped
 
 networks:
   hyper-duty-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

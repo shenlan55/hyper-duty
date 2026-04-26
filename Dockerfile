@@ -16,8 +16,8 @@ RUN mvn clean package -DskipTests
 # 第二阶段：使用Java基础镜像运行后端服务
 FROM eclipse-temurin:17-jre-alpine
 
-# 安装时区数据和设置时区
-RUN apk add --no-cache tzdata && \
+# 安装时区数据、curl和设置时区
+RUN apk add --no-cache tzdata curl && \
     ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo "Asia/Shanghai" > /etc/timezone
 
