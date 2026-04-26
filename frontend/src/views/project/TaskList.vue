@@ -636,9 +636,22 @@ const loadData = async () => {
     const data = await getTaskPage(params)
     const tasks = data.records || []
     
-    // 为每个任务计算权限状态
+    // 为每个任务处理数据和计算权限状态
     if (userStore.employeeId) {
       for (const task of tasks) {
+        // 处理附件数据，避免直接显示原始JSON
+        if (task.attachments && typeof task.attachments === 'string') {
+          // 不解析，只是确保不会被错误显示
+          task._attachments = task.attachments
+          delete task.attachments
+        }
+        
+        // 处理干系人数据
+        if (task.stakeholders && typeof task.stakeholders === 'string') {
+          task._stakeholders = task.stakeholders
+          delete task.stakeholders
+        }
+        
         try {
           task.hasPermission = await hasTaskPermission(task.id, userStore.employeeId)
           task.hasDeletePermission = await hasTaskDeletePermission(task.id, userStore.employeeId)
@@ -651,6 +664,16 @@ const loadData = async () => {
     } else {
       // 如果没有employeeId，设置所有任务都没有权限
       for (const task of tasks) {
+        // 同样处理附件和干系人数据
+        if (task.attachments && typeof task.attachments === 'string') {
+          task._attachments = task.attachments
+          delete task.attachments
+        }
+        if (task.stakeholders && typeof task.stakeholders === 'string') {
+          task._stakeholders = task.stakeholders
+          delete task.stakeholders
+        }
+        
         task.hasPermission = false
         task.hasDeletePermission = false
       }
@@ -795,33 +818,39 @@ const handleEdit = async (row) => {
   originalTaskStatus = row.status
   originalTaskProgress = row.progress || 0
   
-  // 确保attachments是数组类型
-  if (row.attachments) {
-    if (typeof row.attachments === 'string') {
+  // 确保attachments是数组类型（优先使用备份字段）
+  const attachmentsSource = row._attachments || row.attachments
+  if (attachmentsSource) {
+    if (typeof attachmentsSource === 'string') {
       try {
-        form.attachments = JSON.parse(row.attachments)
+        form.attachments = JSON.parse(attachmentsSource)
       } catch (error) {
         console.error('解析附件数据失败', error)
         form.attachments = []
       }
-    } else if (!Array.isArray(row.attachments)) {
+    } else if (!Array.isArray(attachmentsSource)) {
       form.attachments = []
+    } else {
+      form.attachments = attachmentsSource
     }
   } else {
     form.attachments = []
   }
   
-  // 确保stakeholders是数组类型
-  if (row.stakeholders) {
-    if (typeof row.stakeholders === 'string') {
+  // 确保stakeholders是数组类型（优先使用备份字段）
+  const stakeholdersSource = row._stakeholders || row.stakeholders
+  if (stakeholdersSource) {
+    if (typeof stakeholdersSource === 'string') {
       try {
-        form.stakeholders = JSON.parse(row.stakeholders)
+        form.stakeholders = JSON.parse(stakeholdersSource)
       } catch (error) {
         console.error('解析干系人数据失败', error)
         form.stakeholders = []
       }
-    } else if (!Array.isArray(row.stakeholders)) {
+    } else if (!Array.isArray(stakeholdersSource)) {
       form.stakeholders = []
+    } else {
+      form.stakeholders = stakeholdersSource
     }
   } else {
     form.stakeholders = []
@@ -901,42 +930,48 @@ const handleUpdateProgress = async (row) => {
   } catch (error) {
     console.error('加载任务详情失败', error)
     // 如果API调用失败，使用表格中的行数据作为备用
-    currentTaskForUpdate.value = row
+    currentTaskForUpdate.value = { ...row }
     // 处理备用数据中的附件和干系人
-    if (row.attachments) {
-      if (typeof row.attachments === 'string') {
+    const attachmentsSource = row._attachments || row.attachments
+    if (attachmentsSource) {
+      if (typeof attachmentsSource === 'string') {
         try {
-          row.attachments = JSON.parse(row.attachments)
+          currentTaskForUpdate.value.attachments = JSON.parse(attachmentsSource)
         } catch (error) {
           console.error('解析附件数据失败', error)
-          row.attachments = []
+          currentTaskForUpdate.value.attachments = []
         }
-      } else if (!Array.isArray(row.attachments)) {
-        row.attachments = []
+      } else if (!Array.isArray(attachmentsSource)) {
+        currentTaskForUpdate.value.attachments = []
+      } else {
+        currentTaskForUpdate.value.attachments = attachmentsSource
       }
     } else {
-      row.attachments = []
+      currentTaskForUpdate.value.attachments = []
     }
     
-    if (row.stakeholders) {
-      if (typeof row.stakeholders === 'string') {
+    const stakeholdersSource = row._stakeholders || row.stakeholders
+    if (stakeholdersSource) {
+      if (typeof stakeholdersSource === 'string') {
         try {
-          row.stakeholders = JSON.parse(row.stakeholders)
+          currentTaskForUpdate.value.stakeholders = JSON.parse(stakeholdersSource)
         } catch (error) {
           console.error('解析干系人数据失败', error)
-          row.stakeholders = []
+          currentTaskForUpdate.value.stakeholders = []
         }
-      } else if (!Array.isArray(row.stakeholders)) {
-        row.stakeholders = []
+      } else if (!Array.isArray(stakeholdersSource)) {
+        currentTaskForUpdate.value.stakeholders = []
+      } else {
+        currentTaskForUpdate.value.stakeholders = stakeholdersSource
       }
     } else {
-      row.stakeholders = []
+      currentTaskForUpdate.value.stakeholders = []
     }
     
     // 将干系人ID转换为名称
-    if (row.stakeholders && Array.isArray(row.stakeholders)) {
-      row.stakeholders = row.stakeholders.map(stakeholderId => {
-        const employee = employeeList.value.find(emp => emp.id === stakeholderId)
+    if (currentTaskForUpdate.value.stakeholders && Array.isArray(currentTaskForUpdate.value.stakeholders)) {
+      currentTaskForUpdate.value.stakeholders = currentTaskForUpdate.value.stakeholders.map(stakeholderId => {
+        const employee = employeeList.value.find(emp => String(emp.id) === String(stakeholderId))
         return employee ? employee.employeeName : stakeholderId
       })
     }
@@ -1002,42 +1037,48 @@ const handleViewTaskDetail = async (row) => {
     console.error('加载任务详情失败', error)
     ElMessage.error('加载任务详情失败')
     // 如果API调用失败，使用表格中的行数据作为备用
-    currentTaskForDetail.value = row
+    currentTaskForDetail.value = { ...row }
     // 处理备用数据中的附件和干系人
-    if (row.attachments) {
-      if (typeof row.attachments === 'string') {
+    const attachmentsSource = row._attachments || row.attachments
+    if (attachmentsSource) {
+      if (typeof attachmentsSource === 'string') {
         try {
-          row.attachments = JSON.parse(row.attachments)
+          currentTaskForDetail.value.attachments = JSON.parse(attachmentsSource)
         } catch (error) {
           console.error('解析附件数据失败', error)
-          row.attachments = []
+          currentTaskForDetail.value.attachments = []
         }
-      } else if (!Array.isArray(row.attachments)) {
-        row.attachments = []
+      } else if (!Array.isArray(attachmentsSource)) {
+        currentTaskForDetail.value.attachments = []
+      } else {
+        currentTaskForDetail.value.attachments = attachmentsSource
       }
     } else {
-      row.attachments = []
+      currentTaskForDetail.value.attachments = []
     }
     
-    if (row.stakeholders) {
-      if (typeof row.stakeholders === 'string') {
+    const stakeholdersSource = row._stakeholders || row.stakeholders
+    if (stakeholdersSource) {
+      if (typeof stakeholdersSource === 'string') {
         try {
-          row.stakeholders = JSON.parse(row.stakeholders)
+          currentTaskForDetail.value.stakeholders = JSON.parse(stakeholdersSource)
         } catch (error) {
           console.error('解析干系人数据失败', error)
-          row.stakeholders = []
+          currentTaskForDetail.value.stakeholders = []
         }
-      } else if (!Array.isArray(row.stakeholders)) {
-        row.stakeholders = []
+      } else if (!Array.isArray(stakeholdersSource)) {
+        currentTaskForDetail.value.stakeholders = []
+      } else {
+        currentTaskForDetail.value.stakeholders = stakeholdersSource
       }
     } else {
-      row.stakeholders = []
+      currentTaskForDetail.value.stakeholders = []
     }
     
     // 将干系人ID转换为名称
-    if (row.stakeholders && Array.isArray(row.stakeholders)) {
-      row.stakeholders = row.stakeholders.map(stakeholderId => {
-        const employee = employeeList.value.find(emp => emp.id === stakeholderId)
+    if (currentTaskForDetail.value.stakeholders && Array.isArray(currentTaskForDetail.value.stakeholders)) {
+      currentTaskForDetail.value.stakeholders = currentTaskForDetail.value.stakeholders.map(stakeholderId => {
+        const employee = employeeList.value.find(emp => String(emp.id) === String(stakeholderId))
         return employee ? employee.employeeName : stakeholderId
       })
     }

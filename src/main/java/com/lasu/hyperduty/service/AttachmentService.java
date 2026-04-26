@@ -38,6 +38,7 @@ public class AttachmentService {
             );
 
             boolean needUpdate = false;
+            int updatedCount = 0;
             for (Map<String, Object> attachment : attachments) {
                 String filePath = (String) attachment.get("filePath");
                 String name = (String) attachment.get("name");
@@ -49,15 +50,16 @@ public class AttachmentService {
                     String previewUrl = generatePreviewUrl(filePath, name);
                     attachment.put("previewUrl", previewUrl);
                     needUpdate = true;
-                    log.info("为附件 {} 重新生成previewUrl: {}", name, previewUrl);
+                    updatedCount++;
                 }
             }
 
             if (needUpdate) {
                 task.setAttachments(objectMapper.writeValueAsString(attachments));
+                log.debug("为任务 {} 的 {} 个附件重新生成了previewUrl", task.getId(), updatedCount);
             }
         } catch (Exception e) {
-            log.error("处理附件previewUrl失败: {}", e.getMessage(), e);
+            log.error("处理附件previewUrl失败: {}", e.getMessage());
         }
 
         return task;
@@ -120,6 +122,7 @@ public class AttachmentService {
             );
 
             boolean needUpdate = false;
+            int updatedCount = 0;
             for (Map<String, Object> attachment : attachments) {
                 // 进度更新的附件用url字段，需要从中提取filePath
                 String url = (String) attachment.get("url");
@@ -134,15 +137,16 @@ public class AttachmentService {
                     String previewUrl = generatePreviewUrl(filePath, name);
                     attachment.put("previewUrl", previewUrl);
                     needUpdate = true;
-                    log.info("为进度更新附件 {} 重新生成previewUrl: {}", name, previewUrl);
+                    updatedCount++;
                 }
             }
 
             if (needUpdate) {
                 update.setAttachments(objectMapper.writeValueAsString(attachments));
+                log.debug("为进度更新 {} 的 {} 个附件重新生成了previewUrl", update.getId(), updatedCount);
             }
         } catch (Exception e) {
-            log.error("处理进度更新附件previewUrl失败: {}", e.getMessage(), e);
+            log.error("处理进度更新附件previewUrl失败: {}", e.getMessage());
         }
 
         return update;
