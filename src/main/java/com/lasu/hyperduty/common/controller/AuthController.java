@@ -50,6 +50,14 @@ public class AuthController {
     @Autowired
     private SysMailConfigService mailConfigService;
 
+    /**
+     * 健康检查接口 - 用于Docker健康检查
+     */
+    @GetMapping("/health")
+    public ResponseResult<String> health() {
+        return ResponseResult.success("OK");
+    }
+
     @PostMapping("/login")
     @RateLimit(window = 60, max = 10, message = "登录尝试过于频繁，请60秒后再试")
     public ResponseResult<Map<String, Object>> login(@Validated @RequestBody LoginDTO loginDTO) {
