@@ -53,6 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.excludePaths.add("/auth/login");
         this.excludePaths.add("/auth/logout");
         this.excludePaths.add("/auth/refresh-token");
+        this.excludePaths.add("/auth/health");
         this.excludePaths.add("/mail-config/current");
         this.excludePaths.add("/mail-config/send-code");
         this.excludePaths.add("/doc.html");
