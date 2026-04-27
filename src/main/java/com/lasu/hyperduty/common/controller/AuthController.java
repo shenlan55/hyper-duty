@@ -11,7 +11,9 @@ import com.lasu.hyperduty.common.utils.JwtUtil;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -50,6 +52,9 @@ public class AuthController {
     @Autowired
     private SysMailConfigService mailConfigService;
 
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
     /**
      * 健康检查接口 - 用于Docker健康检查
      */
@@ -58,8 +63,21 @@ public class AuthController {
         return ResponseResult.success("OK");
     }
 
+    /**
+     * 清除所有限流key - 临时接口
+     */
+    @DeleteMapping("/clear-rate-limit")
+    public ResponseResult<String> clearRateLimit() {
+        Set<String> keys = redisTemplate.keys("rate_limit:*");
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+            return ResponseResult.success("已清除 " + keys.size() + " 个限流key");
+        }
+        return ResponseResult.success("没有需要清除的限流key");
+    }
+
     @PostMapping("/login")
-    @RateLimit(window = 60, max = 10, message = "登录尝试过于频繁，请60秒后再试")
+    @RateLimit(window = 60, max = 30, message = "登录尝试过于频繁，请60秒后再试")
     public ResponseResult<Map<String, Object>> login(@Validated @RequestBody LoginDTO loginDTO) {
         // 检查是否需要验证码验证
         SysMailConfig mailConfig = mailConfigService.getActiveConfig();

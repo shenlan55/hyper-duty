@@ -170,7 +170,8 @@ const handleSendCode = async () => {
     startCountdown()
     ElMessage.success('验证码已发送')
   } catch (error) {
-    ElMessage.error(error.message || '发送验证码失败')
+    // 错误提示已在request.js中统一处理，这里不再重复显示
+    console.error('发送验证码失败:', error)
   } finally {
     loading.value = false
   }

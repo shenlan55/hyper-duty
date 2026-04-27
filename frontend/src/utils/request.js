@@ -193,7 +193,7 @@ request.interceptors.response.use(
           ]
           
           if (noAuthUrls.some(noAuthUrl => url.includes(noAuthUrl))) {
-            // 对于不需要认证的接口，直接返回错误
+            // 对于不需要认证的接口，直接返回错误，不显示通用错误提示
             const data = error.response.data
             if (data && data.message) {
               ElMessage.error(data.message)

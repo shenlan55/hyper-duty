@@ -13,7 +13,7 @@ services:
       - LANG=C.UTF-8
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     networks:
       - hyper-duty-network
     logging:
@@ -61,12 +61,6 @@ services:
         max-size: "10m"
         max-file: "5"
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/auth/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
 
   kkfileview:
     image: keking/kkfileview:4.4.0

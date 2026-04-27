@@ -57,12 +57,16 @@ public class RateLimitAspect {
         RateLimit rateLimit = method.getAnnotation(RateLimit.class);
         
         // 构建限流key
-        String key = buildRateLimitKey(rateLimit, request);
+        String key = buildRateLimitKey(rateLimit, method, request);
         
         // 检查是否超过限流
-        if (isOverLimit(key, rateLimit)) {
+        Long currentCount = getCurrentCount(key);
+        if (currentCount >= rateLimit.max()) {
             return ResponseResult.error(rateLimit.message());
         }
+        
+        // 只有没超过限流时才增加计数器
+        incrementCount(key, rateLimit.window());
         
         // 执行目标方法
         return joinPoint.proceed();
@@ -71,8 +75,12 @@ public class RateLimitAspect {
     /**
      * 构建限流key
      */
-    private String buildRateLimitKey(RateLimit rateLimit, HttpServletRequest request) {
+    private String buildRateLimitKey(RateLimit rateLimit, Method method, HttpServletRequest request) {
         StringBuilder key = new StringBuilder(rateLimit.prefix());
+        
+        // 添加方法名（类名.方法名）
+        key.append("_").append(method.getDeclaringClass().getSimpleName());
+        key.append("_").append(method.getName());
         
         // 添加IP
         if (rateLimit.byIp()) {
@@ -109,18 +117,23 @@ public class RateLimitAspect {
     }
 
     /**
-     * 检查是否超过限流
+     * 获取当前计数
      */
-    private boolean isOverLimit(String key, RateLimit rateLimit) {
-        // 自增计数器
-        Long count = redisTemplate.opsForValue().increment(key);
-        
-        // 如果是第一次请求，设置过期时间
-        if (count == 1) {
-            redisTemplate.expire(key, rateLimit.window(), TimeUnit.SECONDS);
+    private Long getCurrentCount(String key) {
+        Object count = redisTemplate.opsForValue().get(key);
+        if (count == null) {
+            return 0L;
         }
-        
-        // 检查是否超过最大请求数
-        return count > rateLimit.max();
+        return Long.parseLong(count.toString());
+    }
+
+    /**
+     * 增加计数
+     */
+    private void incrementCount(String key, int windowSeconds) {
+        Long count = redisTemplate.opsForValue().increment(key);
+        if (count == 1) {
+            redisTemplate.expire(key, windowSeconds, TimeUnit.SECONDS);
+        }
     }
 }

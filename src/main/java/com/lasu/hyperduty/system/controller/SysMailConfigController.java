@@ -67,7 +67,7 @@ public class SysMailConfigController {
      * 发送登录验证码
      */
     @PostMapping("/send-code")
-    @RateLimit(window = 60, max = 3, message = "验证码发送过于频繁，请60秒后再试")
+    @RateLimit(window = 60, max = 10, message = "验证码发送过于频繁，请60秒后再试")
     public ResponseResult<Map<String, Object>> sendVerificationCode(@RequestBody Map<String, String> request) {
         String username = request.get("username");
 
