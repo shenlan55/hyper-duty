@@ -101,6 +101,7 @@ import { useUserStore } from '../stores/user'
 import { login } from '../api/auth'
 import { sendVerificationCode, getCurrentMailConfig } from '../api/mailConfig'
 import { ElMessage } from 'element-plus'
+import { startAutoRefresh } from '../utils/request'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -229,6 +230,10 @@ const doLogin = async (code) => {
     if (countdownTimer) {
       clearInterval(countdownTimer)
     }
+    
+    // 启动自动token刷新
+    startAutoRefresh()
+    
     router.push('/')
   } catch (error) {
     console.error('登录失败:', error)

@@ -3,15 +3,15 @@ package com.lasu.hyperduty.common.utils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import java.security.*;
-import java.util.concurrent.TimeUnit;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+
+import java.security.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 
 
@@ -26,7 +26,7 @@ public class JwtUtil {
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
     private final long accessTokenExpirationTime = 3600000; // 1小时
-    private final long refreshTokenExpirationTime = 604800000; // 7天
+    private final long refreshTokenExpirationTime = 86400000; // 1天
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;

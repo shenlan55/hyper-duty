@@ -261,6 +261,57 @@ request.interceptors.response.use(
   }
 )
 
+// 自动刷新token的定时器
+let refreshTimer = null
+
+// 启动自动token刷新
+const startAutoRefresh = () => {
+  // 清除现有定时器
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+  }
+  
+  // 每5分钟检查一次token状态
+  refreshTimer = setInterval(async () => {
+    const token = localStorage.getItem('token')
+    const refreshToken = localStorage.getItem('refreshToken')
+    
+    // 如果没有token，停止刷新
+    if (!token || !refreshToken) {
+      clearInterval(refreshTimer)
+      return
+    }
+    
+    // 检查token是否即将过期（剩余时间小于15分钟）
+    const decoded = decodeJWT(token)
+    if (decoded && decoded.exp) {
+      const currentTime = Math.floor(Date.now() / 1000)
+      const timeUntilExpiration = decoded.exp - currentTime
+      
+      // 如果token将在15分钟内过期，自动刷新
+      if (timeUntilExpiration < 15 * 60) {
+        try {
+          console.log('Token即将过期，自动刷新中...')
+          await refreshToken()
+          console.log('Token自动刷新成功')
+        } catch (error) {
+          console.error('Token自动刷新失败:', error)
+          // 刷新失败，清除定时器
+          clearInterval(refreshTimer)
+        }
+      }
+    }
+  }, 5 * 60 * 1000) // 每5分钟检查一次
+}
+
+// 停止自动刷新
+const stopAutoRefresh = () => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
 // 导出request实例和工具函数
 export default request
-export { decodeJWT, isJWTExpired, forceHideLoading }
+export { decodeJWT, isJWTExpired, forceHideLoading, startAutoRefresh, stopAutoRefresh }

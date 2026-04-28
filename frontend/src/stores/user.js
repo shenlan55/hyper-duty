@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { stopAutoRefresh } from '../utils/request'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -25,6 +26,9 @@ export const useUserStore = defineStore('user', {
       localStorage.setItem('employeeName', userInfo.employeeName || '')
     },
     logout() {
+      // 停止自动token刷新
+      stopAutoRefresh()
+      
       this.username = ''
       this.token = ''
       this.refreshToken = ''
