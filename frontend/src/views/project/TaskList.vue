@@ -432,6 +432,7 @@ const handleProgressUpdateSubmit = async (updateData) => {
         name: file.name,
         url: file.url || '',
         previewUrl: file.previewUrl || '',
+        filePath: file.filePath || '',
         type: file.type,
         size: file.size
       }))

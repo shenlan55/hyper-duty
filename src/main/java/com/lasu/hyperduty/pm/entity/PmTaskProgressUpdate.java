@@ -48,6 +48,7 @@ public class PmTaskProgressUpdate {
         private String name;
         private String url;
         private String previewUrl;
+        private String filePath;
         private String type;
         private Long size;
     }
