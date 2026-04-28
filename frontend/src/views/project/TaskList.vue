@@ -515,12 +515,22 @@ const getColumnLabel = (tableId, columnKey) => {
 // 解除绑定
 const handleUnbind = async (bindingId) => {
   try {
+    // 添加参数验证
+    if (!bindingId || bindingId === undefined) {
+      ElMessage.error('绑定ID无效')
+      return
+    }
+    if (!currentTask.value || !currentTask.value.id) {
+      ElMessage.error('任务信息无效')
+      return
+    }
+    
     await ElMessageBox.confirm('确认解除此绑定？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    await unbindCustomRow(bindingId)
+    await unbindCustomRow(currentTask.value.id, bindingId)
     ElMessage.success('解除绑定成功')
     await loadBindings(currentTask.value.id)
   } catch (error) {
