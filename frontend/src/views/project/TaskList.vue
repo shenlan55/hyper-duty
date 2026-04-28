@@ -277,15 +277,13 @@ const loadData = async () => {
     const data = await getTaskPage(params)
     const tasks = data.records || []
     
-    // 处理附件和干系人数据
+    // 处理附件和干系人数据（不删除原始字段）
     for (const task of tasks) {
       if (task.attachments && typeof task.attachments === 'string') {
         task._attachments = task.attachments
-        delete task.attachments
       }
       if (task.stakeholders && typeof task.stakeholders === 'string') {
         task._stakeholders = task.stakeholders
-        delete task.stakeholders
       }
     }
     
@@ -399,7 +397,13 @@ const handleEdit = async (row) => {
     return
   }
   isEditMode.value = true
-  currentEditTask.value = { ...row }
+  try {
+    const data = await getTaskDetail(row.id)
+    currentEditTask.value = data || { ...row }
+  } catch (error) {
+    console.error('获取任务详情失败', error)
+    currentEditTask.value = { ...row }
+  }
   loadTaskTree(row.projectId, row.id)
   editDialogVisible.value = true
 }
@@ -462,8 +466,15 @@ const handleProgressUpdateSubmit = async (updateData) => {
 
 // 查看任务详情
 const handleViewTaskDetail = async (row) => {
-  currentTaskForDetail.value = { ...row }
-  taskDetailDialogVisible.value = true
+  try {
+    const data = await getTaskDetail(row.id)
+    currentTaskForDetail.value = data || { ...row }
+    taskDetailDialogVisible.value = true
+  } catch (error) {
+    console.error('获取任务详情失败', error)
+    currentTaskForDetail.value = { ...row }
+    taskDetailDialogVisible.value = true
+  }
 }
 
 // 加载进度更新

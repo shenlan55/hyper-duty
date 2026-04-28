@@ -37,14 +37,14 @@
     <!-- 附件列表 -->
     <div class="task-attachments" style="margin-bottom: 20px;">
       <h4 style="margin-bottom: 10px;">附件</h4>
-      <AttachmentList :attachments="task?.attachments || []" />
+      <AttachmentList :attachments="processedTask?.attachments || []" />
     </div>
 
     <!-- 参与人列表 -->
     <div class="task-stakeholders" style="margin-bottom: 20px;">
       <h4 style="margin-bottom: 10px;">参与人</h4>
-      <div v-if="task?.stakeholders && task.stakeholders.length > 0" class="stakeholders-container">
-        <el-tag v-for="(stakeholder, index) in task.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
+      <div v-if="processedTask?.stakeholders && processedTask.stakeholders.length > 0" class="stakeholders-container">
+        <el-tag v-for="(stakeholder, index) in processedTask.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
           {{ stakeholder }}
         </el-tag>
       </div>
@@ -128,6 +128,60 @@ const emit = defineEmits(['close'])
 const progressUpdates = ref([])
 const taskBindings = ref([])
 
+// 处理后的任务数据
+const processedTask = computed(() => {
+  if (!props.task) {
+    return null
+  }
+  
+  const task = { ...props.task }
+  
+  // 处理附件数据
+  if (task.attachments) {
+    if (typeof task.attachments === 'string') {
+      try {
+        task.attachments = JSON.parse(task.attachments)
+      } catch (error) {
+        console.error('解析附件数据失败', error)
+        task.attachments = []
+      }
+    } else if (!Array.isArray(task.attachments)) {
+      task.attachments = []
+    }
+  } else {
+    task.attachments = []
+  }
+  
+  // 处理参与人数据
+  if (task.stakeholders) {
+    if (typeof task.stakeholders === 'string') {
+      try {
+        task.stakeholders = JSON.parse(task.stakeholders)
+      } catch (error) {
+        console.error('解析参与人数据失败', error)
+        task.stakeholders = []
+      }
+    } else if (!Array.isArray(task.stakeholders)) {
+      task.stakeholders = []
+    }
+  } else {
+    task.stakeholders = []
+  }
+  
+  // 转换参与人ID为名称
+  if (task.stakeholders && Array.isArray(task.stakeholders)) {
+    task.stakeholders = task.stakeholders.map(stakeholderId => {
+      const employee = employeeList.value.find(emp => {
+        // 考虑ID类型不匹配的情况，进行类型转换后比较
+        return String(emp.id) === String(stakeholderId)
+      })
+      return employee ? employee.employeeName : stakeholderId
+    })
+  }
+  
+  return task
+})
+
 // 加载进度更新
 const loadProgressUpdates = async (taskId) => {
   try {
@@ -159,46 +213,6 @@ watch(
     if (newTask?.id) {
       loadProgressUpdates(newTask.id)
       loadTaskBindings(newTask.id)
-      // 处理附件数据
-      if (newTask.attachments) {
-        if (typeof newTask.attachments === 'string') {
-          try {
-            newTask.attachments = JSON.parse(newTask.attachments)
-          } catch (error) {
-            console.error('解析附件数据失败', error)
-            newTask.attachments = []
-          }
-        } else if (!Array.isArray(newTask.attachments)) {
-          newTask.attachments = []
-        }
-      } else {
-        newTask.attachments = []
-      }
-      // 处理参与人数据
-      if (newTask.stakeholders) {
-        if (typeof newTask.stakeholders === 'string') {
-          try {
-            newTask.stakeholders = JSON.parse(newTask.stakeholders)
-          } catch (error) {
-            console.error('解析参与人数据失败', error)
-            newTask.stakeholders = []
-          }
-        } else if (!Array.isArray(newTask.stakeholders)) {
-          newTask.stakeholders = []
-        }
-      } else {
-        newTask.stakeholders = []
-      }
-      // 转换参与人ID为名称
-      if (newTask.stakeholders && Array.isArray(newTask.stakeholders)) {
-        newTask.stakeholders = newTask.stakeholders.map(stakeholderId => {
-          const employee = employeeList.value.find(emp => {
-            // 考虑ID类型不匹配的情况，进行类型转换后比较
-            return String(emp.id) === String(stakeholderId)
-          })
-          return employee ? employee.employeeName : stakeholderId
-        })
-      }
     }
   },
   { immediate: true }

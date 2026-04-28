@@ -32,13 +32,13 @@
 
     <div class="task-attachments" style="margin-bottom: 20px;">
       <h4 style="margin-bottom: 10px;">附件</h4>
-      <AttachmentList :attachments="currentTask?.attachments || []" />
+      <AttachmentList :attachments="processedTask?.attachments || []" />
     </div>
 
     <div class="task-stakeholders" style="margin-bottom: 20px;">
       <h4 style="margin-bottom: 10px;">干系人</h4>
-      <div v-if="currentTask?.stakeholders && currentTask.stakeholders.length > 0" class="stakeholders-container">
-        <el-tag v-for="(stakeholder, index) in currentTask.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
+      <div v-if="processedTask?.stakeholders && processedTask.stakeholders.length > 0" class="stakeholders-container">
+        <el-tag v-for="(stakeholder, index) in processedTask.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
           {{ stakeholder }}
         </el-tag>
       </div>
@@ -126,6 +126,49 @@ const dialogVisible = computed({
 })
 
 const currentTask = ref(null)
+
+// 处理后的任务数据
+const processedTask = computed(() => {
+  if (!currentTask.value) {
+    return null
+  }
+  
+  const task = { ...currentTask.value }
+  
+  // 处理附件数据
+  if (task.attachments) {
+    if (typeof task.attachments === 'string') {
+      try {
+        task.attachments = JSON.parse(task.attachments)
+      } catch (error) {
+        console.error('解析附件数据失败', error)
+        task.attachments = []
+      }
+    } else if (!Array.isArray(task.attachments)) {
+      task.attachments = []
+    }
+  } else {
+    task.attachments = []
+  }
+  
+  // 处理干系人数据
+  if (task.stakeholders) {
+    if (typeof task.stakeholders === 'string') {
+      try {
+        task.stakeholders = JSON.parse(task.stakeholders)
+      } catch (error) {
+        console.error('解析干系人数据失败', error)
+        task.stakeholders = []
+      }
+    } else if (!Array.isArray(task.stakeholders)) {
+      task.stakeholders = []
+    }
+  } else {
+    task.stakeholders = []
+  }
+  
+  return task
+})
 
 const progressUpdateForm = reactive({
   taskId: null,
