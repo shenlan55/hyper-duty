@@ -16,16 +16,17 @@
       </template>
 
       <div class="team-container">
-        <el-tabs type="border-card">
+        <el-tabs type="border-card" v-model="activeTab" @tab-change="handleTabChange">
           <el-tab-pane 
             v-for="member in teamMembers" 
             :key="member.id"
+            :name="String(member.id)"
             :label="`${member.employeeName} (${getMemberTaskCount(member.id)})`"
           >
             <BaseTable
               :data="getMemberTasks(member.id)"
               :columns="columns"
-              :loading="loading"
+              :loading="getMemberLoading(member.id)"
               :show-pagination="false"
             >
               <template #progress="{ row }">
@@ -144,7 +145,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
@@ -159,13 +160,12 @@ import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
 import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime, sortTasks } from '@/utils/taskUtils'
 
-const loading = ref(false)
 const selectedProject = ref(null)
 const currentProject = ref(null)
 const projectList = ref([])
 const teamMembers = ref([])
 const employeeList = ref([])
-const tasks = ref([])
+const activeTab = ref(null)
 const taskDialogVisible = ref(false)
 const selectedTask = ref(null)
 const userStore = useUserStore()
@@ -178,6 +178,13 @@ const progressUpdateForm = reactive({
   attachments: []
 })
 const progressUpdates = ref([])
+
+// 按用户ID分别存储任务数据
+const memberTasks = reactive({})
+// 按用户ID分别存储加载状态
+const memberLoading = reactive({})
+// 记录已加载过的用户ID
+const loadedMemberIds = ref(new Set())
 
 const columns = [
         { prop: 'taskName', label: '任务名称', minWidth: 200 },
@@ -263,21 +270,28 @@ const loadTeamMembers = async () => {
   }
 }
 
-const loadTasks = async () => {
-  loading.value = true
+const loadMemberTasks = async (memberId) => {
+  // 如果已经加载过，不重复请求
+  if (loadedMemberIds.value.has(memberId)) {
+    return
+  }
+
+  memberLoading[memberId] = true
   try {
     const params = {
       pageNum: 1,
       pageSize: 1000,
-      projectId: selectedProject.value
+      projectId: selectedProject.value,
+      assigneeId: memberId
     }
     const data = await getTaskPage(params)
-    tasks.value = data.records || []
+    memberTasks[memberId] = data.records || []
+    loadedMemberIds.value.add(memberId)
   } catch (error) {
-    console.error('加载任务列表失败', error)
-    ElMessage.error('加载任务失败')
+    console.error(`加载用户 ${memberId} 的任务失败`, error)
+    memberTasks[memberId] = []
   } finally {
-    loading.value = false
+    memberLoading[memberId] = false
   }
 }
 
@@ -292,17 +306,58 @@ const handleProjectChange = async () => {
   } else {
     currentProject.value = null
   }
+  
   await loadTeamMembers()
-  loadTasks()
+  
+  // 清除之前的数据缓存
+  Object.keys(memberTasks).forEach(key => {
+    delete memberTasks[key]
+  })
+  Object.keys(memberLoading).forEach(key => {
+    delete memberLoading[key]
+  })
+  loadedMemberIds.value.clear()
+  
+  // 找到当前用户在团队成员中的位置
+  const currentUserId = userStore.employeeId
+  let targetMember = null
+  
+  if (currentUserId) {
+    targetMember = teamMembers.value.find(member => member.id === currentUserId)
+  }
+  
+  // 如果当前用户在团队中，默认加载当前用户的数据；否则加载第一个用户
+  if (targetMember) {
+    activeTab.value = String(targetMember.id)
+    await loadMemberTasks(targetMember.id)
+  } else if (teamMembers.value.length > 0) {
+    activeTab.value = String(teamMembers.value[0].id)
+    await loadMemberTasks(teamMembers.value[0].id)
+  }
+}
+
+const handleTabChange = async (tabName) => {
+  const memberId = Number(tabName)
+  if (memberId && !loadedMemberIds.value.has(memberId)) {
+    await loadMemberTasks(memberId)
+  }
 }
 
 const getMemberTasks = (memberId) => {
-  const memberTasks = tasks.value.filter(task => task.assigneeId === memberId || task.ownerId === memberId)
-  return sortTasks(memberTasks)
+  const tasks = memberTasks[memberId] || []
+  // 同时包括负责人和参与人的任务
+  const allMemberTasks = tasks.filter(task => 
+    task.assigneeId === memberId || task.ownerId === memberId
+  )
+  return sortTasks(allMemberTasks)
 }
 
 const getMemberTaskCount = (memberId) => {
   return getMemberTasks(memberId).length
+}
+
+const getMemberLoading = (memberId) => {
+  return memberLoading[memberId] || false
 }
 
 
@@ -420,9 +475,14 @@ const handleSubmitProgressUpdate = async () => {
     await createProgressUpdate(updateData)
     ElMessage.success('更新任务进展成功')
     
-    // 重新加载数据
+    // 重新加载当前用户的数据
     progressUpdateDialogVisible.value = false
-    loadTasks()
+    if (activeTab.value) {
+      const memberId = Number(activeTab.value)
+      // 清除该用户的缓存并重新加载
+      loadedMemberIds.value.delete(memberId)
+      await loadMemberTasks(memberId)
+    }
   } catch (error) {
     console.error('更新任务进展失败', error)
     ElMessage.error('更新任务进展失败')
@@ -460,10 +520,26 @@ const handleAttachmentDownload = (attachment) => {
   }
 }
 
-onMounted(() => {
-  loadProjectList()
-  loadTeamMembers()
-  loadTasks()
+onMounted(async () => {
+  await loadProjectList()
+  await loadTeamMembers()
+  
+  // 找到当前用户在团队成员中的位置
+  const currentUserId = userStore.employeeId
+  let targetMember = null
+  
+  if (currentUserId) {
+    targetMember = teamMembers.value.find(member => member.id === currentUserId)
+  }
+  
+  // 如果当前用户在团队中，默认加载当前用户的数据；否则加载第一个用户
+  if (targetMember) {
+    activeTab.value = String(targetMember.id)
+    await loadMemberTasks(targetMember.id)
+  } else if (teamMembers.value.length > 0) {
+    activeTab.value = String(teamMembers.value[0].id)
+    await loadMemberTasks(teamMembers.value[0].id)
+  }
 })
 </script>
 
