@@ -78,6 +78,8 @@ const handleReset = () => {
 
 const handleProjectChange = (value) => {
   emit('projectChange', value)
+  // 项目选择变化时直接触发搜索
+  emit('search')
 }
 </script>
 

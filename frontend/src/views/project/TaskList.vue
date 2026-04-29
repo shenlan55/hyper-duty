@@ -14,6 +14,7 @@
         :project-list="projectList"
         @search="handleSearch"
         @reset="handleReset"
+        @project-change="handleProjectChange"
       />
 
       <BaseTable
@@ -107,6 +108,7 @@
       :project-list="projectList"
       :task-tree-data="taskTreeData"
       :employee-list="employeeList"
+      :default-project-id="searchForm.projectId"
       @submit="handleTaskSubmit"
     />
 
@@ -365,6 +367,14 @@ const handleReset = () => {
   searchForm.status = null
   searchForm.priority = null
   handleSearch()
+}
+
+// 处理项目选择变化
+const handleProjectChange = (projectId) => {
+  // 当项目变化时，更新任务树数据
+  if (projectId) {
+    loadTaskTree(projectId)
+  }
 }
 
 // 分页事件

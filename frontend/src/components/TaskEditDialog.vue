@@ -182,6 +182,10 @@ const props = defineProps({
   employeeList: {
     type: Array,
     default: () => []
+  },
+  defaultProjectId: {
+    type: Number,
+    default: null
   }
 })
 
@@ -264,6 +268,14 @@ watch(() => form.status, (newStatus) => {
 watch(() => form.progress, (newProgress) => {
   const newStatus = getStatusByProgress(newProgress)
   form.status = newStatus
+})
+
+// 监听对话框显示，当打开时重新初始化表单以确保使用最新的defaultProjectId
+watch(() => dialogVisible.value, (newVal) => {
+  if (newVal && !props.isEdit) {
+    // 当打开新建任务对话框时，重新调用resetForm确保使用最新的defaultProjectId
+    resetForm()
+  }
 })
 
 const initForm = (data) => {
@@ -398,7 +410,12 @@ const handleClose = () => {
 const resetForm = () => {
   formRef.value?.resetFields()
   form.id = null
-  form.projectId = null
+  // 如果是新建模式，使用默认项目ID
+  if (!props.isEdit && props.defaultProjectId) {
+    form.projectId = props.defaultProjectId
+  } else {
+    form.projectId = null
+  }
   form.parentId = 0
   form.parentIdPath = null
   form.taskName = ''
