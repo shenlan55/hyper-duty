@@ -512,6 +512,15 @@ const loadBindings = async (taskId) => {
       ...binding,
       rowData: binding.rowData ? JSON.parse(binding.rowData) : {}
     }))
+    
+    // 加载所有相关表格的列配置
+    const tableIds = [...new Set(taskBindings.value.map(b => b.tableId))]
+    for (const tableId of tableIds) {
+      const columns = await getCustomTableColumns(tableId)
+      for (const column of columns) {
+        tableColumnMap.value.set(`${tableId}_${column.columnCode}`, column.columnName)
+      }
+    }
   } catch (error) {
     console.error('加载绑定数据失败', error)
   }

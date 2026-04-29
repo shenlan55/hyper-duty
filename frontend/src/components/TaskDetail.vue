@@ -51,30 +51,7 @@
       <div v-else class="no-data">暂无参与人</div>
     </div>
 
-    <!-- 绑定数据 -->
-    <div class="task-bindings" style="margin-bottom: 20px;">
-      <h4 style="margin-bottom: 10px;">绑定数据</h4>
-      <div v-if="taskBindings.length > 0" class="bindings-list">
-        <el-card v-for="binding in taskBindings" :key="binding.id" class="binding-item">
-          <div class="binding-info">
-            <span class="binding-table-name">{{ binding.tableName }}</span>
-            <span class="binding-time">{{ formatDateTime(binding.createTime) }}</span>
-          </div>
-          <div class="binding-data">
-            <el-descriptions :column="2" border size="small">
-              <el-descriptions-item 
-                v-for="(value, key) in binding.rowData" 
-                :key="key" 
-                :label="key"
-              >
-                {{ value }}
-              </el-descriptions-item>
-            </el-descriptions>
-          </div>
-        </el-card>
-      </div>
-      <div v-else class="no-data">暂无绑定数据</div>
-    </div>
+
 
     <!-- 进展历史时间线 -->
     <div style="margin-top: 30px;">
@@ -90,7 +67,6 @@ import { ElMessage } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
 import { getTaskProgressUpdates } from '@/api/task'
 import { getEmployeeList } from '@/api/employee'
-import { getTaskBindings } from '@/api/customTable'
 import { getTaskStatusText, getTaskPriorityText, formatDateTime } from '@/utils/taskUtils'
 import ProgressHistory from '@/components/ProgressHistory.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
@@ -126,7 +102,6 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const progressUpdates = ref([])
-const taskBindings = ref([])
 
 // 处理后的任务数据
 const processedTask = computed(() => {
@@ -192,27 +167,12 @@ const loadProgressUpdates = async (taskId) => {
   }
 }
 
-// 加载绑定数据
-const loadTaskBindings = async (taskId) => {
-  try {
-    const data = await getTaskBindings(taskId)
-    taskBindings.value = (data || []).map(binding => ({
-      ...binding,
-      rowData: binding.rowData ? JSON.parse(binding.rowData) : {}
-    }))
-  } catch (error) {
-    console.error('加载绑定数据失败', error)
-    taskBindings.value = []
-  }
-}
-
-// 监听任务变化，加载进度更新和绑定数据
+// 监听任务变化，加载进度更新
 watch(
   () => props.task,
   (newTask) => {
     if (newTask?.id) {
       loadProgressUpdates(newTask.id)
-      loadTaskBindings(newTask.id)
     }
   },
   { immediate: true }
