@@ -1,17 +1,17 @@
 ---
-name: "code-refactorer"
-description: "按照最佳实践重构Hyper Duty系统代码。优化后端（统一异常处理、DTO/VO、API版本控制）和前端（组件拆分、常量管理）。提供详细的操作步骤和完整的代码示例。"
+name: "hyper-duty-refactorer"
+description: "按照最佳实践重构 Hyper Duty 系统代码。优化后端（统一异常处理、DTO/VO、API 版本控制）和前端（组件拆分、常量管理）。提供详细的操作步骤和完整的代码示例。"
 ---
 
-# 代码重构专家
+# Hyper Duty 代码重构专家
 
-这个Skill专门用于按照架构最佳实践重构Hyper Duty系统代码，涵盖后端和前端。它提供了详细的操作指导和完整的代码示例。
+这个技能专门用于按照架构最佳实践重构 Hyper Duty 系统代码，涵盖后端和前端。它提供了详细的操作指导和完整的代码示例。
 
 ## 核心职责
 
-- **后端重构**：实现统一异常处理、DTO/VO模式、API版本控制
+- **后端重构**：实现统一异常处理、DTO/VO 模式、API 版本控制
 - **前端重构**：将大组件拆分为小的可复用组件、管理常量
-- **性能优化**：优化API调用、避免N+1问题、使用缓存
+- **性能优化**：优化 API 调用、避免 N+1 问题、使用缓存
 - **代码质量**：提高可维护性、可读性、遵循项目规范
 
 ## 项目现状评估
@@ -75,7 +75,7 @@ public class GlobalExceptionHandler {
 }
 ```
 
-#### 2️⃣ DTO/VO设计（任务模块已实现，可参考）
+#### 2️⃣ DTO/VO 设计（任务模块已实现，可参考）
 
 **DTO 示例结构**：
 ```java
@@ -132,7 +132,7 @@ private {Entity}VO convertToVO({Entity} entity, Long currentEmployeeId) {
 }
 ```
 
-#### 3️⃣ API版本控制（任务模块已实现）
+#### 3️⃣ API 版本控制（任务模块已实现）
 
 ```java
 // src/main/java/com/lasu/hyperduty/controller/v1/{Module}V1Controller.java
@@ -203,8 +203,8 @@ export const {MODULE}_PRIORITY_MAP = {
 
 - **单一职责**：每个组件只做一件事
 - **可复用**：提取公共逻辑到独立组件
-- **Propx Down, Events Up**：使用 props 传递数据，emits 传递事件
-- **500行原则**：超过500行的组件考虑拆分
+- **Props Down, Events Up**：使用 props 传递数据，emits 传递事件
+- **500行原则**：超过 500 行的组件考虑拆分
 
 **搜索表单组件示例**（TaskSearchForm.vue 已实现）：
 ```vue
@@ -359,7 +359,7 @@ public class DutyScheduleV1Controller {
 
     @GetMapping("/page")
     public ResponseResult<Page<DutyScheduleVO>> pageList(@Valid DutyScheduleQueryDTO query) {
-        Long currentEmployeeId = null; // 从Security上下文获取
+        Long currentEmployeeId = null; // 从 Security 上下文获取
         Page<DutyScheduleVO> page = dutyScheduleService.pageListWithPermission(query, currentEmployeeId);
         return ResponseResult.success(page);
     }
@@ -415,7 +415,7 @@ private DutyScheduleVO convertToVO(DutySchedule entity, Long currentEmployeeId) 
     DutyScheduleVO vo = new DutyScheduleVO();
     BeanUtils.copyProperties(entity, vo);
     
-    // 关联查询员工姓名和班次名称（避免N+1）
+    // 关联查询员工姓名和班次名称（避免 N+1）
     // ... 填充关联数据
     
     // 计算权限
@@ -439,16 +439,16 @@ private DutyScheduleVO convertToVO(DutySchedule entity, Long currentEmployeeId) 
 ```
 frontend/src/
 ├── constants/
-│   └── duty.js                          # 值班模块常量
+│   └── duty.js                     # 值班模块常量
 ├── components/
 │   ├── duty/
-│   │   ├── DutyScheduleSearchForm.vue   # 搜索表单
-│   │   ├── DutyScheduleEditDialog.vue   # 编辑对话框
-│   │   └── DutyScheduleDetailDialog.vue # 详情对话框
+│   │   ├── DutyScheduleSearchForm.vue      # 搜索表单
+│   │   ├── DutyScheduleEditDialog.vue      # 编辑对话框
+│   │   └── DutyScheduleDetailDialog.vue    # 详情对话框
 │   └── ...
 └── views/
     └── duty/
-        └── DutyScheduleList.vue         # 简化后的主列表
+        └── DutyScheduleList.vue            # 简化后的主列表
 ```
 
 **主组件简化示例**：
@@ -465,8 +465,8 @@ frontend/src/
 
       <!-- 使用提取的搜索表单组件 -->
       <DutyScheduleSearchForm
-        :search-form="searchForm"
-        :schedule-list="scheduleList"
+        :searchForm="searchForm"
+        :scheduleList="scheduleList"
         @search="handleSearch"
         @reset="handleReset"
       />
@@ -491,13 +491,13 @@ frontend/src/
     <!-- 使用提取的对话框组件 -->
     <DutyScheduleEditDialog
       v-model="editDialogVisible"
-      :edit-data="currentEditData"
+      :editData="currentEditData"
       @success="handleEditSuccess"
     />
 
     <DutyScheduleDetailDialog
       v-model="detailDialogVisible"
-      :detail-data="currentDetailData"
+      :detailData="currentDetailData"
     />
   </div>
 </template>
@@ -657,16 +657,16 @@ src/main/java/com/lasu/hyperduty/
 │   └── GlobalExceptionHandler.java     # 全局异常处理器（已实现）
 ├── dto/
 │   └── {module}/
-│       ├── {Entity}QueryDTO.java       # 查询DTO
-│       ├── {Entity}VO.java             # 视图VO（含权限）
-│       ├── {Entity}CreateDTO.java      # 创建DTO
-│       └── {Entity}UpdateDTO.java      # 更新DTO
+│       ├── {Entity}QueryDTO.java       # 查询 DTO
+│       ├── {Entity}VO.java             # 视图 VO（含权限）
+│       ├── {Entity}CreateDTO.java      # 创建 DTO
+│       └── {Entity}UpdateDTO.java      # 更新 DTO
 ├── controller/v1/
-│   └── {Module}V1Controller.java       # V1版本API
+│   └── {Module}V1Controller.java       # V1 版本 API
 └── service/
     ├── {Module}Service.java
     └── impl/
-        └── {Module}ServiceImpl.java    # 服务实现（含convertToVO）
+        └── {Module}ServiceImpl.java    # 服务实现（含 convertToVO）
 ```
 
 ### 前端文件结构
@@ -687,11 +687,11 @@ frontend/src/
 
 ## 开发规范
 
-1. **API响应处理**：遵循项目的响应拦截器模式，直接使用 `data.data`
-2. **参数校验**：DTO上使用 `jakarta.validation` 注解
+1. **API 响应处理**：遵循项目的响应拦截器模式，直接使用 `data.data`
+2. **参数校验**：DTO 上使用 `jakarta.validation` 注解
 3. **缓存管理**：遵循项目缓存规范（参考 `project_rules.md`）
-4. **组件设计**：遵循Vue 3 Composition API最佳实践
-5. **XSS防护**：用户输入使用 `xssUtil` 处理
+4. **组件设计**：遵循 Vue 3 Composition API 最佳实践
+5. **XSS 防护**：用户输入使用 `xssUtil` 处理
 6. **表格组件**：使用 `BaseTable` 组件统一表格样式
 7. **虚拟列表**：长列表使用 `VirtualList` 组件
 8. **分页实现**：遵循 `project_rules.md` 中的分页规范
@@ -710,7 +710,7 @@ frontend/src/
 
 始终参考 `.trae/rules/project_rules.md`：
 - 技术栈约束
-- API调用模式
+- API 调用模式
 - 缓存管理规范
 - 代码风格约定
 - 分页实现规范
