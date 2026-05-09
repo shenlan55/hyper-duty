@@ -43,7 +43,7 @@
           <span>
             <el-icon v-if="row.isPinned === 1" style="color: #f56c6c; margin-right: 4px;"><Star /></el-icon>
             <el-icon v-if="row.isFocus === 1" style="color: #e6a23c; margin-right: 4px;"><TrendCharts /></el-icon>
-            {{ row.taskName }}
+            <span :style="row.isPinned === 1 ? 'color: #f56c6c; font-weight: bold;' : ''">{{ row.taskName }}</span>
             <el-tag v-if="row.isFocus === 1" size="small" type="warning" style="margin-left: 8px;">重点</el-tag>
             <el-tag v-if="row.hasChildren" size="small" type="info" style="margin-left: 8px;">
               {{ row.children ? row.children.length : 0 }}个子任务
