@@ -201,12 +201,29 @@ const handleDeptClick = (node) => {
   isFullSearch.value = false
 }
 
-// 处理人员选择变化
+// 处理人员选择变化 - 单选才移动，全选不移动
 const handleEmployeeSelectionChange = (rows) => {
-  selectedEmployeeRows.value = rows
+  // 只有单个选择时才自动移动到右侧
+  if (rows.length === 1 && selectedEmployeeRows.value.length === 0) {
+    const emp = rows[0]
+    // 添加到已选列表
+    if (!selectedEmployees.value.some(selected => selected.id === emp.id)) {
+      selectedEmployees.value.push(emp)
+    }
+    
+    // 从左侧列表移除
+    employeeList.value = employeeList.value.filter(e => e.id !== emp.id)
+    
+    // 触发事件
+    emit('update:modelValue', selectedEmployees.value)
+    emit('change', selectedEmployees.value)
+  } else {
+    // 多选或全选时，只记录选择状态，配合按钮使用
+    selectedEmployeeRows.value = rows
+  }
 }
 
-// 处理已选人员选择变化
+// 处理已选人员选择变化 - 仅记录选择状态，配合按钮使用
 const handleSelectedSelectionChange = (rows) => {
   selectedSelectedRows.value = rows
 }

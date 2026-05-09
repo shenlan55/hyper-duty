@@ -3,6 +3,7 @@ package com.lasu.hyperduty.pm.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.common.dto.WorkloadDTO;
+import com.lasu.hyperduty.pm.dto.BatchTaskCreateDTO;
 import com.lasu.hyperduty.pm.dto.TaskCreateDTO;
 import com.lasu.hyperduty.pm.dto.TaskQueryDTO;
 import com.lasu.hyperduty.pm.dto.TaskUpdateDTO;
@@ -114,6 +115,15 @@ public class PmTaskController {
     public ResponseResult<PmTask> createTask(@Valid @RequestBody TaskCreateDTO dto) {
         PmTask created = pmTaskService.createTask(dto);
         return ResponseResult.success(created);
+    }
+
+    /**
+     * 批量创建任务
+     */
+    @PostMapping("/batch")
+    public ResponseResult<List<PmTask>> batchCreateTasks(@Valid @RequestBody BatchTaskCreateDTO dto) {
+        List<PmTask> createdTasks = pmTaskService.batchCreateTasks(dto);
+        return ResponseResult.success(createdTasks);
     }
 
     /**

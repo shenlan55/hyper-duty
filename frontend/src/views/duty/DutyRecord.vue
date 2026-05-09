@@ -415,92 +415,105 @@
           />
         </el-form-item>
 
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="值班状态" prop="dutyStatus">
-              <el-select
-                v-model="createForm.dutyStatus"
-                placeholder="请选择值班状态"
-                style="width: 100%"
-              >
-                <el-option label="未签到" :value="0" />
-                <el-option label="已签到" :value="1" />
-                <el-option label="已签退" :value="2" />
-                <el-option label="请假" :value="3" />
-              </el-select>
+        <!-- 编辑和审批模式下显示这些字段 -->
+        <template v-if="dialogMode !== 'create'">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="值班状态" prop="dutyStatus">
+                <el-select
+                  v-model="createForm.dutyStatus"
+                  placeholder="请选择值班状态"
+                  style="width: 100%"
+                >
+                  <el-option label="未签到" :value="0" />
+                  <el-option label="已签到" :value="1" />
+                  <el-option label="已签退" :value="2" />
+                  <el-option label="请假" :value="3" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="审批状态" prop="approvalStatus">
+                <el-select
+                  v-model="createForm.approvalStatus"
+                  placeholder="请选择审批状态"
+                  style="width: 100%"
+                  :disabled="!isDutyManager"
+                >
+                  <el-option label="待审批" value="待审批" />
+                  <el-option label="已批准" value="已批准" />
+                  <el-option label="已拒绝" value="已拒绝" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <!-- 编辑模式下显示备注字段，审批模式下不显示 -->
+          <template v-if="dialogMode !== 'approval'">
+            <el-form-item label="签到备注" prop="checkInRemark">
+              <el-input
+                v-model="createForm.checkInRemark"
+                placeholder="请输入签到备注"
+                type="textarea"
+                :rows="3"
+              />
             </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="审批状态" prop="approvalStatus">
-              <el-select
-                v-model="createForm.approvalStatus"
-                placeholder="请选择审批状态"
-                style="width: 100%"
-                :disabled="!isDutyManager"
-              >
-                <el-option label="待审批" value="待审批" />
-                <el-option label="已批准" value="已批准" />
-                <el-option label="已拒绝" value="已拒绝" />
-              </el-select>
+            <el-form-item label="签退备注" prop="checkOutRemark">
+              <el-input
+                v-model="createForm.checkOutRemark"
+                placeholder="请输入签退备注"
+                type="textarea"
+                :rows="3"
+              />
             </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="签到备注" prop="checkInRemark">
-          <el-input
-            v-model="createForm.checkInRemark"
-            placeholder="请输入签到备注"
-            type="textarea"
-            :rows="3"
-          />
-        </el-form-item>
-        <el-form-item label="签退备注" prop="checkOutRemark">
-          <el-input
-            v-model="createForm.checkOutRemark"
-            placeholder="请输入签退备注"
-            type="textarea"
-            :rows="3"
-          />
-        </el-form-item>
-        <el-form-item label="加班时长（小时）" prop="overtimeHours">
-          <el-input-number
-            v-model="createForm.overtimeHours"
-            :min="0"
-            :max="24"
-            :step="0.5"
-            placeholder="请输入加班时长"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item v-if="createForm.dutyStatus === 3" label="替补人员" prop="substituteEmployeeId">
-          <el-radio-group v-model="substituteType" @change="handleSubstituteTypeChange">
-            <el-radio :value="1">自动匹配</el-radio>
-            <el-radio :value="2">手动选择</el-radio>
-          </el-radio-group>
-          <el-select
-            v-model="createForm.substituteEmployeeId"
-            placeholder="请选择替补人员"
-            style="width: 100%; margin-top: 10px"
-            filterable
-            remote
-            :remote-method="remoteSearchEmployee"
-            :loading="employeeLoading"
-          >
-            <el-option
-              v-for="employee in employeeList"
-              :key="employee.id"
-              :label="employee.employeeName"
-              :value="employee.id"
+          </template>
+          
+          <el-form-item label="加班时长（小时）" prop="overtimeHours">
+            <el-input-number
+              v-model="createForm.overtimeHours"
+              :min="0"
+              :max="24"
+              :step="0.5"
+              placeholder="请输入加班时长"
+              style="width: 100%"
             />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="管理员备注" prop="managerRemark">
-          <el-input
-            v-model="createForm.managerRemark"
-            placeholder="请输入管理员备注"
-            type="textarea"
-            :rows="3"
-          />
-        </el-form-item>
+          </el-form-item>
+          
+          <el-form-item v-if="createForm.dutyStatus === 3" label="替补人员" prop="substituteEmployeeId">
+            <el-radio-group v-model="substituteType" @change="handleSubstituteTypeChange">
+              <el-radio :value="1">自动匹配</el-radio>
+              <el-radio :value="2">手动选择</el-radio>
+            </el-radio-group>
+            <el-select
+              v-model="createForm.substituteEmployeeId"
+              placeholder="请选择替补人员"
+              style="width: 100%; margin-top: 10px"
+              filterable
+              remote
+              :remote-method="remoteSearchEmployee"
+              :loading="employeeLoading"
+            >
+              <el-option
+                v-for="employee in employeeList"
+                :key="employee.id"
+                :label="employee.employeeName"
+                :value="employee.id"
+              />
+            </el-select>
+          </el-form-item>
+          
+          <!-- 编辑模式下显示管理员备注，审批模式下不显示 -->
+          <template v-if="dialogMode !== 'approval'">
+            <el-form-item label="管理员备注" prop="managerRemark">
+              <el-input
+                v-model="createForm.managerRemark"
+                placeholder="请输入管理员备注"
+                type="textarea"
+                :rows="3"
+              />
+            </el-form-item>
+          </template>
+        </template>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -1162,6 +1175,20 @@ const openEditDialog = async (record) => {
     return
   }
   
+  // 检查是否是审批模式（值班长且在审批标签页）
+  if (isDutyManager.value && activeTab.value === 'approval') {
+    dialogMode.value = 'approval'
+    // 审批模式下设置默认值
+    if (!record.dutyStatus || record.dutyStatus === 0) {
+      createForm.dutyStatus = 2 // 已签到
+    }
+    if (!record.approvalStatus || record.approvalStatus === '待审批') {
+      createForm.approvalStatus = '已批准'
+    }
+  } else {
+    dialogMode.value = 'edit'
+  }
+  
   currentRecord.value = record
   Object.assign(createForm, record)
   substituteType.value = record.substituteType || 1
@@ -1402,12 +1429,19 @@ const handleDelete = async (id) => {
   }
 }
 
+// 跟踪当前对话框模式：'create'(新建) | 'edit'(编辑) | 'approval'(审批)
+const dialogMode = ref('create')
+
 // 打开新建值班记录对话框
 const openCreateDialog = () => {
   createForm.scheduleId = null
   createForm.dutyDate = null
   createForm.dutyShift = null
   createForm.remark = ''
+  createForm.id = null  // 确保是新建模式
+  
+  // 设置为新建模式
+  dialogMode.value = 'create'
   
   createDialogVisible.value = true
 }

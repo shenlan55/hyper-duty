@@ -76,6 +76,14 @@ export function createTask(data) {
   })
 }
 
+export function batchCreateTasks(data) {
+  return request({
+    url: '/pm/task/batch',
+    method: 'post',
+    data
+  })
+}
+
 export function updateTask(data) {
   return request({
     url: '/pm/task',
@@ -167,6 +175,8 @@ export function createProgressUpdate(data) {
     data
   })
 }
+
+
 
 export function getTaskProgressUpdates(taskId) {
   return request({

@@ -112,3 +112,24 @@
   - 后端逻辑应基于实际数据库结构和数据进行分析，避免想当然的代码编写
   - 开发前应通过SQL查询验证数据结构和关系，确保代码与数据库实际情况匹配
   - 涉及复杂数据库操作时，应先编写和测试SQL语句，再集成到代码中
+
+- **技能自动调用规范**：
+  - **核心原则**：当收到用户请求时，必须首先分析请求的语境，选择最适合的技能进行调用
+  - **值班管理模块任务**：当用户提及"排班"、"请假"、"调班"、"值班统计"、"节假日"等关键词时，优先调用 `duty-module-developer` 技能
+  - **项目管理模块任务**：当用户提及"项目"、"任务"、"批量新建任务"、"批量更新进度"、"甘特图"、"任务统计"等关键词时，优先调用 `project-module-developer` 技能
+  - **全栈开发任务**：当用户需要同时修改前端和后端、或没有明确模块指定时，优先调用 `hyper-duty-fullstack` 技能
+  - **代码重构任务**：当用户提及"重构"、"优化代码结构"、"拆分组件"、"DTO/VO"、"API版本控制"等关键词时，优先调用 `hyper-duty-refactorer` 技能
+  - **前端设计任务**：当用户需要设计新界面、优化UI/UX时，调用 `frontend-design` 或 `ui-ux-pro-max` 技能
+  - **代码审查任务**：当用户需要审查代码时，调用 `code-review` 或 `frontend-code-review` 技能
+  - **创意/设计任务**：在开始任何创新性工作前，先调用 `brainstorming` 技能
+  - **SRE项目报告任务**：当用户需要生成SRE项目日报或周报时，分别调用 `SRE_Project_Dimension_Report` 或 `SRE_Project_Weekly_Report` 技能
+  - **技能创建/查找任务**：当用户需要创建新技能或查找现有技能时，调用 `skill-creator` 或 `find-skills` 技能
+  - **交互设计任务**：当用户需要优化微交互、动效设计时，调用 `interaction-design` 技能
+  - **技能调用优先级**：
+    1. 模块专属技能（duty-module-developer、project-module-developer）
+    2. 重构技能（hyper-duty-refactorer）
+    3. 全栈开发技能（hyper-duty-fullstack）
+    4. 通用技能（frontend-design、code-review、brainstorming等）
+  - **调用前验证**：在调用技能前，确认技能确实与用户需求匹配
+  - **多技能组合**：对于复杂任务，可以组合调用多个技能，但需确保调用顺序合理
+  - **技能使用反馈**：每次使用技能后，评估其效果并在必要时调整调用策略

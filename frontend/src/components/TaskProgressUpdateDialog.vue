@@ -12,6 +12,8 @@
             <el-descriptions-item label="任务名称">{{ currentTask?.taskName }}</el-descriptions-item>
             <el-descriptions-item label="所属项目">{{ currentTask?.projectName }}</el-descriptions-item>
             <el-descriptions-item label="负责人">{{ currentTask?.ownerName }}</el-descriptions-item>
+            <el-descriptions-item label="开始日期">{{ currentTask?.startDate }}</el-descriptions-item>
+            <el-descriptions-item label="结束日期">{{ currentTask?.endDate }}</el-descriptions-item>
           </el-descriptions>
         </el-col>
         <el-col :span="12">
@@ -19,6 +21,10 @@
             <el-descriptions-item label="优先级">{{ getTaskPriorityText(currentTask?.priority) }}</el-descriptions-item>
             <el-descriptions-item label="状态">{{ getTaskStatusText(currentTask?.status) }}</el-descriptions-item>
             <el-descriptions-item label="当前进度">{{ currentTask?.progress }}%</el-descriptions-item>
+            <el-descriptions-item label="是否重点">
+              <el-tag v-if="currentTask?.isFocus === 1" type="warning">是</el-tag>
+              <el-tag v-else type="info">否</el-tag>
+            </el-descriptions-item>
           </el-descriptions>
         </el-col>
       </el-row>
@@ -36,13 +42,13 @@
     </div>
 
     <div class="task-stakeholders" style="margin-bottom: 20px;">
-      <h4 style="margin-bottom: 10px;">干系人</h4>
+      <h4 style="margin-bottom: 10px;">参与人</h4>
       <div v-if="processedTask?.stakeholders && processedTask.stakeholders.length > 0" class="stakeholders-container">
         <el-tag v-for="(stakeholder, index) in processedTask.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
           {{ stakeholder }}
         </el-tag>
       </div>
-      <div v-else class="no-data">暂无干系人</div>
+      <div v-else class="no-data">暂无参与人</div>
     </div>
 
     <el-form label-width="100px">
@@ -96,9 +102,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getTaskStatusText, getTaskPriorityText, formatDateTime } from '@/utils/taskUtils'
+import { getEmployeeList } from '@/api/employee'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
@@ -126,6 +133,22 @@ const dialogVisible = computed({
 })
 
 const currentTask = ref(null)
+const employeeList = ref([])
+
+// 加载员工列表
+const loadEmployeeList = async () => {
+  try {
+    const data = await getEmployeeList(1, 1000)
+    employeeList.value = data?.records || []
+  } catch (error) {
+    console.error('加载员工列表失败', error)
+  }
+}
+
+// 组件挂载时加载员工列表
+onMounted(() => {
+  loadEmployeeList()
+})
 
 // 处理后的任务数据
 const processedTask = computed(() => {
@@ -151,13 +174,13 @@ const processedTask = computed(() => {
     task.attachments = []
   }
   
-  // 处理干系人数据
+  // 处理参与人数据
   if (task.stakeholders) {
     if (typeof task.stakeholders === 'string') {
       try {
         task.stakeholders = JSON.parse(task.stakeholders)
       } catch (error) {
-        console.error('解析干系人数据失败', error)
+        console.error('解析参与人数据失败', error)
         task.stakeholders = []
       }
     } else if (!Array.isArray(task.stakeholders)) {
@@ -165,6 +188,17 @@ const processedTask = computed(() => {
     }
   } else {
     task.stakeholders = []
+  }
+  
+  // 转换参与人ID为名称
+  if (task.stakeholders && Array.isArray(task.stakeholders)) {
+    task.stakeholders = task.stakeholders.map(stakeholderId => {
+      const employee = employeeList.value.find(emp => {
+        // 考虑ID类型不匹配的情况，进行类型转换后比较
+        return String(emp.id) === String(stakeholderId)
+      })
+      return employee ? employee.employeeName : stakeholderId
+    })
   }
   
   return task
@@ -205,3 +239,64 @@ const handleUploadError = (error) => {
   ElMessage.error('文件上传失败')
 }
 </script>
+
+<style scoped>
+/* 干系人容器样式 */
+.stakeholders-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+}
+
+/* 暂无数据样式 */
+.no-data {
+  padding: 10px;
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+}
+
+/* 任务描述样式 */
+.description-content {
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+}
+
+.update-content {
+  width: 100%;
+}
+
+.update-header {
+  width: 100%;
+}
+
+.update-description {
+  width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.update-description img {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+.update-description table {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+</style>

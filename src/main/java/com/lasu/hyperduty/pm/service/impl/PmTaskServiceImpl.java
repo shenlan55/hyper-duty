@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lasu.hyperduty.common.dto.WorkloadDTO;
 import com.lasu.hyperduty.common.service.AttachmentService;
+import com.lasu.hyperduty.pm.dto.BatchTaskCreateDTO;
 import com.lasu.hyperduty.pm.dto.TaskCreateDTO;
 import com.lasu.hyperduty.pm.dto.TaskQueryDTO;
 import com.lasu.hyperduty.pm.dto.TaskUpdateDTO;
@@ -374,12 +375,14 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             }
         }
         
-        // 生成任务编码
+        // 生成任务编码 - 只有未设置时才生成
         if (task.getTaskCode() == null || task.getTaskCode().isEmpty()) {
             PmProject project = projectMapper.selectById(task.getProjectId());
             String projectCode = project != null && project.getProjectCode() != null ? project.getProjectCode() : "TASK";
             String timestamp = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-            task.setTaskCode(projectCode + "-" + timestamp);
+            // 使用纳秒确保单任务创建时也唯一
+            String nano = String.valueOf(System.nanoTime() % 1000000);
+            task.setTaskCode(projectCode + "-" + timestamp + "-" + nano);
         }
         
         // 如果前端没有传 createBy，从 SecurityContext 中获取当前用户
@@ -978,6 +981,44 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
         PmTask task = new PmTask();
         BeanUtils.copyProperties(dto, task);
         return createTask(task);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<PmTask> batchCreateTasks(BatchTaskCreateDTO dto) {
+        List<PmTask> createdTasks = new ArrayList<>();
+        
+        if (dto.getTasks().isEmpty()) {
+            throw new RuntimeException("任务列表不能为空");
+        }
+        
+        // 从第一个任务中获取项目ID
+        Long projectId = dto.getTasks().get(0).getProjectId();
+        if (projectId == null) {
+            throw new RuntimeException("项目ID不能为空");
+        }
+        
+        PmProject project = projectMapper.selectById(projectId);
+        String projectCode = project != null && project.getProjectCode() != null ? project.getProjectCode() : "TASK";
+        String timestamp = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        
+        int index = 1;
+        for (TaskCreateDTO taskDTO : dto.getTasks()) {
+            PmTask task = new PmTask();
+            BeanUtils.copyProperties(taskDTO, task);
+            
+            // 确保项目ID一致
+            task.setProjectId(projectId);
+            
+            // 生成唯一的任务编码：项目编码-时间戳-序号
+            String taskCode = projectCode + "-" + timestamp + "-" + String.format("%03d", index);
+            task.setTaskCode(taskCode);
+            
+            task = createTask(task);
+            createdTasks.add(task);
+            index++;
+        }
+        return createdTasks;
     }
 
     @Override

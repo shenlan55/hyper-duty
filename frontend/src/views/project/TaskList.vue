@@ -4,7 +4,13 @@
       <template #header>
         <div class="card-header">
           <span>任务列表</span>
-          <el-button v-if="canCreateTask" type="primary" @click="handleAdd">新建任务</el-button>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <el-button v-if="canCreateTask" type="success" @click="handleBatchCreate">
+              <el-icon><DocumentAdd /></el-icon>
+              批量新建
+            </el-button>
+            <el-button v-if="canCreateTask" type="primary" @click="handleAdd">新建任务</el-button>
+          </div>
         </div>
       </template>
 
@@ -18,23 +24,24 @@
       />
 
       <BaseTable
-        :data="tableData"
-        :columns="columns"
-        :loading="loading"
-        :pagination="{
-          currentPage: pagination.currentPage,
-          pageSize: pagination.pageSize,
-          pageSizes: pagination.pageSizes,
-          total: pagination.total
-        }"
-        row-key="id"
-        :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
-        :indent="20"
-        :backend-pagination="true"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-        style="width: 100%;"
-      >
+      :data="tableData"
+      :columns="columns"
+      :loading="loading"
+      :pagination="{
+        currentPage: pagination.currentPage,
+        pageSize: pagination.pageSize,
+        pageSizes: pagination.pageSizes,
+        total: pagination.total
+      }"
+      :row-key="'id'"
+      :indent="20"
+      :backend-pagination="true"
+      :show-selection="true"
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+      @selection-change="handleSelectionChange"
+      style="width: 100%;"
+    >
         <template #taskName="{ row, level }">
           <div class="task-name-container" :class="{ 'pinned-task': row.isPinned === 1, 'parent-task': row.hasChildren }">
             <el-icon v-if="row.isPinned === 1" style="color: #f56c6c; margin-right: 4px;"><Star /></el-icon>
@@ -120,6 +127,15 @@
       @submit="handleProgressUpdateSubmit"
     />
 
+    <!-- 批量新建任务对话框 -->
+    <BatchCreateTasks
+      v-model="batchCreateDialogVisible"
+      :project-list="projectList"
+      :employee-list="employeeList"
+      :default-project-id="searchForm.projectId"
+      @submit="handleBatchCreateSubmit"
+    />
+
     <!-- 绑定对话框 -->
     <el-dialog
       v-model="bindDialogVisible"
@@ -190,12 +206,13 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Star, TrendCharts } from '@element-plus/icons-vue'
+import { Star, TrendCharts, DocumentAdd } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import TaskSearchForm from '@/components/TaskSearchForm.vue'
 import TaskEditDialog from '@/components/TaskEditDialog.vue'
 import TaskProgressUpdateDialog from '@/components/TaskProgressUpdateDialog.vue'
+import BatchCreateTasks from '@/components/BatchCreateTasks.vue'
 import BindCustomRowDialog from '@/components/BindCustomRowDialog.vue'
 import { getTaskPage, getTaskDetail, deleteTask, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
 import { getProjectPage } from '@/api/project'
@@ -230,6 +247,10 @@ const currentEditTask = ref(null)
 const progressUpdateDialogVisible = ref(false)
 const currentTaskForUpdate = ref(null)
 const progressUpdates = ref([])
+
+// 批量操作相关
+const batchCreateDialogVisible = ref(false)
+const selectedTasks = ref([])
 
 // 搜索表单
 const searchForm = reactive({
@@ -398,6 +419,21 @@ const handleAdd = () => {
     loadTaskTree(projectList.value[0].id)
   }
   editDialogVisible.value = true
+}
+
+// 批量新建任务
+const handleBatchCreate = () => {
+  batchCreateDialogVisible.value = true
+}
+
+// 批量新建任务提交处理
+const handleBatchCreateSubmit = () => {
+  loadData()
+}
+
+// 表格选择变化处理（保留用于可能的未来扩展）
+const handleSelectionChange = (selection) => {
+  selectedTasks.value = selection
 }
 
 // 编辑任务

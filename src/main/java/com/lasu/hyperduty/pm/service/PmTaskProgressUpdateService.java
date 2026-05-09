@@ -2,14 +2,7 @@ package com.lasu.hyperduty.pm.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.lasu.hyperduty.pm.entity.PmTaskProgressUpdate;
-import com.lasu.hyperduty.pm.service.PmTaskProgressUpdateService;
 import java.util.List;
-
-
-
-
-
-
 
 
 public interface PmTaskProgressUpdateService extends IService<PmTaskProgressUpdate> {

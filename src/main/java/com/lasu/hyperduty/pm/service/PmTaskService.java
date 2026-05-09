@@ -3,18 +3,15 @@ package com.lasu.hyperduty.pm.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.lasu.hyperduty.common.dto.WorkloadDTO;
+import com.lasu.hyperduty.pm.dto.BatchTaskCreateDTO;
 import com.lasu.hyperduty.pm.dto.TaskCreateDTO;
 import com.lasu.hyperduty.pm.dto.TaskQueryDTO;
 import com.lasu.hyperduty.pm.dto.TaskUpdateDTO;
 import com.lasu.hyperduty.pm.dto.TaskVO;
 import com.lasu.hyperduty.pm.entity.PmTask;
-import com.lasu.hyperduty.pm.service.PmTaskService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-
-
-
 
 
 
@@ -50,6 +47,11 @@ public interface PmTaskService extends IService<PmTask> {
      * 创建任务（使用 DTO）
      */
     PmTask createTask(TaskCreateDTO dto);
+
+    /**
+     * 批量创建任务
+     */
+    List<PmTask> batchCreateTasks(BatchTaskCreateDTO dto);
 
     PmTask updateTask(PmTask task);
 

@@ -90,6 +90,7 @@
       v-else
       v-loading="loading"
       :data="processedData"
+      :row-key="rowKey"
       style="width: 100%"
       :height="useVirtualScroll ? virtualScrollHeight : ''"
       :border="border"
@@ -276,6 +277,11 @@ const props = defineProps({
   defaultSelectedRows: {
     type: Array,
     default: () => []
+  },
+  // 行key，用于树形表格和选择功能
+  rowKey: {
+    type: [String, Function],
+    default: 'id'
   },
   // 是否显示列控制
   showColumnControl: {
