@@ -34,24 +34,21 @@
         total: pagination.total
       }"
       :row-key="'id'"
-      :indent="20"
       :backend-pagination="true"
-      :show-selection="true"
       @size-change="handleSizeChange"
       @current-change="handleCurrentChange"
-      @selection-change="handleSelectionChange"
       style="width: 100%;"
     >
         <template #taskName="{ row, level }">
-          <div class="task-name-container" :class="{ 'pinned-task': row.isPinned === 1, 'parent-task': row.hasChildren }">
+          <span>
             <el-icon v-if="row.isPinned === 1" style="color: #f56c6c; margin-right: 4px;"><Star /></el-icon>
             <el-icon v-if="row.isFocus === 1" style="color: #e6a23c; margin-right: 4px;"><TrendCharts /></el-icon>
-            <span class="task-name">{{ row.taskName }}</span>
+            {{ row.taskName }}
             <el-tag v-if="row.isFocus === 1" size="small" type="warning" style="margin-left: 8px;">重点</el-tag>
             <el-tag v-if="row.hasChildren" size="small" type="info" style="margin-left: 8px;">
               {{ row.children ? row.children.length : 0 }}个子任务
             </el-tag>
-          </div>
+          </span>
         </template>
         <template #progress="{ row }">
           <el-progress :percentage="row.progress" :status="getProgressStatus(row.progress)" />
@@ -271,7 +268,7 @@ const pagination = reactive({
 
 // 表格列定义
 const columns = [
-  { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName', indent: true },
+  { prop: 'taskName', label: '任务名称', minWidth: 280, slot: 'taskName' },
   { prop: 'projectName', label: '所属项目', width: 180 },
   { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
   { prop: 'status', label: '状态', width: 90, slot: 'status' },
@@ -287,6 +284,18 @@ const columns = [
 const canCreateTask = computed(() => {
   return userStore.employeeId !== null
 })
+
+// 获取任务完整名称用于 tooltip
+const getTaskFullName = (row) => {
+  let fullName = row.taskName || ''
+  if (row.isFocus === 1) {
+    fullName += ' [重点]'
+  }
+  if (row.hasChildren) {
+    fullName += ` [${row.children ? row.children.length : 0}个子任务]`
+  }
+  return fullName
+}
 
 // 加载数据
 const loadData = async () => {
@@ -656,22 +665,6 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.task-name-container {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.task-name {
-  font-weight: 500;
-}
-
-.pinned-task .task-name {
-  color: #f56c6c;
-  font-weight: 600;
 }
 
 .bind-dialog-content {

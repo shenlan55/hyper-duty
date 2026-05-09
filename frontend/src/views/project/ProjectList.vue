@@ -302,7 +302,7 @@ const rules = {
 
 const columns = [
   { prop: 'sort', label: '排序', width: 80 },
-  { prop: 'projectName', label: '项目名称', minWidth: 100 },
+  { prop: 'projectName', label: '项目名称', minWidth: 220 },
   { prop: 'projectCode', label: '项目编码', width: 150 },
   { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
   { prop: 'status', label: '状态', width: 100, slot: 'status' },

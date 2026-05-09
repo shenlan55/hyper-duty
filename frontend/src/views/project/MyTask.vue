@@ -70,10 +70,12 @@
         @current-change="handleCurrentChange"
       >
         <template #taskName="{ row }">
-          <span :class="{ 'pinned-task': row.isPinned === 1 }">
-            <el-icon v-if="row.isPinned === 1" style="color: #f56c6c; margin-right: 4px;"><Star /></el-icon>
-            {{ row.taskName }}
-          </span>
+          <el-tooltip :content="row.taskName" placement="top" :disabled="!row.taskName || row.taskName.length <= 20">
+            <div class="task-name-container" :class="{ 'pinned-task': row.isPinned === 1 }">
+              <el-icon v-if="row.isPinned === 1" style="color: #f56c6c; margin-right: 4px; flex-shrink: 0;"><Star /></el-icon>
+              <span class="task-name">{{ row.taskName }}</span>
+            </div>
+          </el-tooltip>
         </template>
         <template #progress="{ row }">
           <el-progress :percentage="row.progress" :status="getProgressStatus(row.progress)" />
@@ -241,7 +243,7 @@ const progressUpdateForm = reactive({
 const progressUpdates = ref([])
 
 const columns = [
-        { prop: 'taskName', label: '任务名称', minWidth: 150, slot: 'taskName' },
+        { prop: 'taskName', label: '任务名称', minWidth: 280, slot: 'taskName' },
         { prop: 'projectName', label: '所属项目', width: 180 },
         { prop: 'priority', label: '优先级', width: 80, slot: 'priority' },
         { prop: 'isFocus', label: '是否重点', width: 90, slot: 'isFocus' },
@@ -566,6 +568,29 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.task-name-container {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.task-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.pinned-task .task-name {
+  color: #f56c6c;
+  font-weight: bold;
 }
 
 .pinned-task.overdue {

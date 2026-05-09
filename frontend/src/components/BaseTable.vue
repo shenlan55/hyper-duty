@@ -97,6 +97,9 @@
       :stripe="stripe"
       :size="size"
       :action="props.action"
+      :tree-props="treeProps"
+      :indent="20"
+      default-expand-all
       @sort-change="handleSortChange"
       @selection-change="handleSelectionChange"
       @select="handleSelect"
@@ -123,28 +126,12 @@
           :filter-multiple="column.filterable !== false"
           :filter-method="column.filterable ? (value, row) => handleColumnFilter(column.prop, value) : undefined"
           :filters="column.filterOptions"
-          :show-overflow-tooltip="column.showOverflowTooltip"
+          :show-overflow-tooltip="column.showOverflowTooltip !== false"
         >
           <template #default="scope">
-            <div class="tree-node-content" :style="column.indent ? { marginLeft: `${scope.row.level * 20}px` } : {}">
-              <!-- 展开/收起按钮 -->
-              <span 
-                v-if="column.indent && (scope.row.hasChildren || (scope.row.children && scope.row.children.length > 0))" 
-                class="expand-icon"
-                @click.stop="toggleExpand(scope.row)"
-              >
-                <el-icon v-if="isExpanded(scope.row)"><ArrowDown /></el-icon>
-                <el-icon v-else><ArrowRight /></el-icon>
-              </span>
-              <span v-else-if="column.indent" class="expand-icon-placeholder"></span>
-              
-              <!-- 内容 -->
-              <span class="node-content">
-                <slot :name="column.slot || column.slotName || column.prop" v-bind="scope">
-                  {{ column.formatter ? column.formatter(scope.row) : scope.row[column.prop] }}
-                </slot>
-              </span>
-            </div>
+            <slot :name="column.slot || column.slotName || column.prop" v-bind="scope">
+              {{ column.formatter ? column.formatter(scope.row) : scope.row[column.prop] }}
+            </slot>
           </template>
         </el-table-column>
         
@@ -538,34 +525,8 @@ const processedData = computed(() => {
     return []
   }
   
-  // 将树形数据扁平化为数组，并保留层级信息
-  const flattenTree = (tree, level = 0, parentExpanded = true) => {
-    let result = []
-    tree.forEach(node => {
-      if (node) {
-        // 为节点添加层级信息
-        const nodeWithLevel = { ...node, level }
-        result.push(nodeWithLevel)
-        
-        // 检查是否需要展开子节点
-        const hasChildren = node[props.treeProps.hasChildren] || (node[props.treeProps.children] && node[props.treeProps.children].length > 0)
-        const isRowExpanded = parentExpanded && (hasChildren ? isExpanded(node) : true)
-        
-        if (isRowExpanded && node[props.treeProps.children] && node[props.treeProps.children].length > 0) {
-          result = result.concat(flattenTree(node[props.treeProps.children], level + 1, isRowExpanded))
-        }
-      }
-    })
-    return result
-  }
-  
-  // 检查数据是否为树形结构
-  if (props.data.length > 0 && props.data[0].children) {
-    return flattenTree(props.data)
-  }
-  
-  // 对数据进行分页处理
-  if (props.showPagination && !props.backendPagination && props.pagination) {
+  // 对数据进行分页处理（仅非树形数据、非后端分页）
+  if (props.showPagination && !props.backendPagination && props.pagination && !(props.data.length > 0 && props.data[0].children)) {
     const currentPage = props.pagination.currentPage || 1
     const pageSize = props.pagination.pageSize || 10
     const startIndex = (currentPage - 1) * pageSize
@@ -581,6 +542,8 @@ const processedData = computed(() => {
 .base-table {
   width: 100%;
 }
+
+
 
 .pagination-container {
   margin-top: 20px;
@@ -691,37 +654,5 @@ const processedData = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-/* 树形节点样式 */
-.tree-node-content {
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.expand-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  cursor: pointer;
-  color: #909399;
-}
-
-.expand-icon:hover {
-  color: #409EFF;
-}
-
-.expand-icon-placeholder {
-  width: 16px;
-  margin-right: 8px;
-  display: inline-block;
-}
-
-.node-content {
-  flex: 1;
 }
 </style>
