@@ -564,6 +564,54 @@ const useDefaultMenus = () => {
           icon: 'ChatDotRound'
         }
       ]
+    },
+    {
+      id: 'workflow',
+      name: '工作流管理',
+      path: '/workflow',
+      icon: 'Operation',
+      children: [
+        {
+          name: '流程定义',
+          path: '/workflow/process-list',
+          icon: 'Document'
+        },
+        {
+          name: '流程实例',
+          path: '/workflow/instance-list',
+          icon: 'List'
+        },
+        {
+          name: '表单管理',
+          path: '/workflow/form-list',
+          icon: 'DocumentCopy'
+        },
+        {
+          name: '流程分类',
+          path: '/workflow/category-list',
+          icon: 'Menu'
+        },
+        {
+          name: '委托配置',
+          path: '/workflow/delegate-list',
+          icon: 'User'
+        },
+        {
+          name: '流程设计器',
+          path: '/workflow/designer',
+          icon: 'Edit'
+        },
+        {
+          name: '待办任务',
+          path: '/workflow/todo-task',
+          icon: 'Clock'
+        },
+        {
+          name: '已办任务',
+          path: '/workflow/done-task',
+          icon: 'Check'
+        }
+      ]
     }
   ]
   
@@ -598,7 +646,16 @@ const useDefaultMenus = () => {
     '/project/calendar': '日历视图',
     '/project/team': '团队视图',
     '/project/statistics': '项目统计',
-    '/project/ai-report': 'AI报告生成'
+    '/project/ai-report': 'AI报告生成',
+    '/workflow': '工作流管理',
+    '/workflow/process-list': '流程定义',
+    '/workflow/instance-list': '流程实例',
+    '/workflow/form-list': '表单管理',
+    '/workflow/category-list': '流程分类',
+    '/workflow/delegate-list': '委托配置',
+    '/workflow/designer': '流程设计器',
+    '/workflow/todo-task': '待办任务',
+    '/workflow/done-task': '已办任务'
   }
   
   // 始终设置首页为默认激活

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="sample-parallel-approval" name="并行审批示例流程" isExecutable="true">
+    <!-- 开始事件 -->
+    <bpmn:startEvent id="StartEvent_1" name="开始申请">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- 用户任务：提交申请 -->
+    <bpmn:userTask id="Task_Submit_Application" name="提交申请" flowable:assignee="${assignee}">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- 并行网关：分支 -->
+    <bpmn:parallelGateway id="Gateway_Parallel_Start" name="并行分支">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:parallelGateway>
+
+    <!-- 用户任务：部门经理审批 -->
+    <bpmn:userTask id="Task_Manager_Approval" name="部门经理审批" flowable:assignee="${manager}">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- 用户任务：财务审批 -->
+    <bpmn:userTask id="Task_Finance_Approval" name="财务审批" flowable:assignee="${finance}">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- 并行网关：合流 -->
+    <bpmn:parallelGateway id="Gateway_Parallel_End" name="并行合流">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:parallelGateway>
+
+    <!-- 用户任务：多人会签（按比例通过） -->
+    <bpmn:userTask id="Task_Countersign" name="委员会会签">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="false" flowable:collection="${countersignUsers}" flowable:elementVariable="countersignUser">
+        <bpmn:completionCondition>${nrOfCompletedInstances/nrOfInstances >= 0.5}</bpmn:completionCondition>
+      </bpmn:multiInstanceLoopCharacteristics>
+      <bpmn:extensionElements>
+        <flowable:assignee>${countersignUser}</flowable:assignee>
+      </bpmn:extensionElements>
+    </bpmn:userTask>
+
+    <!-- 用户任务：最终审批 -->
+    <bpmn:userTask id="Task_Final_Approval" name="最终审批" flowable:assignee="${approver}">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- 结束事件 -->
+    <bpmn:endEvent id="EndEvent_1" name="审批结束">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- 连接流 -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_Submit_Application" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Submit_Application" targetRef="Gateway_Parallel_Start" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Gateway_Parallel_Start" targetRef="Task_Manager_Approval" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Gateway_Parallel_Start" targetRef="Task_Finance_Approval" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_Manager_Approval" targetRef="Gateway_Parallel_End" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_Finance_Approval" targetRef="Gateway_Parallel_End" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Gateway_Parallel_End" targetRef="Task_Countersign" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_Countersign" targetRef="Task_Final_Approval" />
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_Final_Approval" targetRef="EndEvent_1" />
+  </bpmn:process>
+
+  <!-- BPMN Diagram Information (Visual) -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="sample-parallel-approval">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="180" y="160" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Submit_Application_di" bpmnElement="Task_Submit_Application">
+        <dc:Bounds x="260" y="138" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Parallel_Start_di" bpmnElement="Gateway_Parallel_Start" isMarkerVisible="true">
+        <dc:Bounds x="415" y="158" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Manager_Approval_di" bpmnElement="Task_Manager_Approval">
+        <dc:Bounds x="510" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Finance_Approval_di" bpmnElement="Task_Finance_Approval">
+        <dc:Bounds x="510" y="230" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Parallel_End_di" bpmnElement="Gateway_Parallel_End" isMarkerVisible="true">
+        <dc:Bounds x="665" y="158" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Countersign_di" bpmnElement="Task_Countersign">
+        <dc:Bounds x="760" y="138" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Final_Approval_di" bpmnElement="Task_Final_Approval">
+        <dc:Bounds x="910" y="138" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="1062" y="160" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="216" y="178" />
+        <di:waypoint x="260" y="178" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="360" y="178" />
+        <di:waypoint x="415" y="183" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="440" y="158" />
+        <di:waypoint x="440" y="100" />
+        <di:waypoint x="510" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="440" y="208" />
+        <di:waypoint x="440" y="270" />
+        <di:waypoint x="510" y="270" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="610" y="100" />
+        <di:waypoint x="690" y="100" />
+        <di:waypoint x="690" y="158" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="610" y="270" />
+        <di:waypoint x="690" y="270" />
+        <di:waypoint x="690" y="208" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="715" y="183" />
+        <di:waypoint x="760" y="178" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="860" y="178" />
+        <di:waypoint x="910" y="178" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="1010" y="178" />
+        <di:waypoint x="1062" y="178" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

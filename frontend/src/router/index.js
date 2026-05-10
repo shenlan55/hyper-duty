@@ -223,7 +223,69 @@ const routes = [
             meta: { title: 'AI报告配置' }
           }
         ]
-      }
+      },
+      {
+            path: 'workflow',
+            name: 'Workflow',
+            component: () => import('../views/workflow/WorkflowLayout.vue'),
+            meta: { title: '工作流管理' },
+            children: [
+              {
+                path: 'process-list',
+                name: 'ProcessList',
+                component: () => import('../views/workflow/ProcessList.vue'),
+                meta: { title: '流程定义' }
+              },
+              {
+                path: 'instance-list',
+                name: 'ProcessInstanceList',
+                component: () => import('../views/workflow/ProcessInstanceList.vue'),
+                meta: { title: '流程实例' }
+              },
+              {
+                path: 'form-list',
+                name: 'FormList',
+                component: () => import('../views/workflow/FormList.vue'),
+                meta: { title: '表单管理' }
+              },
+              {
+                path: 'category-list',
+                name: 'CategoryList',
+                component: () => import('../views/workflow/CategoryList.vue'),
+                meta: { title: '流程分类' }
+              },
+              {
+                path: 'delegate-list',
+                name: 'DelegateList',
+                component: () => import('../views/workflow/DelegateList.vue'),
+                meta: { title: '委托配置' }
+              },
+              {
+                path: 'designer',
+                name: 'ProcessDesigner',
+                component: () => import('../views/workflow/ProcessDesigner.vue'),
+                meta: { title: '流程设计器' }
+              },
+              {
+                path: 'todo-task',
+                name: 'TodoTaskList',
+                component: () => import('../views/workflow/TodoTaskList.vue'),
+                meta: { title: '待办任务' }
+              },
+              {
+                path: 'done-task',
+                name: 'DoneTaskList',
+                component: () => import('../views/workflow/DoneTaskList.vue'),
+                meta: { title: '已办任务' }
+              },
+              {
+                path: 'start',
+                name: 'ProcessStart',
+                component: () => import('../views/workflow/ProcessStart.vue'),
+                meta: { title: '发起流程' }
+              }
+            ]
+          }
     ]
   }
 ]

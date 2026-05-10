@@ -9,7 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@form-create/designer": "^3.4.0",
+    "@form-create/element-ui": "^3.2.42",
     "axios": "^1.13.2",
+    "bpmn-js": "^17.9.0",
+    "bpmn-js-i18n": "^2.3.0",
     "dayjs": "^1.11.19",
     "echarts": "^6.0.0",
     "element-plus": "^2.13.1",

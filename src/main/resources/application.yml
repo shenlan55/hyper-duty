@@ -112,6 +112,13 @@ kkfileview:
 frontend:
   url: ${FRONTEND_URL:http://localhost:5173}
 
+# Flowable 配置
+flowable:
+  # 禁用自动部署（避免解析旧的 BPMN 数据报错）
+  check-process-definitions: false
+  # 启用异步执行器
+  async-executor-activate: true
+
 # 智谱 AI 配置
 ai:
   zhipu:
