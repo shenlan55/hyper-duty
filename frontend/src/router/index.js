@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { refreshToken } from '../utils/request'
+import { ElMessage } from 'element-plus'
 
 const routes = [
   {
@@ -322,21 +324,43 @@ const isJWTExpired = (token) => {
 }
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   // 设置页面标题
   document.title = to.meta.title || 'Hyper Duty'
   
   // 检查是否登录，除了登录页
   const token = localStorage.getItem('token')
+  const refreshTokenStr = localStorage.getItem('refreshToken')
+  
   if (to.path !== '/login' && !token) {
     next('/login')
   } else if (to.path !== '/login' && token) {
     // 检查token是否过期
     if (isJWTExpired(token)) {
-      // token过期，清除token并重定向到登录页
-      localStorage.removeItem('token')
-      localStorage.removeItem('username')
-      next('/login')
+      // token过期，尝试刷新令牌
+      if (refreshTokenStr) {
+        try {
+          console.log('Token已过期，尝试刷新...')
+          await refreshToken()
+          console.log('Token刷新成功，继续访问')
+          next()
+        } catch (error) {
+          // 刷新失败，清除所有数据并跳转登录页
+          console.error('Token刷新失败:', error)
+          localStorage.removeItem('token')
+          localStorage.removeItem('refreshToken')
+          localStorage.removeItem('username')
+          localStorage.removeItem('employeeId')
+          localStorage.removeItem('employeeName')
+          ElMessage.error('登录已过期，请重新登录')
+          next('/login')
+        }
+      } else {
+        // 没有刷新令牌，直接跳转登录页
+        localStorage.removeItem('token')
+        localStorage.removeItem('username')
+        next('/login')
+      }
     } else {
       next()
     }

@@ -142,6 +142,7 @@ import { useUserStore } from '../stores/user'
 import { useMenuStore } from '../stores/menu'
 import { logout, changePassword } from '../api/auth'
 import { ElMessage } from 'element-plus'
+import { startAutoRefresh } from '../utils/request'
 import { 
   House, Setting, OfficeBuilding, UserFilled, User, Menu, ArrowDown, 
   SwitchButton, HomeFilled, Operation, Edit, Delete, Plus, Check, Search,
@@ -459,6 +460,14 @@ onMounted(async () => {
   } else {
     // 如果当前不是首页，使用当前路由
     addTab(route.path)
+  }
+  
+  // 检查是否有token，如果有则启动自动刷新
+  const token = localStorage.getItem('token')
+  const refreshTokenStr = localStorage.getItem('refreshToken')
+  if (token && refreshTokenStr) {
+    console.log('检测到已登录用户，启动自动Token刷新')
+    startAutoRefresh()
   }
 })
 </script>

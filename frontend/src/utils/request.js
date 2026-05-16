@@ -274,10 +274,10 @@ const startAutoRefresh = () => {
   // 每5分钟检查一次token状态
   refreshTimer = setInterval(async () => {
     const token = localStorage.getItem('token')
-    const refreshToken = localStorage.getItem('refreshToken')
+    const refreshTokenStr = localStorage.getItem('refreshToken')
     
     // 如果没有token，停止刷新
-    if (!token || !refreshToken) {
+    if (!token || !refreshTokenStr) {
       clearInterval(refreshTimer)
       return
     }
@@ -314,4 +314,4 @@ const stopAutoRefresh = () => {
 
 // 导出request实例和工具函数
 export default request
-export { decodeJWT, isJWTExpired, forceHideLoading, startAutoRefresh, stopAutoRefresh }
+export { decodeJWT, isJWTExpired, forceHideLoading, startAutoRefresh, stopAutoRefresh, refreshToken }
