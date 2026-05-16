@@ -31,12 +31,9 @@
           </el-tag>
         </template>
         <template #status="{ row }">
-          <el-switch
-            v-model="row.status"
-            active-value="1"
-            inactive-value="0"
-            @change="handleStatusChange(row)"
-          />
+          <el-tag :type="row.status === '1' ? 'success' : 'danger'">
+            {{ row.status === '1' ? '启用' : '禁用' }}
+          </el-tag>
         </template>
         <template #createTime="{ row }">
           {{ formatDateTime(row.createTime) }}
@@ -180,24 +177,6 @@ const handleDelete = async (id) => {
   }
 }
 
-// 状态变更
-const handleStatusChange = async (row) => {
-  // 保存当前状态用于恢复
-  const originalStatus = row.status
-  try {
-    // 确保status为数字类型再发送到后端
-    const updateData = {
-      ...row,
-      status: Number(row.status)
-    }
-    await modeApi.update(updateData)
-  } catch (error) {
-    // 恢复原状态
-    row.status = originalStatus
-    ElMessage.error('网络错误，请稍后重试')
-  }
-}
-
 // 保存成功回调
 const handleSaveSuccess = () => {
   dialogVisible.value = false
@@ -277,7 +256,7 @@ const getModeTypeTagType = (type) => {
     3: 'warning',
     4: 'info'
   }
-  return typeMap[type] || 'default'
+  return typeMap[type] || 'info'
 }
 
 // 初始化

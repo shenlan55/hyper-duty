@@ -67,6 +67,20 @@ export function scheduleModeApi() {
     },
 
     /**
+     * 更新排班模式状态
+     * @param {number} id 排班模式ID
+     * @param {number} status 状态值
+     * @returns {Promise}
+     */
+    updateStatus(id, status) {
+      return request({
+        url: `/duty/schedule-mode/${id}/status`,
+        method: 'put',
+        data: { status }
+      })
+    },
+
+    /**
      * 删除排班模式
      * @param {number} id 排班模式ID
      * @returns {Promise}

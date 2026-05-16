@@ -4,6 +4,7 @@ import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.duty.entity.DutyScheduleMode;
 import com.lasu.hyperduty.duty.service.DutyScheduleModeService;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -83,6 +84,31 @@ public class DutyScheduleModeController {
     public ResponseResult<?> updateScheduleMode(@RequestBody DutyScheduleMode mode) {
         boolean success = dutyScheduleModeService.updateById(mode);
         return success ? ResponseResult.success() : ResponseResult.error("编辑排班模式失败");
+    }
+
+    /**
+     * 更新排班模式状态
+     * @param id 排班模式ID
+     * @param status 状态值
+     * @return 操作结果
+     */
+    @PutMapping("/{id}/status")
+    public ResponseResult<?> updateScheduleModeStatus(@PathVariable Long id, @RequestBody Map<String, Object> params) {
+        DutyScheduleMode mode = dutyScheduleModeService.getById(id);
+        if (mode == null) {
+            return ResponseResult.error("排班模式不存在");
+        }
+        
+        Object statusObj = params.get("status");
+        if (statusObj == null) {
+            return ResponseResult.error("状态值不能为空");
+        }
+        
+        Integer status = Integer.valueOf(statusObj.toString());
+        mode.setStatus(status);
+        
+        boolean success = dutyScheduleModeService.updateById(mode);
+        return success ? ResponseResult.success() : ResponseResult.error("更新状态失败");
     }
 
     /**
