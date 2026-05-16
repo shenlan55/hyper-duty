@@ -30,8 +30,13 @@
         @export="handleExport"
       >
         <template #status="{ row }">
-          <el-switch v-model="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)"></el-switch>
-        </template>
+              <el-switch 
+                :model-value="row.status" 
+                :active-value="1" 
+                :inactive-value="0" 
+                @change="(val) => handleStatusChange(row, val)"
+              ></el-switch>
+            </template>
         <template #createTime="{ row }">
           {{ formatDateTime(row.createTime) }}
         </template>
@@ -115,6 +120,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { listRole, addRole, updateRole, deleteRole, getRoleMenu, saveRoleMenu, getRoleUser, saveRoleUser } from '../api/role'
 import { getMenuList } from '../api/menu'
 import { getEmployeeList } from '../api/employee'
+import { useMenuStore } from '../stores/menu'
 import { formatDateTime } from '../utils/dateUtils'
 import { safeInput } from '../utils/xssUtil'
 import { useSearchPagination } from '../hooks/usePagination'
@@ -293,13 +299,16 @@ const handleSubmit = async () => {
 }
 
 // 状态变更
-const handleStatusChange = async (row) => {
+const handleStatusChange = async (row, newStatus) => {
+  // 创建一个副本，避免直接修改原数据
+  const roleToUpdate = { ...row, status: newStatus }
+  
   try {
-    await updateRole(row)
+    await updateRole(roleToUpdate)
+    // 更新成功后，再更新本地数据
+    row.status = newStatus
   } catch (error) {
     ElMessage.error('更新状态失败：' + error.message)
-    // 恢复原状态
-    row.status = row.status === 1 ? 0 : 1
   }
 }
 
@@ -344,6 +353,10 @@ const handleMenuAuthSubmit = async () => {
     await saveRoleMenu(currentRoleId.value, checkedKeys)
     ElMessage.success('菜单授权成功')
     menuAuthVisible.value = false
+    
+    // 刷新所有用户的菜单
+    const menuStore = useMenuStore()
+    await menuStore.refreshMenus()
   } catch (error) {
     ElMessage.error('菜单授权失败：' + error.message)
   }
@@ -390,6 +403,10 @@ const handleUserBindSubmit = async () => {
     await saveRoleUser(currentRoleId.value, selectedUserIds.value)
     ElMessage.success('用户绑定成功')
     userBindVisible.value = false
+    
+    // 刷新所有用户的菜单
+    const menuStore = useMenuStore()
+    await menuStore.refreshMenus()
   } catch (error) {
     ElMessage.error('用户绑定失败：' + error.message)
   }

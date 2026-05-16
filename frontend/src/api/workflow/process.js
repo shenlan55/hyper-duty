@@ -42,11 +42,17 @@ export function getLatestProcessDefinition(processKey) {
   })
 }
 
-export function getProcessBpmnXml(processDefinitionId) {
-  return request({
-    url: `/api/workflow/process/definition/bpmn/${processDefinitionId}`,
-    method: 'get'
+export async function getProcessBpmnXml(processDefinitionId) {
+  // 直接用 axios，跳过拦截器的 data 包装
+  const axios = (await import('axios')).default
+  const response = await axios.get(`/api/workflow/process/definition/bpmn/${processDefinitionId}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
   })
+  console.log('getProcessBpmnXml 完整响应:', response)
+  console.log('getProcessBpmnXml response.data:', response.data)
+  return response.data
 }
 
 export function syncProcessDefinition() {

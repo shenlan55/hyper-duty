@@ -139,8 +139,8 @@
 import { ref, computed, watch, onMounted, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { useMenuStore } from '../stores/menu'
 import { logout, changePassword } from '../api/auth'
-import { getUserMenus } from '../api/menu'
 import { ElMessage } from 'element-plus'
 import { 
   House, Setting, OfficeBuilding, UserFilled, User, Menu, ArrowDown, 
@@ -156,6 +156,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const menuStore = useMenuStore()
 const collapsed = ref(false)
 
 const username = computed(() => userStore.employeeName || userStore.username)
@@ -229,9 +230,10 @@ const submitPasswordChange = async () => {
   }
 }
 
-// 动态菜单数据
-const topMenus = ref([])
-const loading = ref(false)
+// 从 store 中获取菜单数据
+const topMenus = computed(() => menuStore.topMenus)
+const routeNameMap = computed(() => menuStore.routeNameMap)
+const loading = computed(() => menuStore.loading)
 
 // 当前激活的一级菜单
 const activeTopMenu = ref('dashboard')
@@ -329,337 +331,6 @@ const getMenuIcon = (iconName) => {
   if (!iconName) return Menu
   if (iconMap[iconName]) return iconMap[iconName]
   return Menu
-}
-
-// 路由名称映射
-const routeNameMap = ref({
-  '/dashboard': '首页'
-})
-
-// 获取用户菜单
-const fetchUserMenus = async () => {
-  loading.value = true
-  try {
-    // 调用后端API获取用户的实际菜单权限
-    const backendMenus = await getUserMenus()
-    
-    if (backendMenus && Array.isArray(backendMenus) && backendMenus.length > 0) {
-      // 转换后端菜单数据为前端需要的格式
-      topMenus.value = backendMenus.map(menu => {
-          // 直接使用后端返回的完整路径，无需转换
-          const children = menu.children && Array.isArray(menu.children) ? menu.children.map(child => {
-            return {
-              name: child.menuName || '未命名菜单',
-              path: child.path || '',
-              icon: child.icon || 'Menu'
-            };
-          }) : []
-          
-          return {
-            id: menu.id ? menu.id.toString() : Date.now().toString(),
-            name: menu.menuName || '未命名菜单',
-            path: menu.path || '',
-            icon: menu.icon || 'Menu',
-            children
-          }
-        })
-      
-      // 更新路由名称映射
-      const newRouteNameMap = { '/dashboard': '首页' }
-      topMenus.value.forEach(menu => {
-        if (menu.path) {
-          newRouteNameMap[menu.path] = menu.name
-        }
-        if (menu.children) {
-          menu.children.forEach(child => {
-            if (child.path) {
-              newRouteNameMap[child.path] = child.name
-            }
-          })
-        }
-      })
-      routeNameMap.value = newRouteNameMap
-      
-      // 始终设置首页为默认激活
-      activeTopMenu.value = 'dashboard'
-    } else {
-      // 后端返回的菜单数据为空或格式不正确，使用默认菜单数据
-      useDefaultMenus()
-    }
-  } catch (error) {
-    ElMessage.error('获取菜单失败：' + (error.message || '未知错误'))
-    
-    // 获取菜单失败时，使用默认菜单数据
-    useDefaultMenus()
-  } finally {
-    loading.value = false
-  }
-}
-
-// 使用默认菜单数据作为 fallback
-const useDefaultMenus = () => {
-  // 更新菜单列表
-  topMenus.value = [
-    {
-      id: 'dashboard',
-      name: '首页',
-      path: '/dashboard',
-      icon: 'HomeFilled',
-      children: [{
-        name: '首页',
-        path: '/dashboard',
-        icon: 'HomeFilled'
-      }]
-    },
-    {
-      id: 'system',
-      name: '系统管理',
-      path: '/system',
-      icon: 'Setting',
-      children: [
-        {
-          name: '部门管理',
-          path: '/system/dept',
-          icon: 'OfficeBuilding'
-        },
-        {
-          name: '人员管理',
-          path: '/system/employee',
-          icon: 'UserFilled'
-        },
-        {
-          name: '用户管理',
-          path: '/system/user',
-          icon: 'User'
-        },
-        {
-          name: '菜单管理',
-          path: '/system/menu',
-          icon: 'Menu'
-        },
-        {
-          name: '角色管理',
-          path: '/system/role',
-          icon: 'Operation'
-        },
-        {
-          name: '字典管理',
-          path: '/system/dict',
-          icon: 'List'
-        },
-        {
-          name: '操作日志',
-          path: '/system/operation-log',
-          icon: 'Document'
-        },
-        {
-          name: '定时任务',
-          path: '/system/schedule-job',
-          icon: 'Clock'
-        }
-      ]
-    },
-    {
-      id: 'duty',
-      name: '值班管理',
-      path: '/duty',
-      icon: 'Calendar',
-      children: [
-        {
-          name: '值班表管理',
-          path: '/duty/schedule',
-          icon: 'DocumentCopy'
-        },
-        {
-          name: '排班模式管理',
-          path: '/duty/schedule-mode',
-          icon: 'Operation'
-        },
-        {
-          name: '值班安排',
-          path: '/duty/assignment',
-          icon: 'Calendar'
-        },
-        {
-          name: '加班记录',
-          path: '/duty/record',
-          icon: 'Document'
-        },
-        {
-          name: '班次配置',
-          path: '/duty/shift-config',
-          icon: 'List'
-        },
-        {
-          name: '请假申请',
-          path: '/duty/leave-request',
-          icon: 'User'
-        },
-        {
-          name: '请假审批',
-          path: '/duty/leave-approval',
-          icon: 'Check'
-        },
-        {
-          name: '调班管理',
-          path: '/duty/swap-request',
-          icon: 'SwitchButton'
-        },
-        {
-          name: '排班统计',
-          path: '/duty/statistics',
-          icon: 'DataAnalysis'
-        }
-      ]
-    },
-    {
-      id: 'project',
-      name: '项目管理',
-      path: '/project',
-      icon: 'Briefcase',
-      children: [
-        {
-          name: '项目列表',
-          path: '/project/list',
-          icon: 'List'
-        },
-        {
-          name: '项目详情',
-          path: '/project/detail',
-          icon: 'View'
-        },
-        {
-          name: '任务管理',
-          path: '/project/task',
-          icon: 'Document'
-        },
-        {
-          name: '我的任务',
-          path: '/project/my-task',
-          icon: 'User'
-        },
-        {
-          name: '甘特图',
-          path: '/project/gantt',
-          icon: 'DataAnalysis'
-        },
-        {
-          name: '日历视图',
-          path: '/project/calendar',
-          icon: 'Calendar'
-        },
-        {
-          name: '团队视图',
-          path: '/project/team',
-          icon: 'UserFilled'
-        },
-        {
-          name: '项目统计',
-          path: '/project/statistics',
-          icon: 'DataAnalysis'
-        },
-        {
-          name: 'AI报告生成',
-          path: '/project/ai-report',
-          icon: 'ChatDotRound'
-        }
-      ]
-    },
-    {
-      id: 'workflow',
-      name: '工作流管理',
-      path: '/workflow',
-      icon: 'Operation',
-      children: [
-        {
-          name: '流程定义',
-          path: '/workflow/process-list',
-          icon: 'Document'
-        },
-        {
-          name: '流程实例',
-          path: '/workflow/instance-list',
-          icon: 'List'
-        },
-        {
-          name: '表单管理',
-          path: '/workflow/form-list',
-          icon: 'DocumentCopy'
-        },
-        {
-          name: '流程分类',
-          path: '/workflow/category-list',
-          icon: 'Menu'
-        },
-        {
-          name: '委托配置',
-          path: '/workflow/delegate-list',
-          icon: 'User'
-        },
-        {
-          name: '流程设计器',
-          path: '/workflow/designer',
-          icon: 'Edit'
-        },
-        {
-          name: '待办任务',
-          path: '/workflow/todo-task',
-          icon: 'Clock'
-        },
-        {
-          name: '已办任务',
-          path: '/workflow/done-task',
-          icon: 'Check'
-        }
-      ]
-    }
-  ]
-  
-  // 更新路由名称映射
-  routeNameMap.value = {
-    '/dashboard': '首页',
-    '/system': '系统管理',
-    '/system/dept': '部门管理',
-    '/system/employee': '人员管理',
-    '/system/user': '用户管理',
-    '/system/menu': '菜单管理',
-    '/system/role': '角色管理',
-    '/system/dict': '字典管理',
-    '/system/operation-log': '操作日志',
-    '/system/schedule-job': '定时任务',
-    '/duty': '值班管理',
-    '/duty/schedule': '值班表管理',
-    '/duty/schedule-mode': '排班模式管理',
-    '/duty/assignment': '值班安排',
-    '/duty/record': '加班记录',
-    '/duty/shift-config': '班次配置',
-    '/duty/leave-request': '请假申请',
-    '/duty/leave-approval': '请假审批',
-    '/duty/swap-request': '调班管理',
-    '/duty/statistics': '排班统计',
-    '/project': '项目管理',
-    '/project/list': '项目列表',
-    '/project/detail': '项目详情',
-    '/project/task': '任务管理',
-    '/project/my-task': '我的任务',
-    '/project/gantt': '甘特图',
-    '/project/calendar': '日历视图',
-    '/project/team': '团队视图',
-    '/project/statistics': '项目统计',
-    '/project/ai-report': 'AI报告生成',
-    '/workflow': '工作流管理',
-    '/workflow/process-list': '流程定义',
-    '/workflow/instance-list': '流程实例',
-    '/workflow/form-list': '表单管理',
-    '/workflow/category-list': '流程分类',
-    '/workflow/delegate-list': '委托配置',
-    '/workflow/designer': '流程设计器',
-    '/workflow/todo-task': '待办任务',
-    '/workflow/done-task': '已办任务'
-  }
-  
-  // 始终设置首页为默认激活
-  activeTopMenu.value = 'dashboard'
 }
 
 // 添加标签页
@@ -770,7 +441,10 @@ const handleLogout = async () => {
 // 初始化
 onMounted(async () => {
   // 获取用户菜单
-  await fetchUserMenus()
+  await menuStore.refreshMenus()
+  
+  // 始终设置首页为默认激活
+  activeTopMenu.value = 'dashboard'
   
   // 初始化标签页
   if (route.path === '/dashboard') {

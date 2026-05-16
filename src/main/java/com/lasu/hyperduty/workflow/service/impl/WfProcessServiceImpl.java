@@ -129,18 +129,36 @@ public class WfProcessServiceImpl implements WfProcessService {
     @Override
     public String getProcessBpmnXml(String processDefinitionId) {
         try {
+            log.info("获取流程BPMN XML, processDefinitionId: {}", processDefinitionId);
+            
             ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
                     .processDefinitionId(processDefinitionId)
                     .singleResult();
+            
             if (processDefinition == null) {
+                log.error("流程定义不存在, processDefinitionId: {}", processDefinitionId);
                 throw new BusinessException("流程定义不存在");
             }
+            
+            log.info("找到流程定义: deploymentId={}, resourceName={}", 
+                    processDefinition.getDeploymentId(), 
+                    processDefinition.getResourceName());
 
             InputStream inputStream = repositoryService.getResourceAsStream(
                     processDefinition.getDeploymentId(),
                     processDefinition.getResourceName()
             );
-            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            
+            if (inputStream == null) {
+                log.error("获取资源流失败, deploymentId={}, resourceName={}", 
+                        processDefinition.getDeploymentId(), 
+                        processDefinition.getResourceName());
+                throw new BusinessException("流程资源不存在");
+            }
+            
+            String xml = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            log.info("成功读取流程XML, 长度: {}", xml.length());
+            return xml;
         } catch (Exception e) {
             log.error("获取流程BPMN XML失败", e);
             throw new BusinessException("获取流程BPMN XML失败：" + e.getMessage());

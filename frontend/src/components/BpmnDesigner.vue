@@ -20,13 +20,11 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import BpmnModeler from 'bpmn-js/lib/Modeler'
 import 'bpmn-js/dist/assets/diagram-js.css'
 import 'bpmn-js/dist/assets/bpmn-js.css'
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css'
-import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-codes.css'
-import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css'
 import chineseTranslation from 'bpmn-js-i18n/translations/zn'
 
 export default {
@@ -86,29 +84,32 @@ export default {
 
     // 导入BPMN
     const importBpmn = async (xml) => {
-      if (!xml) {
-        xml = `<?xml version="1.0" encoding="UTF-8"?>
-        <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                          xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-                          xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                          xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-                          id="Definitions_1"
-                          targetNamespace="http://bpmn.io/schema/bpmn">
-          <bpmn:process id="Process_1" isExecutable="true">
-            <bpmn:startEvent id="StartEvent_1" />
-          </bpmn:process>
-          <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-            <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
-              <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
-                <dc:Bounds x="179" y="159" width="36" height="36" />
-              </bpmndi:BPMNShape>
-            </bpmndi:BPMNPlane>
-          </bpmndi:BPMNDiagram>
-        </bpmn:definitions>`
+      if (!modeler.value) return
+      
+      let bpmnXml = xml
+      if (!bpmnXml) {
+        bpmnXml = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             id="Definitions_1"
+             targetNamespace="http://bpmn.io/schema/bpmn">
+  <process id="Process_1" isExecutable="true">
+    <startEvent id="StartEvent_1" />
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="179" y="159" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`
       }
 
       try {
-        await modeler.value.importXML(xml)
+        await modeler.value.importXML(bpmnXml)
         const canvas = modeler.value.get('canvas')
         canvas.zoom('fit-viewport')
       } catch (error) {
@@ -182,6 +183,13 @@ export default {
       canvas.zoom('fit-viewport')
     }
 
+    // 监听 xml prop 变化
+    watch(() => props.xml, (newXml) => {
+      if (newXml) {
+        importBpmn(newXml)
+      }
+    })
+
     onMounted(() => {
       initModeler()
     })
@@ -224,5 +232,6 @@ export default {
 .canvas {
   flex: 1;
   min-height: 500px;
+  background: #f5f5f5;
 }
 </style>

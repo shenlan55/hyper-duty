@@ -166,7 +166,10 @@ export default {
     const viewProcess = (row) => {
       router.push({
         path: '/workflow/designer',
-        query: { processDefinitionId: row.id }
+        query: { 
+          processDefinitionId: row.id,
+          processName: row.name || row.key
+        }
       })
     }
 

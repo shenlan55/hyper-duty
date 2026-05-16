@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { stopAutoRefresh } from '../utils/request'
+import { useMenuStore } from './menu'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -28,6 +29,10 @@ export const useUserStore = defineStore('user', {
     logout() {
       // 停止自动token刷新
       stopAutoRefresh()
+      
+      // 重置菜单
+      const menuStore = useMenuStore()
+      menuStore.resetMenus()
       
       this.username = ''
       this.token = ''

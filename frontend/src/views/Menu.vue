@@ -41,13 +41,13 @@
         </el-icon>
       </template>
       <template #status="{ row }">
-        <el-switch
-          v-model="row.status"
-          :active-value="1"
-          :inactive-value="0"
-          @change="handleStatusChange(row)"
-        />
-      </template>
+                <el-switch
+                  :model-value="row.status"
+                  :active-value="1"
+                  :inactive-value="0"
+                  @update:model-value="(val) => handleStatusChange(row, val)"
+                />
+              </template>
       <template #operation="{ row }">
         <el-button type="primary" size="small" @click="handleEditMenu(row)" style="margin-right: 8px">
           <el-icon><Edit /></el-icon>
@@ -300,9 +300,22 @@ const menuRules = reactive({
 })
 
 const loadMenuData = async () => {
+  isInitialized.value = false
   loading.value = true
   try {
     const data = await getMenuTree()
+    
+    // 深拷贝数据，避免直接修改后端返回的数据
+    const deepCopy = (source) => {
+      return source.map(item => {
+        const copied = { ...item }
+        if (item.children && item.children.length > 0) {
+          copied.children = deepCopy(item.children)
+        }
+        return copied
+      })
+    }
+    
     const processMenuTree = (menus) => {
       return menus.map(menu => {
         const processedMenu = { ...menu }
@@ -314,13 +327,18 @@ const loadMenuData = async () => {
       })
     }
     
-    const menuData = processMenuTree(data)
+    const copiedData = deepCopy(data)
+    const menuData = processMenuTree(copiedData)
     allMenus.value = flattenMenuTree(menuData)
     menuList.value = menuData
   } catch (error) {
     ElMessage.error('获取菜单列表失败')
   } finally {
     loading.value = false
+    // 延迟设置初始化标志，确保所有组件都已初始化完毕
+    setTimeout(() => {
+      isInitialized.value = true
+    }, 100)
   }
 }
 
@@ -373,13 +391,29 @@ const handleDeleteMenu = async (id) => {
   }
 }
 
-const handleStatusChange = async (menu) => {
+const isInitialized = ref(false)
+
+const handleStatusChange = async (menu, newStatus) => {
+  // 只在组件完全初始化后才处理用户操作
+  if (!isInitialized.value) {
+    return
+  }
+  
+  // 如果新状态和原状态相同，则不做任何操作
+  if (menu.status === newStatus) {
+    return
+  }
+  
+  // 创建一个副本，避免直接修改原数据
+  const menuToUpdate = { ...menu, status: newStatus }
+  
   try {
-    await updateMenu(menu)
+    await updateMenu(menuToUpdate)
+    // 更新成功后，再更新本地数据
+    menu.status = newStatus
     ElMessage.success('状态更新成功')
   } catch (error) {
     ElMessage.error('状态更新失败')
-    menu.status = menu.status === 1 ? 0 : 1
   }
 }
 
@@ -437,24 +471,42 @@ const handleSearch = (searchParams) => {
     return
   }
   
-  // 过滤菜单数据
+  // 深拷贝数据，避免修改原始数据
+  const deepCopy = (data) => {
+    return data.map(item => {
+      const copied = { ...item }
+      if (item.children && item.children.length > 0) {
+        copied.children = deepCopy(item.children)
+      }
+      return copied
+    })
+  }
+  
+  // 过滤菜单数据（不修改原始数据）
   const filterMenuTree = (menus) => {
     return menus.filter(menu => {
       const matches = menu.menuName.toLowerCase().includes(searchTerm) || 
                      (menu.path && menu.path.toLowerCase().includes(searchTerm))
       
+      let hasMatchingChildren = false
       if (menu.children && menu.children.length > 0) {
-        menu.children = filterMenuTree(menu.children)
-        return matches || menu.children.length > 0
+        const filteredChildren = filterMenuTree(menu.children)
+        hasMatchingChildren = filteredChildren.length > 0
+        if (hasMatchingChildren) {
+          // 只在需要时才修改 children
+          menu.children = filteredChildren
+        }
       }
       
-      return matches
+      return matches || hasMatchingChildren
     })
   }
   
   // 重新加载数据并过滤
   loadMenuData().then(() => {
-    menuList.value = filterMenuTree(menuList.value)
+    // 使用深拷贝后再过滤
+    const copiedData = deepCopy(menuList.value)
+    menuList.value = filterMenuTree(copiedData)
   })
 }
 

@@ -13,6 +13,8 @@ import com.lasu.hyperduty.common.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.flowable.engine.RepositoryService;
 import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.repository.Deployment;
@@ -20,6 +22,7 @@ import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +31,7 @@ import java.util.stream.Collectors;
 /**
  * 流程管理控制器
  */
+@Slf4j
 @Tag(name = "流程管理", description = "流程管理接口")
 @RestController
 @RequestMapping("/api/workflow/process")
@@ -36,6 +40,7 @@ public class WfProcessController {
 
     private final WfProcessService wfProcessService;
     private final WfDefinitionMapper wfDefinitionMapper;
+    private final RepositoryService repositoryService;
 
     @Operation(summary = "部署流程")
     @PostMapping("/deploy")
@@ -106,8 +111,12 @@ public class WfProcessController {
     public ResponseResult<ProcessDefinitionDTO> getLatestProcessDefinition(@PathVariable String processKey) {
         ProcessDefinition processDefinition = wfProcessService.getLatestProcessDefinition(processKey);
         
-        WfDefinition wd = wfDefinitionMapper.selectOne(new LambdaQueryWrapper<WfDefinition>()
-                .eq(WfDefinition::getProcessDefinitionKey, processKey));
+        List<WfDefinition> definitions = wfDefinitionMapper.selectList(new LambdaQueryWrapper<WfDefinition>()
+                .eq(WfDefinition::getProcessDefinitionKey, processKey)
+                .orderByDesc(WfDefinition::getVersion)
+                .last("LIMIT 1"));
+        
+        WfDefinition wd = definitions.isEmpty() ? null : definitions.get(0);
         
         if (wd != null) {
             return ResponseResult.success(ProcessDefinitionDTO.fromProcessDefinition(processDefinition, wd.getFormId(), wd.getCategoryId(), wd.getRemark()));
@@ -146,8 +155,13 @@ public class WfProcessController {
     @Operation(summary = "绑定表单到流程")
     @PostMapping("/definition/bind-form")
     public ResponseResult<Void> bindFormToProcess(@RequestParam String processKey, @RequestParam(required = false) Long formId) {
-        WfDefinition wd = wfDefinitionMapper.selectOne(new LambdaQueryWrapper<WfDefinition>()
-                .eq(WfDefinition::getProcessDefinitionKey, processKey));
+        // 查询该流程Key的所有记录，只保留版本最高的一条
+        List<WfDefinition> definitions = wfDefinitionMapper.selectList(new LambdaQueryWrapper<WfDefinition>()
+                .eq(WfDefinition::getProcessDefinitionKey, processKey)
+                .orderByDesc(WfDefinition::getVersion)
+                .last("LIMIT 1"));
+        
+        WfDefinition wd = definitions.isEmpty() ? null : definitions.get(0);
         
         if (wd == null) {
             throw new com.lasu.hyperduty.common.exception.BusinessException("流程定义不存在，请先同步流程定义");
@@ -164,6 +178,8 @@ public class WfProcessController {
     @GetMapping("/definition/bpmn/{processDefinitionId}")
     public ResponseResult<String> getProcessBpmnXml(@PathVariable String processDefinitionId) {
         String bpmnXml = wfProcessService.getProcessBpmnXml(processDefinitionId);
+        log.info("返回流程XML, 长度: {}, 内容预览: {}", bpmnXml.length(), 
+                bpmnXml.length() > 100 ? bpmnXml.substring(0, 100) + "..." : bpmnXml);
         return ResponseResult.success(bpmnXml);
     }
 
@@ -238,5 +254,26 @@ public class WfProcessController {
     public ResponseResult<HistoricProcessInstance> getHistoricProcessInstance(@PathVariable String processInstanceId) {
         HistoricProcessInstance instance = wfProcessService.getHistoricProcessInstance(processInstanceId);
         return ResponseResult.success(instance);
+    }
+
+    @Operation(summary = "调试：列出所有流程定义")
+    @GetMapping("/debug/list-all")
+    public ResponseResult<List<Map<String, Object>>> listAllProcessDefinitions() {
+        List<ProcessDefinition> definitions = repositoryService.createProcessDefinitionQuery().list();
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        for (ProcessDefinition pd : definitions) {
+            Map<String, Object> info = new HashMap<>();
+            info.put("id", pd.getId());
+            info.put("key", pd.getKey());
+            info.put("name", pd.getName());
+            info.put("version", pd.getVersion());
+            info.put("deploymentId", pd.getDeploymentId());
+            info.put("resourceName", pd.getResourceName());
+            result.add(info);
+        }
+        
+        log.info("调试：找到 {} 个流程定义", result.size());
+        return ResponseResult.success(result);
     }
 }

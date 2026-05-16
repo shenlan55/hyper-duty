@@ -4,15 +4,15 @@
 
 -- 流程分类表
 CREATE TABLE IF NOT EXISTS public.wf_category (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    code VARCHAR(100) NOT NULL,
-    sort INT DEFAULT 0,
-    status SMALLINT DEFAULT 1,
-    remark VARCHAR(500),
-    create_time TIMESTAMP,
-    update_time TIMESTAMP,
-    CONSTRAINT uk_category_code UNIQUE (code)
+                                                  id BIGSERIAL PRIMARY KEY,
+                                                  name VARCHAR(100) NOT NULL,
+                                                  code VARCHAR(100) NOT NULL,
+                                                  sort INT DEFAULT 0,
+                                                  status SMALLINT DEFAULT 1,
+                                                  remark VARCHAR(500),
+                                                  create_time TIMESTAMP,
+                                                  update_time TIMESTAMP,
+                                                  CONSTRAINT uk_category_code UNIQUE (code)
 );
 COMMENT ON TABLE public.wf_category IS '流程分类表';
 COMMENT ON COLUMN public.wf_category.id IS '主键ID';
@@ -27,17 +27,17 @@ COMMENT ON COLUMN public.wf_category.update_time IS '更新时间';
 
 -- 流程定义扩展表
 CREATE TABLE IF NOT EXISTS public.wf_definition (
-    id BIGSERIAL PRIMARY KEY,
-    process_definition_id VARCHAR(100) NOT NULL,
-    process_definition_key VARCHAR(100) NOT NULL,
-    process_name VARCHAR(200) NOT NULL,
-    category_id BIGINT,
-    form_id BIGINT,
-    version INT NOT NULL DEFAULT 1,
-    status SMALLINT DEFAULT 1,
-    remark VARCHAR(500),
-    create_time TIMESTAMP,
-    update_time TIMESTAMP
+                                                    id BIGSERIAL PRIMARY KEY,
+                                                    process_definition_id VARCHAR(100) NOT NULL,
+                                                    process_definition_key VARCHAR(100) NOT NULL,
+                                                    process_name VARCHAR(200) NOT NULL,
+                                                    category_id BIGINT,
+                                                    form_id BIGINT,
+                                                    version INT NOT NULL DEFAULT 1,
+                                                    status SMALLINT DEFAULT 1,
+                                                    remark VARCHAR(500),
+                                                    create_time TIMESTAMP,
+                                                    update_time TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_process_key ON public.wf_definition(process_definition_key);
 CREATE INDEX IF NOT EXISTS idx_category_id ON public.wf_definition(category_id);
@@ -57,19 +57,19 @@ COMMENT ON COLUMN public.wf_definition.update_time IS '更新时间';
 
 -- 流程表单表
 CREATE TABLE IF NOT EXISTS public.wf_form (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(200) NOT NULL,
-    code VARCHAR(100) NOT NULL,
-    form_type VARCHAR(50) DEFAULT 'dynamic',
-    status SMALLINT DEFAULT 1,
-    form_config TEXT,
-    form_content TEXT,
-    version INT NOT NULL DEFAULT 1,
-    remark VARCHAR(500),
-    create_user_id BIGINT,
-    create_time TIMESTAMP,
-    update_time TIMESTAMP,
-    CONSTRAINT uk_form_code UNIQUE (code)
+                                              id BIGSERIAL PRIMARY KEY,
+                                              name VARCHAR(200) NOT NULL,
+                                              code VARCHAR(100) NOT NULL,
+                                              form_type VARCHAR(50) DEFAULT 'dynamic',
+                                              status SMALLINT DEFAULT 1,
+                                              form_config TEXT,
+                                              form_content TEXT,
+                                              version INT NOT NULL DEFAULT 1,
+                                              remark VARCHAR(500),
+                                              create_user_id BIGINT,
+                                              create_time TIMESTAMP,
+                                              update_time TIMESTAMP,
+                                              CONSTRAINT uk_form_code UNIQUE (code)
 );
 CREATE INDEX IF NOT EXISTS idx_create_user ON public.wf_form(create_user_id);
 COMMENT ON TABLE public.wf_form IS '流程表单表';
@@ -89,20 +89,20 @@ COMMENT ON COLUMN public.wf_form.update_time IS '更新时间';
 
 -- 流程实例扩展表
 CREATE TABLE IF NOT EXISTS public.wf_instance (
-    id BIGSERIAL PRIMARY KEY,
-    process_instance_id VARCHAR(100) NOT NULL,
-    process_definition_id VARCHAR(100) NOT NULL,
-    process_name VARCHAR(200),
-    business_key VARCHAR(200),
-    business_data TEXT,
-    start_user_id BIGINT,
-    start_user_name VARCHAR(100),
-    status SMALLINT DEFAULT 0,
-    remark VARCHAR(500),
-    create_time TIMESTAMP,
-    update_time TIMESTAMP,
-    end_time TIMESTAMP,
-    CONSTRAINT uk_process_instance_id UNIQUE (process_instance_id)
+                                                  id BIGSERIAL PRIMARY KEY,
+                                                  process_instance_id VARCHAR(100) NOT NULL,
+                                                  process_definition_id VARCHAR(100) NOT NULL,
+                                                  process_name VARCHAR(200),
+                                                  business_key VARCHAR(200),
+                                                  business_data TEXT,
+                                                  start_user_id BIGINT,
+                                                  start_user_name VARCHAR(100),
+                                                  status SMALLINT DEFAULT 0,
+                                                  remark VARCHAR(500),
+                                                  create_time TIMESTAMP,
+                                                  update_time TIMESTAMP,
+                                                  end_time TIMESTAMP,
+                                                  CONSTRAINT uk_process_instance_id UNIQUE (process_instance_id)
 );
 CREATE INDEX IF NOT EXISTS idx_business_key ON public.wf_instance(business_key);
 CREATE INDEX IF NOT EXISTS idx_start_user ON public.wf_instance(start_user_id);
@@ -124,18 +124,18 @@ COMMENT ON COLUMN public.wf_instance.end_time IS '结束时间';
 
 -- 委托代理表
 CREATE TABLE IF NOT EXISTS public.wf_delegate (
-    id BIGSERIAL PRIMARY KEY,
-    delegator_id BIGINT NOT NULL,
-    delegator_name VARCHAR(100) NOT NULL,
-    attorney_id BIGINT NOT NULL,
-    attorney_name VARCHAR(100) NOT NULL,
-    process_definition_key VARCHAR(100),
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP NOT NULL,
-    status SMALLINT DEFAULT 1,
-    remark VARCHAR(500),
-    create_time TIMESTAMP,
-    update_time TIMESTAMP
+                                                  id BIGSERIAL PRIMARY KEY,
+                                                  delegator_id BIGINT NOT NULL,
+                                                  delegator_name VARCHAR(100) NOT NULL,
+                                                  attorney_id BIGINT NOT NULL,
+                                                  attorney_name VARCHAR(100) NOT NULL,
+                                                  process_definition_key VARCHAR(100),
+                                                  start_time TIMESTAMP NOT NULL,
+                                                  end_time TIMESTAMP NOT NULL,
+                                                  status SMALLINT DEFAULT 1,
+                                                  remark VARCHAR(500),
+                                                  create_time TIMESTAMP,
+                                                  update_time TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_delegator ON public.wf_delegate(delegator_id);
 CREATE INDEX IF NOT EXISTS idx_attorney ON public.wf_delegate(attorney_id);
