@@ -1,6 +1,7 @@
 package com.lasu.hyperduty.pm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.utils.SecurityUtil;
 import com.lasu.hyperduty.pm.dto.PmShadowAnnotationVO;
 import com.lasu.hyperduty.pm.dto.ShadowAnnotationCreateDTO;
@@ -20,7 +21,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 影子任务 Service 实现 (v2)
@@ -100,6 +105,142 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
     // ========================================
 
     @Override
+    public Page<ShadowTaskVO> pageTaskListWithShadows(Integer pageNum, Integer pageSize, Long projectId, String taskName, String assigneeName, Integer status, Integer priority, Long currentEmployeeId) {
+        String currentUsername = SecurityUtil.getCurrentUsername();
+        Page<ShadowTaskVO> page = new Page<>(pageNum, pageSize);
+
+        // 1. 查询所有符合条件的任务（真实任务 + 影子任务）
+        List<ShadowTaskVO> allTasks = taskShadowMapper.selectTaskListWithShadows(projectId);
+
+        // 2. 应用过滤条件
+        if (taskName != null && !taskName.isEmpty()) {
+            allTasks = allTasks.stream()
+                    .filter(task -> task.getTaskName() != null && task.getTaskName().toLowerCase().contains(taskName.toLowerCase()))
+                    .collect(Collectors.toList());
+        }
+        if (assigneeName != null && !assigneeName.isEmpty()) {
+            allTasks = allTasks.stream()
+                    .filter(task -> task.getOwnerName() != null && task.getOwnerName().toLowerCase().contains(assigneeName.toLowerCase()))
+                    .collect(Collectors.toList());
+        }
+        if (status != null) {
+            allTasks = allTasks.stream()
+                    .filter(task -> task.getStatus() != null && task.getStatus().equals(status))
+                    .collect(Collectors.toList());
+        }
+        if (priority != null) {
+            allTasks = allTasks.stream()
+                    .filter(task -> task.getPriority() != null && task.getPriority().equals(priority))
+                    .collect(Collectors.toList());
+        }
+
+        // 3. 设置权限
+        for (ShadowTaskVO task : allTasks) {
+            if (task.getIsShadow() != null && task.getIsShadow() == 1) {
+                // 影子任务
+                PmTaskShadow shadow = taskShadowMapper.selectById(task.getId());
+                if (shadow != null) {
+                    boolean isOwner = shadow.getCreatedBy() != null && currentUsername != null && shadow.getCreatedBy().equals(currentUsername);
+                    task.setHasPermission(isOwner);
+                    task.setHasDeletePermission(isOwner);
+                }
+            } else {
+                // 真实任务
+                task.setHasPermission(true);
+                task.setHasDeletePermission(true);
+            }
+        }
+
+        // 4. 构建父子关系映射
+        Map<Long, List<ShadowTaskVO>> parentIdToChildrenMap = new HashMap<>();
+        for (ShadowTaskVO task : allTasks) {
+            Long parentId = task.getParentId() != null ? task.getParentId() : 0L;
+            if (!parentIdToChildrenMap.containsKey(parentId)) {
+                parentIdToChildrenMap.put(parentId, new ArrayList<>());
+            }
+            parentIdToChildrenMap.get(parentId).add(task);
+        }
+
+        // 5. 获取并排序根任务
+        List<ShadowTaskVO> rootTasks = parentIdToChildrenMap.getOrDefault(0L, new ArrayList<>());
+        rootTasks.sort((a, b) -> {
+            // 先按是否影子排序（真实任务在前）
+            int shadowCompare = (a.getIsShadow() != null ? a.getIsShadow() : 0) - (b.getIsShadow() != null ? b.getIsShadow() : 0);
+            if (shadowCompare != 0) return shadowCompare;
+            
+            // 再按是否置顶排序
+            int pinnedCompare = (b.getIsPinned() != null ? b.getIsPinned() : 0) - (a.getIsPinned() != null ? a.getIsPinned() : 0);
+            if (pinnedCompare != 0) return pinnedCompare;
+            
+            // 最后按创建时间排序
+            if (a.getCreateTime() != null && b.getCreateTime() != null) {
+                return a.getCreateTime().compareTo(b.getCreateTime());
+            }
+            return 0;
+        });
+
+        // 6. 确定每个根任务及其子任务的范围
+        List<RootTaskRange> rootTaskRanges = new ArrayList<>();
+        int currentIndex = 0;
+        for (ShadowTaskVO rootTask : rootTasks) {
+            int count = countTaskAndChildren(rootTask, parentIdToChildrenMap);
+            rootTaskRanges.add(new RootTaskRange(rootTask, currentIndex, currentIndex + count));
+            currentIndex += count;
+        }
+
+        // 7. 按照后端逻辑分页（完全按照PmTaskServiceImpl的逻辑！）
+        List<List<RootTaskRange>> pagesRootTasks = new ArrayList<>();
+        List<RootTaskRange> currentPageRootTasks = new ArrayList<>();
+        int currentPageTaskCount = 0;
+
+        for (RootTaskRange range : rootTaskRanges) {
+            int taskCount = range.endIndex - range.startIndex;
+            
+            // 如果当前页是空的，直接添加这个根任务
+            if (currentPageRootTasks.isEmpty()) {
+                currentPageRootTasks.add(range);
+                currentPageTaskCount += taskCount;
+            } else {
+                // 当前页已有任务，先检查：添加这个根任务自己（+1条）会不会超过pageSize
+                if (currentPageTaskCount + 1 > pageSize) {
+                    // 会超过！保存当前页，然后新根任务从新页开始
+                    pagesRootTasks.add(new ArrayList<>(currentPageRootTasks));
+                    
+                    // 新开一页，添加这个根任务
+                    currentPageRootTasks.clear();
+                    currentPageRootTasks.add(range);
+                    currentPageTaskCount = taskCount;
+                } else {
+                    // 不会超过，添加到当前页，这个根任务及其所有子任务都在当前页
+                    currentPageRootTasks.add(range);
+                    currentPageTaskCount += taskCount;
+                }
+            }
+        }
+
+        // 8. 添加最后一页
+        if (!currentPageRootTasks.isEmpty()) {
+            pagesRootTasks.add(currentPageRootTasks);
+        }
+
+        // 9. 调整 total 使得前端显示的总页数等于 pagesRootTasks.size()
+        int adjustedTotal = pagesRootTasks.size() * pageSize;
+        page.setTotal(adjustedTotal);
+
+        // 10. 获取当前页的根任务
+        List<ShadowTaskVO> result = new ArrayList<>();
+        if (pageNum <= pagesRootTasks.size()) {
+            List<RootTaskRange> targetPageRanges = pagesRootTasks.get(pageNum - 1);
+            for (RootTaskRange range : targetPageRanges) {
+                addTaskToResult(result, range.rootTask, parentIdToChildrenMap);
+            }
+        }
+        page.setRecords(result);
+
+        return page;
+    }
+
+    @Override
     public List<ShadowTaskVO> getTaskListWithShadows(Long projectId, Long currentEmployeeId) {
         String currentUsername = SecurityUtil.getCurrentUsername();
         List<ShadowTaskVO> tasks = taskShadowMapper.selectTaskListWithShadows(projectId);
@@ -113,7 +254,7 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
                     task.setHasDeletePermission(isOwner);
                 }
             } else {
-                // 真实任务，先设置权限为true，让按钮显示
+                // 真实任务
                 task.setHasPermission(true);
                 task.setHasDeletePermission(true);
             }
@@ -179,5 +320,56 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
     @Override
     public List<ShadowAnnotationWithProjectVO> getAnnotationsBySourceTaskId(Long sourceTaskId) {
         return annotationMapper.selectBySourceTaskId(sourceTaskId);
+    }
+
+    // ========================================
+    // 辅助方法
+    // ========================================
+
+    /**
+     * 计算任务及其所有子任务的总条数
+     */
+    private int countTaskAndChildren(ShadowTaskVO task, Map<Long, List<ShadowTaskVO>> parentIdToChildrenMap) {
+        int count = 1; // 当前任务自己
+        List<ShadowTaskVO> children = parentIdToChildrenMap.getOrDefault(task.getId(), new ArrayList<>());
+        for (ShadowTaskVO child : children) {
+            count += countTaskAndChildren(child, parentIdToChildrenMap);
+        }
+        return count;
+    }
+
+    /**
+     * 递归添加任务及其子任务到结果
+     */
+    private void addTaskToResult(List<ShadowTaskVO> result, ShadowTaskVO task, Map<Long, List<ShadowTaskVO>> parentIdToChildrenMap) {
+        result.add(task);
+        List<ShadowTaskVO> children = parentIdToChildrenMap.getOrDefault(task.getId(), new ArrayList<>());
+        // 对子任务排序
+        children.sort((a, b) -> {
+            int priorityCompare = (a.getPriority() != null ? a.getPriority() : 999) - (b.getPriority() != null ? b.getPriority() : 999);
+            if (priorityCompare != 0) return priorityCompare;
+            if (a.getCreateTime() != null && b.getCreateTime() != null) {
+                return a.getCreateTime().compareTo(b.getCreateTime());
+            }
+            return 0;
+        });
+        for (ShadowTaskVO child : children) {
+            addTaskToResult(result, child, parentIdToChildrenMap);
+        }
+    }
+
+    /**
+     * 根任务范围类，记录根任务在扁平列表中的起始和结束索引
+     */
+    private static class RootTaskRange {
+        ShadowTaskVO rootTask;
+        int startIndex;
+        int endIndex;
+
+        RootTaskRange(ShadowTaskVO rootTask, int startIndex, int endIndex) {
+            this.rootTask = rootTask;
+            this.startIndex = startIndex;
+            this.endIndex = endIndex;
+        }
     }
 }

@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.pm.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.pm.dto.PmShadowAnnotationVO;
 import com.lasu.hyperduty.pm.dto.ShadowAnnotationCreateDTO;
 import com.lasu.hyperduty.pm.dto.ShadowAnnotationWithProjectVO;
@@ -37,6 +38,20 @@ public interface PmTaskShadowService {
     // ========================================
     // 查询
     // ========================================
+
+    /**
+     * 查询：真实任务 + 影子任务（UNION ALL）- 分页
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param projectId 项目ID
+     * @param taskName 任务名称（模糊查询）
+     * @param assigneeName 负责人姓名（模糊查询）
+     * @param status 状态
+     * @param priority 优先级
+     * @param currentEmployeeId 当前用户ID
+     * @return 分页结果
+     */
+    Page<ShadowTaskVO> pageTaskListWithShadows(Integer pageNum, Integer pageSize, Long projectId, String taskName, String assigneeName, Integer status, Integer priority, Long currentEmployeeId);
 
     /**
      * 查询：真实任务 + 影子任务（UNION ALL）

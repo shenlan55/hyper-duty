@@ -1,5 +1,6 @@
 package com.lasu.hyperduty.pm.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.common.utils.SecurityUtil;
 import com.lasu.hyperduty.pm.dto.PmShadowAnnotationVO;
@@ -64,6 +65,23 @@ public class PmTaskShadowController {
     // ========================================
     // 查询
     // ========================================
+
+    /**
+     * 查询：真实任务 + 影子任务（UNION ALL）- 分页
+     */
+    @GetMapping("/page")
+    public ResponseResult<Page<ShadowTaskVO>> pageTaskListWithShadows(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam Long projectId,
+            @RequestParam(required = false) String taskName,
+            @RequestParam(required = false) String assigneeName,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Integer priority) {
+        Long currentEmployeeId = SecurityUtil.getCurrentUserId();
+        Page<ShadowTaskVO> page = shadowService.pageTaskListWithShadows(pageNum, pageSize, projectId, taskName, assigneeName, status, priority, currentEmployeeId);
+        return ResponseResult.success(page);
+    }
 
     /**
      * 查询：真实任务 + 影子任务（UNION ALL）

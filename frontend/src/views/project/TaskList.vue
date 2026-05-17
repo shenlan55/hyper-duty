@@ -32,21 +32,21 @@
       />
 
       <BaseTable
-      :data="tableData"
-      :columns="columns"
-      :loading="loading"
-      :pagination="{
-        currentPage: pagination.currentPage,
-        pageSize: pagination.pageSize,
-        pageSizes: pagination.pageSizes,
-        total: pagination.total
-      }"
-      :row-key="'id'"
-      :backend-pagination="false"
-      @size-change="handleSizeChange"
-      @current-change="handleCurrentChange"
-      style="width: 100%;"
-    >
+        :data="tableData"
+        :columns="columns"
+        :loading="loading"
+        :pagination="{
+          currentPage: pagination.currentPage,
+          pageSize: pagination.pageSize,
+          pageSizes: pagination.pageSizes,
+          total: pagination.total
+        }"
+        :row-key="'id'"
+        :backend-pagination="true"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        style="width: 100%;"
+      >
         <template #taskName="{ row, level }">
           <span>
             <el-icon v-if="row.isPinned === 1" style="color: #f56c6c; margin-right: 4px;"><Star /></el-icon>
@@ -328,7 +328,8 @@ import BatchCreateTasks from '@/components/BatchCreateTasks.vue'
 import BindCustomRowDialog from '@/components/BindCustomRowDialog.vue'
 import ShadowTaskDetailDialog from '@/components/ShadowTaskDetailDialog.vue'
 import TaskProgressReportDialog from '@/components/TaskProgressReportDialog.vue'
-import { getTaskPage, getTaskDetail, deleteTask, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, getTaskListWithShadows, createShadowTask, updateShadowTask, deleteShadowTask, getShadowTaskDetail, getShadowTaskBySource } from '@/api/task'
+import { getTaskPage, getTaskDetail, deleteTask, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, createShadowTask, updateShadowTask, deleteShadowTask, getShadowTaskDetail, getShadowTaskBySource } from '@/api/task'
+import { pageTaskListWithShadows } from '@/api/shadowTask'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { getTaskBindings, unbindCustomRow, getCustomTableColumns } from '@/api/customTable'
@@ -443,12 +444,22 @@ const loadData = async () => {
       return
     }
     
-    // 使用新的 API 加载真实任务 + 影子任务
-    const tasks = await getTaskListWithShadows(searchForm.projectId)
-    allTasks.value = tasks || []
+    // 使用新的后端分页 API 加载真实任务 + 影子任务
+    const page = await pageTaskListWithShadows({
+      pageNum: pagination.currentPage,
+      pageSize: pagination.pageSize,
+      projectId: searchForm.projectId,
+      taskName: searchForm.taskName || null,
+      assigneeName: searchForm.assigneeName || null,
+      status: searchForm.status,
+      priority: searchForm.priority
+    })
+    
+    const tasks = page.records || []
+    pagination.total = page.total || 0
     
     // 处理附件和干系人数据（不删除原始字段）
-    for (const task of allTasks.value) {
+    for (const task of tasks) {
       if (task.attachments && typeof task.attachments === 'string') {
         task._attachments = task.attachments
       }
@@ -467,46 +478,9 @@ const loadData = async () => {
         : false
     }
     
-    // 根据搜索条件过滤
-    let filteredTasks = allTasks.value
-    if (searchForm.taskName) {
-      filteredTasks = filteredTasks.filter(task => 
-        task.taskName?.toLowerCase().includes(searchForm.taskName.toLowerCase())
-      )
-    }
-    if (searchForm.assigneeName) {
-      filteredTasks = filteredTasks.filter(task => 
-        task.ownerName?.toLowerCase().includes(searchForm.assigneeName.toLowerCase())
-      )
-    }
-    if (searchForm.status !== null) {
-      filteredTasks = filteredTasks.filter(task => task.status === searchForm.status)
-    }
-    if (searchForm.priority !== null) {
-      filteredTasks = filteredTasks.filter(task => task.priority === searchForm.priority)
-    }
+    // 构建树形结构用于显示
+    tableData.value = buildTaskTree(tasks)
     
-    // 对任务进行排序（真实任务在前，影子在后）
-    const sortedTasks = [...filteredTasks].sort((a, b) => {
-      if (a.isShadow !== b.isShadow) {
-        return a.isShadow - b.isShadow
-      }
-      if (a.isPinned !== b.isPinned) {
-        return b.isPinned - a.isPinned
-      }
-      // 用 createTime 或者其他字段排序，这里用 sortTasks 或者简单排序
-      return sortTasks([a, b])[0] === a ? -1 : 1
-    })
-    
-    // 前端分页
-    const startIndex = (pagination.currentPage - 1) * pagination.pageSize
-    const endIndex = startIndex + pagination.pageSize
-    const paginatedTasks = sortedTasks.slice(startIndex, endIndex)
-    
-    // 构建树形结构
-    tableData.value = buildTaskTree(paginatedTasks)
-    
-    pagination.total = filteredTasks.length
   } catch (error) {
     console.error('加载数据失败', error)
     ElMessage.error('加载数据失败')

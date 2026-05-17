@@ -36,6 +36,17 @@ export function deleteShadowTask(shadowId) {
 // ========================================
 
 /**
+ * 查询：真实任务 + 影子任务（UNION ALL）- 分页
+ */
+export function pageTaskListWithShadows(params) {
+  return request({
+    url: '/pm/shadow/page',
+    method: 'get',
+    params
+  })
+}
+
+/**
  * 查询：真实任务 + 影子任务（UNION ALL）
  * @param projectId 项目ID
  */
