@@ -286,10 +286,43 @@ export function getShadowAnnotationsBySource(sourceTaskId) {
  * 导出任务进展报告
  */
 export function exportTaskProgressReport(params) {
+    // 处理数组参数，将其转换为Spring Boot能正确解析的格式
+    const searchParams = new URLSearchParams();
+    
+    if (params.projectIds && Array.isArray(params.projectIds)) {
+        params.projectIds.forEach(id => {
+            searchParams.append('projectIds', id);
+        });
+    }
+    
+    if (params.taskStartDateFrom) {
+        searchParams.append('taskStartDateFrom', params.taskStartDateFrom);
+    }
+    if (params.taskStartDateTo) {
+        searchParams.append('taskStartDateTo', params.taskStartDateTo);
+    }
+    
+    if (params.taskEndDateFrom) {
+        searchParams.append('taskEndDateFrom', params.taskEndDateFrom);
+    }
+    if (params.taskEndDateTo) {
+        searchParams.append('taskEndDateTo', params.taskEndDateTo);
+    }
+    
+    if (params.progressUpdateTimeFrom) {
+        searchParams.append('progressUpdateTimeFrom', params.progressUpdateTimeFrom);
+    }
+    if (params.progressUpdateTimeTo) {
+        searchParams.append('progressUpdateTimeTo', params.progressUpdateTimeTo);
+    }
+    
+    // 构建完整URL
+    const queryString = searchParams.toString();
+    const url = queryString ? `/duty/export/task-progress-report?${queryString}` : '/duty/export/task-progress-report';
+    
     return request({
-        url: '/duty/export/task-progress-report',
+        url: url,
         method: 'get',
-        params,
         responseType: 'blob'
     });
 }

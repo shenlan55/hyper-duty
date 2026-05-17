@@ -614,6 +614,7 @@ public class ExcelExportUtil {
         private LocalDateTime createTime;
         private LocalDateTime updateTime;
         private LocalDateTime lastProgressUpdateTime;
+        private String progressDetails; // 进展详情，包含所有进展记录
     }
 
     /**
@@ -644,9 +645,6 @@ public class ExcelExportUtil {
         // 创建任务概览 Sheet
         createTaskOverviewSheet(workbook, data.getTaskOverviewList());
 
-        // 创建进展历史 Sheet
-        createProgressHistorySheet(workbook, data.getProgressHistoryList());
-
         // 写入响应
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setCharacterEncoding("utf-8");
@@ -668,7 +666,7 @@ public class ExcelExportUtil {
 
         String[] headers = {
             "项目名称", "任务类型", "任务名称", "优先级", "状态", "进度",
-            "负责人", "开始日期", "结束日期", "创建时间", "最后更新时间", "最后进展更新时间"
+            "负责人", "开始日期", "结束日期", "创建时间", "最后更新时间", "最后进展更新时间", "进展详情"
         };
 
         createHeaderRow(sheet, headers);
@@ -678,6 +676,11 @@ public class ExcelExportUtil {
             autoSizeColumns(sheet);
             return;
         }
+
+        // 创建支持换行的单元格样式
+        XSSFCellStyle wrapStyle = workbook.createCellStyle();
+        wrapStyle.setWrapText(true);
+        wrapStyle.setVerticalAlignment(VerticalAlignment.TOP);
 
         int rowNum = 1;
         for (TaskOverviewItem item : taskList) {
@@ -706,9 +709,23 @@ public class ExcelExportUtil {
                     ? item.getLastProgressUpdateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
                     : ""
             );
+            
+            // 进展详情列，支持换行
+            XSSFCell progressCell = row.createCell(12);
+            if (item.getProgressDetails() != null && !item.getProgressDetails().isEmpty()) {
+                progressCell.setCellValue(item.getProgressDetails());
+                progressCell.setCellStyle(wrapStyle);
+            } else {
+                progressCell.setCellValue("");
+            }
         }
 
-        autoSizeColumns(sheet);
+        // 自动调整列宽
+        for (int i = 0; i < headers.length - 1; i++) {
+            sheet.autoSizeColumn(i);
+        }
+        // 设置进展详情列的宽度
+        sheet.setColumnWidth(12, 12000);
     }
 
     /**
