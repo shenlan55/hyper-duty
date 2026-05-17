@@ -2,7 +2,9 @@ package com.lasu.hyperduty.pm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lasu.hyperduty.common.utils.SecurityUtil;
+import com.lasu.hyperduty.pm.dto.PmShadowAnnotationVO;
 import com.lasu.hyperduty.pm.dto.ShadowAnnotationCreateDTO;
+import com.lasu.hyperduty.pm.dto.ShadowAnnotationWithProjectVO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskCreateDTO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskUpdateDTO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskVO;
@@ -170,10 +172,12 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
     }
 
     @Override
-    public List<PmShadowAnnotation> getAnnotationsByShadowId(Long shadowId) {
-        LambdaQueryWrapper<PmShadowAnnotation> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(PmShadowAnnotation::getShadowId, shadowId)
-                .orderByDesc(PmShadowAnnotation::getCreatedAt);
-        return annotationMapper.selectList(wrapper);
+    public List<PmShadowAnnotationVO> getAnnotationsByShadowId(Long shadowId) {
+        return annotationMapper.selectByShadowId(shadowId);
+    }
+
+    @Override
+    public List<ShadowAnnotationWithProjectVO> getAnnotationsBySourceTaskId(Long sourceTaskId) {
+        return annotationMapper.selectBySourceTaskId(sourceTaskId);
     }
 }

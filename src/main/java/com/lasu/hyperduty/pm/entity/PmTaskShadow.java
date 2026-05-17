@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Data;
 
@@ -71,4 +72,35 @@ public class PmTaskShadow {
 
     @TableField(exist = false)
     private Integer annotationCount;
+
+    // ========================================
+    // 源任务详情字段
+    // ========================================
+
+    @TableField(exist = false)
+    private Integer sourceProgress;
+
+    @TableField(exist = false)
+    private Integer sourceStatus;
+
+    @TableField(exist = false)
+    private Integer sourcePriority;
+
+    @TableField(exist = false)
+    private String sourceDescription;
+
+    @TableField(exist = false)
+    private LocalDate sourceStartDate;
+
+    @TableField(exist = false)
+    private LocalDate sourceEndDate;
+
+    @TableField(exist = false)
+    private String sourceOwnerName;
+
+    @TableField(exist = false)
+    private String sourceAttachments;
+
+    @TableField(exist = false)
+    private String createdByName;
 }

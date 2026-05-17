@@ -1,6 +1,8 @@
 package com.lasu.hyperduty.pm.service;
 
+import com.lasu.hyperduty.pm.dto.PmShadowAnnotationVO;
 import com.lasu.hyperduty.pm.dto.ShadowAnnotationCreateDTO;
+import com.lasu.hyperduty.pm.dto.ShadowAnnotationWithProjectVO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskCreateDTO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskUpdateDTO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskVO;
@@ -74,7 +76,12 @@ public interface PmTaskShadowService {
     void deleteAnnotation(Long annotationId);
 
     /**
-     * 查询影子的所有批注
+     * 查询影子的所有批注（包含创建人姓名）
      */
-    List<PmShadowAnnotation> getAnnotationsByShadowId(Long shadowId);
+    List<PmShadowAnnotationVO> getAnnotationsByShadowId(Long shadowId);
+
+    /**
+     * 查询源任务的所有影子批注（包含影子项目信息）
+     */
+    List<ShadowAnnotationWithProjectVO> getAnnotationsBySourceTaskId(Long sourceTaskId);
 }

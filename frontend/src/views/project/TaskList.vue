@@ -296,70 +296,12 @@
     </el-dialog>
 
     <!-- 影子任务详情对话框 -->
-    <el-dialog
+    <ShadowTaskDetailDialog
       v-model="shadowDetailDialogVisible"
-      title="影子任务详情"
-      width="1200px"
-    >
-      <div v-if="currentShadowTask">
-        <!-- 头部标识 -->
-        <el-alert title="影子任务信息" type="info" :closable="false" show-icon style="margin-bottom: 20px;">
-          <template #default>
-            这是一个影子任务，源任务来自「{{ currentShadowTask.sourceProjectName || '-' }}」项目，数据实时同步源任务。
-          </template>
-        </el-alert>
-        
-        <!-- 基本信息 -->
-        <el-descriptions :column="2" border style="margin-bottom: 20px;">
-          <el-descriptions-item label="影子任务名称">
-            <span v-if="currentShadowTask.shadowAlias" style="color: #409eff; font-weight: bold;">{{ currentShadowTask.shadowAlias }}</span>
-            <span v-else>{{ currentShadowTask.taskName }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="源任务名称">{{ currentShadowTask.sourceTaskName || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="源项目">{{ currentShadowTask.sourceProjectName || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="当前项目">{{ currentShadowTask.projectName || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="负责人">{{ currentShadowTask.ownerName || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="创建人">{{ currentShadowTask.createdBy || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="开始日期">{{ currentShadowTask.startDate || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="结束日期">{{ currentShadowTask.endDate || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="进度">
-            <el-progress :percentage="currentShadowTask.progress" :status="getProgressStatus(currentShadowTask.progress)" />
-          </el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag :type="getTaskStatusType(currentShadowTask.status)">{{ getTaskStatusText(currentShadowTask.status) }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="优先级">
-            <el-tag :type="getTaskPriorityType(currentShadowTask.priority)">{{ getTaskPriorityText(currentShadowTask.priority) }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ formatDateTime(currentShadowTask.createdAt) }}</el-descriptions-item>
-          <el-descriptions-item label="影子描述" :span="2">
-            <div v-if="currentShadowTask.shadowDescription" style="white-space: pre-wrap;">{{ currentShadowTask.shadowDescription }}</div>
-            <span v-else style="color: #909399;">暂无影子描述（可编辑添加）</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="源任务描述" :span="2">
-            <div v-if="currentShadowTask.description" style="white-space: pre-wrap;">{{ currentShadowTask.description }}</div>
-            <span v-else style="color: #909399;">暂无描述</span>
-          </el-descriptions-item>
-        </el-descriptions>
-      </div>
-      <template #footer>
-        <el-button @click="shadowDetailDialogVisible = false">关闭</el-button>
-        <el-button 
-          v-if="currentShadowTask?.hasPermission" 
-          type="warning" 
-          @click="handleEditShadowFromDetail"
-        >
-          编辑影子信息
-        </el-button>
-        <el-button 
-          v-if="currentShadowTask?.hasDeletePermission" 
-          type="danger" 
-          @click="handleDeleteShadowFromDetail"
-        >
-          删除影子
-        </el-button>
-      </template>
-    </el-dialog>
+      :shadow-id="currentShadowId"
+      @edit="handleEditShadowFromDetail"
+      @delete="handleDeleteShadowFromDetail"
+    />
   </div>
 </template>
 
@@ -375,6 +317,7 @@ import TaskEditDialog from '@/components/TaskEditDialog.vue'
 import TaskProgressUpdateDialog from '@/components/TaskProgressUpdateDialog.vue'
 import BatchCreateTasks from '@/components/BatchCreateTasks.vue'
 import BindCustomRowDialog from '@/components/BindCustomRowDialog.vue'
+import ShadowTaskDetailDialog from '@/components/ShadowTaskDetailDialog.vue'
 import { getTaskPage, getTaskDetail, deleteTask, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, getTaskListWithShadows, createShadowTask, updateShadowTask, deleteShadowTask, getShadowTaskDetail, getShadowTaskBySource } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
@@ -426,6 +369,7 @@ const shadowForm = reactive({
   shadowDescription: ''
 })
 const currentShadowTask = ref(null)
+const currentShadowId = ref(null)
 const allProjectTasks = ref([])
 
 // 搜索表单
@@ -777,6 +721,7 @@ const handleEditShadowSubmit = async () => {
 // 查看影子任务详情
 const handleViewShadowDetail = async (row) => {
   try {
+    currentShadowId.value = row.id
     const data = await getShadowTaskDetail(row.id)
     currentShadowTask.value = data
     shadowDetailDialogVisible.value = true
@@ -808,6 +753,10 @@ const handleDeleteShadow = async (row) => {
 // 从详情页编辑影子任务
 const handleEditShadowFromDetail = async () => {
   try {
+    if (!currentShadowTask.value) {
+      const data = await getShadowTaskDetail(currentShadowId.value)
+      currentShadowTask.value = data
+    }
     shadowDetailDialogVisible.value = false
     Object.assign(shadowForm, {
       id: currentShadowTask.value.id,
@@ -823,11 +772,10 @@ const handleEditShadowFromDetail = async () => {
 // 从详情页删除影子任务
 const handleDeleteShadowFromDetail = async () => {
   try {
-    await ElMessageBox.confirm(`确认删除影子任务"${currentShadowTask.value.taskName}"？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    if (!currentShadowTask.value) {
+      const data = await getShadowTaskDetail(currentShadowId.value)
+      currentShadowTask.value = data
+    }
     await deleteShadowTask(currentShadowTask.value.id)
     ElMessage.success('删除影子任务成功')
     shadowDetailDialogVisible.value = false

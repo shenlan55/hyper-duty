@@ -5,6 +5,12 @@
     width="1200px"
     @close="handleClose"
   >
+    <template #footer>
+      <el-button @click="handleClose">关闭</el-button>
+      <el-button type="warning" @click="handleEdit">编辑影子信息</el-button>
+      <el-button type="danger" @click="handleDelete">删除影子</el-button>
+    </template>
+    
     <div v-loading="loading" class="shadow-detail">
       <div v-if="shadowData" class="detail-content">
         <!-- 头部标识 -->
@@ -39,7 +45,7 @@
               {{ shadowData.shadowDescription || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="创建人">
-              {{ shadowData.createdBy || '-' }}
+              {{ shadowData.createdByName || shadowData.createdBy || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="创建时间">
               {{ formatDateTime(shadowData.createdAt) }}
@@ -50,7 +56,7 @@
           </el-descriptions>
         </el-card>
 
-        <!-- 源任务信息 -->
+        <!-- 源任务基本信息 -->
         <el-card class="section-card">
           <template #header>
             <div class="card-header">
@@ -58,46 +64,74 @@
               <el-tag type="info">实时同步</el-tag>
             </div>
           </template>
-          <div class="source-task-content">
-            <el-descriptions :column="2" border>
-              <el-descriptions-item label="任务名称">
-                {{ shadowData.sourceTaskName || shadowData.taskName }}
-              </el-descriptions-item>
-              <el-descriptions-item label="负责人">
-                {{ shadowData.ownerName || shadowData.assigneeName || '-' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="优先级">
-                <el-tag :type="getTaskPriorityType(shadowData.priority)">
-                  {{ getTaskPriorityText(shadowData.priority) }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="状态">
-                <el-tag :type="getTaskStatusType(shadowData.status)">
-                  {{ getTaskStatusText(shadowData.status) }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="进度">
-                <el-progress
-                  :percentage="shadowData.progress"
-                  :status="getProgressStatus(shadowData.progress)"
-                  :stroke-width="10"
-                />
-              </el-descriptions-item>
-              <el-descriptions-item label="开始日期">
-                {{ shadowData.startDate || '-' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="结束日期">
-                {{ shadowData.endDate || '-' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="任务描述" :span="2">
-                {{ shadowData.description || '-' }}
-              </el-descriptions-item>
-            </el-descriptions>
+          <div class="task-info-panel">
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-descriptions :column="1" size="small">
+                  <el-descriptions-item label="任务名称">
+                    {{ shadowData.sourceTaskName || shadowData.taskName }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="负责人">
+                    {{ shadowData.ownerName || shadowData.assigneeName || '-' }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="开始日期">
+                    {{ shadowData.startDate || '-' }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="结束日期">
+                    {{ shadowData.endDate || '-' }}
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-col>
+              <el-col :span="12">
+                <el-descriptions :column="1" size="small">
+                  <el-descriptions-item label="优先级">
+                    {{ getTaskPriorityText(shadowData.priority) }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="状态">
+                    {{ getTaskStatusText(shadowData.status) }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="当前进度">
+                    {{ shadowData.progress }}%
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-col>
+            </el-row>
           </div>
         </el-card>
 
+        <!-- 任务描述 -->
+        <div class="task-description-section" style="margin-bottom: 20px;">
+          <h4 style="margin-bottom: 10px;">任务描述</h4>
+          <div class="description-content" v-if="shadowData.description" v-html="shadowData.description"></div>
+          <div v-else class="no-data">暂无任务描述</div>
+        </div>
+
+        <!-- 附件列表 -->
+        <div class="task-attachments" style="margin-bottom: 20px;">
+          <h4 style="margin-bottom: 10px;">附件</h4>
+          <AttachmentList :attachments="processedShadowData.attachments || []" />
+        </div>
+
+        <!-- 参与人列表 -->
+        <div class="task-stakeholders" style="margin-bottom: 20px;">
+          <h4 style="margin-bottom: 10px;">参与人</h4>
+          <div v-if="processedShadowData.stakeholders && processedShadowData.stakeholders.length > 0" class="stakeholders-container">
+            <el-tag v-for="(stakeholder, index) in processedShadowData.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
+              {{ stakeholder }}
+            </el-tag>
+          </div>
+          <div v-else class="no-data">暂无参与人</div>
+        </div>
+
+        <!-- 进展历史时间线 -->
+        <div style="margin-top: 20px;">
+          <h4 style="margin-bottom: 10px;">进展历史</h4>
+          <ProgressHistory :progress-updates="progressUpdates" />
+          <el-empty v-if="progressUpdates.length === 0" description="暂无进展历史" />
+        </div>
+
         <!-- 批注区域 -->
-        <el-card class="section-card">
+        <el-card class="section-card" style="margin-top: 20px;">
           <template #header>
             <div class="card-header">
               <span>批注</span>
@@ -112,7 +146,7 @@
             </div>
             <div v-for="annotation in annotations" :key="annotation.id" class="annotation-item">
               <div class="annotation-header">
-                <span class="annotation-author">{{ annotation.createdBy || annotation.employeeName || '未知用户' }}</span>
+                <span class="annotation-author">{{ annotation.createdByName || annotation.createdBy || '未知用户' }}</span>
                 <span class="annotation-time">{{ formatDateTime(annotation.createdAt || annotation.createTime) }}</span>
                 <el-button
                   type="danger"
@@ -159,7 +193,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getTaskStatusType,
@@ -173,8 +207,14 @@ import {
   getShadowTaskDetail,
   getShadowAnnotations,
   addShadowAnnotation,
-  deleteShadowAnnotation
+  deleteShadowAnnotation,
+  getTaskProgressUpdates
 } from '@/api/task'
+import { getEmployeeList } from '@/api/employee'
+import ProgressHistory from '@/components/ProgressHistory.vue'
+import AttachmentList from '@/components/AttachmentList.vue'
+
+const employeeList = ref([])
 
 const props = defineProps({
   modelValue: {
@@ -187,7 +227,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'edit', 'delete'])
 
 const visible = computed({
   get: () => props.modelValue,
@@ -197,12 +237,75 @@ const visible = computed({
 const loading = ref(false)
 const shadowData = ref(null)
 const annotations = ref([])
+const progressUpdates = ref([])
 const addAnnotationVisible = ref(false)
 const addAnnotationLoading = ref(false)
 
 const annotationForm = ref({
   content: ''
 })
+
+// 处理后的影子数据
+const processedShadowData = computed(() => {
+  if (!shadowData.value) {
+    return null
+  }
+  
+  const data = { ...shadowData.value }
+  
+  // 处理附件数据
+  if (data.attachments) {
+    if (typeof data.attachments === 'string') {
+      try {
+        data.attachments = JSON.parse(data.attachments)
+      } catch (error) {
+        console.error('解析附件数据失败', error)
+        data.attachments = []
+      }
+    } else if (!Array.isArray(data.attachments)) {
+      data.attachments = []
+    }
+  } else {
+    data.attachments = []
+  }
+  
+  // 处理参与人数据
+  if (data.stakeholders) {
+    if (typeof data.stakeholders === 'string') {
+      try {
+        data.stakeholders = JSON.parse(data.stakeholders)
+      } catch (error) {
+        console.error('解析参与人数据失败', error)
+        data.stakeholders = []
+      }
+    } else if (!Array.isArray(data.stakeholders)) {
+      data.stakeholders = []
+    }
+  } else {
+    data.stakeholders = []
+  }
+  
+  // 转换参与人ID为名称
+  if (data.stakeholders && Array.isArray(data.stakeholders)) {
+    data.stakeholders = data.stakeholders.map(stakeholderId => {
+      const employee = employeeList.value.find(emp => {
+        return String(emp.id) === String(stakeholderId)
+      })
+      return employee ? employee.employeeName : stakeholderId
+    })
+  }
+  
+  return data
+})
+
+const loadEmployeeList = async () => {
+  try {
+    const data = await getEmployeeList(1, 1000)
+    employeeList.value = data?.records || []
+  } catch (error) {
+    console.error('加载员工列表失败', error)
+  }
+}
 
 watch(() => props.shadowId, (newVal) => {
   if (newVal && visible.value) {
@@ -224,7 +327,12 @@ const loadShadowDetail = async () => {
   loading.value = true
   try {
     const data = await getShadowTaskDetail(props.shadowId)
+    console.log('影子任务详情数据:', data)
     shadowData.value = data
+    // 加载影子任务详情后，加载源任务的进展更新
+    if (data?.sourceTaskId) {
+      await loadProgressUpdates()
+    }
   } catch (error) {
     console.error('加载影子任务详情失败', error)
     ElMessage.error('加载失败')
@@ -241,6 +349,17 @@ const loadAnnotations = async () => {
     annotations.value = data || []
   } catch (error) {
     console.error('加载批注失败', error)
+  }
+}
+
+const loadProgressUpdates = async () => {
+  if (!shadowData.value?.sourceTaskId) return
+  
+  try {
+    const data = await getTaskProgressUpdates(shadowData.value.sourceTaskId)
+    progressUpdates.value = data || []
+  } catch (error) {
+    console.error('加载进度更新失败', error)
   }
 }
 
@@ -294,11 +413,37 @@ const handleDeleteAnnotation = async (annotation) => {
   }
 }
 
+const handleEdit = () => {
+  emit('edit')
+}
+
+const handleDelete = async () => {
+  try {
+    await ElMessageBox.confirm('确认删除影子任务？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    emit('delete')
+    handleClose()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除影子任务失败', error)
+      ElMessage.error('删除影子任务失败')
+    }
+  }
+}
+
 const handleClose = () => {
   shadowData.value = null
   annotations.value = []
+  progressUpdates.value = []
   visible.value = false
 }
+
+onMounted(() => {
+  loadEmployeeList()
+})
 </script>
 
 <style scoped>
@@ -320,16 +465,65 @@ const handleClose = () => {
   align-items: center;
 }
 
-.source-task-content {
-  width: 100%;
-}
-
-.empty-info {
-  color: #909399;
-  text-align: center;
-  padding: 20px;
+.task-info-panel {
+  padding: 15px;
   background-color: #f5f7fa;
   border-radius: 4px;
+}
+
+.description-content {
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+  width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.description-content :deep(p) {
+  margin: 0 0 8px 0;
+  line-height: 1.6;
+}
+
+.description-content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.description-content :deep(img) {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+.description-content :deep(table) {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+
+.stakeholders-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+}
+
+.no-data {
+  padding: 10px;
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
 }
 
 .annotation-list {
@@ -377,23 +571,5 @@ const handleClose = () => {
   color: #606266;
   line-height: 1.6;
   word-break: break-word;
-}
-
-.annotation-attachments {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed #dcdfe6;
-  display: flex;
-  gap: 8px;
-}
-
-.attachments-label {
-  font-size: 12px;
-  color: #909399;
-}
-
-.attachments-list {
-  font-size: 12px;
-  color: #409eff;
 }
 </style>

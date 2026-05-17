@@ -17,6 +17,7 @@
                 NULL::BIGINT AS source_project_id,
                 NULL::VARCHAR AS source_task_name,
                 NULL::VARCHAR AS source_project_name,
+                NULL::VARCHAR AS source_description,
                 NULL::VARCHAR AS shadow_alias,
                 NULL::VARCHAR AS shadow_description,
                 t.task_name,
@@ -44,6 +45,7 @@
                 t.update_time,
                 t.update_time AS last_progress_update_time,
                 t.create_by::VARCHAR AS created_by,
+                ce.employee_name AS created_by_name,
                 t.create_time AS created_at,
                 t.update_time AS updated_at,
                 0 AS annotation_count,
@@ -51,6 +53,7 @@
             FROM pm_task t
             LEFT JOIN pm_project p ON t.project_id = p.id
             LEFT JOIN sys_employee e ON t.assignee_id = e.id
+            LEFT JOIN sys_employee ce ON t.create_by = ce.id
             WHERE t.project_id = #{projectId}
 
             UNION ALL
@@ -65,10 +68,11 @@
                 st.project_id AS source_project_id,
                 st.task_name AS source_task_name,
                 sp.project_name AS source_project_name,
+                st.description AS source_description,
                 s.shadow_alias,
                 s.shadow_description,
                 COALESCE(s.shadow_alias, st.task_name) AS task_name,
-                COALESCE(s.shadow_description, st.description) AS description,
+                st.description AS description,
                 st.progress,
                 st.status,
                 st.priority,
@@ -82,16 +86,17 @@
                 s.project_id,
                 p.project_name,
                 0 AS is_pinned,
-                0 AS is_focus,
-                0 AS parent_id,
-                NULL::VARCHAR AS task_code,
-                NULL::VARCHAR AS task_module,
-                NULL::VARCHAR AS attachments,
-                NULL::VARCHAR AS stakeholders,
-                s.created_at AS create_time,
+            0 AS is_focus,
+            0 AS parent_id,
+            NULL::VARCHAR AS task_code,
+            NULL::VARCHAR AS task_module,
+            st.attachments AS attachments,
+            st.stakeholders AS stakeholders,
+            s.created_at AS create_time,
                 s.updated_at AS update_time,
                 s.updated_at AS last_progress_update_time,
                 s.created_by,
+                ce.employee_name AS created_by_name,
                 s.created_at,
                 s.updated_at,
                 COUNT(a.id) AS annotation_count,
@@ -101,9 +106,10 @@
             LEFT JOIN pm_project p ON s.project_id = p.id
             LEFT JOIN pm_project sp ON st.project_id = sp.id
             LEFT JOIN sys_employee e ON st.assignee_id = e.id
+            LEFT JOIN sys_employee ce ON s.created_by = ce.username
             LEFT JOIN pm_shadow_annotation a ON s.id = a.shadow_id
             WHERE s.project_id = #{projectId}
-            GROUP BY s.id, st.id, p.id, sp.id, e.id
+            GROUP BY s.id, st.id, p.id, sp.id, e.id, ce.id
         ) AS combined
 
         <!-- 统一排序 -->
@@ -124,10 +130,11 @@
             st.project_id AS source_project_id,
             st.task_name AS source_task_name,
             sp.project_name AS source_project_name,
+            st.description AS source_description,
             s.shadow_alias,
             s.shadow_description,
             COALESCE(s.shadow_alias, st.task_name) AS task_name,
-            COALESCE(s.shadow_description, st.description) AS description,
+            st.description AS description,
             st.progress,
             st.status,
             st.priority,
@@ -145,12 +152,13 @@
             0 AS parent_id,
             NULL::VARCHAR AS task_code,
             NULL::VARCHAR AS task_module,
-            NULL::VARCHAR AS attachments,
-            NULL::VARCHAR AS stakeholders,
+            st.attachments AS attachments,
+            st.stakeholders AS stakeholders,
             s.created_at AS create_time,
             s.updated_at AS update_time,
             s.updated_at AS last_progress_update_time,
             s.created_by,
+            ce.employee_name AS created_by_name,
             s.created_at,
             s.updated_at,
             COUNT(a.id) AS annotation_count
@@ -159,9 +167,10 @@
         LEFT JOIN pm_project p ON s.project_id = p.id
         LEFT JOIN pm_project sp ON st.project_id = sp.id
         LEFT JOIN sys_employee e ON st.assignee_id = e.id
+        LEFT JOIN sys_employee ce ON s.created_by = ce.username
         LEFT JOIN pm_shadow_annotation a ON s.id = a.shadow_id
         WHERE s.id = #{shadowId}
-        GROUP BY s.id, st.id, p.id, sp.id, e.id
+        GROUP BY s.id, st.id, p.id, sp.id, e.id, ce.id
     </select>
 
     <!-- ===================================================== -->
@@ -173,14 +182,25 @@
             p.project_name AS target_project_name,
             st.task_name AS source_task_name,
             sp.project_name AS source_project_name,
-            COUNT(a.id) AS annotation_count
+            COUNT(a.id) AS annotation_count,
+            st.progress AS source_progress,
+            st.status AS source_status,
+            st.priority AS source_priority,
+            st.description AS source_description,
+            st.start_date AS source_start_date,
+            st.end_date AS source_end_date,
+            e.employee_name AS source_owner_name,
+            st.attachments AS source_attachments,
+            ce.employee_name AS created_by_name
         FROM pm_task_shadow s
         INNER JOIN pm_task st ON s.source_task_id = st.id
         LEFT JOIN pm_project p ON s.project_id = p.id
         LEFT JOIN pm_project sp ON st.project_id = sp.id
+        LEFT JOIN sys_employee e ON st.assignee_id = e.id
+        LEFT JOIN sys_employee ce ON s.created_by = ce.username
         LEFT JOIN pm_shadow_annotation a ON s.id = a.shadow_id
         WHERE s.source_task_id = #{sourceTaskId}
-        GROUP BY s.id, p.id, st.id, sp.id
+        GROUP BY s.id, p.id, st.id, sp.id, e.id, ce.id
         ORDER BY s.created_at DESC
     </select>
 

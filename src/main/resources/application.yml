@@ -28,7 +28,7 @@ spring:
       filters: stat,wall
       connection-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
       # 连接泄漏检测
-      remove-abandoned: true
+      remove-abandoned: false
       remove-abandoned-timeout: 180
       log-abandoned: true
   jackson:

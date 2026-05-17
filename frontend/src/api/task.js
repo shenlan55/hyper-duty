@@ -274,3 +274,10 @@ export function deleteShadowAnnotation(annotationId) {
     method: 'delete'
   })
 }
+
+export function getShadowAnnotationsBySource(sourceTaskId) {
+  return request({
+    url: `/pm/shadow/annotation/source-task/${sourceTaskId}`,
+    method: 'get'
+  })
+}

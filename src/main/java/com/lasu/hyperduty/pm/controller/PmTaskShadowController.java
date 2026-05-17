@@ -2,7 +2,9 @@ package com.lasu.hyperduty.pm.controller;
 
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.common.utils.SecurityUtil;
+import com.lasu.hyperduty.pm.dto.PmShadowAnnotationVO;
 import com.lasu.hyperduty.pm.dto.ShadowAnnotationCreateDTO;
+import com.lasu.hyperduty.pm.dto.ShadowAnnotationWithProjectVO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskCreateDTO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskUpdateDTO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskVO;
@@ -122,11 +124,20 @@ public class PmTaskShadowController {
     }
 
     /**
-     * 查询影子的所有批注
+     * 查询影子的所有批注（包含创建人姓名）
      */
     @GetMapping("/annotation/shadow/{shadowId}")
-    public ResponseResult<List<PmShadowAnnotation>> getAnnotations(@PathVariable Long shadowId) {
-        List<PmShadowAnnotation> annotations = shadowService.getAnnotationsByShadowId(shadowId);
+    public ResponseResult<List<PmShadowAnnotationVO>> getAnnotations(@PathVariable Long shadowId) {
+        List<PmShadowAnnotationVO> annotations = shadowService.getAnnotationsByShadowId(shadowId);
+        return ResponseResult.success(annotations);
+    }
+
+    /**
+     * 查询源任务的所有影子批注（包含影子项目信息）
+     */
+    @GetMapping("/annotation/source-task/{sourceTaskId}")
+    public ResponseResult<List<ShadowAnnotationWithProjectVO>> getAnnotationsBySourceTask(@PathVariable Long sourceTaskId) {
+        List<ShadowAnnotationWithProjectVO> annotations = shadowService.getAnnotationsBySourceTaskId(sourceTaskId);
         return ResponseResult.success(annotations);
     }
 }

@@ -2,6 +2,47 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.lasu.hyperduty.pm.mapper.PmShadowAnnotationMapper">
 
-    <!-- 简单的 CRUD，使用 MyBatis-Plus 提供的即可 -->
+    <!-- 查询影子任务的批注列表（包含创建人姓名） -->
+    <select id="selectByShadowId" resultType="com.lasu.hyperduty.pm.dto.PmShadowAnnotationVO">
+        SELECT
+            a.id,
+            a.shadow_id,
+            a.content,
+            a.created_by,
+            e.employee_name AS created_by_name,
+            a.created_at,
+            a.updated_at
+        FROM pm_shadow_annotation a
+        LEFT JOIN sys_employee e ON a.created_by = e.username
+        WHERE a.shadow_id = #{shadowId}
+        ORDER BY a.created_at DESC
+    </select>
+
+    <!-- 统计影子任务的批注数量 -->
+    <select id="countByShadowId" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM pm_shadow_annotation
+        WHERE shadow_id = #{shadowId}
+    </select>
+
+    <!-- 查询源任务的所有影子批注（包含影子项目信息） -->
+    <select id="selectBySourceTaskId" resultType="com.lasu.hyperduty.pm.dto.ShadowAnnotationWithProjectVO">
+        SELECT
+            a.id,
+            a.shadow_id,
+            s.shadow_alias,
+            p.project_name AS target_project_name,
+            a.content,
+            a.created_by,
+            e.employee_name AS created_by_name,
+            a.created_at,
+            a.updated_at
+        FROM pm_shadow_annotation a
+        INNER JOIN pm_task_shadow s ON a.shadow_id = s.id
+        LEFT JOIN pm_project p ON s.project_id = p.id
+        LEFT JOIN sys_employee e ON a.created_by = e.username
+        WHERE s.source_task_id = #{sourceTaskId}
+        ORDER BY a.created_at DESC
+    </select>
 
 </mapper>

@@ -72,14 +72,14 @@
             </div>
             <div class="info-item">
               <span class="info-label">创建人：</span>
-              <span>{{ shadow.createdBy || '未知' }}</span>
+              <span>{{ shadow.createdByName || shadow.createdBy || '未知' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">创建时间：</span>
               <span>{{ formatDateTime(shadow.createdAt) }}</span>
             </div>
             <div class="info-item" v-if="shadow.shadowDescription">
-              <span class="info-label">描述：</span>
+              <span class="info-label">影子描述：</span>
               <span>{{ shadow.shadowDescription }}</span>
             </div>
           </div>
@@ -93,6 +93,34 @@
       <ProgressHistory :progress-updates="progressUpdates" />
       <el-empty v-if="progressUpdates.length === 0" description="暂无进展历史" />
     </div>
+
+    <!-- 影子任务批注 -->
+    <el-card class="section-card" style="margin-top: 20px;">
+      <template #header>
+        <div class="card-header">
+          <span>影子批注</span>
+          <el-tag type="info" size="small" style="margin-left: 8px;">
+            {{ shadowAnnotations.length }} 条
+          </el-tag>
+        </div>
+      </template>
+      <div class="annotation-list">
+        <div v-if="shadowAnnotations.length === 0" class="empty-annotations">
+          暂无影子批注
+        </div>
+        <div v-for="annotation in shadowAnnotations" :key="annotation.id" class="annotation-item">
+          <div class="annotation-header">
+            <div class="annotation-source">
+              <el-tag type="warning" size="small">{{ annotation.targetProjectName }}</el-tag>
+              <span class="shadow-alias">{{ annotation.shadowAlias || '影子任务' }}</span>
+            </div>
+            <span class="annotation-author">{{ annotation.createdByName || annotation.createdBy || '未知用户' }}</span>
+            <span class="annotation-time">{{ formatDateTime(annotation.createdAt || annotation.createTime) }}</span>
+          </div>
+          <div class="annotation-content">{{ annotation.content }}</div>
+        </div>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -100,15 +128,16 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
-import { getTaskProgressUpdates, getShadowTaskBySource } from '@/api/task'
+import { getTaskProgressUpdates, getShadowTaskBySource, getShadowAnnotationsBySource } from '@/api/task'
 import { getEmployeeList } from '@/api/employee'
-import { getTaskStatusText, getTaskPriorityText, formatDateTime } from '@/utils/taskUtils'
+import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, formatDateTime } from '@/utils/taskUtils'
 import ProgressHistory from '@/components/ProgressHistory.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
 
 const employeeList = ref([])
 const shadowTasks = ref([])
 const shadowLoading = ref(false)
+const shadowAnnotations = ref([])
 
 // 加载影子任务
 const loadShadowTasks = async (taskId) => {
@@ -123,6 +152,19 @@ const loadShadowTasks = async (taskId) => {
     shadowTasks.value = []
   } finally {
     shadowLoading.value = false
+  }
+}
+
+// 加载影子批注
+const loadShadowAnnotations = async (taskId) => {
+  if (!taskId) return
+  
+  try {
+    const data = await getShadowAnnotationsBySource(taskId)
+    shadowAnnotations.value = data || []
+  } catch (error) {
+    console.error('加载影子批注失败', error)
+    shadowAnnotations.value = []
   }
 }
 
@@ -220,25 +262,27 @@ const loadProgressUpdates = async (taskId) => {
   }
 }
 
-// 监听任务变化，加载进度更新和影子任务
+// 监听任务变化，加载进度更新、影子任务和影子批注
 watch(
   () => props.task,
   (newTask) => {
     if (newTask?.id) {
       loadProgressUpdates(newTask.id)
       loadShadowTasks(newTask.id)
+      loadShadowAnnotations(newTask.id)
     }
   },
   { immediate: true }
 )
 
-// 监听任务ID变化，加载进度更新和影子任务
+// 监听任务ID变化，加载进度更新、影子任务和影子批注
 watch(
   () => props.taskId,
   (newTaskId) => {
     if (newTaskId) {
       loadProgressUpdates(newTaskId)
       loadShadowTasks(newTaskId)
+      loadShadowAnnotations(newTaskId)
     }
   },
   { immediate: true }
@@ -542,5 +586,79 @@ const handleAttachmentDownload = (attachment) => {
 .info-label {
   font-weight: 500;
   color: #451a03;
+}
+
+.source-task-info {
+  padding-top: 8px;
+}
+
+.description-text {
+  display: block;
+  margin-left: 8px;
+  color: #606266;
+  line-height: 1.6;
+}
+
+/* 影子批注样式 */
+.card-header {
+  display: flex;
+  align-items: center;
+}
+
+.annotation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty-annotations {
+  padding: 20px;
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
+}
+
+.annotation-item {
+  padding: 16px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  border-left: 3px solid #f59e0b;
+}
+
+.annotation-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.annotation-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shadow-alias {
+  font-weight: 500;
+  color: #92400e;
+}
+
+.annotation-author {
+  font-size: 14px;
+  color: #303133;
+  font-weight: 500;
+}
+
+.annotation-time {
+  font-size: 12px;
+  color: #909399;
+  margin-left: auto;
+}
+
+.annotation-content {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
 }
 </style>

@@ -26,6 +26,7 @@ public class ShadowTaskVO {
     private Long sourceProjectId; // 源项目ID（影子才有）
     private String sourceTaskName; // 源任务名称（影子才有）
     private String sourceProjectName; // 源项目名称（影子才有）
+    private String sourceDescription; // 源任务描述（影子才有）
     private String shadowAlias;   // 影子别名（影子才有）
     private String shadowDescription; // 影子描述（影子才有）
     private String taskName;      // 显示名称（COALESCE(shadowAlias, sourceTaskName)）
@@ -71,6 +72,7 @@ public class ShadowTaskVO {
     // 元数据
     // ========================================
     private String createdBy;
+    private String createdByName; // 创建人真实姓名
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
