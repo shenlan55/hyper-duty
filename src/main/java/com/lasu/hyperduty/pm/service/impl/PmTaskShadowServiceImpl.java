@@ -2,6 +2,7 @@ package com.lasu.hyperduty.pm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lasu.hyperduty.common.utils.SecurityUtil;
 import com.lasu.hyperduty.pm.dto.PmShadowAnnotationVO;
 import com.lasu.hyperduty.pm.dto.ShadowAnnotationCreateDTO;
@@ -9,14 +10,20 @@ import com.lasu.hyperduty.pm.dto.ShadowAnnotationWithProjectVO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskCreateDTO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskUpdateDTO;
 import com.lasu.hyperduty.pm.dto.ShadowTaskVO;
+import com.lasu.hyperduty.pm.entity.PmProject;
 import com.lasu.hyperduty.pm.entity.PmShadowAnnotation;
 import com.lasu.hyperduty.pm.entity.PmTask;
 import com.lasu.hyperduty.pm.entity.PmTaskShadow;
+import com.lasu.hyperduty.pm.mapper.PmProjectMapper;
 import com.lasu.hyperduty.pm.mapper.PmShadowAnnotationMapper;
 import com.lasu.hyperduty.pm.mapper.PmTaskMapper;
 import com.lasu.hyperduty.pm.mapper.PmTaskShadowMapper;
+import com.lasu.hyperduty.pm.service.PmProjectDeputyOwnerService;
 import com.lasu.hyperduty.pm.service.PmTaskShadowService;
+import com.lasu.hyperduty.system.entity.SysEmployee;
+import com.lasu.hyperduty.system.mapper.SysEmployeeMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +37,7 @@ import java.util.stream.Collectors;
 /**
  * 影子任务 Service 实现 (v2)
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PmTaskShadowServiceImpl implements PmTaskShadowService {
@@ -37,6 +45,10 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
     private final PmTaskShadowMapper taskShadowMapper;
     private final PmTaskMapper taskMapper;
     private final PmShadowAnnotationMapper annotationMapper;
+    private final PmProjectMapper projectMapper;
+    private final PmProjectDeputyOwnerService pmProjectDeputyOwnerService;
+    private final SysEmployeeMapper sysEmployeeMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ========================================
     // 影子任务 CRUD
@@ -139,6 +151,7 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
         }
 
         // 3. 设置权限
+        Long employeeId = currentEmployeeId != null ? currentEmployeeId : getEmployeeIdByUsername(currentUsername);
         for (ShadowTaskVO task : allTasks) {
             if (task.getIsShadow() != null && task.getIsShadow() == 1) {
                 // 影子任务
@@ -150,8 +163,10 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
                 }
             } else {
                 // 真实任务
-                task.setHasPermission(true);
-                task.setHasDeletePermission(true);
+                boolean hasPermission = hasRealTaskPermission(task.getId(), employeeId);
+                boolean hasDeletePermission = hasRealTaskDeletePermission(task.getId(), employeeId);
+                task.setHasPermission(hasPermission);
+                task.setHasDeletePermission(hasDeletePermission);
             }
         }
 
@@ -247,6 +262,7 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
     @Override
     public List<ShadowTaskVO> getTaskListWithShadows(Long projectId, Long currentEmployeeId) {
         String currentUsername = SecurityUtil.getCurrentUsername();
+        Long employeeId = currentEmployeeId != null ? currentEmployeeId : getEmployeeIdByUsername(currentUsername);
         List<ShadowTaskVO> tasks = taskShadowMapper.selectTaskListWithShadows(projectId);
         for (ShadowTaskVO task : tasks) {
             if (task.getIsShadow() != null && task.getIsShadow() == 1) {
@@ -259,8 +275,10 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
                 }
             } else {
                 // 真实任务
-                task.setHasPermission(true);
-                task.setHasDeletePermission(true);
+                boolean hasPermission = hasRealTaskPermission(task.getId(), employeeId);
+                boolean hasDeletePermission = hasRealTaskDeletePermission(task.getId(), employeeId);
+                task.setHasPermission(hasPermission);
+                task.setHasDeletePermission(hasDeletePermission);
             }
         }
         return tasks;
@@ -375,5 +393,119 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
             this.startIndex = startIndex;
             this.endIndex = endIndex;
         }
+    }
+
+    // ========================================
+    // 权限判断方法
+    // ========================================
+
+    /**
+     * 判断当前用户是否有真实任务的编辑权限
+     */
+    private boolean hasRealTaskPermission(Long taskId, Long currentEmployeeId) {
+        if (currentEmployeeId == null) {
+            return false;
+        }
+        PmTask task = taskMapper.selectById(taskId);
+        if (task == null) {
+            return false;
+        }
+
+        if (task.getCreateBy() != null && task.getCreateBy().equals(currentEmployeeId)) {
+            return true;
+        }
+        if (task.getAssigneeId() != null && task.getAssigneeId().equals(currentEmployeeId)) {
+            return true;
+        }
+
+        PmProject project = projectMapper.selectById(task.getProjectId());
+        if (project != null) {
+            if (project.getOwnerId() != null && project.getOwnerId().equals(currentEmployeeId)) {
+                return true;
+            }
+            List<Long> deputyOwnerIds = pmProjectDeputyOwnerService.getDeputyOwnerIdsByProjectId(task.getProjectId());
+            if (deputyOwnerIds != null && deputyOwnerIds.contains(currentEmployeeId)) {
+                return true;
+            }
+        }
+
+        if (project != null && project.getParticipants() != null) {
+            List<Long> participants = project.getParticipants();
+            if (participants.contains(currentEmployeeId)) {
+                return true;
+            }
+        }
+
+        if (task.getStakeholders() != null) {
+            String stakeholders = task.getStakeholders();
+            try {
+                List<Long> stakeholderList = objectMapper.readValue(stakeholders, new com.fasterxml.jackson.core.type.TypeReference<List<Long>>() {});
+                if (stakeholderList.contains(currentEmployeeId)) {
+                    return true;
+                }
+            } catch (Exception e) {
+                if (stakeholders.contains("[" + currentEmployeeId + "]") || 
+                    stakeholders.contains("," + currentEmployeeId + ",") || 
+                    stakeholders.startsWith(currentEmployeeId + ",") || 
+                    stakeholders.endsWith("," + currentEmployeeId)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 判断当前用户是否有真实任务的删除权限
+     */
+    private boolean hasRealTaskDeletePermission(Long taskId, Long currentEmployeeId) {
+        if (currentEmployeeId == null) {
+            return false;
+        }
+        PmTask task = taskMapper.selectById(taskId);
+        if (task == null) {
+            return false;
+        }
+
+        if (task.getCreateBy() != null && task.getCreateBy().equals(currentEmployeeId)) {
+            return true;
+        }
+        if (task.getAssigneeId() != null && task.getAssigneeId().equals(currentEmployeeId)) {
+            return true;
+        }
+
+        PmProject project = projectMapper.selectById(task.getProjectId());
+        if (project != null) {
+            if (project.getOwnerId() != null && project.getOwnerId().equals(currentEmployeeId)) {
+                return true;
+            }
+            List<Long> deputyOwnerIds = pmProjectDeputyOwnerService.getDeputyOwnerIdsByProjectId(task.getProjectId());
+            if (deputyOwnerIds != null && deputyOwnerIds.contains(currentEmployeeId)) {
+                return true;
+            }
+        }
+
+        if (project != null && project.getParticipants() != null) {
+            List<Long> participants = project.getParticipants();
+            if (participants.contains(currentEmployeeId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 根据用户名获取员工ID
+     */
+    private Long getEmployeeIdByUsername(String username) {
+        if (username == null || username.isEmpty()) {
+            return null;
+        }
+        LambdaQueryWrapper<SysEmployee> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysEmployee::getUsername, username);
+        SysEmployee employee = sysEmployeeMapper.selectOne(wrapper);
+        return employee != null ? employee.getId() : null;
     }
 }
