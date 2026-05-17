@@ -5,6 +5,8 @@ import com.lasu.hyperduty.pm.dto.ShadowTaskVO;
 import com.lasu.hyperduty.pm.entity.PmTaskShadow;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
 import java.util.List;
 
 /**
@@ -33,4 +35,40 @@ public interface PmTaskShadowMapper extends BaseMapper<PmTaskShadow> {
      * @return 影子列表
      */
     List<PmTaskShadow> selectShadowsBySourceTaskId(@Param("sourceTaskId") Long sourceTaskId);
+
+    /**
+     * 查询指定项目列表的所有影子任务
+     */
+    @Select("<script>" +
+            "SELECT s.*, " +
+            "t.task_name as source_task_name, t.progress as source_progress, t.status as source_status, " +
+            "t.priority as source_priority, t.description as source_description, " +
+            "t.start_date as source_start_date, t.end_date as source_end_date, " +
+            "e.employee_name as source_owner_name, t.attachments as source_attachments, " +
+            "p1.project_name as source_project_name, p2.project_name as target_project_name, " +
+            "ce.employee_name as created_by_name, " +
+            "(SELECT MAX(create_time) FROM pm_task_progress_update WHERE task_id = s.source_task_id) as last_progress_update_time " +
+            "FROM pm_task_shadow s " +
+            "LEFT JOIN pm_task t ON s.source_task_id = t.id " +
+            "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
+            "LEFT JOIN pm_project p1 ON t.project_id = p1.id " +
+            "LEFT JOIN pm_project p2 ON s.project_id = p2.id " +
+            "LEFT JOIN sys_employee ce ON s.created_by = ce.username " +
+            "<where>" +
+            "<if test='projectIds != null and projectIds.size() > 0'> AND s.project_id IN " +
+            "<foreach collection='projectIds' item='projectId' open='(' separator=',' close=')'>#{projectId}</foreach>" +
+            "</if>" +
+            "<if test='taskStartDateFrom != null'> AND t.start_date &gt;= #{taskStartDateFrom}</if>" +
+            "<if test='taskStartDateTo != null'> AND t.start_date &lt;= #{taskStartDateTo}</if>" +
+            "<if test='taskEndDateFrom != null'> AND t.end_date &gt;= #{taskEndDateFrom}</if>" +
+            "<if test='taskEndDateTo != null'> AND t.end_date &lt;= #{taskEndDateTo}</if>" +
+            "</where>" +
+            "ORDER BY p2.project_name, s.created_at DESC" +
+            "</script>")
+    List<PmTaskShadow> selectShadowTasksForReport(
+            @Param("projectIds") List<Long> projectIds,
+            @Param("taskStartDateFrom") java.time.LocalDate taskStartDateFrom,
+            @Param("taskStartDateTo") java.time.LocalDate taskStartDateTo,
+            @Param("taskEndDateFrom") java.time.LocalDate taskEndDateFrom,
+            @Param("taskEndDateTo") java.time.LocalDate taskEndDateTo);
 }

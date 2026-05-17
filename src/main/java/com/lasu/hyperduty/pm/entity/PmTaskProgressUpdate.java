@@ -43,6 +43,12 @@ public class PmTaskProgressUpdate {
     @TableField(exist = false)
     private List<Attachment> attachmentList;
 
+    @TableField(exist = false)
+    private String taskName;
+
+    @TableField(exist = false)
+    private String projectName;
+
     @Data
     public static class Attachment {
         private String name;

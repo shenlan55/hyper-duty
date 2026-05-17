@@ -6,16 +6,17 @@ import com.lasu.hyperduty.duty.entity.LeaveRequest;
 import com.lasu.hyperduty.pm.entity.PmProject;
 import com.lasu.hyperduty.pm.entity.PmTask;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.*;
+
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.format.DateTimeFormatter;
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.*;
 
 
 
@@ -581,5 +582,168 @@ public class ExcelExportUtil {
             case 5: return "已取消";
             default: return "未知";
         }
+    }
+
+    /**
+     * 任务进展报告数据
+     */
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
+    public static class TaskProgressReportData {
+        private List<TaskOverviewItem> taskOverviewList;
+        private List<ProgressHistoryItem> progressHistoryList;
+    }
+
+    /**
+     * 任务概览项
+     */
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
+    public static class TaskOverviewItem {
+        private String projectName;
+        private String taskType; // 源任务/影子任务
+        private String taskName;
+        private Integer priority;
+        private Integer status;
+        private Integer progress;
+        private String ownerName;
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private LocalDateTime createTime;
+        private LocalDateTime updateTime;
+        private LocalDateTime lastProgressUpdateTime;
+    }
+
+    /**
+     * 进展历史项
+     */
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
+    public static class ProgressHistoryItem {
+        private String projectName;
+        private String taskName;
+        private String employeeName;
+        private LocalDateTime createTime;
+        private Integer progress;
+        private String description;
+    }
+
+    /**
+     * 导出任务进展报告
+     */
+    public static void exportTaskProgressReport(
+            HttpServletResponse response,
+            String reportName,
+            TaskProgressReportData data) throws IOException {
+        
+        XSSFWorkbook workbook = new XSSFWorkbook();
+
+        // 创建任务概览 Sheet
+        createTaskOverviewSheet(workbook, data.getTaskOverviewList());
+
+        // 创建进展历史 Sheet
+        createProgressHistorySheet(workbook, data.getProgressHistoryList());
+
+        // 写入响应
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding("utf-8");
+        String fileName = URLEncoder.encode(
+            (reportName != null ? reportName : "任务进展报告") + ".xlsx",
+            StandardCharsets.UTF_8
+        ).replaceAll("\\+", "%20");
+        response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName);
+
+        workbook.write(response.getOutputStream());
+        workbook.close();
+    }
+
+    /**
+     * 创建任务概览 Sheet
+     */
+    private static void createTaskOverviewSheet(XSSFWorkbook workbook, List<TaskOverviewItem> taskList) {
+        XSSFSheet sheet = workbook.createSheet("任务概览");
+
+        String[] headers = {
+            "项目名称", "任务类型", "任务名称", "优先级", "状态", "进度",
+            "负责人", "开始日期", "结束日期", "创建时间", "最后更新时间", "最后进展更新时间"
+        };
+
+        createHeaderRow(sheet, headers);
+
+        if (taskList == null || taskList.isEmpty()) {
+            sheet.createRow(1).createCell(0).setCellValue("暂无任务数据");
+            autoSizeColumns(sheet);
+            return;
+        }
+
+        int rowNum = 1;
+        for (TaskOverviewItem item : taskList) {
+            XSSFRow row = sheet.createRow(rowNum++);
+            row.createCell(0).setCellValue(item.getProjectName() != null ? item.getProjectName() : "");
+            row.createCell(1).setCellValue(item.getTaskType() != null ? item.getTaskType() : "");
+            row.createCell(2).setCellValue(item.getTaskName() != null ? item.getTaskName() : "");
+            row.createCell(3).setCellValue(getPriorityName(item.getPriority()));
+            row.createCell(4).setCellValue(getTaskStatusName(item.getStatus()));
+            row.createCell(5).setCellValue(item.getProgress() != null ? item.getProgress() + "%" : "0%");
+            row.createCell(6).setCellValue(item.getOwnerName() != null ? item.getOwnerName() : "");
+            row.createCell(7).setCellValue(item.getStartDate() != null ? item.getStartDate().toString() : "");
+            row.createCell(8).setCellValue(item.getEndDate() != null ? item.getEndDate().toString() : "");
+            row.createCell(9).setCellValue(
+                item.getCreateTime() != null
+                    ? item.getCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    : ""
+            );
+            row.createCell(10).setCellValue(
+                item.getUpdateTime() != null
+                    ? item.getUpdateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    : ""
+            );
+            row.createCell(11).setCellValue(
+                item.getLastProgressUpdateTime() != null
+                    ? item.getLastProgressUpdateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    : ""
+            );
+        }
+
+        autoSizeColumns(sheet);
+    }
+
+    /**
+     * 创建进展历史 Sheet
+     */
+    private static void createProgressHistorySheet(XSSFWorkbook workbook, List<ProgressHistoryItem> historyList) {
+        XSSFSheet sheet = workbook.createSheet("进展历史");
+
+        String[] headers = {
+            "项目名称", "任务名称", "更新人", "更新时间", "更新后进度", "更新描述"
+        };
+
+        createHeaderRow(sheet, headers);
+
+        if (historyList == null || historyList.isEmpty()) {
+            sheet.createRow(1).createCell(0).setCellValue("暂无进展历史数据");
+            autoSizeColumns(sheet);
+            return;
+        }
+
+        int rowNum = 1;
+        for (ProgressHistoryItem item : historyList) {
+            XSSFRow row = sheet.createRow(rowNum++);
+            row.createCell(0).setCellValue(item.getProjectName() != null ? item.getProjectName() : "");
+            row.createCell(1).setCellValue(item.getTaskName() != null ? item.getTaskName() : "");
+            row.createCell(2).setCellValue(item.getEmployeeName() != null ? item.getEmployeeName() : "");
+            row.createCell(3).setCellValue(
+                item.getCreateTime() != null
+                    ? item.getCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    : ""
+            );
+            row.createCell(4).setCellValue(item.getProgress() != null ? item.getProgress() + "%" : "0%");
+            row.createCell(5).setCellValue(item.getDescription() != null ? item.getDescription() : "");
+        }
+
+        autoSizeColumns(sheet);
     }
 }

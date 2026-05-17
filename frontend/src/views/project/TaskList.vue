@@ -5,6 +5,10 @@
         <div class="card-header">
           <span>任务列表</span>
           <div style="display: flex; gap: 10px; align-items: center;">
+            <el-button type="info" @click="handleOpenExportDialog">
+              <el-icon><Download /></el-icon>
+              导出报告
+            </el-button>
             <el-button v-if="canCreateTask" type="success" @click="handleBatchCreate">
               <el-icon><DocumentAdd /></el-icon>
               批量新建
@@ -302,6 +306,11 @@
       @edit="handleEditShadowFromDetail"
       @delete="handleDeleteShadowFromDetail"
     />
+
+    <!-- 任务进展报告导出对话框 -->
+    <TaskProgressReportDialog
+      v-model="exportDialogVisible"
+    />
   </div>
 </template>
 
@@ -309,7 +318,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Star, TrendCharts, DocumentAdd, DocumentCopy } from '@element-plus/icons-vue'
+import { Star, TrendCharts, DocumentAdd, DocumentCopy, Download } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import TaskSearchForm from '@/components/TaskSearchForm.vue'
@@ -318,6 +327,7 @@ import TaskProgressUpdateDialog from '@/components/TaskProgressUpdateDialog.vue'
 import BatchCreateTasks from '@/components/BatchCreateTasks.vue'
 import BindCustomRowDialog from '@/components/BindCustomRowDialog.vue'
 import ShadowTaskDetailDialog from '@/components/ShadowTaskDetailDialog.vue'
+import TaskProgressReportDialog from '@/components/TaskProgressReportDialog.vue'
 import { getTaskPage, getTaskDetail, deleteTask, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, getTaskListWithShadows, createShadowTask, updateShadowTask, deleteShadowTask, getShadowTaskDetail, getShadowTaskBySource } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
@@ -361,6 +371,9 @@ const selectedTasks = ref([])
 const createShadowDialogVisible = ref(false)
 const editShadowDialogVisible = ref(false)
 const shadowDetailDialogVisible = ref(false)
+
+// 导出对话框相关
+const exportDialogVisible = ref(false)
 const shadowForm = reactive({
   id: null,
   sourceTaskId: null,
@@ -588,6 +601,10 @@ const handleCurrentChange = (val) => {
 }
 
 // 添加任务
+const handleOpenExportDialog = () => {
+  exportDialogVisible.value = true
+}
+
 const handleAdd = () => {
   isEditMode.value = false
   currentEditTask.value = null

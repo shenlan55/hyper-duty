@@ -276,8 +276,20 @@ export function deleteShadowAnnotation(annotationId) {
 }
 
 export function getShadowAnnotationsBySource(sourceTaskId) {
-  return request({
-    url: `/pm/shadow/annotation/source-task/${sourceTaskId}`,
-    method: 'get'
-  })
+    return request({
+        url: `/pm/shadow/annotation/source-task/${sourceTaskId}`,
+        method: 'get'
+    });
+}
+
+/**
+ * 导出任务进展报告
+ */
+export function exportTaskProgressReport(params) {
+    return request({
+        url: '/duty/export/task-progress-report',
+        method: 'get',
+        params,
+        responseType: 'blob'
+    });
 }

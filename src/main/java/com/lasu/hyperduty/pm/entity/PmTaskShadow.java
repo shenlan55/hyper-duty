@@ -103,4 +103,7 @@ public class PmTaskShadow {
 
     @TableField(exist = false)
     private String createdByName;
+
+    @TableField(exist = false)
+    private java.time.LocalDateTime lastProgressUpdateTime;
 }

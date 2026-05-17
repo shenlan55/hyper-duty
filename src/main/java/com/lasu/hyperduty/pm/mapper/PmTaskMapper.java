@@ -149,4 +149,31 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "AND (t.assignee_id = #{employeeId} OR t.stakeholders LIKE CONCAT('%', #{employeeId}, '%')) " +
             "ORDER BY t.end_date ASC, t.priority ASC")
     List<PmTask> selectUpcomingTasks(@Param("employeeId") Long employeeId);
+
+    /**
+     * 查询指定项目列表的所有源任务
+     */
+    @Select("<script>" +
+            "SELECT t.*, e.employee_name as owner_name, p.project_name, " +
+            "(SELECT MAX(create_time) FROM pm_task_progress_update WHERE task_id = t.id) as last_progress_update_time " +
+            "FROM pm_task t " +
+            "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
+            "LEFT JOIN pm_project p ON t.project_id = p.id " +
+            "<where>" +
+            "<if test='projectIds != null and projectIds.size() > 0'> AND t.project_id IN " +
+            "<foreach collection='projectIds' item='projectId' open='(' separator=',' close=')'>#{projectId}</foreach>" +
+            "</if>" +
+            "<if test='taskStartDateFrom != null'> AND t.start_date &gt;= #{taskStartDateFrom}</if>" +
+            "<if test='taskStartDateTo != null'> AND t.start_date &lt;= #{taskStartDateTo}</if>" +
+            "<if test='taskEndDateFrom != null'> AND t.end_date &gt;= #{taskEndDateFrom}</if>" +
+            "<if test='taskEndDateTo != null'> AND t.end_date &lt;= #{taskEndDateTo}</if>" +
+            "</where>" +
+            "ORDER BY p.project_name, t.create_time DESC" +
+            "</script>")
+    List<PmTask> selectTasksForReport(
+            @Param("projectIds") List<Long> projectIds,
+            @Param("taskStartDateFrom") java.time.LocalDate taskStartDateFrom,
+            @Param("taskStartDateTo") java.time.LocalDate taskStartDateTo,
+            @Param("taskEndDateFrom") java.time.LocalDate taskEndDateFrom,
+            @Param("taskEndDateTo") java.time.LocalDate taskEndDateTo);
 }
