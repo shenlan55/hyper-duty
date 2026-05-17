@@ -9,6 +9,10 @@
               <el-icon><DocumentAdd /></el-icon>
               批量新建
             </el-button>
+            <el-button v-if="canCreateTask" type="warning" @click="handleCreateShadowTask">
+              <el-icon><DocumentCopy /></el-icon>
+              创建影子任务
+            </el-button>
             <el-button v-if="canCreateTask" type="primary" @click="handleAdd">新建任务</el-button>
           </div>
         </div>
@@ -34,7 +38,7 @@
         total: pagination.total
       }"
       :row-key="'id'"
-      :backend-pagination="true"
+      :backend-pagination="false"
       @size-change="handleSizeChange"
       @current-change="handleCurrentChange"
       style="width: 100%;"
@@ -43,6 +47,7 @@
           <span>
             <el-icon v-if="row.isPinned === 1" style="color: #f56c6c; margin-right: 4px;"><Star /></el-icon>
             <el-icon v-if="row.isFocus === 1" style="color: #e6a23c; margin-right: 4px;"><TrendCharts /></el-icon>
+            <el-tag v-if="row.isShadow === 1" size="small" type="warning" style="margin-right: 8px;">影子</el-tag>
             <span :style="row.isPinned === 1 ? 'color: #f56c6c; font-weight: bold;' : ''">{{ row.taskName }}</span>
             <el-tag v-if="row.isFocus === 1" size="small" type="warning" style="margin-left: 8px;">重点</el-tag>
             <el-tag v-if="row.hasChildren" size="small" type="info" style="margin-left: 8px;">
@@ -64,41 +69,64 @@
         </template>
         <template #operation="{ row }">
           <div style="display: flex; gap: 4px; white-space: nowrap;">
-            <el-button 
-              v-if="row.hasPermission" 
-              type="primary" 
-              size="small" 
-              @click="handleEdit(row)"
-            >
-              编辑
-            </el-button>
-            <el-button 
-              v-if="row.hasPermission" 
-              type="success" 
-              size="small" 
-              @click="handleUpdateProgress(row)"
-            >
-              更新进度
-            </el-button>
-            <el-button type="info" size="small" @click="handleViewTaskDetail(row)">详情</el-button>
-            <el-button v-if="row.hasPermission" type="info" size="small" @click="handleViewBindings(row)">绑定</el-button>
-            <el-button 
-              v-if="row.hasPermission" 
-              type="warning" 
-              size="small" 
-              @click="handlePin(row)"
-              style="min-width: 70px;"
-            >
-              {{ row.isPinned === 1 ? '取消置顶' : '置顶' }}
-            </el-button>
-            <el-button 
-              v-if="row.hasDeletePermission" 
-              type="danger" 
-              size="small" 
-              @click="handleDelete(row)"
-            >
-              删除
-            </el-button>
+            <!-- 影子任务的操作 -->
+            <template v-if="row.isShadow === 1">
+              <el-button type="info" size="small" @click="handleViewShadowDetail(row)">详情</el-button>
+              <el-button 
+                v-if="row.hasPermission" 
+                type="warning" 
+                size="small" 
+                @click="handleEditShadow(row)"
+              >
+                编辑
+              </el-button>
+              <el-button 
+                v-if="row.hasDeletePermission" 
+                type="danger" 
+                size="small" 
+                @click="handleDeleteShadow(row)"
+              >
+                删除
+              </el-button>
+            </template>
+            <!-- 真实任务的操作 -->
+            <template v-else>
+              <el-button 
+                v-if="row.hasPermission" 
+                type="primary" 
+                size="small" 
+                @click="handleEdit(row)"
+              >
+                编辑
+              </el-button>
+              <el-button 
+                v-if="row.hasPermission" 
+                type="success" 
+                size="small" 
+                @click="handleUpdateProgress(row)"
+              >
+                更新进度
+              </el-button>
+              <el-button type="info" size="small" @click="handleViewTaskDetail(row)">详情</el-button>
+              <el-button v-if="row.hasPermission" type="info" size="small" @click="handleViewBindings(row)">绑定</el-button>
+              <el-button 
+                v-if="row.hasPermission" 
+                type="warning" 
+                size="small" 
+                @click="handlePin(row)"
+                style="min-width: 70px;"
+              >
+                {{ row.isPinned === 1 ? '取消置顶' : '置顶' }}
+              </el-button>
+              <el-button 
+                v-if="row.hasDeletePermission" 
+                type="danger" 
+                size="small" 
+                @click="handleDelete(row)"
+              >
+                删除
+              </el-button>
+            </template>
           </div>
         </template>
       </BaseTable>
@@ -196,6 +224,142 @@
         <el-button @click="taskDetailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 创建影子任务对话框 -->
+    <el-dialog
+      v-model="createShadowDialogVisible"
+      title="创建影子任务"
+      width="800px"
+    >
+      <el-alert title="影子任务说明" type="info" :closable="false" show-icon style="margin-bottom: 20px;">
+        <template #default>
+          影子任务是源任务在当前项目的视图，源任务的进度、状态等信息会实时同步。影子任务可以有自己的别名和描述。
+        </template>
+      </el-alert>
+      <el-form :model="shadowForm" label-width="120px">
+        <el-form-item label="源任务" required>
+          <el-select v-model="shadowForm.sourceTaskId" placeholder="请选择源任务" style="width: 100%;" filterable>
+            <el-option
+              v-for="task in allProjectTasks"
+              :key="task.id"
+              :label="`${task.projectName} - ${task.taskName}`"
+              :value="task.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="目标项目" required>
+          <el-select v-model="shadowForm.projectId" placeholder="请选择目标项目" style="width: 100%;" filterable>
+            <el-option
+              v-for="project in projectList"
+              :key="project.id"
+              :label="project.projectName"
+              :value="project.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="影子别名">
+          <el-input v-model="shadowForm.shadowAlias" placeholder="请输入影子别名（可选，留空则显示源任务名称）" />
+        </el-form-item>
+        <el-form-item label="影子描述">
+          <el-input v-model="shadowForm.shadowDescription" type="textarea" :rows="4" placeholder="请输入影子描述（可选）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createShadowDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleCreateShadowSubmit">创建</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑影子任务对话框 -->
+    <el-dialog
+      v-model="editShadowDialogVisible"
+      title="编辑影子任务"
+      width="800px"
+    >
+      <el-alert title="编辑说明" type="info" :closable="false" show-icon style="margin-bottom: 20px;">
+        <template #default>
+          影子任务只能编辑「影子别名」和「影子描述」，源任务的其他信息（进度、状态等）会自动同步源任务。
+        </template>
+      </el-alert>
+      <el-form :model="shadowForm" label-width="120px">
+        <el-form-item label="影子别名">
+          <el-input v-model="shadowForm.shadowAlias" placeholder="请输入影子别名（留空则显示源任务名称）" />
+        </el-form-item>
+        <el-form-item label="影子描述">
+          <el-input v-model="shadowForm.shadowDescription" type="textarea" :rows="4" placeholder="请输入影子描述（可选）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editShadowDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleEditShadowSubmit">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 影子任务详情对话框 -->
+    <el-dialog
+      v-model="shadowDetailDialogVisible"
+      title="影子任务详情"
+      width="1200px"
+    >
+      <div v-if="currentShadowTask">
+        <!-- 头部标识 -->
+        <el-alert title="影子任务信息" type="info" :closable="false" show-icon style="margin-bottom: 20px;">
+          <template #default>
+            这是一个影子任务，源任务来自「{{ currentShadowTask.sourceProjectName || '-' }}」项目，数据实时同步源任务。
+          </template>
+        </el-alert>
+        
+        <!-- 基本信息 -->
+        <el-descriptions :column="2" border style="margin-bottom: 20px;">
+          <el-descriptions-item label="影子任务名称">
+            <span v-if="currentShadowTask.shadowAlias" style="color: #409eff; font-weight: bold;">{{ currentShadowTask.shadowAlias }}</span>
+            <span v-else>{{ currentShadowTask.taskName }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="源任务名称">{{ currentShadowTask.sourceTaskName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="源项目">{{ currentShadowTask.sourceProjectName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="当前项目">{{ currentShadowTask.projectName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="负责人">{{ currentShadowTask.ownerName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="创建人">{{ currentShadowTask.createdBy || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="开始日期">{{ currentShadowTask.startDate || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="结束日期">{{ currentShadowTask.endDate || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="进度">
+            <el-progress :percentage="currentShadowTask.progress" :status="getProgressStatus(currentShadowTask.progress)" />
+          </el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getTaskStatusType(currentShadowTask.status)">{{ getTaskStatusText(currentShadowTask.status) }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="优先级">
+            <el-tag :type="getTaskPriorityType(currentShadowTask.priority)">{{ getTaskPriorityText(currentShadowTask.priority) }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ formatDateTime(currentShadowTask.createdAt) }}</el-descriptions-item>
+          <el-descriptions-item label="影子描述" :span="2">
+            <div v-if="currentShadowTask.shadowDescription" style="white-space: pre-wrap;">{{ currentShadowTask.shadowDescription }}</div>
+            <span v-else style="color: #909399;">暂无影子描述（可编辑添加）</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="源任务描述" :span="2">
+            <div v-if="currentShadowTask.description" style="white-space: pre-wrap;">{{ currentShadowTask.description }}</div>
+            <span v-else style="color: #909399;">暂无描述</span>
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <template #footer>
+        <el-button @click="shadowDetailDialogVisible = false">关闭</el-button>
+        <el-button 
+          v-if="currentShadowTask?.hasPermission" 
+          type="warning" 
+          @click="handleEditShadowFromDetail"
+        >
+          编辑影子信息
+        </el-button>
+        <el-button 
+          v-if="currentShadowTask?.hasDeletePermission" 
+          type="danger" 
+          @click="handleDeleteShadowFromDetail"
+        >
+          删除影子
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -203,7 +367,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Star, TrendCharts, DocumentAdd } from '@element-plus/icons-vue'
+import { Star, TrendCharts, DocumentAdd, DocumentCopy } from '@element-plus/icons-vue'
 import BaseTable from '@/components/BaseTable.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import TaskSearchForm from '@/components/TaskSearchForm.vue'
@@ -211,7 +375,7 @@ import TaskEditDialog from '@/components/TaskEditDialog.vue'
 import TaskProgressUpdateDialog from '@/components/TaskProgressUpdateDialog.vue'
 import BatchCreateTasks from '@/components/BatchCreateTasks.vue'
 import BindCustomRowDialog from '@/components/BindCustomRowDialog.vue'
-import { getTaskPage, getTaskDetail, deleteTask, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
+import { getTaskPage, getTaskDetail, deleteTask, pinTask, getProjectTasks, createProgressUpdate, getTaskProgressUpdates, getTaskListWithShadows, createShadowTask, updateShadowTask, deleteShadowTask, getShadowTaskDetail, getShadowTaskBySource } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { getTaskBindings, unbindCustomRow, getCustomTableColumns } from '@/api/customTable'
@@ -224,6 +388,7 @@ const userStore = useUserStore()
 // 基础状态
 const loading = ref(false)
 const tableData = ref([])
+const allTasks = ref([]) // 所有任务（真实+影子）
 const projectList = ref([])
 const employeeList = ref([])
 const taskTreeData = ref([])
@@ -248,6 +413,20 @@ const progressUpdates = ref([])
 // 批量操作相关
 const batchCreateDialogVisible = ref(false)
 const selectedTasks = ref([])
+
+// 影子任务相关
+const createShadowDialogVisible = ref(false)
+const editShadowDialogVisible = ref(false)
+const shadowDetailDialogVisible = ref(false)
+const shadowForm = reactive({
+  id: null,
+  sourceTaskId: null,
+  projectId: null,
+  shadowAlias: '',
+  shadowDescription: ''
+})
+const currentShadowTask = ref(null)
+const allProjectTasks = ref([])
 
 // 搜索表单
 const searchForm = reactive({
@@ -301,32 +480,78 @@ const getTaskFullName = (row) => {
 const loadData = async () => {
   loading.value = true
   try {
-    const params = {
-      pageNum: pagination.currentPage,
-      pageSize: pagination.pageSize,
-      ...searchForm
+    if (!searchForm.projectId) {
+      tableData.value = []
+      pagination.total = 0
+      return
     }
-    const data = await getTaskPage(params)
-    const tasks = data.records || []
+    
+    // 使用新的 API 加载真实任务 + 影子任务
+    const tasks = await getTaskListWithShadows(searchForm.projectId)
+    allTasks.value = tasks || []
     
     // 处理附件和干系人数据（不删除原始字段）
-    for (const task of tasks) {
+    for (const task of allTasks.value) {
       if (task.attachments && typeof task.attachments === 'string') {
         task._attachments = task.attachments
       }
       if (task.stakeholders && typeof task.stakeholders === 'string') {
         task._stakeholders = task.stakeholders
       }
+      // 添加影子任务标记
+      task.isShadow = task.isShadow || 0
+      
+      // 设置权限 - 优先使用后端返回的权限，否则设为false
+      task.hasPermission = task.hasPermission !== null && task.hasPermission !== undefined 
+        ? task.hasPermission 
+        : false
+      task.hasDeletePermission = task.hasDeletePermission !== null && task.hasDeletePermission !== undefined 
+        ? task.hasDeletePermission 
+        : false
     }
     
-    // 对任务进行排序
-    const sortedTasks = sortTasks(tasks)
+    // 根据搜索条件过滤
+    let filteredTasks = allTasks.value
+    if (searchForm.taskName) {
+      filteredTasks = filteredTasks.filter(task => 
+        task.taskName?.toLowerCase().includes(searchForm.taskName.toLowerCase())
+      )
+    }
+    if (searchForm.assigneeName) {
+      filteredTasks = filteredTasks.filter(task => 
+        task.ownerName?.toLowerCase().includes(searchForm.assigneeName.toLowerCase())
+      )
+    }
+    if (searchForm.status !== null) {
+      filteredTasks = filteredTasks.filter(task => task.status === searchForm.status)
+    }
+    if (searchForm.priority !== null) {
+      filteredTasks = filteredTasks.filter(task => task.priority === searchForm.priority)
+    }
+    
+    // 对任务进行排序（真实任务在前，影子在后）
+    const sortedTasks = [...filteredTasks].sort((a, b) => {
+      if (a.isShadow !== b.isShadow) {
+        return a.isShadow - b.isShadow
+      }
+      if (a.isPinned !== b.isPinned) {
+        return b.isPinned - a.isPinned
+      }
+      // 用 createTime 或者其他字段排序，这里用 sortTasks 或者简单排序
+      return sortTasks([a, b])[0] === a ? -1 : 1
+    })
+    
+    // 前端分页
+    const startIndex = (pagination.currentPage - 1) * pagination.pageSize
+    const endIndex = startIndex + pagination.pageSize
+    const paginatedTasks = sortedTasks.slice(startIndex, endIndex)
     
     // 构建树形结构
-    tableData.value = buildTaskTree(sortedTasks)
+    tableData.value = buildTaskTree(paginatedTasks)
     
-    pagination.total = data.total || 0
+    pagination.total = filteredTasks.length
   } catch (error) {
+    console.error('加载数据失败', error)
     ElMessage.error('加载数据失败')
   } finally {
     loading.value = false
@@ -438,6 +663,181 @@ const handleBatchCreate = () => {
 // 批量新建任务提交处理
 const handleBatchCreateSubmit = () => {
   loadData()
+}
+
+// 加载所有项目的所有任务
+const loadAllProjectTasks = async () => {
+  try {
+    const tasks = []
+    for (const project of projectList.value) {
+      try {
+        const projectTasks = await getProjectTasks(project.id)
+        tasks.push(...(projectTasks || []).map(task => ({
+          ...task,
+          projectName: project.projectName
+        })))
+      } catch (error) {
+        console.error(`加载项目 ${project.projectName} 任务失败`, error)
+      }
+    }
+    allProjectTasks.value = tasks
+  } catch (error) {
+    console.error('加载所有项目任务失败', error)
+  }
+}
+
+// 创建影子任务
+const handleCreateShadowTask = async () => {
+  if (allProjectTasks.value.length === 0) {
+    await loadAllProjectTasks()
+  }
+  // 重置表单
+  Object.assign(shadowForm, {
+    id: null,
+    sourceTaskId: null,
+    projectId: searchForm.projectId, // 后端字段是 projectId，不是 targetProjectId
+    shadowAlias: '', // 后端是 shadowAlias，不是 taskName
+    shadowDescription: '' // 后端是 shadowDescription，不是 description
+  })
+  createShadowDialogVisible.value = true
+}
+
+// 提交创建影子任务
+const handleCreateShadowSubmit = async () => {
+  try {
+    if (!shadowForm.sourceTaskId) {
+      ElMessage.warning('请选择源任务')
+      return
+    }
+    if (!shadowForm.projectId) {
+      ElMessage.warning('请选择目标项目')
+      return
+    }
+
+    // 检查是否已存在相同的影子任务
+    try {
+      const existing = await getShadowTaskBySource(shadowForm.sourceTaskId)
+      if (existing && existing.some(shadow => shadow.projectId === shadowForm.projectId)) {
+        ElMessage.warning('该源任务在目标项目中已存在影子任务')
+        return
+      }
+    } catch (error) {
+      // 不存在，继续创建
+    }
+
+    await createShadowTask({
+      sourceTaskId: shadowForm.sourceTaskId,
+      projectId: shadowForm.projectId,
+      shadowAlias: shadowForm.shadowAlias,
+      shadowDescription: shadowForm.shadowDescription
+    })
+    ElMessage.success('创建影子任务成功')
+    createShadowDialogVisible.value = false
+    loadData()
+  } catch (error) {
+    console.error('创建影子任务失败', error)
+    ElMessage.error('创建影子任务失败')
+  }
+}
+
+// 编辑影子任务
+const handleEditShadow = async (row) => {
+  try {
+    const data = await getShadowTaskDetail(row.id)
+    currentShadowTask.value = data
+    Object.assign(shadowForm, {
+      id: data.id,
+      shadowAlias: data.shadowAlias,
+      shadowDescription: data.shadowDescription
+    })
+    editShadowDialogVisible.value = true
+  } catch (error) {
+    console.error('获取影子任务详情失败', error)
+    ElMessage.error('获取影子任务详情失败')
+  }
+}
+
+// 提交更新影子任务
+const handleEditShadowSubmit = async () => {
+  try {
+    await updateShadowTask({
+      id: shadowForm.id,
+      shadowAlias: shadowForm.shadowAlias,
+      shadowDescription: shadowForm.shadowDescription
+    })
+    ElMessage.success('更新影子任务成功')
+    editShadowDialogVisible.value = false
+    loadData()
+  } catch (error) {
+    console.error('更新影子任务失败', error)
+    ElMessage.error('更新影子任务失败')
+  }
+}
+
+// 查看影子任务详情
+const handleViewShadowDetail = async (row) => {
+  try {
+    const data = await getShadowTaskDetail(row.id)
+    currentShadowTask.value = data
+    shadowDetailDialogVisible.value = true
+  } catch (error) {
+    console.error('获取影子任务详情失败', error)
+    ElMessage.error('获取影子任务详情失败')
+  }
+}
+
+// 删除影子任务
+const handleDeleteShadow = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确认删除影子任务"${row.taskName}"？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deleteShadowTask(row.id)
+    ElMessage.success('删除影子任务成功')
+    loadData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除影子任务失败', error)
+      ElMessage.error('删除影子任务失败')
+    }
+  }
+}
+
+// 从详情页编辑影子任务
+const handleEditShadowFromDetail = async () => {
+  try {
+    shadowDetailDialogVisible.value = false
+    Object.assign(shadowForm, {
+      id: currentShadowTask.value.id,
+      shadowAlias: currentShadowTask.value.shadowAlias,
+      shadowDescription: currentShadowTask.value.shadowDescription
+    })
+    editShadowDialogVisible.value = true
+  } catch (error) {
+    console.error('打开编辑对话框失败', error)
+  }
+}
+
+// 从详情页删除影子任务
+const handleDeleteShadowFromDetail = async () => {
+  try {
+    await ElMessageBox.confirm(`确认删除影子任务"${currentShadowTask.value.taskName}"？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deleteShadowTask(currentShadowTask.value.id)
+    ElMessage.success('删除影子任务成功')
+    shadowDetailDialogVisible.value = false
+    loadData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除影子任务失败', error)
+      ElMessage.error('删除影子任务失败')
+    }
+  }
 }
 
 // 表格选择变化处理（保留用于可能的未来扩展）

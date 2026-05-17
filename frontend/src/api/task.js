@@ -204,3 +204,51 @@ export function exportGantt(projectId) {
     responseType: 'blob'
   })
 }
+
+// ============================================
+// 影子任务相关 API
+// ============================================
+
+export function getTaskListWithShadows(projectId) {
+  return request({
+    url: `/pm/shadow/project/${projectId}`,
+    method: 'get'
+  })
+}
+
+export function createShadowTask(data) {
+  return request({
+    url: '/pm/shadow',
+    method: 'post',
+    data
+  })
+}
+
+export function updateShadowTask(data) {
+  return request({
+    url: `/pm/shadow/${data.id}`,
+    method: 'put',
+    data
+  })
+}
+
+export function deleteShadowTask(id) {
+  return request({
+    url: `/pm/shadow/${id}`,
+    method: 'delete'
+  })
+}
+
+export function getShadowTaskDetail(id) {
+  return request({
+    url: `/pm/shadow/${id}`,
+    method: 'get'
+  })
+}
+
+export function getShadowTaskBySource(sourceTaskId, targetProjectId) {
+  return request({
+    url: `/pm/shadow/source-task/${sourceTaskId}`,
+    method: 'get'
+  })
+}
