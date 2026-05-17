@@ -176,4 +176,19 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             @Param("taskStartDateTo") java.time.LocalDate taskStartDateTo,
             @Param("taskEndDateFrom") java.time.LocalDate taskEndDateFrom,
             @Param("taskEndDateTo") java.time.LocalDate taskEndDateTo);
+
+    /**
+     * 根据任务ID列表查询任务
+     */
+    @Select("<script>" +
+            "SELECT t.*, e.employee_name as owner_name, p.project_name, " +
+            "(SELECT MAX(create_time) FROM pm_task_progress_update WHERE task_id = t.id) as last_progress_update_time " +
+            "FROM pm_task t " +
+            "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
+            "LEFT JOIN pm_project p ON t.project_id = p.id " +
+            "WHERE t.id IN " +
+            "<foreach collection='taskIds' item='taskId' open='(' separator=',' close=')'>#{taskId}</foreach>" +
+            "ORDER BY p.project_name, t.create_time DESC" +
+            "</script>")
+    List<PmTask> selectTasksByIds(@Param("taskIds") List<Long> taskIds);
 }
