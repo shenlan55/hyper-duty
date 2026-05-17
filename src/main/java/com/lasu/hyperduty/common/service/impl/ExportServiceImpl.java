@@ -154,11 +154,11 @@ public class ExportServiceImpl {
         // 5. 收集所有任务ID（用于查询进展历史）
         List<Long> allTaskIds = new ArrayList<>(allSourceTaskMap.keySet());
 
-        // 6. 查询进展历史 - 查询所有相关任务的所有进展，不限制时间
+        // 6. 查询进展历史 - 使用用户选择的时间范围
         List<PmTaskProgressUpdate> progressHistory = pmTaskProgressUpdateMapper.selectProgressHistoryForReport(
                 allTaskIds.isEmpty() ? null : allTaskIds,
-                null, // 不限制开始时间
-                null  // 不限制结束时间
+                queryDTO.getProgressUpdateTimeFrom(),
+                queryDTO.getProgressUpdateTimeTo()
         );
 
         // 7. 按任务ID分组进展历史
@@ -174,19 +174,21 @@ public class ExportServiceImpl {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
         Pattern htmlPattern = Pattern.compile("<[^>]*>");
         
-        // 8.1 添加用户选择项目下面的源任务
+        // 8.1 添加用户选择项目下面的源任务（只添加在指定时间范围内有进展的任务）
         if (projectSourceTasks != null) {
             for (PmTask task : projectSourceTasks) {
-                addTaskToReport(taskOverviewList, task, progressMap, dateFormatter, htmlPattern);
+                addTaskToReport(taskOverviewList, task, progressMap, dateFormatter, htmlPattern,
+                        queryDTO.getProgressUpdateTimeFrom(), queryDTO.getProgressUpdateTimeTo());
             }
         }
 
-        // 8.2 添加用户选择项目下面的影子任务
+        // 8.2 添加用户选择项目下面的影子任务（只添加在指定时间范围内有进展的任务）
         if (projectShadowTasks != null) {
             for (PmTaskShadow shadow : projectShadowTasks) {
                 PmTask sourceTask = allSourceTaskMap.get(shadow.getSourceTaskId());
                 if (sourceTask != null) {
-                    addShadowTaskToReport(taskOverviewList, shadow, sourceTask, progressMap, dateFormatter, htmlPattern);
+                    addShadowTaskToReport(taskOverviewList, shadow, sourceTask, progressMap, dateFormatter, htmlPattern,
+                            queryDTO.getProgressUpdateTimeFrom(), queryDTO.getProgressUpdateTimeTo());
                 }
             }
         }
@@ -210,10 +212,23 @@ public class ExportServiceImpl {
             PmTask task,
             Map<Long, List<PmTaskProgressUpdate>> progressMap,
             DateTimeFormatter dateFormatter,
-            Pattern htmlPattern) {
+            Pattern htmlPattern,
+            java.time.LocalDateTime progressUpdateTimeFrom,
+            java.time.LocalDateTime progressUpdateTimeTo) {
         
         // 获取该任务的进展历史
         List<PmTaskProgressUpdate> updates = progressMap.getOrDefault(task.getId(), new ArrayList<>());
+        
+        // 如果没有指定时间范围，或者在指定时间范围内有进展，才添加到报告
+        boolean shouldAdd = true;
+        if (progressUpdateTimeFrom != null || progressUpdateTimeTo != null) {
+            shouldAdd = !updates.isEmpty();
+        }
+        
+        if (!shouldAdd) {
+            return;
+        }
+        
         // 按时间倒序排列
         updates.sort((a, b) -> b.getCreateTime().compareTo(a.getCreateTime()));
         
@@ -247,10 +262,23 @@ public class ExportServiceImpl {
             PmTask sourceTask,
             Map<Long, List<PmTaskProgressUpdate>> progressMap,
             DateTimeFormatter dateFormatter,
-            Pattern htmlPattern) {
+            Pattern htmlPattern,
+            java.time.LocalDateTime progressUpdateTimeFrom,
+            java.time.LocalDateTime progressUpdateTimeTo) {
         
         // 获取源任务的进展历史
         List<PmTaskProgressUpdate> updates = progressMap.getOrDefault(sourceTask.getId(), new ArrayList<>());
+        
+        // 如果没有指定时间范围，或者在指定时间范围内有进展，才添加到报告
+        boolean shouldAdd = true;
+        if (progressUpdateTimeFrom != null || progressUpdateTimeTo != null) {
+            shouldAdd = !updates.isEmpty();
+        }
+        
+        if (!shouldAdd) {
+            return;
+        }
+        
         // 按时间倒序排列
         updates.sort((a, b) -> b.getCreateTime().compareTo(a.getCreateTime()));
         
