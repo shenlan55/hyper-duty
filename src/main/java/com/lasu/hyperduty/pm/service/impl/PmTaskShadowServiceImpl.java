@@ -227,8 +227,9 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
             pagesRootTasks.add(currentPageRootTasks);
         }
 
-        // 9. 设置真实的 total
-        page.setTotal(allTasks.size());
+        // 9. 调整total使得前端显示的总页数等于pagesRootTasks.size()
+        int adjustedTotal = pagesRootTasks.size() * pageSize;
+        page.setTotal(adjustedTotal);
 
         // 10. 获取当前页的根任务
         List<ShadowTaskVO> result = new ArrayList<>();
