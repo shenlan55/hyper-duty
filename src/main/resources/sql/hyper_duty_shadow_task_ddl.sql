@@ -1,5 +1,5 @@
 -- =====================================================
--- 影子任务功能 - 数据库表结构 (v2)
+-- 影子任务功能 - 数据库表结构 (v3)
 -- 设计理念：影子是源任务在项目中的"视图"
 -- =====================================================
 
@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.pm_task_shadow (
     id BIGSERIAL PRIMARY KEY,
     source_task_id BIGINT NOT NULL REFERENCES public.pm_task(id) ON DELETE CASCADE,
     project_id BIGINT NOT NULL REFERENCES public.pm_project(id) ON DELETE CASCADE,
+    parent_id BIGINT DEFAULT 0,
     shadow_alias VARCHAR(500),
     shadow_description TEXT,
     created_by VARCHAR(100),
@@ -20,10 +21,12 @@ CREATE TABLE IF NOT EXISTS public.pm_task_shadow (
 
 CREATE INDEX IF NOT EXISTS idx_shadow_source_task ON public.pm_task_shadow(source_task_id);
 CREATE INDEX IF NOT EXISTS idx_shadow_project ON public.pm_task_shadow(project_id);
+CREATE INDEX IF NOT EXISTS idx_shadow_parent_id ON public.pm_task_shadow(parent_id);
 
 COMMENT ON TABLE public.pm_task_shadow IS '影子任务关联表 - 影子是源任务在项目中的视图';
 COMMENT ON COLUMN public.pm_task_shadow.source_task_id IS '源任务ID';
 COMMENT ON COLUMN public.pm_task_shadow.project_id IS '项目ID';
+COMMENT ON COLUMN public.pm_task_shadow.parent_id IS '在本项目中的父任务ID（0表示根任务）';
 COMMENT ON COLUMN public.pm_task_shadow.shadow_alias IS '在本项目中的别名（可选，不填显示源任务名称）';
 COMMENT ON COLUMN public.pm_task_shadow.shadow_description IS '本项目的描述（可选）';
 COMMENT ON COLUMN public.pm_task_shadow.created_by IS '创建人';
@@ -189,3 +192,29 @@ END $$;
 -- =====================================================
 -- 完成
 -- =====================================================
+
+-- =====================================================
+-- 4. 从 v2 升级到 v3 的脚本
+-- =====================================================
+-- 4.1 添加 parent_id 字段
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'pm_task_shadow' AND column_name = 'parent_id'
+  ) THEN
+    ALTER TABLE pm_task_shadow ADD COLUMN parent_id BIGINT DEFAULT 0;
+    COMMENT ON COLUMN pm_task_shadow.parent_id IS '在本项目中的父任务ID（0表示根任务）';
+  END IF;
+END $$;
+
+-- 4.2 添加 parent_id 索引
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes 
+    WHERE tablename = 'pm_task_shadow' AND indexname = 'idx_shadow_parent_id'
+  ) THEN
+    CREATE INDEX idx_shadow_parent_id ON public.pm_task_shadow(parent_id);
+  END IF;
+END $$;

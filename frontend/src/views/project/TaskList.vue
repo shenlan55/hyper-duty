@@ -252,7 +252,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="目标项目" required>
-          <el-select v-model="shadowForm.projectId" placeholder="请选择目标项目" style="width: 100%;" filterable>
+          <el-select v-model="shadowForm.projectId" placeholder="请选择目标项目" style="width: 100%;" filterable @change="loadShadowProjectTaskTree">
             <el-option
               v-for="project in projectList"
               :key="project.id"
@@ -260,6 +260,17 @@
               :value="project.id"
             />
           </el-select>
+        </el-form-item>
+        <el-form-item label="父任务">
+          <el-tree-select
+            v-model="shadowForm.parentId"
+            :data="shadowProjectTaskTree"
+            :props="{ label: 'taskName', children: 'children', value: 'id' }"
+            placeholder="请选择父任务（可选）"
+            style="width: 100%;"
+            clearable
+            check-strictly
+          />
         </el-form-item>
         <el-form-item label="影子别名">
           <el-input v-model="shadowForm.shadowAlias" placeholder="请输入影子别名（可选，留空则显示源任务名称）" />
@@ -282,10 +293,21 @@
     >
       <el-alert title="编辑说明" type="info" :closable="false" show-icon style="margin-bottom: 20px;">
         <template #default>
-          影子任务只能编辑「影子别名」和「影子描述」，源任务的其他信息（进度、状态等）会自动同步源任务。
+          影子任务可以编辑「父任务」、「影子别名」和「影子描述」，源任务的其他信息（进度、状态等）会自动同步源任务。
         </template>
       </el-alert>
       <el-form :model="shadowForm" label-width="120px">
+        <el-form-item label="父任务">
+          <el-tree-select
+            v-model="shadowForm.parentId"
+            :data="shadowProjectTaskTree"
+            :props="{ label: 'taskName', children: 'children', value: 'id' }"
+            placeholder="请选择父任务（可选）"
+            style="width: 100%;"
+            clearable
+            check-strictly
+          />
+        </el-form-item>
         <el-form-item label="影子别名">
           <el-input v-model="shadowForm.shadowAlias" placeholder="请输入影子别名（留空则显示源任务名称）" />
         </el-form-item>
@@ -379,12 +401,14 @@ const shadowForm = reactive({
   id: null,
   sourceTaskId: null,
   projectId: null,
+  parentId: null,
   shadowAlias: '',
   shadowDescription: ''
 })
 const currentShadowTask = ref(null)
 const currentShadowId = ref(null)
 const allProjectTasks = ref([])
+const shadowProjectTaskTree = ref([])
 
 // 搜索表单
 const searchForm = reactive({
@@ -526,6 +550,20 @@ const loadTaskTree = async (projectId, excludeTaskId = null) => {
   }
 }
 
+// 加载影子任务的项目任务树
+const loadShadowProjectTaskTree = async (projectId) => {
+  if (!projectId) {
+    shadowProjectTaskTree.value = []
+    return
+  }
+  try {
+    const data = await getProjectTasks(projectId)
+    shadowProjectTaskTree.value = buildTaskTree(data, 0, null)
+  } catch (error) {
+    console.error('加载影子项目任务树失败', error)
+  }
+}
+
 // 构建任务树
 const buildTaskTree = (tasks, parentId = 0, excludeTaskId = null) => {
   const filteredTasks = tasks.filter(task => task.parentId === parentId && task.id !== excludeTaskId)
@@ -631,9 +669,16 @@ const handleCreateShadowTask = async () => {
     id: null,
     sourceTaskId: null,
     projectId: searchForm.projectId, // 后端字段是 projectId，不是 targetProjectId
+    parentId: null,
     shadowAlias: '', // 后端是 shadowAlias，不是 taskName
     shadowDescription: '' // 后端是 shadowDescription，不是 description
   })
+  // 加载任务树
+  if (searchForm.projectId) {
+    await loadShadowProjectTaskTree(searchForm.projectId)
+  } else {
+    shadowProjectTaskTree.value = []
+  }
   createShadowDialogVisible.value = true
 }
 
@@ -663,6 +708,7 @@ const handleCreateShadowSubmit = async () => {
     await createShadowTask({
       sourceTaskId: shadowForm.sourceTaskId,
       projectId: shadowForm.projectId,
+      parentId: shadowForm.parentId,
       shadowAlias: shadowForm.shadowAlias,
       shadowDescription: shadowForm.shadowDescription
     })
@@ -682,9 +728,12 @@ const handleEditShadow = async (row) => {
     currentShadowTask.value = data
     Object.assign(shadowForm, {
       id: data.id,
+      parentId: data.parentId,
       shadowAlias: data.shadowAlias,
       shadowDescription: data.shadowDescription
     })
+    // 加载任务树
+    await loadShadowProjectTaskTree(row.projectId)
     editShadowDialogVisible.value = true
   } catch (error) {
     console.error('获取影子任务详情失败', error)
@@ -697,6 +746,7 @@ const handleEditShadowSubmit = async () => {
   try {
     await updateShadowTask({
       id: shadowForm.id,
+      parentId: shadowForm.parentId,
       shadowAlias: shadowForm.shadowAlias,
       shadowDescription: shadowForm.shadowDescription
     })
@@ -751,9 +801,12 @@ const handleEditShadowFromDetail = async () => {
     shadowDetailDialogVisible.value = false
     Object.assign(shadowForm, {
       id: currentShadowTask.value.id,
+      parentId: currentShadowTask.value.parentId,
       shadowAlias: currentShadowTask.value.shadowAlias,
       shadowDescription: currentShadowTask.value.shadowDescription
     })
+    // 加载任务树
+    await loadShadowProjectTaskTree(currentShadowTask.value.projectId)
     editShadowDialogVisible.value = true
   } catch (error) {
     console.error('打开编辑对话框失败', error)

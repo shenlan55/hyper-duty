@@ -30,6 +30,11 @@ public class PmTaskShadow {
     private Long projectId;
 
     /**
+     * 在本项目中的父任务ID（0表示根任务）
+     */
+    private Long parentId;
+
+    /**
      * 在本项目中的别名（可选，不填显示源任务名称）
      */
     private String shadowAlias;

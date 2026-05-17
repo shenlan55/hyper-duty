@@ -22,6 +22,11 @@ public class ShadowTaskCreateDTO {
     private Long projectId;
 
     /**
+     * 在本项目中的父任务ID（可选，0表示根任务）
+     */
+    private Long parentId;
+
+    /**
      * 影子别名（可选）
      */
     private String shadowAlias;

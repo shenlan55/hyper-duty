@@ -63,6 +63,7 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
         PmTaskShadow shadow = new PmTaskShadow();
         shadow.setSourceTaskId(dto.getSourceTaskId());
         shadow.setProjectId(dto.getProjectId());
+        shadow.setParentId(dto.getParentId() != null ? dto.getParentId() : 0L);
         shadow.setShadowAlias(dto.getShadowAlias());
         shadow.setShadowDescription(dto.getShadowDescription());
         shadow.setCreatedBy(username);
@@ -81,6 +82,9 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
             throw new RuntimeException("影子任务不存在");
         }
 
+        if (dto.getParentId() != null) {
+            shadow.setParentId(dto.getParentId());
+        }
         if (dto.getShadowAlias() != null) {
             shadow.setShadowAlias(dto.getShadowAlias());
         }
@@ -223,9 +227,8 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
             pagesRootTasks.add(currentPageRootTasks);
         }
 
-        // 9. 调整 total 使得前端显示的总页数等于 pagesRootTasks.size()
-        int adjustedTotal = pagesRootTasks.size() * pageSize;
-        page.setTotal(adjustedTotal);
+        // 9. 设置真实的 total
+        page.setTotal(allTasks.size());
 
         // 10. 获取当前页的根任务
         List<ShadowTaskVO> result = new ArrayList<>();
