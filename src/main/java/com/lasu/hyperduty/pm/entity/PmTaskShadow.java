@@ -67,5 +67,8 @@ public class PmTaskShadow {
     private String sourceProjectName;
 
     @TableField(exist = false)
+    private String targetProjectName;
+
+    @TableField(exist = false)
     private Integer annotationCount;
 }

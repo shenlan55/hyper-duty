@@ -51,7 +51,42 @@
       <div v-else class="no-data">暂无参与人</div>
     </div>
 
-
+    <!-- 影子任务列表 -->
+    <div class="task-shadows" style="margin-bottom: 20px;">
+      <h4 style="margin-bottom: 10px;">
+        影子任务
+        <el-tag type="info" size="small" style="margin-left: 8px;">
+          {{ shadowTasks.length }} 个项目
+        </el-tag>
+      </h4>
+      <div v-if="shadowTasks.length > 0" class="shadows-container">
+        <el-card v-for="shadow in shadowTasks" :key="shadow.id" class="shadow-card" shadow="hover">
+          <div class="shadow-header">
+            <el-tag type="warning" size="small">影子</el-tag>
+            <span class="shadow-name">{{ shadow.shadowAlias || shadow.sourceTaskName || '影子任务' }}</span>
+          </div>
+          <div class="shadow-info">
+            <div class="info-item">
+              <span class="info-label">所属项目：</span>
+              <el-tag type="success" size="small">{{ shadow.targetProjectName || shadow.projectName }}</el-tag>
+            </div>
+            <div class="info-item">
+              <span class="info-label">创建人：</span>
+              <span>{{ shadow.createdBy || '未知' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">创建时间：</span>
+              <span>{{ formatDateTime(shadow.createdAt) }}</span>
+            </div>
+            <div class="info-item" v-if="shadow.shadowDescription">
+              <span class="info-label">描述：</span>
+              <span>{{ shadow.shadowDescription }}</span>
+            </div>
+          </div>
+        </el-card>
+      </div>
+      <div v-else class="no-data">暂无影子任务</div>
+    </div>
 
     <!-- 进展历史时间线 -->
     <div style="margin-top: 30px;">
@@ -65,13 +100,31 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
-import { getTaskProgressUpdates } from '@/api/task'
+import { getTaskProgressUpdates, getShadowTaskBySource } from '@/api/task'
 import { getEmployeeList } from '@/api/employee'
 import { getTaskStatusText, getTaskPriorityText, formatDateTime } from '@/utils/taskUtils'
 import ProgressHistory from '@/components/ProgressHistory.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
 
 const employeeList = ref([])
+const shadowTasks = ref([])
+const shadowLoading = ref(false)
+
+// 加载影子任务
+const loadShadowTasks = async (taskId) => {
+  if (!taskId) return
+  
+  shadowLoading.value = true
+  try {
+    const data = await getShadowTaskBySource(taskId)
+    shadowTasks.value = data || []
+  } catch (error) {
+    console.error('加载影子任务失败', error)
+    shadowTasks.value = []
+  } finally {
+    shadowLoading.value = false
+  }
+}
 
 // 加载员工列表
 const loadEmployeeList = async () => {
@@ -167,23 +220,25 @@ const loadProgressUpdates = async (taskId) => {
   }
 }
 
-// 监听任务变化，加载进度更新
+// 监听任务变化，加载进度更新和影子任务
 watch(
   () => props.task,
   (newTask) => {
     if (newTask?.id) {
       loadProgressUpdates(newTask.id)
+      loadShadowTasks(newTask.id)
     }
   },
   { immediate: true }
 )
 
-// 监听任务ID变化，加载进度更新
+// 监听任务ID变化，加载进度更新和影子任务
 watch(
   () => props.taskId,
   (newTaskId) => {
     if (newTaskId) {
       loadProgressUpdates(newTaskId)
+      loadShadowTasks(newTaskId)
     }
   },
   { immediate: true }
@@ -442,5 +497,50 @@ const handleAttachmentDownload = (attachment) => {
 
 .binding-data {
   margin-bottom: 15px;
+}
+
+/* 影子任务样式 */
+.shadows-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shadow-card {
+  padding: 16px;
+  background-color: #fffbeb;
+  border: 1px solid #f59e0b;
+}
+
+.shadow-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.shadow-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.shadow-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #78350f;
+}
+
+.info-label {
+  font-weight: 500;
+  color: #451a03;
 }
 </style>

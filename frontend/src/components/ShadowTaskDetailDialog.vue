@@ -2,11 +2,18 @@
   <el-dialog
     v-model="visible"
     title="影子任务详情"
-    width="900px"
+    width="1200px"
     @close="handleClose"
   >
     <div v-loading="loading" class="shadow-detail">
       <div v-if="shadowData" class="detail-content">
+        <!-- 头部标识 -->
+        <el-alert title="影子任务信息" type="info" :closable="false" show-icon style="margin-bottom: 20px;">
+          <template #default>
+            这是一个影子任务，源任务来自「{{ shadowData.sourceProjectName || '-' }}」项目，数据实时同步源任务。
+          </template>
+        </el-alert>
+
         <!-- 影子任务基本信息 -->
         <el-card class="section-card">
           <template #header>
@@ -16,19 +23,26 @@
           </template>
           <el-descriptions :column="2" border>
             <el-descriptions-item label="影子名称">
-              {{ shadowData.shadowName || shadowData.sourceTaskName }}
+              <span v-if="shadowData.shadowAlias" style="color: #409eff; font-weight: bold;">{{ shadowData.shadowAlias }}</span>
+              <span v-else>{{ shadowData.sourceTaskName || shadowData.taskName }}</span>
             </el-descriptions-item>
-            <el-descriptions-item label="目标项目">
-              {{ shadowData.targetProjectName }}
+            <el-descriptions-item label="所属项目">
+              {{ shadowData.projectName }}
+            </el-descriptions-item>
+            <el-descriptions-item label="源任务" :span="2">
+              <el-tag type="info">{{ shadowData.sourceTaskName }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="源项目" :span="2">
-              {{ shadowData.sourceProjectName }}
+              <el-tag type="success">{{ shadowData.sourceProjectName }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="影子描述" :span="2">
               {{ shadowData.shadowDescription || '-' }}
             </el-descriptions-item>
+            <el-descriptions-item label="创建人">
+              {{ shadowData.createdBy || '-' }}
+            </el-descriptions-item>
             <el-descriptions-item label="创建时间">
-              {{ formatDateTime(shadowData.createTime) }}
+              {{ formatDateTime(shadowData.createdAt) }}
             </el-descriptions-item>
             <el-descriptions-item label="批注数量">
               <el-tag type="success">{{ shadowData.annotationCount || 0 }}</el-tag>
@@ -40,50 +54,46 @@
         <el-card class="section-card">
           <template #header>
             <div class="card-header">
-              <span>源任务信息</span>
+              <span>源任务信息（实时同步）</span>
               <el-tag type="info">实时同步</el-tag>
             </div>
           </template>
-          <div v-if="shadowData.sourceTask" class="source-task-content">
+          <div class="source-task-content">
             <el-descriptions :column="2" border>
               <el-descriptions-item label="任务名称">
-                {{ shadowData.sourceTask.taskName }}
-              </el-descriptions-item>
-              <el-descriptions-item label="任务编码">
-                {{ shadowData.sourceTask.taskCode || '-' }}
+                {{ shadowData.sourceTaskName || shadowData.taskName }}
               </el-descriptions-item>
               <el-descriptions-item label="负责人">
-                {{ shadowData.sourceTask.ownerName || '-' }}
+                {{ shadowData.ownerName || shadowData.assigneeName || '-' }}
               </el-descriptions-item>
               <el-descriptions-item label="优先级">
-                <el-tag :type="getTaskPriorityType(shadowData.sourceTask.priority)">
-                  {{ getTaskPriorityText(shadowData.sourceTask.priority) }}
+                <el-tag :type="getTaskPriorityType(shadowData.priority)">
+                  {{ getTaskPriorityText(shadowData.priority) }}
                 </el-tag>
               </el-descriptions-item>
               <el-descriptions-item label="状态">
-                <el-tag :type="getTaskStatusType(shadowData.sourceTask.status)">
-                  {{ getTaskStatusText(shadowData.sourceTask.status) }}
+                <el-tag :type="getTaskStatusType(shadowData.status)">
+                  {{ getTaskStatusText(shadowData.status) }}
                 </el-tag>
               </el-descriptions-item>
               <el-descriptions-item label="进度">
                 <el-progress
-                  :percentage="shadowData.sourceTask.progress"
-                  :status="getProgressStatus(shadowData.sourceTask.progress)"
+                  :percentage="shadowData.progress"
+                  :status="getProgressStatus(shadowData.progress)"
                   :stroke-width="10"
                 />
               </el-descriptions-item>
               <el-descriptions-item label="开始日期">
-                {{ shadowData.sourceTask.startDate || '-' }}
+                {{ shadowData.startDate || '-' }}
               </el-descriptions-item>
               <el-descriptions-item label="结束日期">
-                {{ shadowData.sourceTask.endDate || '-' }}
+                {{ shadowData.endDate || '-' }}
               </el-descriptions-item>
               <el-descriptions-item label="任务描述" :span="2">
-                {{ shadowData.sourceTask.description || '-' }}
+                {{ shadowData.description || '-' }}
               </el-descriptions-item>
             </el-descriptions>
           </div>
-          <div v-else class="empty-info">源任务已删除或无权限查看</div>
         </el-card>
 
         <!-- 批注区域 -->
@@ -102,8 +112,8 @@
             </div>
             <div v-for="annotation in annotations" :key="annotation.id" class="annotation-item">
               <div class="annotation-header">
-                <span class="annotation-author">{{ annotation.employeeName }}</span>
-                <span class="annotation-time">{{ formatDateTime(annotation.createTime) }}</span>
+                <span class="annotation-author">{{ annotation.createdBy || annotation.employeeName || '未知用户' }}</span>
+                <span class="annotation-time">{{ formatDateTime(annotation.createdAt || annotation.createTime) }}</span>
                 <el-button
                   type="danger"
                   size="small"
@@ -114,12 +124,6 @@
                 </el-button>
               </div>
               <div class="annotation-content">{{ annotation.content }}</div>
-              <div v-if="annotation.attachments" class="annotation-attachments">
-                <div class="attachments-label">附件：</div>
-                <div class="attachments-list">
-                  {{ annotation.attachments }}
-                </div>
-              </div>
             </div>
           </div>
         </el-card>
@@ -170,7 +174,7 @@ import {
   getShadowAnnotations,
   addShadowAnnotation,
   deleteShadowAnnotation
-} from '@/api/shadowTask'
+} from '@/api/task'
 
 const props = defineProps({
   modelValue: {

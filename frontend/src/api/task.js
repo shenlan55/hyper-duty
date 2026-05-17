@@ -252,3 +252,25 @@ export function getShadowTaskBySource(sourceTaskId, targetProjectId) {
     method: 'get'
   })
 }
+
+export function getShadowAnnotations(shadowId) {
+  return request({
+    url: `/pm/shadow/annotation/shadow/${shadowId}`,
+    method: 'get'
+  })
+}
+
+export function addShadowAnnotation(data) {
+  return request({
+    url: '/pm/shadow/annotation',
+    method: 'post',
+    data
+  })
+}
+
+export function deleteShadowAnnotation(annotationId) {
+  return request({
+    url: `/pm/shadow/annotation/${annotationId}`,
+    method: 'delete'
+  })
+}
