@@ -314,7 +314,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                 .filter(r -> {
                     LocalDateTime checkInTime = r.getCheckInTime();
                     return r.getApprovalStatus() != null && 
-                           "已批准".equals(r.getApprovalStatus()) &&
+                           "approved".equals(r.getApprovalStatus()) &&
                            checkInTime != null &&
                            checkInTime.getYear() == targetYear &&
                            checkInTime.getMonthValue() == targetMonth &&

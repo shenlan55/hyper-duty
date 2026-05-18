@@ -27,9 +27,21 @@ import org.springframework.stereotype.Service;
 
 
 
-
 @Service
 public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper, DutyRecord> implements DutyRecordService {
+
+    // 审批状态转换：中文 -> 英文
+    private static String normalizeApprovalStatus(String status) {
+        if (status == null) {
+            return "pending";
+        }
+        return switch (status) {
+            case "待审批" -> "pending";
+            case "已批准" -> "approved";
+            case "已拒绝" -> "rejected";
+            default -> status;
+        };
+    }
 
     @Autowired
     private SysEmployeeService sysEmployeeService;
@@ -94,9 +106,13 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
 
     @Override
     public List<DutyRecord> getPendingApprovals(Long employeeId) {
-        // 查询审批状态为待审批的加班记录
+        // 查询审批状态为待审批的加班记录（兼容中英文）
         List<DutyRecord> allPendingRecords = lambdaQuery()
-                .eq(DutyRecord::getApprovalStatus, "待审批")
+                .and(wrapper -> wrapper
+                    .eq(DutyRecord::getApprovalStatus, "pending")
+                    .or()
+                    .eq(DutyRecord::getApprovalStatus, "待审批")
+                )
                 .orderByDesc(DutyRecord::getCreateTime)
                 .list();
         
@@ -134,11 +150,17 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
 
     @Override
     public boolean save(DutyRecord entity) {
+        // 转换审批状态为标准英文代码
+        entity.setApprovalStatus(normalizeApprovalStatus(entity.getApprovalStatus()));
         return super.save(entity);
     }
 
     @Override
     public boolean updateById(DutyRecord entity) {
+        // 转换审批状态为标准英文代码
+        if (entity.getApprovalStatus() != null) {
+            entity.setApprovalStatus(normalizeApprovalStatus(entity.getApprovalStatus()));
+        }
         return super.updateById(entity);
     }
 

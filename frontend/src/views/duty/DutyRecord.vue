@@ -65,19 +65,6 @@
             <template #employeeId="{ row }">
               {{ getEmployeeName(row.employeeId) }}
             </template>
-            <template #checkInTime="{ row }">
-              {{ formatDateTime(row.checkInTime) }}
-            </template>
-            <template #checkOutTime="{ row }">
-              {{ formatDateTime(row.checkOutTime) }}
-            </template>
-            <template #dutyStatus="{ row }">
-              <el-tag
-                :type="getStatusType(row.dutyStatus)"
-              >
-                {{ getStatusName(row.dutyStatus) }}
-              </el-tag>
-            </template>
             <template #overtimeHours="{ row }">
               {{ row.overtimeHours || 0 }}小时
             </template>
@@ -85,28 +72,12 @@
               <el-tag
                 :type="getApprovalType(row.approvalStatus)"
               >
-                {{ row.approvalStatus || '待审批' }}
+                {{ getApprovalStatusText(row.approvalStatus) || '待审批' }}
               </el-tag>
             </template>
             <template #operation="{ row }">
-              <el-button
-                v-if="row.dutyStatus === 0 || !row.dutyStatus"
-                type="success" 
-                size="small" 
-                @click="openCheckInDialog(row)"
-              >
-                签到
-              </el-button>
-              <el-button
-                v-else-if="row.dutyStatus === 1"
-                type="primary" 
-                size="small" 
-                @click="openCheckOutDialog(row)"
-              >
-                签退
-              </el-button>
               <el-button 
-                v-if="row.approvalStatus !== '已批准'"
+                v-if="!isApprovedStatus(row.approvalStatus)"
                 type="warning" 
                 size="small" 
                 @click="openEditDialog(row)"
@@ -114,7 +85,7 @@
                 编辑
               </el-button>
               <el-button 
-                v-if="row.approvalStatus !== '已批准'"
+                v-if="!isApprovedStatus(row.approvalStatus)"
                 type="danger" 
                 size="small" 
                 @click="handleDelete(row.id)"
@@ -154,19 +125,6 @@
             <template #employeeId="{ row }">
               {{ getEmployeeName(row.employeeId) }}
             </template>
-            <template #checkInTime="{ row }">
-              {{ formatDateTime(row.checkInTime) }}
-            </template>
-            <template #checkOutTime="{ row }">
-              {{ formatDateTime(row.checkOutTime) }}
-            </template>
-            <template #dutyStatus="{ row }">
-              <el-tag
-                :type="getStatusType(row.dutyStatus)"
-              >
-                {{ getStatusName(row.dutyStatus) }}
-              </el-tag>
-            </template>
             <template #overtimeHours="{ row }">
               {{ row.overtimeHours || 0 }}小时
             </template>
@@ -174,7 +132,7 @@
               <el-tag
                 :type="getApprovalType(row.approvalStatus)"
               >
-                {{ row.approvalStatus || '待审批' }}
+                {{ getApprovalStatusText(row.approvalStatus) || '待审批' }}
               </el-tag>
             </template>
             <template #operation="{ row }">
@@ -187,7 +145,7 @@
                 审批
               </el-button>
               <el-button 
-                v-if="row.approvalStatus !== '已批准'"
+                v-if="!isApprovedStatus(row.approvalStatus)"
                 type="danger" 
                 size="small" 
                 @click="handleDelete(row.id)"
@@ -199,126 +157,6 @@
         </el-tab-pane>
       </el-tabs>
     </el-card>
-
-    <!-- 签到对话框 -->
-    <el-dialog
-      v-model="checkInDialogVisible"
-      title="加班签到"
-      width="500px"
-    >
-      <el-form
-        ref="checkInFormRef"
-        :model="checkInForm"
-        :rules="checkInRules"
-        label-position="top"
-      >
-        <el-form-item label="值班人员">
-          <el-input
-            v-model="currentRecordEmployeeName"
-            disabled
-          />
-        </el-form-item>
-        <el-form-item label="值班日期">
-          <el-input
-            v-model="currentRecordDutyDate"
-            disabled
-          />
-        </el-form-item>
-        <el-form-item label="签到时间" prop="checkInTime">
-          <el-date-picker
-            v-model="checkInForm.checkInTime"
-            type="datetime"
-            placeholder="选择签到时间"
-            style="width: 100%"
-            default-time="00:00:00"
-          />
-        </el-form-item>
-        <el-form-item label="签到备注" prop="checkInRemark">
-          <el-input
-            v-model="checkInForm.checkInRemark"
-            placeholder="请输入签到备注"
-            type="textarea"
-            :rows="3"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="checkInDialogVisible = false">取消</el-button>
-          <el-button type="success" :loading="checkInLoading" @click="handleCheckIn">
-            确认签到
-          </el-button>
-        </span>
-      </template>
-    </el-dialog>
-
-    <!-- 签退对话框 -->
-    <el-dialog
-      v-model="checkOutDialogVisible"
-      title="加班签退"
-      width="500px"
-    >
-      <el-form
-        ref="checkOutFormRef"
-        :model="checkOutForm"
-        :rules="checkOutRules"
-        label-position="top"
-      >
-        <el-form-item label="值班人员">
-          <el-input
-            v-model="currentRecordEmployeeName"
-            disabled
-          />
-        </el-form-item>
-        <el-form-item label="值班日期">
-          <el-input
-            v-model="currentRecordDutyDate"
-            disabled
-          />
-        </el-form-item>
-        <el-form-item label="签到时间">
-          <el-input
-            v-model="currentRecordCheckInTime"
-            disabled
-          />
-        </el-form-item>
-        <el-form-item label="签退时间" prop="checkOutTime">
-          <el-date-picker
-            v-model="checkOutForm.checkOutTime"
-            type="datetime"
-            placeholder="选择签退时间"
-            style="width: 100%"
-            default-time="23:59:59"
-          />
-        </el-form-item>
-        <el-form-item label="加班时长（小时）" prop="overtimeHours">
-          <el-input-number
-            v-model="checkOutForm.overtimeHours"
-            :min="0"
-            :max="24"
-            :step="0.5"
-            placeholder="请输入加班时长"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="签退备注" prop="checkOutRemark">
-          <el-input
-            v-model="checkOutForm.checkOutRemark"
-            placeholder="请输入签退备注"
-            type="textarea"
-            :rows="3"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="checkOutDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="checkOutLoading" @click="handleCheckOut">
-            确认签退
-          </el-button>
-        </span>
-      </template>
-    </el-dialog>
 
     <!-- 新建/编辑加班记录对话框 -->
     <el-dialog
@@ -375,144 +213,30 @@
             />
           </el-select>
         </el-form-item>
-        <!-- 加班时长相关字段，仅在选择加班班次时显示 -->
-        <template v-if="createForm.isOvertime">
-          <el-form-item label="签到时间" prop="checkInTime">
-            <el-time-picker
-              v-model="createForm.checkInTime"
-              placeholder="选择签到时间"
-              style="width: 100%"
-              format="HH:mm"
-              value-format="HH:mm"
-              @change="calculateWorkHours"
-            />
-          </el-form-item>
-          <el-form-item label="签退时间" prop="checkOutTime">
-            <el-time-picker
-              v-model="createForm.checkOutTime"
-              placeholder="选择签退时间"
-              style="width: 100%"
-              format="HH:mm"
-              value-format="HH:mm"
-              @change="calculateWorkHours"
-            />
-          </el-form-item>
-          <el-form-item label="加班时长" prop="overtimeHours">
-            <el-input
-              v-model.number="createForm.overtimeHours"
-              placeholder="请输入加班时长（小时）"
-              type="number"
-              style="width: 100%"
-            />
-          </el-form-item>
-        </template>
-        <el-form-item label="备注" prop="remark">
-          <el-input
-            v-model="createForm.remark"
-            placeholder="请输入备注"
-            type="textarea"
-            :rows="3"
+        <el-form-item label="加班时长（小时）" prop="overtimeHours">
+          <el-input-number
+            v-model="createForm.overtimeHours"
+            :min="0"
+            :max="24"
+            :step="0.5"
+            placeholder="请输入加班时长"
+            style="width: 100%"
+            :disabled="dialogMode === 'approval'"
           />
         </el-form-item>
 
-        <!-- 编辑和审批模式下显示这些字段 -->
-        <template v-if="dialogMode !== 'create'">
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="值班状态" prop="dutyStatus">
-                <el-select
-                  v-model="createForm.dutyStatus"
-                  placeholder="请选择值班状态"
-                  style="width: 100%"
-                >
-                  <el-option label="未签到" :value="0" />
-                  <el-option label="已签到" :value="1" />
-                  <el-option label="已签退" :value="2" />
-                  <el-option label="请假" :value="3" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="审批状态" prop="approvalStatus">
-                <el-select
-                  v-model="createForm.approvalStatus"
-                  placeholder="请选择审批状态"
-                  style="width: 100%"
-                  :disabled="!isDutyManager"
-                >
-                  <el-option label="待审批" value="待审批" />
-                  <el-option label="已批准" value="已批准" />
-                  <el-option label="已拒绝" value="已拒绝" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-          </el-row>
-          
-          <!-- 编辑模式下显示备注字段，审批模式下不显示 -->
-          <template v-if="dialogMode !== 'approval'">
-            <el-form-item label="签到备注" prop="checkInRemark">
-              <el-input
-                v-model="createForm.checkInRemark"
-                placeholder="请输入签到备注"
-                type="textarea"
-                :rows="3"
-              />
-            </el-form-item>
-            <el-form-item label="签退备注" prop="checkOutRemark">
-              <el-input
-                v-model="createForm.checkOutRemark"
-                placeholder="请输入签退备注"
-                type="textarea"
-                :rows="3"
-              />
-            </el-form-item>
-          </template>
-          
-          <el-form-item label="加班时长（小时）" prop="overtimeHours">
-            <el-input-number
-              v-model="createForm.overtimeHours"
-              :min="0"
-              :max="24"
-              :step="0.5"
-              placeholder="请输入加班时长"
-              style="width: 100%"
-            />
-          </el-form-item>
-          
-          <el-form-item v-if="createForm.dutyStatus === 3" label="替补人员" prop="substituteEmployeeId">
-            <el-radio-group v-model="substituteType" @change="handleSubstituteTypeChange">
-              <el-radio :value="1">自动匹配</el-radio>
-              <el-radio :value="2">手动选择</el-radio>
-            </el-radio-group>
+        <!-- 审批模式下的字段 -->
+        <template v-if="dialogMode === 'approval'">
+          <el-form-item label="审批状态" prop="approvalStatus">
             <el-select
-              v-model="createForm.substituteEmployeeId"
-              placeholder="请选择替补人员"
-              style="width: 100%; margin-top: 10px"
-              filterable
-              remote
-              :remote-method="remoteSearchEmployee"
-              :loading="employeeLoading"
+              v-model="createForm.approvalStatus"
+              placeholder="请选择审批状态"
+              style="width: 100%"
             >
-              <el-option
-                v-for="employee in employeeList"
-                :key="employee.id"
-                :label="employee.employeeName"
-                :value="employee.id"
-              />
+              <el-option label="已批准" value="approved" />
+              <el-option label="已拒绝" value="rejected" />
             </el-select>
           </el-form-item>
-          
-          <!-- 编辑模式下显示管理员备注，审批模式下不显示 -->
-          <template v-if="dialogMode !== 'approval'">
-            <el-form-item label="管理员备注" prop="managerRemark">
-              <el-input
-                v-model="createForm.managerRemark"
-                placeholder="请输入管理员备注"
-                type="textarea"
-                :rows="3"
-              />
-            </el-form-item>
-          </template>
         </template>
       </el-form>
       <template #footer>
@@ -533,16 +257,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getRecordList,
   getRecordsByEmployeeId,
-  checkIn,
-  checkOut,
   addRecord,
   updateRecord,
-  deleteRecord,
-  getAvailableSubstitutes
+  deleteRecord
 } from '../../api/duty/record'
 import { getEmployeeList } from '../../api/employee'
-import { getAssignmentList, getAssignmentsByScheduleId } from '../../api/duty/assignment'
-import { getDeptList } from '../../api/dept'
+import { getAssignmentsByScheduleId } from '../../api/duty/assignment'
 import { getAllSchedules, getScheduleLeaders, getScheduleEmployees } from '../../api/duty/schedule'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
@@ -557,17 +277,8 @@ const route = useRoute()
 // 响应式数据
 const loading = ref(false)
 const approvalLoading = ref(false)
-const checkInDialogVisible = ref(false)
-const checkOutDialogVisible = ref(false)
-const editDialogVisible = ref(false)
 const createDialogVisible = ref(false)
-const checkInLoading = ref(false)
-const checkOutLoading = ref(false)
-const editLoading = ref(false)
 const createLoading = ref(false)
-const checkInFormRef = ref()
-const checkOutFormRef = ref()
-const editFormRef = ref()
 const createFormRef = ref()
 
 // 标签页相关
@@ -691,9 +402,6 @@ const shiftOptions = [
 
 // 当前记录信息
 const currentRecord = ref(null)
-const currentRecordEmployeeName = ref('')
-const currentRecordDutyDate = ref('')
-const currentRecordCheckInTime = ref('')
 
 // 表格列配置
 const recordColumns = [
@@ -702,14 +410,9 @@ const recordColumns = [
   { prop: 'dutyDate', label: '值班日期', width: '150' },
   { prop: 'dutyShift', label: '班次', width: '100' },
   { prop: 'employeeId', label: '值班人员', minWidth: '150' },
-  { prop: 'checkInTime', label: '签到时间', width: '180' },
-  { prop: 'checkOutTime', label: '签退时间', width: '180' },
-  { prop: 'dutyStatus', label: '值班状态', width: '120' },
-  { prop: 'checkInRemark', label: '签到备注', minWidth: '150' },
-  { prop: 'checkOutRemark', label: '签退备注', minWidth: '150' },
   { prop: 'overtimeHours', label: '加班时长', width: '100' },
   { prop: 'approvalStatus', label: '审批状态', width: '120' },
-  { type: 'operation', label: '操作', width: '240', fixed: 'right' }
+  { type: 'operation', label: '操作', width: '180', fixed: 'right' }
 ]
 
 const approvalColumns = [
@@ -718,9 +421,6 @@ const approvalColumns = [
   { prop: 'dutyDate', label: '值班日期', width: '150' },
   { prop: 'dutyShift', label: '班次', width: '100' },
   { prop: 'employeeId', label: '值班人员', minWidth: '150' },
-  { prop: 'checkInTime', label: '签到时间', width: '180' },
-  { prop: 'checkOutTime', label: '签退时间', width: '180' },
-  { prop: 'dutyStatus', label: '值班状态', width: '120' },
   { prop: 'overtimeHours', label: '加班时长', width: '100' },
   { prop: 'approvalStatus', label: '审批状态', width: '120' },
   { type: 'operation', label: '操作', width: '160', fixed: 'right' }
@@ -773,7 +473,6 @@ const handleApprovalTableSearch = (searchParams) => {
 
 // 数据列表
 const employeeList = ref([])
-const assignmentList = ref([])
 const recordList = ref([])
 
 // 班次名称映射（动态）
@@ -797,77 +496,66 @@ const checkIfDutyManager = async () => {
   // 计算属性会根据selectedScheduleId自动判断
 }
 
-// 值班状态映射
-const dutyStatus = {
-  0: '未签到',
-  1: '已签到',
-  2: '已签退',
-  3: '请假'
+
+
+// 审批状态中英文转换
+const approvalStatusMap = {
+  pending: '待审批',
+  approved: '已批准',
+  rejected: '已拒绝',
+  '待审批': '待审批',
+  '已批准': '已批准',
+  '已拒绝': '已拒绝'
 }
 
-// 状态类型映射
-const statusType = {
-  0: 'warning',
-  1: 'info',
-  2: 'success',
-  3: 'danger'
+const approvalStatusReverseMap = {
+  '待审批': 'pending',
+  '已批准': 'approved',
+  '已拒绝': 'rejected',
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected'
 }
 
 // 审批状态类型映射
 const approvalType = {
+  pending: 'warning',
+  approved: 'success',
+  rejected: 'danger',
   '待审批': 'warning',
   '已批准': 'success',
   '已拒绝': 'danger'
 }
 
-// 表单数据
-const checkInForm = reactive({
-  checkInTime: null,
-  checkInRemark: ''
-})
+// 标准化状态为英文代码
+const normalizeApprovalStatus = (status) => {
+  if (!status) return 'pending'
+  return approvalStatusReverseMap[status] || status
+}
 
-const checkOutForm = reactive({
-  checkOutTime: null,
-  checkOutRemark: '',
-  overtimeHours: 0
-})
+// 判断是否是已批准状态
+const isApprovedStatus = (status) => {
+  const normalized = normalizeApprovalStatus(status)
+  return normalized === 'approved'
+}
 
-const editForm = reactive({
-  id: null,
-  dutyStatus: 0,
-  checkInRemark: '',
-  checkOutRemark: '',
-  overtimeHours: 0,
-  approvalStatus: '待审批',
-  managerRemark: '',
-  substituteEmployeeId: null,
-  substituteType: 1
-})
+// 判断是否是待审批状态
+const isPendingStatus = (status) => {
+  const normalized = normalizeApprovalStatus(status)
+  return normalized === 'pending'
+}
 
 const createForm = reactive({
   id: null,
   scheduleId: null,
-  dutyDate: new Date(),
+  dutyDate: null,
   dutyShift: null,
-  isOvertime: false,
-  checkInTime: '',
-  checkOutTime: '',
+  isOvertime: true, // 默认是加班
   overtimeHours: 0,
-  remark: '',
-  dutyStatus: 0,
-  checkInRemark: '',
-  checkOutRemark: '',
-  approvalStatus: '待审批',
-  managerRemark: '',
-  substituteEmployeeId: null,
-  substituteType: 1
+  approvalStatus: 'pending'
 })
 
-const substituteType = ref(1)
-const availableSubstitutes = ref([])
-const substituteLoading = ref(false)
 
-const deptList = ref([])
 
 // 新建值班记录表单验证规则
 const createRules = {
@@ -880,54 +568,17 @@ const createRules = {
   dutyShift: [
     { required: true, message: '请选择班次', trigger: 'blur' }
   ],
-  checkInTime: [
-    { required: true, message: '请选择签到时间', trigger: 'blur', validator: (rule, value, callback) => {
-      if (createForm.isOvertime && !value) {
-        callback(new Error('请选择签到时间'))
-      } else {
-        callback()
-      }
-    }}
-  ],
-  checkOutTime: [
-    { required: true, message: '请选择签退时间', trigger: 'blur', validator: (rule, value, callback) => {
-      if (createForm.isOvertime && !value) {
-        callback(new Error('请选择签退时间'))
-      } else {
-        callback()
-      }
-    }}
-  ],
   overtimeHours: [
-    { required: true, message: '请输入加班时长', trigger: 'blur', validator: (rule, value, callback) => {
-      if (createForm.isOvertime && !value) {
-        callback(new Error('请输入加班时长'))
-      } else {
-        callback()
-      }
-    }}
-  ]
-}
-
-// 表单验证规则
-const checkInRules = {
-  checkInTime: [
-    { required: true, message: '请选择签到时间', trigger: 'blur' }
-  ]
-}
-
-const checkOutRules = {
-  checkOutTime: [
-    { required: true, message: '请选择签退时间', trigger: 'blur' }
-  ]
-}
-
-const editRules = {
-  dutyStatus: [
-    { required: true, message: '请选择值班状态', trigger: 'blur' }
+    { required: true, message: '请输入加班时长', trigger: 'blur' }
   ],
   approvalStatus: [
-    { required: true, message: '请选择审批状态', trigger: 'blur' }
+    { required: true, message: '请选择审批状态', trigger: 'change', validator: (rule, value, callback) => {
+      if (dialogMode.value === 'approval' && !value) {
+        callback(new Error('请选择审批状态'))
+      } else {
+        callback()
+      }
+    }}
   ]
 }
 
@@ -940,13 +591,11 @@ const getEmployeeName = (employeeId) => {
 }
 
 // 获取状态名称
-const getStatusName = (status) => {
-  return dutyStatus[status] || '未知状态'
-}
 
-// 获取状态类型
-const getStatusType = (status) => {
-  return statusType[status] || 'info'
+
+// 获取审批状态中文显示
+const getApprovalStatusText = (status) => {
+  return approvalStatusMap[status] || status
 }
 
 // 获取审批类型
@@ -964,7 +613,7 @@ const filteredApprovalList = computed(() => {
   let list = recordList.value
   
   // 只显示审批状态为待审批的记录
-  list = list.filter(record => record.approvalStatus === '待审批')
+  list = list.filter(record => isPendingStatus(record.approvalStatus))
   
   return list
 })
@@ -980,16 +629,7 @@ const fetchEmployeeList = async () => {
   }
 }
 
-// 获取值班安排列表
-const fetchAssignmentList = async () => {
-  try {
-    const data = await getAssignmentList()
-    assignmentList.value = data || []
-  } catch (error) {
-    // console.error('获取值班安排列表失败:', error)
-    ElMessage.error('获取值班安排列表失败')
-  }
-}
+
 
 // 获取值班记录列表
 const fetchRecordList = async () => {
@@ -1142,59 +782,32 @@ const handleTabChange = (tabName) => {
 
 
 // 打开签到对话框
-const openCheckInDialog = (record) => {
-  currentRecord.value = record
-  currentRecordEmployeeName.value = getEmployeeName(record.employeeId)
-  currentRecordDutyDate.value = record.dutyDate
-  
-  checkInForm.checkInTime = new Date()
-  checkInForm.checkInRemark = ''
-  
-  checkInDialogVisible.value = true
-}
 
-// 打开签退对话框
-const openCheckOutDialog = (record) => {
-  currentRecord.value = record
-  currentRecordEmployeeName.value = getEmployeeName(record.employeeId)
-  currentRecordDutyDate.value = record.dutyDate
-  currentRecordCheckInTime.value = record.checkInTime
-  
-  checkOutForm.checkOutTime = new Date()
-  checkOutForm.checkOutRemark = ''
-  checkOutForm.overtimeHours = 0
-  
-  checkOutDialogVisible.value = true
-}
 
 // 打开编辑对话框
 const openEditDialog = async (record) => {
   // 检查审批状态，如果已批准则不允许编辑
-  if (record.approvalStatus === '已批准') {
+  if (isApprovedStatus(record.approvalStatus)) {
     ElMessage.warning('已批准的记录不能编辑')
     return
   }
   
+  currentRecord.value = record
+  // 先复制基本字段
+  createForm.id = record.id
+  createForm.scheduleId = record.scheduleId
+  createForm.dutyDate = record.dutyDate
+  createForm.dutyShift = record.dutyShift
+  createForm.overtimeHours = record.overtimeHours
+  
   // 检查是否是审批模式（值班长且在审批标签页）
   if (isDutyManager.value && activeTab.value === 'approval') {
     dialogMode.value = 'approval'
-    // 审批模式下设置默认值
-    if (!record.dutyStatus || record.dutyStatus === 0) {
-      createForm.dutyStatus = 2 // 已签到
-    }
-    if (!record.approvalStatus || record.approvalStatus === '待审批') {
-      createForm.approvalStatus = '已批准'
-    }
+    // 审批模式下设置默认值为已批准，不覆盖
+    createForm.approvalStatus = 'approved'
   } else {
     dialogMode.value = 'edit'
-  }
-  
-  currentRecord.value = record
-  Object.assign(createForm, record)
-  substituteType.value = record.substituteType || 1
-  
-  if (record.dutyStatus === 3 && substituteType.value === 1) {
-    await fetchAvailableSubstitutes(record.id)
+    createForm.approvalStatus = record.approvalStatus || 'pending'
   }
   
   // 初始化可用班次，确保编辑时班次显示中文名称
@@ -1334,80 +947,7 @@ const openEditDialog = async (record) => {
   createDialogVisible.value = true
 }
 
-// 处理签到
-const handleCheckIn = async () => {
-  try {
-    await checkInFormRef.value.validate()
-    checkInLoading.value = true
-    
-    await checkIn(currentRecord.value.assignmentId, {
-      employeeId: currentRecord.value.employeeId,
-      checkInTime: checkInForm.checkInTime,
-      checkInRemark: safeInput(checkInForm.checkInRemark)
-    })
-    
-    ElMessage.success('签到成功')
-    checkInDialogVisible.value = false
-    fetchRecordList()
-  } catch (error) {
-    // console.error('签到失败:', error)
-    ElMessage.error('签到失败')
-  } finally {
-    checkInLoading.value = false
-  }
-}
 
-// 处理签退
-const handleCheckOut = async () => {
-  try {
-    await checkOutFormRef.value.validate()
-    checkOutLoading.value = true
-    
-    await checkOut(currentRecord.value.id, {
-      checkOutTime: checkOutForm.checkOutTime,
-      checkOutRemark: safeInput(checkOutForm.checkOutRemark),
-      overtimeHours: checkOutForm.overtimeHours
-    })
-    
-    ElMessage.success('签退成功')
-    checkOutDialogVisible.value = false
-    fetchRecordList()
-  } catch (error) {
-    // console.error('签退失败:', error)
-    ElMessage.error('签退失败')
-  } finally {
-    checkOutLoading.value = false
-  }
-}
-
-// 处理编辑保存
-const handleEditSave = async () => {
-  try {
-    await editFormRef.value.validate()
-    editLoading.value = true
-    
-    editForm.substituteType = substituteType.value
-    
-    // 处理用户输入，防止XSS攻击
-    const safeForm = {
-      ...editForm,
-      checkInRemark: safeInput(editForm.checkInRemark),
-      checkOutRemark: safeInput(editForm.checkOutRemark),
-      managerRemark: safeInput(editForm.managerRemark)
-    }
-    
-    await updateRecord(safeForm)
-    
-    ElMessage.success('编辑值班记录成功')
-    editDialogVisible.value = false
-    fetchRecordList()
-  } catch (error) {
-    // console.error('编辑值班记录失败:', error)
-    ElMessage.error('编辑值班记录失败')
-  } finally {
-    editLoading.value = false
-  }
-}
 
 // 删除值班记录
 const handleDelete = async (id) => {
@@ -1832,23 +1372,7 @@ const handleShiftChange = (shiftValue) => {
   }
 }
 
-// 计算工时
-const calculateWorkHours = () => {
-  if (createForm.checkInTime && createForm.checkOutTime) {
-    const [inHour, inMinute] = createForm.checkInTime.split(':').map(Number)
-    const [outHour, outMinute] = createForm.checkOutTime.split(':').map(Number)
-    
-    let totalMinutes = (outHour - inHour) * 60 + (outMinute - inMinute)
-    
-    // 处理跨天情况
-    if (totalMinutes < 0) {
-      totalMinutes += 24 * 60
-    }
-    
-    const hours = totalMinutes / 60
-    createForm.overtimeHours = hours
-  }
-}
+
 
 // 处理新建/编辑值班记录
 const handleCreate = async () => {
@@ -1900,62 +1424,43 @@ const handleCreate = async () => {
       const recordData = {
         assignmentId: assignment.id,
         employeeId: userStore.employeeId,
-        dutyStatus: createForm.dutyStatus,
-        checkInRemark: safeInput(createForm.remark),
-        checkOutRemark: safeInput(createForm.checkOutRemark),
-        overtimeHours: createForm.isOvertime ? createForm.overtimeHours : 0,
-        approvalStatus: createForm.approvalStatus,
-        managerRemark: safeInput(createForm.managerRemark),
-        substituteEmployeeId: createForm.substituteEmployeeId,
-        substituteType: createForm.substituteType
-      }
-      
-      // 如果是加班班次，添加签到和签退时间
-      if (createForm.isOvertime) {
-        // 将时间字符串转换为完整的日期时间格式
-        const dutyDate = new Date(createForm.dutyDate)
-        
-        if (createForm.checkInTime) {
-          const [inHour, inMinute] = createForm.checkInTime.split(':').map(Number)
-          const checkInDateTime = new Date(dutyDate)
-          checkInDateTime.setHours(inHour, inMinute, 0, 0)
-          recordData.checkInTime = checkInDateTime.toISOString()
-        }
-        
-        if (createForm.checkOutTime) {
-          const [outHour, outMinute] = createForm.checkOutTime.split(':').map(Number)
-          const checkOutDateTime = new Date(dutyDate)
-          checkOutDateTime.setHours(outHour, outMinute, 0, 0)
-          // 处理跨天情况
-          if (outHour < createForm.checkInTime.split(':')[0]) {
-            checkOutDateTime.setDate(checkOutDateTime.getDate() + 1)
-          }
-          recordData.checkOutTime = checkOutDateTime.toISOString()
-        }
+        overtimeHours: createForm.overtimeHours,
+        approvalStatus: 'pending' // 新建时默认待审批
       }
       
       await addRecord(recordData)
       
-      ElMessage.success('新建值班记录成功')
+      ElMessage.success('新建加班记录成功')
       createDialogVisible.value = false
       fetchRecordList()
-    } else {
-      // 编辑值班记录
+    } else if (dialogMode.value === 'approval') {
+      // 审批模式 - 只修改审批状态
+      console.log('审批模式，发送数据:', {
+        id: createForm.id,
+        approvalStatus: createForm.approvalStatus,
+        overtimeHours: createForm.overtimeHours
+      })
       const recordData = {
         id: createForm.id,
-        dutyStatus: createForm.dutyStatus,
-        checkInRemark: safeInput(createForm.checkInRemark),
-        checkOutRemark: safeInput(createForm.checkOutRemark),
-        overtimeHours: createForm.overtimeHours,
         approvalStatus: createForm.approvalStatus,
-        managerRemark: safeInput(createForm.managerRemark),
-        substituteEmployeeId: createForm.substituteEmployeeId,
-        substituteType: createForm.substituteType
+        overtimeHours: createForm.overtimeHours
       }
       
       await updateRecord(recordData)
       
-      ElMessage.success('编辑值班记录成功')
+      ElMessage.success('审批成功')
+      createDialogVisible.value = false
+      fetchRecordList()
+    } else {
+      // 编辑模式
+      const recordData = {
+        id: createForm.id,
+        overtimeHours: createForm.overtimeHours
+      }
+      
+      await updateRecord(recordData)
+      
+      ElMessage.success('编辑加班记录成功')
       createDialogVisible.value = false
       fetchRecordList()
     }
@@ -1967,37 +1472,7 @@ const handleCreate = async () => {
   }
 }
 
-const handleSubstituteTypeChange = async (type) => {
-  if (type === 1 && currentRecord.value) {
-    await fetchAvailableSubstitutes(currentRecord.value.id)
-  }
-}
 
-const fetchAvailableSubstitutes = async (recordId) => {
-  substituteLoading.value = true
-  try {
-    const data = await getAvailableSubstitutes(recordId)
-    availableSubstitutes.value = data || []
-    if (availableSubstitutes.value.length > 0) {
-      editForm.substituteEmployeeId = availableSubstitutes.value[0].id
-    }
-  } catch (error) {
-    // console.error('获取替补人员失败:', error)
-    ElMessage.error('获取替补人员失败')
-  } finally {
-    substituteLoading.value = false
-  }
-}
-
-const fetchDeptList = async () => {
-  try {
-    const data = await getDeptList()
-    deptList.value = data || []
-  } catch (error) {
-    // console.error('获取部门列表失败:', error)
-    ElMessage.error('获取部门列表失败')
-  }
-}
 
 // 获取值班表列表
 const fetchScheduleList = async () => {
@@ -2071,11 +1546,8 @@ const handleExport = async () => {
         '值班日期': formatDate(record.dutyDate),
         '班次': getShiftName(record.dutyShift),
         '值班人员': getEmployeeName(record.employeeId),
-        '签到时间': formatDateTime(record.checkInTime),
-        '签退时间': formatDateTime(record.checkOutTime),
-        '值班状态': getStatusName(record.dutyStatus),
         '加班时长': `${record.overtimeHours || 0}小时`,
-        '审批状态': record.approvalStatus || '待审批'
+        '审批状态': getApprovalStatusText(record.approvalStatus) || '待审批'
       }
     })
     
@@ -2111,11 +1583,8 @@ const handleApprovalExport = async () => {
         '值班日期': formatDate(record.dutyDate),
         '班次': getShiftName(record.dutyShift),
         '值班人员': getEmployeeName(record.employeeId),
-        '签到时间': formatDateTime(record.checkInTime),
-        '签退时间': formatDateTime(record.checkOutTime),
-        '值班状态': getStatusName(record.dutyStatus),
         '加班时长': `${record.overtimeHours || 0}小时`,
-        '审批状态': record.approvalStatus || '待审批'
+        '审批状态': getApprovalStatusText(record.approvalStatus) || '待审批'
       }
     })
     
@@ -2141,8 +1610,6 @@ onMounted(async () => {
   await fetchShiftConfigs()
   // 再获取其他数据
   await fetchEmployeeList()
-  await fetchAssignmentList()
-  await fetchDeptList()
   
   // 先处理路由参数，设置selectedScheduleId
   let routeScheduleId = null
