@@ -106,11 +106,17 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
         BigDecimal avgDailyHours = totalDays > 0 ? totalHours.divide(BigDecimal.valueOf(totalDays), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
         statistics.put("avgDailyHours", avgDailyHours);
 
-        // 计算总加班时长
+        // 计算总加班时长（只统计已审批通过的）
         Integer totalOvertimeHours = 0;
         for (DutyRecord record : records) {
             if (record.getOvertimeHours() != null) {
-                totalOvertimeHours += record.getOvertimeHours();
+                // 只统计已审批通过的加班记录
+                boolean isApproved = record.getApprovalStatus() != null && 
+                                    ("approved".equals(record.getApprovalStatus()) || 
+                                     "已批准".equals(record.getApprovalStatus()));
+                if (isApproved) {
+                    totalOvertimeHours += record.getOvertimeHours();
+                }
             }
         }
         statistics.put("totalOvertimeHours", BigDecimal.valueOf(totalOvertimeHours));
@@ -206,6 +212,11 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
     public List<Map<String, Object>> getMonthlyTrend() {
         // 获取所有值班记录
         List<DutyRecord> records = dutyRecordService.list();
+        List<DutyAssignment> assignments = dutyAssignmentService.list();
+
+        // 构建 assignmentId 到 dutyAssignment 的映射
+        Map<Long, DutyAssignment> assignmentMap = assignments.stream()
+                .collect(Collectors.toMap(DutyAssignment::getId, a -> a, (a1, a2) -> a1));
 
         // 创建月度工时和加班时长的Map
         Map<String, BigDecimal> monthlyHours = new LinkedHashMap<>();
@@ -233,11 +244,31 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                     }
                 }
                 
-                // 统计当月的加班时长
-                if (record.getOvertimeHours() != null && record.getCheckInTime() != null) {
-                    LocalDate recordDate = record.getCheckInTime().toLocalDate();
-                    if (recordDate.getYear() == month.getYear() && recordDate.getMonthValue() == month.getMonthValue()) {
-                        overtime += record.getOvertimeHours();
+                // 统计当月的加班时长（支持通过 assignmentId 获取日期）
+                if (record.getOvertimeHours() != null) {
+                    LocalDate recordDate = null;
+                    
+                    if (record.getAssignmentId() != null) {
+                        DutyAssignment assignment = assignmentMap.get(record.getAssignmentId());
+                        if (assignment != null && assignment.getDutyDate() != null) {
+                            recordDate = assignment.getDutyDate();
+                        }
+                    }
+                    
+                    if (recordDate == null && record.getCheckInTime() != null) {
+                        recordDate = record.getCheckInTime().toLocalDate();
+                    }
+                    
+                    if (recordDate != null && 
+                        recordDate.getYear() == month.getYear() && 
+                        recordDate.getMonthValue() == month.getMonthValue()) {
+                        // 只统计已审批通过的加班记录
+                        boolean isApproved = record.getApprovalStatus() != null && 
+                                            ("approved".equals(record.getApprovalStatus()) || 
+                                             "已批准".equals(record.getApprovalStatus()));
+                        if (isApproved) {
+                            overtime += record.getOvertimeHours();
+                        }
                     }
                 }
             }
@@ -309,16 +340,43 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                 })
                 .collect(Collectors.groupingBy(DutyAssignment::getEmployeeId));
 
+        // 构建 assignmentId 到 dutyAssignment 的映射，方便获取日期
+        Map<Long, DutyAssignment> assignmentMap = assignments.stream()
+                .collect(Collectors.toMap(DutyAssignment::getId, a -> a, (a1, a2) -> a1));
+        
         // 按员工分组统计审批通过的加班记录（用于计算实际工时和可调休工时）
         Map<Long, List<DutyRecord>> approvedOvertimeByEmployee = records.stream()
                 .filter(r -> {
-                    LocalDateTime checkInTime = r.getCheckInTime();
-                    return r.getApprovalStatus() != null && 
-                           "approved".equals(r.getApprovalStatus()) &&
-                           checkInTime != null &&
-                           checkInTime.getYear() == targetYear &&
-                           checkInTime.getMonthValue() == targetMonth &&
-                           !checkInTime.toLocalDate().isAfter(today);
+                    // 检查审批状态（支持中英文两种格式）
+                    boolean isApproved = r.getApprovalStatus() != null && 
+                                        ("approved".equals(r.getApprovalStatus()) || 
+                                         "已批准".equals(r.getApprovalStatus()));
+                    if (!isApproved) {
+                        return false;
+                    }
+                    
+                    // 获取日期（优先通过 assignmentId 从 dutyAssignment 获取，其次通过 checkInTime）
+                    LocalDate recordDate = null;
+                    
+                    if (r.getAssignmentId() != null) {
+                        DutyAssignment assignment = assignmentMap.get(r.getAssignmentId());
+                        if (assignment != null && assignment.getDutyDate() != null) {
+                            recordDate = assignment.getDutyDate();
+                        }
+                    }
+                    
+                    if (recordDate == null && r.getCheckInTime() != null) {
+                        recordDate = r.getCheckInTime().toLocalDate();
+                    }
+                    
+                    if (recordDate == null) {
+                        return false;
+                    }
+                    
+                    // 检查是否在目标年月范围内，且不超过今天
+                    return recordDate.getYear() == targetYear && 
+                           recordDate.getMonthValue() == targetMonth &&
+                           !recordDate.isAfter(today);
                 })
                 .collect(Collectors.groupingBy(DutyRecord::getEmployeeId));
 
