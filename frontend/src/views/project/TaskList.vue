@@ -68,8 +68,11 @@
         <template #priority="{ row }">
           <el-tag :type="getTaskPriorityType(row.priority)">{{ getTaskPriorityText(row.priority) }}</el-tag>
         </template>
+        <template #updateTime="{ row }">
+            {{ formatDateTime(row.updateTime) }}
+        </template>
         <template #lastProgressUpdateTime="{ row }">
-          {{ formatDateTime(row.lastProgressUpdateTime) }}
+            {{ formatDateTime(row.lastProgressUpdateTime) }}
         </template>
         <template #operation="{ row }">
           <div style="display: flex; gap: 4px; white-space: nowrap;">
@@ -437,7 +440,8 @@ const columns = [
   { prop: 'ownerName', label: '负责人', width: 80 },
   { prop: 'startDate', label: '开始日期', width: 110 },
   { prop: 'endDate', label: '结束日期', width: 110 },
-  { prop: 'lastProgressUpdateTime', label: '更新时间', width: 160, slot: 'lastProgressUpdateTime' },
+  { prop: 'updateTime', label: '任务更新时间', width: 160, slot: 'updateTime' },
+  { prop: 'lastProgressUpdateTime', label: '进展更新时间', width: 160, slot: 'lastProgressUpdateTime' },
   { prop: 'operation', label: '操作', width: 480, fixed: 'right', slot: 'operation' }
 ]
 

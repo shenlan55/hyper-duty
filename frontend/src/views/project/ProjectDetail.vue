@@ -1043,12 +1043,6 @@ const handleTaskSubmit = async () => {
   try {
     await taskFormRef.value.validate()
     
-    console.log('taskForm 原始数据:', { ...taskForm })
-    console.log('taskForm.assigneeId:', taskForm.assigneeId, '类型:', typeof taskForm.assigneeId)
-    console.log('taskForm.priority:', taskForm.priority, '类型:', typeof taskForm.priority)
-    console.log('taskForm.status:', taskForm.status, '类型:', typeof taskForm.status)
-    console.log('userStore.employeeId:', userStore.employeeId)
-    
     // 确保所有字段类型正确，只保留后端实体类中存在的字段
     const submitData = {}
     
@@ -1127,9 +1121,6 @@ const handleTaskSubmit = async () => {
     if (taskForm.stakeholders && Array.isArray(taskForm.stakeholders) && taskForm.stakeholders.length > 0) {
       submitData.stakeholders = JSON.stringify(taskForm.stakeholders)
     }
-    
-    console.log('最终提交的任务数据:', submitData)
-    console.log('JSON 格式:', JSON.stringify(submitData))
     
     if (taskForm.id) {
       await updateTask(submitData)

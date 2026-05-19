@@ -1,3 +1,4 @@
+
 package com.lasu.hyperduty.common.service.impl;
 
 import com.lasu.hyperduty.common.utils.ExcelExportUtil;
@@ -31,13 +32,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-
-
-
-
-
-
-
 
 
 @Service
@@ -106,6 +100,12 @@ public class ExportServiceImpl {
     public void exportTaskProgressReport(
             HttpServletResponse response,
             TaskProgressReportQueryDTO queryDTO) throws IOException {
+        
+        // 0. 查询在指定时间范围内有进展更新的所有任务ID
+        List<Long> taskIdsWithProgress = pmTaskProgressUpdateMapper.selectTaskIdsWithProgressInTimeRange(
+                queryDTO.getProgressUpdateTimeFrom(),
+                queryDTO.getProgressUpdateTimeTo()
+        );
         
         // 1. 查询用户选择项目下面的源任务
         List<PmTask> projectSourceTasks = pmTaskMapper.selectTasksForReport(
@@ -177,8 +177,15 @@ public class ExportServiceImpl {
         // 8.1 添加用户选择项目下面的源任务（只添加在指定时间范围内有进展的任务）
         if (projectSourceTasks != null) {
             for (PmTask task : projectSourceTasks) {
-                addTaskToReport(taskOverviewList, task, progressMap, dateFormatter, htmlPattern,
-                        queryDTO.getProgressUpdateTimeFrom(), queryDTO.getProgressUpdateTimeTo());
+                // 如果用户指定了进展更新时间范围，只添加在该范围内有进展的任务
+                boolean shouldAdd = true;
+                if (queryDTO.getProgressUpdateTimeFrom() != null || queryDTO.getProgressUpdateTimeTo() != null) {
+                    shouldAdd = taskIdsWithProgress.contains(task.getId());
+                }
+                if (shouldAdd) {
+                    addTaskToReport(taskOverviewList, task, progressMap, dateFormatter, htmlPattern,
+                            queryDTO.getProgressUpdateTimeFrom(), queryDTO.getProgressUpdateTimeTo());
+                }
             }
         }
 
@@ -187,8 +194,15 @@ public class ExportServiceImpl {
             for (PmTaskShadow shadow : projectShadowTasks) {
                 PmTask sourceTask = allSourceTaskMap.get(shadow.getSourceTaskId());
                 if (sourceTask != null) {
-                    addShadowTaskToReport(taskOverviewList, shadow, sourceTask, progressMap, dateFormatter, htmlPattern,
-                            queryDTO.getProgressUpdateTimeFrom(), queryDTO.getProgressUpdateTimeTo());
+                    // 如果用户指定了进展更新时间范围，只添加在该范围内有进展的任务
+                    boolean shouldAdd = true;
+                    if (queryDTO.getProgressUpdateTimeFrom() != null || queryDTO.getProgressUpdateTimeTo() != null) {
+                        shouldAdd = taskIdsWithProgress.contains(sourceTask.getId());
+                    }
+                    if (shouldAdd) {
+                        addShadowTaskToReport(taskOverviewList, shadow, sourceTask, progressMap, dateFormatter, htmlPattern,
+                                queryDTO.getProgressUpdateTimeFrom(), queryDTO.getProgressUpdateTimeTo());
+                    }
                 }
             }
         }
@@ -218,16 +232,6 @@ public class ExportServiceImpl {
         
         // 获取该任务的进展历史
         List<PmTaskProgressUpdate> updates = progressMap.getOrDefault(task.getId(), new ArrayList<>());
-        
-        // 如果没有指定时间范围，或者在指定时间范围内有进展，才添加到报告
-        boolean shouldAdd = true;
-        if (progressUpdateTimeFrom != null || progressUpdateTimeTo != null) {
-            shouldAdd = !updates.isEmpty();
-        }
-        
-        if (!shouldAdd) {
-            return;
-        }
         
         // 按时间倒序排列
         updates.sort((a, b) -> b.getCreateTime().compareTo(a.getCreateTime()));
@@ -268,16 +272,6 @@ public class ExportServiceImpl {
         
         // 获取源任务的进展历史
         List<PmTaskProgressUpdate> updates = progressMap.getOrDefault(sourceTask.getId(), new ArrayList<>());
-        
-        // 如果没有指定时间范围，或者在指定时间范围内有进展，才添加到报告
-        boolean shouldAdd = true;
-        if (progressUpdateTimeFrom != null || progressUpdateTimeTo != null) {
-            shouldAdd = !updates.isEmpty();
-        }
-        
-        if (!shouldAdd) {
-            return;
-        }
         
         // 按时间倒序排列
         updates.sort((a, b) -> b.getCreateTime().compareTo(a.getCreateTime()));
@@ -339,3 +333,4 @@ public class ExportServiceImpl {
         return progressDetails.toString();
     }
 }
+

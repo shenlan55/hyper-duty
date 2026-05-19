@@ -65,7 +65,7 @@
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">取消</el-button>
+      <el-button @click="handleClose">取消</el-button>
       <el-button type="primary" @click="handleExport" :loading="exporting">
         导出报告
       </el-button>
@@ -171,6 +171,13 @@ const handleClose = () => {
 // 监听 modelValue 变化
 watch(() => props.modelValue, (val) => {
   dialogVisible.value = val
+  if (val) {
+    // 对话框打开时清空表单，确保每次都是干净状态
+    queryForm.projectIds = []
+    startDateRange.value = null
+    endDateRange.value = null
+    updateTimeRange.value = null
+  }
 })
 
 watch(dialogVisible, (val) => {

@@ -327,7 +327,6 @@ const loadShadowDetail = async () => {
   loading.value = true
   try {
     const data = await getShadowTaskDetail(props.shadowId)
-    console.log('影子任务详情数据:', data)
     shadowData.value = data
     // 加载影子任务详情后，加载源任务的进展更新
     if (data?.sourceTaskId) {

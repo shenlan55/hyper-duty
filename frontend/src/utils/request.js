@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage, ElLoading } from 'element-plus'
+import { unescapeHtmlDeep } from './xssUtil'
 
 // JWT解码工具函数
 const decodeJWT = (token) => {
@@ -167,7 +168,8 @@ request.interceptors.response.use(
     }
     
     if (data.code === 200) {
-      return data.data
+      // 对返回的数据进行HTML实体解码，解决乱码问题
+      return unescapeHtmlDeep(data.data)
     } else {
       // 后端返回错误
       ElMessage.error(data.message || '操作失败')

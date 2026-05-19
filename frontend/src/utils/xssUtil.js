@@ -81,6 +81,51 @@ export const hasXss = (str) => {
  * @param {string} str - 需要清理的字符串
  * @returns {string} - 清理后的字符串
  */
+/**
+ * 解码HTML实体
+ * @param {string} str - 需要解码的字符串
+ * @returns {string} - 解码后的字符串
+ */
+export const unescapeHtml = (str) => {
+  if (!str || typeof str !== 'string') return str
+  
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+}
+
+/**
+ * 递归解码对象或数组中的所有字符串
+ * @param {any} data - 需要解码的数据
+ * @returns {any} - 解码后的数据
+ */
+export const unescapeHtmlDeep = (data) => {
+  if (!data) return data
+  
+  if (typeof data === 'string') {
+    return unescapeHtml(data)
+  }
+  
+  if (Array.isArray(data)) {
+    return data.map(item => unescapeHtmlDeep(item))
+  }
+  
+  if (typeof data === 'object') {
+    const result = {}
+    for (const key in data) {
+      if (data.hasOwnProperty(key)) {
+        result[key] = unescapeHtmlDeep(data[key])
+      }
+    }
+    return result
+  }
+  
+  return data
+}
+
 export const cleanXss = (str) => {
   if (!str || typeof str !== 'string') return str
   

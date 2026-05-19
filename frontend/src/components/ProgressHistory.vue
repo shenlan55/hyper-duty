@@ -45,17 +45,11 @@ const handleAttachmentPreview = (attachment) => {
 }
 
 const handleAttachmentDownload = (attachment) => {
-  console.log('下载附件', attachment)
-  console.log('原始 URL:', attachment.url)
-  console.log('文件名:', attachment.name)
-  
   // 将 preview 接口改为 download 接口
   let downloadUrl = attachment.url
   if (downloadUrl.includes('/file/preview')) {
     downloadUrl = downloadUrl.replace('/file/preview', '/file/download')
   }
-  
-  console.log('替换后 URL:', downloadUrl)
   
   // 如果 URL 中已经有 fileName 参数，先移除它
   if (downloadUrl.includes('fileName=')) {
@@ -69,8 +63,6 @@ const handleAttachmentDownload = (attachment) => {
     const separator = downloadUrl.includes('?') ? '&' : '?'
     downloadUrl += `${separator}fileName=${encodeURIComponent(attachment.name)}`
   }
-  
-  console.log('最终下载 URL:', downloadUrl)
   
   const link = document.createElement('a')
   link.href = downloadUrl

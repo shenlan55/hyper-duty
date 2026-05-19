@@ -1,3 +1,4 @@
+
 package com.lasu.hyperduty.pm.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -7,12 +8,6 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
-
-
-
-
-
-
 
 
 @Mapper
@@ -53,4 +48,20 @@ public interface PmTaskProgressUpdateMapper extends BaseMapper<PmTaskProgressUpd
             @Param("taskIds") List<Long> taskIds,
             @Param("progressUpdateTimeFrom") java.time.LocalDateTime progressUpdateTimeFrom,
             @Param("progressUpdateTimeTo") java.time.LocalDateTime progressUpdateTimeTo);
+
+    /**
+     * 查询在指定时间范围内有进展更新的任务ID
+     */
+    @Select("<script>" +
+            "SELECT DISTINCT p.task_id " +
+            "FROM pm_task_progress_update p " +
+            "<where>" +
+            "<if test='progressUpdateTimeFrom != null'> AND p.create_time &gt;= #{progressUpdateTimeFrom}</if>" +
+            "<if test='progressUpdateTimeTo != null'> AND p.create_time &lt;= #{progressUpdateTimeTo}</if>" +
+            "</where>" +
+            "</script>")
+    List<Long> selectTaskIdsWithProgressInTimeRange(
+            @Param("progressUpdateTimeFrom") java.time.LocalDateTime progressUpdateTimeFrom,
+            @Param("progressUpdateTimeTo") java.time.LocalDateTime progressUpdateTimeTo);
 }
+
