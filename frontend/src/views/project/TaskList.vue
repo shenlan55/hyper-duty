@@ -522,6 +522,7 @@ const loadProjectList = async () => {
   try {
     const data = await getProjectPage({ pageNum: 1, pageSize: 1000, showArchived: true })
     projectList.value = data.records || []
+    // 只有在没有通过 URL 参数设置 projectId 时，才默认选择第一个项目
     if (projectList.value.length > 0 && !searchForm.projectId) {
       searchForm.projectId = projectList.value[0].id
     }
@@ -1044,9 +1045,25 @@ const handleDelete = async (row) => {
 // 初始化
 onMounted(async () => {
   await Promise.all([
-    loadProjectList(),
     loadEmployeeList()
   ])
+  
+  // 先加载项目列表
+  await loadProjectList()
+  
+  // 检查 URL 参数中的 projectId，这会覆盖 loadProjectList 中可能设置的默认值
+  const projectIdFromUrl = route.query.projectId
+  if (projectIdFromUrl) {
+    const parsedProjectId = parseInt(projectIdFromUrl, 10)
+    if (!isNaN(parsedProjectId)) {
+      // 查找是否存在该项目
+      const projectExists = projectList.value.some(p => p.id === parsedProjectId)
+      if (projectExists) {
+        searchForm.projectId = parsedProjectId
+      }
+    }
+  }
+  
   loadData()
 })
 </script>
