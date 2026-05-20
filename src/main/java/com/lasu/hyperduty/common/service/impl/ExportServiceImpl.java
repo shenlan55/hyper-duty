@@ -11,6 +11,7 @@ import com.lasu.hyperduty.duty.service.DutyAssignmentService;
 import com.lasu.hyperduty.duty.service.DutyRecordService;
 import com.lasu.hyperduty.duty.service.DutyStatisticsService;
 import com.lasu.hyperduty.duty.service.LeaveRequestService;
+import com.lasu.hyperduty.pm.dto.ShadowTaskVO;
 import com.lasu.hyperduty.pm.dto.TaskProgressReportQueryDTO;
 import com.lasu.hyperduty.pm.entity.PmProject;
 import com.lasu.hyperduty.pm.entity.PmTask;
@@ -22,16 +23,22 @@ import com.lasu.hyperduty.pm.mapper.PmTaskShadowMapper;
 import com.lasu.hyperduty.pm.service.PmProjectService;
 import com.lasu.hyperduty.pm.service.PmTaskService;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -95,35 +102,50 @@ public class ExportServiceImpl {
     }
 
     /**
-     * 收集父任务ID
+     * 统一的任务信息（用于构建父任务链）
      */
-    private void collectParentTaskIds(PmTask task, Map<Long, PmTask> existingTasks, List<Long> idsToCollect) {
-        PmTask currentTask = task;
-        while (currentTask != null && currentTask.getParentId() != null) {
-            Long parentId = currentTask.getParentId();
-            if (!existingTasks.containsKey(parentId) && !idsToCollect.contains(parentId)) {
-                idsToCollect.add(parentId);
-            }
-            currentTask = existingTasks.get(parentId); // 可能为null，没关系
-        }
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    private static class TaskInfo {
+        private Long id;
+        private Integer isShadow; // 0=真实任务，1=影子任务
+        private Long realTaskId; // 如果是影子任务，这个是源任务ID
+        private Long parentId;
+        private String taskName;
+        private String projectName;
+        private Integer priority;
+        private Integer status;
+        private Integer progress;
+        private String ownerName;
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private LocalDateTime createTime;
+        private LocalDateTime updateTime;
+        private LocalDateTime lastProgressUpdateTime;
+        private PmTaskShadow shadow; // 影子任务原始对象（如果是影子）
+        private PmTask realTask; // 真实任务原始对象（如果是真实）
     }
 
     /**
      * 构建带父任务链的任务名称
      */
-    private String buildFullTaskName(PmTask task, Map<Long, PmTask> allTasksMap) {
+    private String buildFullTaskName(TaskInfo task, Map<Long, TaskInfo> allTaskMap) {
         List<String> taskNames = new ArrayList<>();
-        PmTask currentTask = task;
-        
+        TaskInfo currentTask = task;
+        int maxDepth = 10; // 最大深度限制，防止死循环
+        int currentDepth = 0;
+
         // 从当前任务开始，向上追溯所有父任务
-        while (currentTask != null) {
+        while (currentTask != null && currentDepth < maxDepth) {
             taskNames.add(0, currentTask.getTaskName()); // 添加到列表开头
-            if (currentTask.getParentId() == null) {
+            if (currentTask.getParentId() == null || currentTask.getParentId() == 0) {
                 break;
             }
-            currentTask = allTasksMap.get(currentTask.getParentId());
+            currentTask = allTaskMap.get(currentTask.getParentId());
+            currentDepth++;
         }
-        
+
         // 用连字符连接所有任务名称
         return String.join("-", taskNames);
     }
@@ -134,236 +156,228 @@ public class ExportServiceImpl {
     public void exportTaskProgressReport(
             HttpServletResponse response,
             TaskProgressReportQueryDTO queryDTO) throws IOException {
-        
+
         // 0. 查询在指定时间范围内有进展更新的所有任务ID
         List<Long> taskIdsWithProgress = pmTaskProgressUpdateMapper.selectTaskIdsWithProgressInTimeRange(
                 queryDTO.getProgressUpdateTimeFrom(),
-                queryDTO.getProgressUpdateTimeTo()
-        );
+                queryDTO.getProgressUpdateTimeTo());
+
+        // 1. 为每个项目收集所有任务（真实任务 + 影子任务）
+        Map<Long, TaskInfo> allTaskMap = new HashMap<>();
+        Map<Long, List<TaskInfo>> projectTaskMap = new HashMap<>();
         
-        // 1. 查询用户选择项目下面的源任务
-        List<PmTask> projectSourceTasks = pmTaskMapper.selectTasksForReport(
-                queryDTO.getProjectIds(),
-                queryDTO.getTaskStartDateFrom(),
-                queryDTO.getTaskStartDateTo(),
-                queryDTO.getTaskEndDateFrom(),
-                queryDTO.getTaskEndDateTo()
-        );
-
-        // 2. 查询用户选择项目下面的影子任务
-        List<PmTaskShadow> projectShadowTasks = pmTaskShadowMapper.selectShadowTasksForReport(
-                queryDTO.getProjectIds(),
-                queryDTO.getTaskStartDateFrom(),
-                queryDTO.getTaskStartDateTo(),
-                queryDTO.getTaskEndDateFrom(),
-                queryDTO.getTaskEndDateTo()
-        );
-
-        // 3. 收集所有需要查询的源任务ID（包括影子任务对应的源任务）
-        List<Long> sourceTaskIdsToQuery = new ArrayList<>();
-        Map<Long, PmTaskShadow> shadowTaskByIdMap = new HashMap<>();
-        if (projectShadowTasks != null) {
-            for (PmTaskShadow shadow : projectShadowTasks) {
-                sourceTaskIdsToQuery.add(shadow.getSourceTaskId());
-                shadowTaskByIdMap.put(shadow.getId(), shadow);
+        if (queryDTO.getProjectIds() != null && !queryDTO.getProjectIds().isEmpty()) {
+            for (Long projectId : queryDTO.getProjectIds()) {
+                // 查询该项目的所有任务（真实 + 影子）
+                List<ShadowTaskVO> shadowTasks = pmTaskShadowMapper.selectTaskListWithShadows(projectId);
+                
+                List<TaskInfo> taskInfos = new ArrayList<>();
+                for (ShadowTaskVO vo : shadowTasks) {
+                    TaskInfo info = new TaskInfo();
+                    info.setId(vo.getId());
+                    info.setIsShadow(vo.getIsShadow());
+                    info.setParentId(vo.getParentId());
+                    info.setTaskName(vo.getTaskName());
+                    info.setProjectName(vo.getProjectName());
+                    info.setPriority(vo.getPriority());
+                    info.setStatus(vo.getStatus());
+                    info.setProgress(vo.getProgress());
+                    info.setOwnerName(vo.getOwnerName());
+                    info.setStartDate(vo.getStartDate());
+                    info.setEndDate(vo.getEndDate());
+                    info.setCreateTime(vo.getCreateTime());
+                    info.setUpdateTime(vo.getUpdateTime());
+                    info.setLastProgressUpdateTime(vo.getLastProgressUpdateTime());
+                    
+                    if (vo.getIsShadow() == 1) {
+                        info.setRealTaskId(vo.getSourceTaskId());
+                    } else {
+                        info.setRealTaskId(vo.getId());
+                    }
+                    
+                    taskInfos.add(info);
+                    allTaskMap.put(vo.getId(), info);
+                }
+                
+                projectTaskMap.put(projectId, taskInfos);
             }
         }
-        if (projectSourceTasks != null) {
-            for (PmTask task : projectSourceTasks) {
-                sourceTaskIdsToQuery.add(task.getId());
-            }
-        }
 
-        // 4. 查询所有需要的源任务（不限项目）
-        Map<Long, PmTask> allSourceTaskMap = new HashMap<>();
-        if (!sourceTaskIdsToQuery.isEmpty()) {
-            List<PmTask> allSourceTasks = pmTaskMapper.selectTasksByIds(sourceTaskIdsToQuery);
-            if (allSourceTasks != null) {
-                for (PmTask task : allSourceTasks) {
-                    allSourceTaskMap.put(task.getId(), task);
+        // 2. 查询所有真实任务的详细信息（用于获取额外字段）
+        List<Long> allRealTaskIds = allTaskMap.values().stream()
+                .map(TaskInfo::getRealTaskId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        Map<Long, PmTask> realTaskMap = new HashMap<>();
+        if (!allRealTaskIds.isEmpty()) {
+            List<PmTask> realTasks = pmTaskMapper.selectTasksByIds(allRealTaskIds);
+            if (realTasks != null) {
+                for (PmTask task : realTasks) {
+                    realTaskMap.put(task.getId(), task);
                 }
             }
         }
 
-        // 4.5 收集并查询所有可能需要的父任务
-        Map<Long, PmTask> allTasksMap = new HashMap<>(allSourceTaskMap);
-        List<Long> parentTaskIdsToQuery = new ArrayList<>();
-        for (PmTask task : allSourceTaskMap.values()) {
-            collectParentTaskIds(task, allTasksMap, parentTaskIdsToQuery);
-        }
-        if (!parentTaskIdsToQuery.isEmpty()) {
-            List<PmTask> parentTasks = pmTaskMapper.selectTasksByIds(parentTaskIdsToQuery);
-            if (parentTasks != null) {
-                for (PmTask task : parentTasks) {
-                    allTasksMap.put(task.getId(), task);
-                    // 继续收集这些父任务的父任务
-                    collectParentTaskIds(task, allTasksMap, parentTaskIdsToQuery);
+        // 3. 查询所有影子任务的详细信息
+        List<Long> allShadowIds = allTaskMap.values().stream()
+                .filter(t -> t.getIsShadow() == 1)
+                .map(TaskInfo::getId)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        Map<Long, PmTaskShadow> shadowMap = new HashMap<>();
+        if (!allShadowIds.isEmpty()) {
+            for (Long shadowId : allShadowIds) {
+                PmTaskShadow shadow = pmTaskShadowMapper.selectById(shadowId);
+                if (shadow != null) {
+                    shadowMap.put(shadowId, shadow);
                 }
             }
         }
 
-        // 5. 收集所有任务ID（用于查询进展历史）
-        List<Long> allTaskIds = new ArrayList<>(allSourceTaskMap.keySet());
-
-        // 6. 查询进展历史 - 使用用户选择的时间范围
-        List<PmTaskProgressUpdate> progressHistory = pmTaskProgressUpdateMapper.selectProgressHistoryForReport(
-                allTaskIds.isEmpty() ? null : allTaskIds,
-                queryDTO.getProgressUpdateTimeFrom(),
-                queryDTO.getProgressUpdateTimeTo()
-        );
-
-        // 7. 按任务ID分组进展历史
+        // 4. 查询进展历史
         Map<Long, List<PmTaskProgressUpdate>> progressMap = new HashMap<>();
-        if (progressHistory != null) {
-            for (PmTaskProgressUpdate update : progressHistory) {
-                progressMap.computeIfAbsent(update.getTaskId(), k -> new ArrayList<>()).add(update);
+        if (!allRealTaskIds.isEmpty()) {
+            List<PmTaskProgressUpdate> progressHistory = pmTaskProgressUpdateMapper.selectProgressHistoryForReport(
+                    allRealTaskIds,
+                    queryDTO.getProgressUpdateTimeFrom(),
+                    queryDTO.getProgressUpdateTimeTo());
+            
+            if (progressHistory != null) {
+                for (PmTaskProgressUpdate update : progressHistory) {
+                    progressMap.computeIfAbsent(update.getTaskId(), k -> new ArrayList<>()).add(update);
+                }
             }
         }
 
-        // 8. 构建报告数据
+        // 5. 构建报告数据
         List<TaskOverviewItem> taskOverviewList = new ArrayList<>();
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
         Pattern htmlPattern = Pattern.compile("<[^>]*>");
-        
-        // 8.1 添加用户选择项目下面的源任务（只添加在指定时间范围内有进展的任务）
-        if (projectSourceTasks != null) {
-            for (PmTask task : projectSourceTasks) {
-                // 如果用户指定了进展更新时间范围，只添加在该范围内有进展的任务
+
+        // 遍历所有项目的任务
+        for (Map.Entry<Long, List<TaskInfo>> entry : projectTaskMap.entrySet()) {
+            Long projectId = entry.getKey();
+            List<TaskInfo> taskInfos = entry.getValue();
+            
+            for (TaskInfo info : taskInfos) {
+                // 检查是否在指定时间范围内有进展
                 boolean shouldAdd = true;
                 if (queryDTO.getProgressUpdateTimeFrom() != null || queryDTO.getProgressUpdateTimeTo() != null) {
-                    shouldAdd = taskIdsWithProgress.contains(task.getId());
+                    shouldAdd = taskIdsWithProgress.contains(info.getRealTaskId());
                 }
-                if (shouldAdd) {
-                    addTaskToReport(taskOverviewList, task, progressMap, dateFormatter, htmlPattern,
-                            queryDTO.getProgressUpdateTimeFrom(), queryDTO.getProgressUpdateTimeTo(), allTasksMap);
+                
+                if (!shouldAdd) {
+                    continue;
+                }
+                
+                // 检查任务日期范围
+                if ((queryDTO.getTaskStartDateFrom() != null && info.getStartDate() != null && 
+                     info.getStartDate().isBefore(queryDTO.getTaskStartDateFrom())) ||
+                    (queryDTO.getTaskStartDateTo() != null && info.getStartDate() != null && 
+                     info.getStartDate().isAfter(queryDTO.getTaskStartDateTo())) ||
+                    (queryDTO.getTaskEndDateFrom() != null && info.getEndDate() != null && 
+                     info.getEndDate().isBefore(queryDTO.getTaskEndDateFrom())) ||
+                    (queryDTO.getTaskEndDateTo() != null && info.getEndDate() != null && 
+                     info.getEndDate().isAfter(queryDTO.getTaskEndDateTo()))) {
+                    continue;
+                }
+                
+                // 构建带父任务链的任务名称
+                String fullTaskName = buildFullTaskName(info, allTaskMap);
+                
+                // 获取该任务的进展历史
+                List<PmTaskProgressUpdate> updates = progressMap.getOrDefault(info.getRealTaskId(), new ArrayList<>());
+                updates.sort((a, b) -> b.getCreateTime().compareTo(a.getCreateTime()));
+                
+                // 构建进展详情
+                String progressDetails = buildProgressDetails(updates, dateFormatter, htmlPattern);
+                
+                // 添加到报告
+                if (info.getIsShadow() == 1) {
+                    // 影子任务
+                    PmTaskShadow shadow = shadowMap.get(info.getId());
+                    if (shadow != null) {
+                        // 构建影子任务的完整名称（带父任务链）
+                        // 先构建当前任务的名称（用别名或源任务名）
+                        String currentTaskName = shadow.getShadowAlias() != null && !shadow.getShadowAlias().isEmpty() 
+                                ? shadow.getShadowAlias() 
+                                : info.getTaskName();
+                        
+                        // 现在重新构建完整任务链，把当前任务名替换进去
+                        List<String> taskNames = new ArrayList<>();
+                        TaskInfo currentTask = info;
+                        int maxDepth = 10;
+                        int currentDepth = 0;
+                        
+                        while (currentTask != null && currentDepth < maxDepth) {
+                            if (currentDepth == 0) {
+                                // 当前任务，用别名替换
+                                taskNames.add(0, currentTaskName);
+                            } else {
+                                // 父任务，用原名称
+                                taskNames.add(0, currentTask.getTaskName());
+                            }
+                            
+                            if (currentTask.getParentId() == null || currentTask.getParentId() == 0) {
+                                break;
+                            }
+                            currentTask = allTaskMap.get(currentTask.getParentId());
+                            currentDepth++;
+                        }
+                        
+                        String displayName = String.join("-", taskNames);
+                        
+                        TaskOverviewItem item = new TaskOverviewItem(
+                                info.getProjectName(),
+                                "影子任务",
+                                displayName,
+                                info.getPriority(),
+                                info.getStatus(),
+                                info.getProgress(),
+                                info.getOwnerName(),
+                                info.getStartDate(),
+                                info.getEndDate(),
+                                info.getCreateTime(),
+                                info.getUpdateTime(),
+                                info.getLastProgressUpdateTime(),
+                                progressDetails);
+                        taskOverviewList.add(item);
+                    }
+                } else {
+                    // 真实任务
+                    PmTask realTask = realTaskMap.get(info.getRealTaskId());
+                    if (realTask != null) {
+                        TaskOverviewItem item = new TaskOverviewItem(
+                                info.getProjectName(),
+                                "源任务",
+                                fullTaskName,
+                                info.getPriority(),
+                                info.getStatus(),
+                                info.getProgress(),
+                                info.getOwnerName(),
+                                info.getStartDate(),
+                                info.getEndDate(),
+                                info.getCreateTime(),
+                                info.getUpdateTime(),
+                                info.getLastProgressUpdateTime(),
+                                progressDetails);
+                        taskOverviewList.add(item);
+                    }
                 }
             }
         }
 
-        // 8.2 添加用户选择项目下面的影子任务（只添加在指定时间范围内有进展的任务）
-        if (projectShadowTasks != null) {
-            for (PmTaskShadow shadow : projectShadowTasks) {
-                PmTask sourceTask = allSourceTaskMap.get(shadow.getSourceTaskId());
-                if (sourceTask != null) {
-                    // 如果用户指定了进展更新时间范围，只添加在该范围内有进展的任务
-                    boolean shouldAdd = true;
-                    if (queryDTO.getProgressUpdateTimeFrom() != null || queryDTO.getProgressUpdateTimeTo() != null) {
-                        shouldAdd = taskIdsWithProgress.contains(sourceTask.getId());
-                    }
-                    if (shouldAdd) {
-                        addShadowTaskToReport(taskOverviewList, shadow, sourceTask, progressMap, dateFormatter, htmlPattern,
-                                queryDTO.getProgressUpdateTimeFrom(), queryDTO.getProgressUpdateTimeTo(), allTasksMap);
-                    }
-                }
-            }
-        }
-
-        // 9. 构建报告数据对象
+        // 6. 构建报告数据对象
         TaskProgressReportData reportData = new TaskProgressReportData(
                 taskOverviewList,
-                new ArrayList<>()
-        );
+                new ArrayList<>());
 
-        // 10. 导出 Excel
+        // 7. 导出 Excel
         String reportName = "任务进展报告";
         ExcelExportUtil.exportTaskProgressReport(response, reportName, reportData);
-    }
-
-    /**
-     * 将源任务添加到报告中
-     */
-    private void addTaskToReport(
-            List<TaskOverviewItem> taskOverviewList,
-            PmTask task,
-            Map<Long, List<PmTaskProgressUpdate>> progressMap,
-            DateTimeFormatter dateFormatter,
-            Pattern htmlPattern,
-            java.time.LocalDateTime progressUpdateTimeFrom,
-            java.time.LocalDateTime progressUpdateTimeTo,
-            Map<Long, PmTask> allTasksMap) {
-        
-        // 获取该任务的进展历史
-        List<PmTaskProgressUpdate> updates = progressMap.getOrDefault(task.getId(), new ArrayList<>());
-        
-        // 按时间倒序排列
-        updates.sort((a, b) -> b.getCreateTime().compareTo(a.getCreateTime()));
-        
-        // 构建进展详情
-        String progressDetails = buildProgressDetails(updates, dateFormatter, htmlPattern);
-        
-        // 构建带父任务链的任务名称
-        String fullTaskName = buildFullTaskName(task, allTasksMap);
-        
-        TaskOverviewItem item = new TaskOverviewItem(
-                task.getProjectName(),
-                "源任务",
-                fullTaskName,
-                task.getPriority(),
-                task.getStatus(),
-                task.getProgress(),
-                task.getOwnerName(),
-                task.getStartDate(),
-                task.getEndDate(),
-                task.getCreateTime(),
-                task.getUpdateTime(),
-                task.getLastProgressUpdateTime(),
-                progressDetails
-        );
-        taskOverviewList.add(item);
-    }
-
-    /**
-     * 将影子任务添加到报告中
-     */
-    private void addShadowTaskToReport(
-            List<TaskOverviewItem> taskOverviewList,
-            PmTaskShadow shadow,
-            PmTask sourceTask,
-            Map<Long, List<PmTaskProgressUpdate>> progressMap,
-            DateTimeFormatter dateFormatter,
-            Pattern htmlPattern,
-            java.time.LocalDateTime progressUpdateTimeFrom,
-            java.time.LocalDateTime progressUpdateTimeTo,
-            Map<Long, PmTask> allTasksMap) {
-        
-        // 获取源任务的进展历史
-        List<PmTaskProgressUpdate> updates = progressMap.getOrDefault(sourceTask.getId(), new ArrayList<>());
-        
-        // 按时间倒序排列
-        updates.sort((a, b) -> b.getCreateTime().compareTo(a.getCreateTime()));
-        
-        // 构建进展详情
-        String progressDetails = buildProgressDetails(updates, dateFormatter, htmlPattern);
-        
-        // 影子任务名称
-        String baseTaskName = shadow.getShadowAlias() != null && !shadow.getShadowAlias().isEmpty()
-                ? shadow.getShadowAlias()
-                : sourceTask.getTaskName();
-        
-        // 如果影子任务没有单独设置别名，就构建带父任务链的名称
-        String shadowTaskName;
-        if (shadow.getShadowAlias() != null && !shadow.getShadowAlias().isEmpty()) {
-            shadowTaskName = baseTaskName;
-        } else {
-            shadowTaskName = buildFullTaskName(sourceTask, allTasksMap);
-        }
-        
-        TaskOverviewItem shadowItem = new TaskOverviewItem(
-                shadow.getTargetProjectName(),
-                "影子任务",
-                shadowTaskName,
-                shadow.getSourcePriority(),
-                shadow.getSourceStatus(),
-                shadow.getSourceProgress(),
-                shadow.getSourceOwnerName(),
-                shadow.getSourceStartDate(),
-                shadow.getSourceEndDate(),
-                shadow.getCreatedAt(),
-                shadow.getUpdatedAt(),
-                shadow.getLastProgressUpdateTime(),
-                progressDetails
-        );
-        taskOverviewList.add(shadowItem);
     }
 
     /**
@@ -373,25 +387,25 @@ public class ExportServiceImpl {
             List<PmTaskProgressUpdate> updates,
             DateTimeFormatter dateFormatter,
             Pattern htmlPattern) {
-        
+
         StringBuilder progressDetails = new StringBuilder();
         for (PmTaskProgressUpdate update : updates) {
             String cleanedDescription = update.getDescription();
             if (cleanedDescription != null) {
                 cleanedDescription = htmlPattern.matcher(cleanedDescription).replaceAll("");
             }
-            
+
             progressDetails.append(update.getCreateTime().format(dateFormatter))
                     .append(" ")
                     .append(update.getEmployeeName() != null ? update.getEmployeeName() : "")
                     .append(" 进度更新至 ")
                     .append(update.getProgress() != null ? update.getProgress() : 0)
                     .append("%");
-            
+
             if (cleanedDescription != null && !cleanedDescription.isEmpty()) {
                 progressDetails.append(" ").append(cleanedDescription);
             }
-            
+
             progressDetails.append("\n");
         }
         return progressDetails.toString();
