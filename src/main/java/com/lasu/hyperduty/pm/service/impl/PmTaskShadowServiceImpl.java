@@ -180,83 +180,100 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
             parentIdToChildrenMap.get(parentId).add(task);
         }
 
-        // 5. 获取并排序根任务
-        List<ShadowTaskVO> rootTasks = parentIdToChildrenMap.getOrDefault(0L, new ArrayList<>());
-        rootTasks.sort((a, b) -> {
-            // 先按是否影子排序（真实任务在前）
-            int shadowCompare = (a.getIsShadow() != null ? a.getIsShadow() : 0) - (b.getIsShadow() != null ? b.getIsShadow() : 0);
-            if (shadowCompare != 0) return shadowCompare;
+        // 5. 获取并排序根任务 - 先分组再合并
+        List<ShadowTaskVO> rawRootTasks = parentIdToChildrenMap.getOrDefault(0L, new ArrayList<>());
+        
+        // 分组：先分成4组
+        List<ShadowTaskVO> pinnedInProgress = new ArrayList<>(); // 置顶的未开始/进行中
+        List<ShadowTaskVO> pinnedCompleted = new ArrayList<>();   // 置顶的已完成/已暂停
+        List<ShadowTaskVO> unpinnedInProgress = new ArrayList<>(); // 非置顶的未开始/进行中
+        List<ShadowTaskVO> unpinnedCompleted = new ArrayList<>();  // 非置顶的已完成/已暂停
+        
+        for (ShadowTaskVO task : rawRootTasks) {
+            int isPinned = (task.getIsPinned() != null) ? task.getIsPinned() : 0;
+            int statusOrder = getStatusOrder(task.getStatus());
             
-            // 再按是否置顶排序
-            int pinnedCompare = (b.getIsPinned() != null ? b.getIsPinned() : 0) - (a.getIsPinned() != null ? a.getIsPinned() : 0);
-            if (pinnedCompare != 0) return pinnedCompare;
-            
-            // 最后按创建时间排序
+            if (isPinned == 1) {
+                if (statusOrder == 0) {
+                    pinnedInProgress.add(task);
+                } else {
+                    pinnedCompleted.add(task);
+                }
+            } else {
+                if (statusOrder == 0) {
+                    unpinnedInProgress.add(task);
+                } else {
+                    unpinnedCompleted.add(task);
+                }
+            }
+        }
+        
+        // 在每个组内按优先级和创建时间排序
+        java.util.Comparator<ShadowTaskVO> groupComparator = (a, b) -> {
+            int priA = (a.getPriority() != null) ? a.getPriority() : 999;
+            int priB = (b.getPriority() != null) ? b.getPriority() : 999;
+            if (priA != priB) {
+                return priA - priB;
+            }
             if (a.getCreateTime() != null && b.getCreateTime() != null) {
                 return a.getCreateTime().compareTo(b.getCreateTime());
             }
             return 0;
-        });
+        };
+        
+        pinnedInProgress.sort(groupComparator);
+        pinnedCompleted.sort(groupComparator);
+        unpinnedInProgress.sort(groupComparator);
+        unpinnedCompleted.sort(groupComparator);
+        
+        // 按照顺序合并
+        List<ShadowTaskVO> rootTasks = new ArrayList<>();
+        rootTasks.addAll(pinnedInProgress);
+        rootTasks.addAll(pinnedCompleted);
+        rootTasks.addAll(unpinnedInProgress);
+        rootTasks.addAll(unpinnedCompleted);
 
-        // 6. 确定每个根任务及其子任务的范围
-        List<RootTaskRange> rootTaskRanges = new ArrayList<>();
-        int currentIndex = 0;
+        // 6. 构建完整的扁平任务列表（按树形结构展开）
+        List<ShadowTaskVO> flatAllTasks = new ArrayList<>();
         for (ShadowTaskVO rootTask : rootTasks) {
-            int count = countTaskAndChildren(rootTask, parentIdToChildrenMap);
-            rootTaskRanges.add(new RootTaskRange(rootTask, currentIndex, currentIndex + count));
-            currentIndex += count;
+            addTaskToResult(flatAllTasks, rootTask, parentIdToChildrenMap);
         }
 
-        // 7. 按照后端逻辑分页（完全按照PmTaskServiceImpl的逻辑！）
-        List<List<RootTaskRange>> pagesRootTasks = new ArrayList<>();
-        List<RootTaskRange> currentPageRootTasks = new ArrayList<>();
-        int currentPageTaskCount = 0;
+        // 7. 设置总记录数
+        page.setTotal(flatAllTasks.size());
 
-        for (RootTaskRange range : rootTaskRanges) {
-            int taskCount = range.endIndex - range.startIndex;
-            
-            // 如果当前页是空的，直接添加这个根任务
-            if (currentPageRootTasks.isEmpty()) {
-                currentPageRootTasks.add(range);
-                currentPageTaskCount += taskCount;
-            } else {
-                // 当前页已有任务，先检查：添加这个根任务自己（+1条）会不会超过pageSize
-                if (currentPageTaskCount + 1 > pageSize) {
-                    // 会超过！保存当前页，然后新根任务从新页开始
-                    pagesRootTasks.add(new ArrayList<>(currentPageRootTasks));
-                    
-                    // 新开一页，添加这个根任务
-                    currentPageRootTasks.clear();
-                    currentPageRootTasks.add(range);
-                    currentPageTaskCount = taskCount;
-                } else {
-                    // 不会超过，添加到当前页，这个根任务及其所有子任务都在当前页
-                    currentPageRootTasks.add(range);
-                    currentPageTaskCount += taskCount;
-                }
-            }
-        }
+        // 8. 计算分页范围
+        int fromIndex = (pageNum - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, flatAllTasks.size());
 
-        // 8. 添加最后一页
-        if (!currentPageRootTasks.isEmpty()) {
-            pagesRootTasks.add(currentPageRootTasks);
-        }
-
-        // 9. 调整total使得前端显示的总页数等于pagesRootTasks.size()
-        int adjustedTotal = pagesRootTasks.size() * pageSize;
-        page.setTotal(adjustedTotal);
-
-        // 10. 获取当前页的根任务
+        // 9. 获取当前页的数据
         List<ShadowTaskVO> result = new ArrayList<>();
-        if (pageNum <= pagesRootTasks.size()) {
-            List<RootTaskRange> targetPageRanges = pagesRootTasks.get(pageNum - 1);
-            for (RootTaskRange range : targetPageRanges) {
-                addTaskToResult(result, range.rootTask, parentIdToChildrenMap);
-            }
+        if (fromIndex < flatAllTasks.size()) {
+            result = flatAllTasks.subList(fromIndex, toIndex);
         }
         page.setRecords(result);
 
         return page;
+    }
+    
+    /**
+     * 获取状态排序值
+     */
+    private int getStatusOrder(Integer status) {
+        if (status == null) {
+            return 3;
+        }
+        switch (status) {
+            case 1: // 未开始
+            case 2: // 进行中
+                return 0;
+            case 3: // 已完成
+                return 1;
+            case 4: // 已暂停
+                return 2;
+            default:
+                return 3;
+        }
     }
 
     @Override
