@@ -30,7 +30,7 @@
     <!-- 任务描述 -->
     <div class="task-description" style="margin-bottom: 20px;">
       <h4 style="margin-bottom: 10px;">任务描述</h4>
-      <div class="description-content" v-if="task?.description" v-html="task.description"></div>
+      <div class="description-content richtext-content" v-if="task?.description" v-html="task.description"></div>
       <div v-else class="no-data">暂无任务描述</div>
     </div>
 

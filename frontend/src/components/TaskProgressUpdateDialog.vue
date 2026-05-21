@@ -32,7 +32,7 @@
 
     <div class="task-description" style="margin-bottom: 20px;">
       <h4 style="margin-bottom: 10px;">任务描述</h4>
-      <div class="description-content" v-if="currentTask?.description" v-html="currentTask.description"></div>
+      <div class="description-content richtext-content" v-if="currentTask?.description" v-html="currentTask.description"></div>
       <div v-else class="no-data">暂无任务描述</div>
     </div>
 
@@ -88,7 +88,7 @@
                 <span style="font-weight: bold;">{{ update.employeeName }}</span>
                 <span style="color: #606266;">进度更新至 {{ update.progress }}%</span>
               </div>
-              <div class="update-description" v-if="update.description" style="margin-bottom: 10px;" v-html="update.description"></div>
+              <div class="update-description richtext-content" v-if="update.description" style="margin-bottom: 10px;" v-html="update.description"></div>
               <div class="update-attachments" v-if="update.attachmentList && update.attachmentList.length > 0">
                 <el-divider content-position="left">附件</el-divider>
                 <AttachmentList :attachments="update.attachmentList" />

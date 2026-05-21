@@ -101,10 +101,10 @@
 
         <!-- 任务描述 -->
         <div class="task-description-section" style="margin-bottom: 20px;">
-          <h4 style="margin-bottom: 10px;">任务描述</h4>
-          <div class="description-content" v-if="shadowData.description" v-html="shadowData.description"></div>
-          <div v-else class="no-data">暂无任务描述</div>
-        </div>
+      <h4 style="margin-bottom: 10px;">任务描述</h4>
+      <div class="description-content richtext-content" v-if="shadowData.description" v-html="shadowData.description"></div>
+      <div v-else class="no-data">暂无任务描述</div>
+    </div>
 
         <!-- 附件列表 -->
         <div class="task-attachments" style="margin-bottom: 20px;">

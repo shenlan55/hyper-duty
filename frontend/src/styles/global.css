@@ -1,5 +1,35 @@
 /* 全局样式 */
 
+/* 全局富文本内容样式 - 确保图片、表格等元素自适应宽度 */
+.richtext-content {
+  width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow-x: hidden;
+}
+
+.richtext-content img {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+.richtext-content table {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+
+.richtext-content table td,
+.richtext-content table th {
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
 /* 卡片样式优化 */
 .el-card {
   border-radius: 6px;
