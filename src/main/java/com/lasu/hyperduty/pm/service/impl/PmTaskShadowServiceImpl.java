@@ -233,23 +233,93 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
         rootTasks.addAll(unpinnedInProgress);
         rootTasks.addAll(unpinnedCompleted);
 
-        // 6. 构建完整的扁平任务列表（按树形结构展开）
-        List<ShadowTaskVO> flatAllTasks = new ArrayList<>();
+        // 6. 确定每个根任务在扁平列表中的起始和结束索引
+        List<RootTaskRange> rootTaskRanges = new ArrayList<>();
+        int currentIndex = 0;
         for (ShadowTaskVO rootTask : rootTasks) {
-            addTaskToResult(flatAllTasks, rootTask, parentIdToChildrenMap);
+            int count = countTaskAndChildren(rootTask, parentIdToChildrenMap);
+            rootTaskRanges.add(new RootTaskRange(rootTask, currentIndex, currentIndex + count));
+            currentIndex += count;
         }
 
-        // 7. 设置总记录数
-        page.setTotal(flatAllTasks.size());
+        // 7. 预先计算好每页应该显示哪些根任务
+        List<List<RootTaskRange>> pagesRootTasks = new ArrayList<>();
+        List<RootTaskRange> currentPageRootTasks = new ArrayList<>();
+        int currentPageTaskCount = 0;
 
-        // 8. 计算分页范围
-        int fromIndex = (pageNum - 1) * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, flatAllTasks.size());
+        for (RootTaskRange range : rootTaskRanges) {
+            int taskCount = range.endIndex - range.startIndex;
+            boolean hasChildren = taskCount > 1; // 这个根任务是否有子任务
 
-        // 9. 获取当前页的数据
+            // 如果当前页是空的，直接添加这个根任务（不管它有多少子任务）
+            if (currentPageRootTasks.isEmpty()) {
+                currentPageRootTasks.add(range);
+                currentPageTaskCount += taskCount;
+            } else {
+                // 检查当前页是否都是根任务（没有子任务）
+                boolean currentPageAllRootTasks = true;
+                for (RootTaskRange existingRange : currentPageRootTasks) {
+                    int existingTaskCount = existingRange.endIndex - existingRange.startIndex;
+                    if (existingTaskCount > 1) {
+                        currentPageAllRootTasks = false;
+                        break;
+                    }
+                }
+
+                if (currentPageAllRootTasks && !hasChildren) {
+                    // 都是根任务，且当前要添加的也是根任务：按pageSize严格分页
+                    if (currentPageTaskCount + 1 > pageSize) {
+                        // 超过pageSize，保存当前页，新根任务从新页开始
+                        pagesRootTasks.add(new ArrayList<>(currentPageRootTasks));
+                        currentPageRootTasks.clear();
+                        currentPageRootTasks.add(range);
+                        currentPageTaskCount = taskCount;
+                    } else {
+                        // 不超过，添加到当前页
+                        currentPageRootTasks.add(range);
+                        currentPageTaskCount += taskCount;
+                    }
+                } else {
+                    // 有子任务的情况：检查添加这个根任务自己（+1条）会不会超过pageSize
+                    if (currentPageTaskCount + 1 > pageSize) {
+                        // 会超过！保存当前页，然后新根任务从新页开始
+                        pagesRootTasks.add(new ArrayList<>(currentPageRootTasks));
+
+                        // 新开一页，添加这个根任务（它的所有子任务都在这一页）
+                        currentPageRootTasks.clear();
+                        currentPageRootTasks.add(range);
+                        currentPageTaskCount = taskCount;
+                    } else {
+                        // 不会超过，添加到当前页，这个根任务及其所有子任务都在当前页
+                        currentPageRootTasks.add(range);
+                        currentPageTaskCount += taskCount;
+                    }
+                }
+            }
+        }
+
+        // 添加最后一页
+        if (!currentPageRootTasks.isEmpty()) {
+            pagesRootTasks.add(currentPageRootTasks);
+        }
+
+        // 8. 调整total使得前端显示的总页数等于pagesRootTasks.size()
+        int adjustedTotal = pagesRootTasks.size() * pageSize;
+        page.setTotal(adjustedTotal);
+
+        // 9. 获取当前页的根任务
+        List<ShadowTaskVO> pageRootTasks = new ArrayList<>();
+        if (pageNum <= pagesRootTasks.size()) {
+            List<RootTaskRange> targetPageRanges = pagesRootTasks.get(pageNum - 1);
+            for (RootTaskRange range : targetPageRanges) {
+                pageRootTasks.add(range.rootTask);
+            }
+        }
+
+        // 10. 构建结果列表
         List<ShadowTaskVO> result = new ArrayList<>();
-        if (fromIndex < flatAllTasks.size()) {
-            result = flatAllTasks.subList(fromIndex, toIndex);
+        for (ShadowTaskVO rootTask : pageRootTasks) {
+            addTaskToResult(result, rootTask, parentIdToChildrenMap);
         }
         page.setRecords(result);
 
