@@ -1,0 +1,52 @@
+// ==========================================
+// 响应式断点系统
+// PC端样式不受影响，移动端样式通过媒体查询隔离
+// ==========================================
+
+// 断点值
+$breakpoint-xs: 480px;   // 小屏手机
+$breakpoint-sm: 768px;   // 手机/平板分界
+$breakpoint-md: 1024px;  // 平板/PC分界
+$breakpoint-lg: 1440px;  // 大屏PC
+$breakpoint-xl: 1920px;  // 超大屏
+
+// 媒体查询 Mixin - 仅影响移动端
+@mixin mobile {
+  @media (max-width: ($breakpoint-sm - 1)) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (min-width: $breakpoint-sm) and (max-width: ($breakpoint-md - 1)) {
+    @content;
+  }
+}
+
+@mixin tablet-up {
+  @media (min-width: $breakpoint-sm) {
+    @content;
+  }
+}
+
+@mixin desktop {
+  @media (min-width: $breakpoint-md) {
+    @content;
+  }
+}
+
+@mixin mobile-and-tablet {
+  @media (max-width: ($breakpoint-md - 1)) {
+    @content;
+  }
+}
+
+// 移动端安全区域适配 (iPhone刘海屏等)
+@mixin safe-area {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+// 触摸目标最小尺寸 (Apple HIG 推荐 44x44pt)
+$touch-target-min: 44px;

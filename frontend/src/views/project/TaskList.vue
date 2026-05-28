@@ -1148,4 +1148,30 @@ onMounted(async () => {
   background-color: #f5f7fa;
   border-radius: 4px;
 }
+
+/* 移动端适配 */
+@media (max-width: 767px) {
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .card-header > div {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .card-header .el-input,
+  .card-header .el-select,
+  .card-header .el-button {
+    width: 100% !important;
+    margin-right: 0 !important;
+    margin-bottom: 4px;
+  }
+
+  .pagination-container {
+    justify-content: center;
+  }
+}
 </style>

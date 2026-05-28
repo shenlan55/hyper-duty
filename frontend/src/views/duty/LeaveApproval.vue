@@ -1007,4 +1007,28 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
 }
+
+/* 移动端适配 */
+@media (max-width: 767px) {
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .filter-container {
+    padding: 6px;
+  }
+
+  .filter-container .el-select,
+  .filter-container .el-date-picker,
+  .filter-container .el-input {
+    width: 100% !important;
+  }
+
+  .pagination-container {
+    justify-content: center;
+    margin-top: 12px;
+  }
+}
 </style>

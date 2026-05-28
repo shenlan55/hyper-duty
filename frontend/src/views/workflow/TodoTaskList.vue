@@ -404,4 +404,23 @@ export default {
 .mt-4 {
   margin-top: 20px;
 }
+
+/* 移动端适配 */
+@media (max-width: 767px) {
+  .todo-task-list {
+    padding: 8px;
+  }
+
+  .mt-4 {
+    margin-top: 10px;
+  }
+
+  .el-page-header {
+    padding: 8px 0;
+  }
+
+  .el-page-header__title {
+    font-size: 15px;
+  }
+}
 </style>

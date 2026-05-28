@@ -1,4 +1,5 @@
 <template>
+  <MobileGuard>
   <div class="process-designer">
     <el-page-header @back="goBack" :title="isEditing ? '编辑流程' : '流程设计器'">
       <template #extra>
@@ -27,6 +28,7 @@
       </div>
     </el-card>
   </div>
+</MobileGuard>
 </template>
 
 <script>
@@ -34,11 +36,12 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BpmnDesigner from '@/components/BpmnDesigner.vue'
+import MobileGuard from '@/components/MobileGuard.vue'
 import { deployProcess as deployProcessApi } from '@/api/workflow/process'
 
 export default {
   name: 'ProcessDesigner',
-  components: { BpmnDesigner },
+  components: { BpmnDesigner, MobileGuard },
   setup() {
     const router = useRouter()
     const route = useRoute()

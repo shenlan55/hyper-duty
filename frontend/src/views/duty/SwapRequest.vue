@@ -1128,13 +1128,37 @@ onMounted(async () => {
   margin-bottom: 15px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .swap-detail-item {
     padding: 10px;
   }
-  
+
   .el-col {
     margin-bottom: 10px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .card-header .el-select {
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+
+  .card-header .el-button {
+    width: 100%;
+  }
+
+  .filter-container .el-select,
+  .filter-container .el-input {
+    width: 100% !important;
+  }
+
+  .pagination-container {
+    justify-content: center;
   }
 }
 </style>

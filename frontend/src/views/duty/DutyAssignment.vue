@@ -1760,4 +1760,58 @@ onMounted(async () => {
 .calendar-cell.workday-holiday .holiday-info {
   color: #67c23a;
 }
+
+/* 移动端适配 */
+@media (max-width: 767px) {
+  .assignment-container {
+    padding: 0;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .schedule-select {
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+
+  .header-actions .el-button {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    padding: 7px 10px;
+  }
+
+  /* 日历单元格缩小 */
+  .calendar-cell {
+    font-size: 11px;
+    min-height: 60px;
+  }
+
+  .duty-item {
+    font-size: 10px;
+    padding: 1px 0;
+  }
+
+  .employee-name {
+    font-size: 10px;
+  }
+
+  .el-calendar__body {
+    padding: 5px;
+  }
+
+  .date-number {
+    font-size: 11px;
+  }
+}
 </style>

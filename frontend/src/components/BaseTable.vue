@@ -1,5 +1,5 @@
 <template>
-  <div class="base-table">
+  <div class="base-table" :class="{ 'is-mobile-card': isMobileCardMode }">
     <!-- 表格工具栏 -->
     <div v-if="showSearch || showColumnControl || showExport || $slots.toolbar" class="table-toolbar">
       <!-- 左侧内容 -->
@@ -159,6 +159,63 @@
         </div>
       </template>
     </el-table>
+
+    <!-- 移动端卡片列表模式 -->
+    <div v-if="isMobileCardMode" class="mobile-card-list">
+      <div
+        v-for="row in flatTreeData"
+        :key="getRowKey(row, row._index)"
+        class="mobile-card-item"
+        :class="{ 'has-children': row[treeProps.hasChildren], 'is-expanded': isExpanded(row) }"
+        :style="{ marginLeft: (row._depth || 0) * 16 + 'px' }"
+        @click="handleCardClick(row)"
+      >
+        <!-- 展开/收起箭头 + 卡片标题行 -->
+        <div class="card-item-title">
+          <span class="card-title-content">
+            <!-- 树形展开/收起箭头 -->
+            <span
+              v-if="row[treeProps.hasChildren] || (row[treeProps.children] && row[treeProps.children].length > 0)"
+              class="tree-toggle"
+              @click.stop="toggleExpand(row)"
+            >
+              <el-icon :class="{ 'is-expanded': isExpanded(row) }">
+                <ArrowRight v-if="!isExpanded(row)" />
+                <ArrowDown v-else />
+              </el-icon>
+            </span>
+            <span v-else class="tree-toggle-placeholder" />
+            <span>{{ getCardTitle(row) }}</span>
+          </span>
+          <slot name="card-title-right" :row="row" />
+        </div>
+
+        <!-- 卡片字段列表 -->
+        <div
+          v-for="field in mobileCardFields"
+          :key="field.prop || field.label"
+          class="card-item-row"
+        >
+          <span class="card-item-label">{{ field.label }}</span>
+          <span class="card-item-value">
+            <slot :name="field.slot || field.prop" :row="row">
+              {{ field.formatter ? field.formatter(row) : row[field.prop] }}
+            </slot>
+          </span>
+        </div>
+
+        <!-- 卡片操作区 -->
+        <div v-if="$slots.operation" class="card-item-actions">
+          <slot name="operation" :row="row" />
+        </div>
+      </div>
+
+      <!-- 卡面空状态 -->
+      <div v-if="flatTreeData.length === 0" class="empty-state">
+        <el-icon class="empty-icon"><WarningFilled /></el-icon>
+        <p class="empty-text">暂无数据</p>
+      </div>
+    </div>
     
     <!-- 分页 -->
     <div class="pagination-container" v-if="showPagination && props.pagination">
@@ -177,7 +234,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, watch } from 'vue'
+import { ref, computed, reactive, watch, onMounted, onUnmounted } from 'vue'
 import { ArrowRight, ArrowDown, Search, Setting, Download, Document, Files, WarningFilled } from '@element-plus/icons-vue'
 
 // Props
@@ -324,6 +381,21 @@ const props = defineProps({
   action: {
     type: Object,
     default: () => ({})
+  },
+  // 移动端卡片模式：自动检测设备，用卡片替代表格
+  mobileCardMode: {
+    type: Boolean,
+    default: true
+  },
+  // 卡片标题字段名
+  cardTitleField: {
+    type: String,
+    default: ''
+  },
+  // 移动端卡片显示的字段列表 [{prop, label, slot, formatter}]
+  cardFields: {
+    type: Array,
+    default: () => []
   }
 
 })
@@ -339,7 +411,8 @@ const emit = defineEmits([
   'select',
   'select-all',
   'column-visibility-change',
-  'export'
+  'export',
+  'card-click'
 ])
 
 // 展开/收起状态管理
@@ -536,6 +609,76 @@ const processedData = computed(() => {
   
   return props.data
 })
+
+// 移动端卡片模式下，将树形数据扁平化（支持展开/收起）
+const flatTreeData = computed(() => {
+  const data = processedData.value
+  if (!Array.isArray(data) || data.length === 0) return []
+  if (!data[0] || (data[0][props.treeProps.children] === undefined && data[0][props.treeProps.hasChildren] === undefined)) {
+    return data.map((item, i) => ({ ...item, _depth: 0, _index: i }))
+  }
+  // 递归扁平化：展开的节点将其 children 插入
+  const result = []
+  function flatten(nodes, depth = 0) {
+    if (!Array.isArray(nodes)) return
+    nodes.forEach((node, idx) => {
+      if (!node) return
+      result.push({ ...node, _depth: depth, _index: result.length })
+      const childrenKey = props.treeProps.children
+      const hasChildrenKey = props.treeProps.hasChildren
+      const hasChildren = node[hasChildrenKey] === true || (Array.isArray(node[childrenKey]) && node[childrenKey].length > 0)
+      if (hasChildren && expandedRows.has(node.id) && Array.isArray(node[childrenKey])) {
+        flatten(node[childrenKey], depth + 1)
+      }
+    })
+  }
+  flatten(data)
+  return result
+})
+
+// 移动端卡片模式相关
+const windowWidth = ref(window.innerWidth)
+onMounted(() => { window.addEventListener('resize', () => { windowWidth.value = window.innerWidth }) })
+onUnmounted(() => {})
+
+// 是否启用移动端卡片模式
+const isMobileCardMode = computed(() => {
+  if (!props.mobileCardMode) return false
+  return windowWidth.value < 768
+})
+
+// 卡片展示的字段：优先使用 cardFields，否则取 columns 的非隐藏列
+const mobileCardFields = computed(() => {
+  if (props.cardFields && props.cardFields.length > 0) {
+    return props.cardFields
+  }
+  // 自动从 columns 提取 max 5 个字段（排除 type='operation' 和 type='selection'）
+  return props.columns
+    .filter(c => c && c.prop && !c.type)
+    .slice(0, 5)
+    .map(c => ({ prop: c.prop, label: c.label }))
+})
+
+// 获取卡片标题
+function getCardTitle(row) {
+  if (props.cardTitleField && row) return row[props.cardTitleField]
+  // 默认取第一个字段的值
+  const firstField = mobileCardFields.value[0]
+  if (firstField && row) return row[firstField.prop]
+  return ''
+}
+
+// 获取行的唯一标识
+function getRowKey(row, index) {
+  if (typeof props.rowKey === 'function') return props.rowKey(row)
+  if (typeof props.rowKey === 'string' && row) return row[props.rowKey]
+  return index
+}
+
+// 卡片点击事件
+function handleCardClick(row) {
+  emit('card-click', row)
+}
 </script>
 
 <style scoped>
@@ -654,5 +797,140 @@ const processedData = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ======================================== */
+/* 移动端卡片模式样式 */
+/* ======================================== */
+.mobile-card-list {
+  padding: 8px 0;
+}
+
+.mobile-card-item {
+  background: #fff;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.mobile-card-item:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.card-item-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-title-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.card-title-content > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: #909399;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.tree-toggle:active {
+  background: #f0f0f0;
+}
+
+.tree-toggle .el-icon {
+  transition: transform 0.2s;
+  font-size: 14px;
+}
+
+.tree-toggle .el-icon.is-expanded {
+  transform: rotate(0deg);
+}
+
+.tree-toggle-placeholder {
+  width: 24px;
+  flex-shrink: 0;
+}
+
+/* 子任务卡片缩进外观 */
+.mobile-card-item.has-children {
+  border-left: 3px solid transparent;
+}
+
+.mobile-card-item[style*="margin-left"] {
+  background: #fafbfc;
+  border-radius: 6px;
+  border-left: 3px solid #e0e4ea;
+}
+
+.card-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: 13px;
+  padding: 3px 0;
+}
+
+.card-item-label {
+  color: #909399;
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.card-item-value {
+  color: #606266;
+  text-align: right;
+  word-break: break-all;
+}
+
+.card-item-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f5f5f5;
+}
+
+.card-item-actions .el-button {
+  min-height: 32px;
+  font-size: 12px;
+  padding: 5px 12px;
+}
+
+/* 卡片模式下隐藏表格 */
+.is-mobile-card .el-table {
+  display: none;
+}
+
+/* 卡片模式下分页简化 */
+.is-mobile-card .pagination-container .el-pagination__sizes,
+.is-mobile-card .pagination-container .el-pagination__jump {
+  display: none;
 }
 </style>

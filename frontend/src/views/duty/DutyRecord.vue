@@ -1676,4 +1676,31 @@ onMounted(async () => {
   justify-content: flex-end;
   margin-top: 10px;
 }
+
+/* 移动端适配 */
+@media (max-width: 767px) {
+  .duty-record-container {
+    padding: 0;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .search-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .search-input {
+    width: 100% !important;
+  }
+
+  .pagination-container {
+    justify-content: center;
+  }
+}
 </style>

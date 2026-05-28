@@ -1181,4 +1181,36 @@ onMounted(async () => {
   background-color: #f0f9ff;
   border-radius: 4px;
 }
+
+/* 移动端适配 */
+@media (max-width: 767px) {
+  .leave-request-container {
+    padding: 0;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .card-header .el-button {
+    width: 100%;
+  }
+
+  .filter-container .el-form--inline {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .filter-container .el-form-item {
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
+
+  .filter-container .el-select,
+  .filter-container .el-date-picker {
+    width: 100% !important;
+  }
+}
 </style>

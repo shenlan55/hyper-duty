@@ -719,4 +719,70 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* 移动端适配 */
+@media (max-width: 767px) {
+  .my-task {
+    padding: 0;
+  }
+
+  /* 统计卡片：改为2列 */
+  .el-row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .el-col {
+    width: 50% !important;
+    max-width: 50% !important;
+    flex: 0 0 50% !important;
+    padding: 4px !important;
+    margin-bottom: 4px;
+  }
+
+  .stats-card {
+    margin-bottom: 0;
+  }
+
+  .stats-item {
+    text-align: center;
+  }
+
+  .stats-value {
+    font-size: 22px;
+    font-weight: bold;
+  }
+
+  .stats-label {
+    font-size: 11px;
+    color: #909399;
+  }
+
+  /* 搜索区域：垂直排列 */
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .card-header > div {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .card-header .el-input,
+  .card-header .el-select {
+    width: 100% !important;
+  }
+
+  /* Tabs：水平滚动 */
+  .el-tabs__nav-wrap {
+    overflow-x: auto;
+  }
+
+  /* 分页按钮简化 */
+  .el-pagination {
+    justify-content: center;
+  }
+}
 </style>

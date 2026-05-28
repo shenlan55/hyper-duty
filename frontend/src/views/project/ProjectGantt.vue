@@ -1,4 +1,5 @@
 <template>
+  <MobileGuard>
   <div class="project-gantt">
     <el-card>
       <template #header>
@@ -91,12 +92,14 @@
       </div>
     </el-card>
   </div>
+</MobileGuard>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
+import MobileGuard from '@/components/MobileGuard.vue'
 import { getProjectPage } from '@/api/project'
 import { getProjectTasks, exportGantt } from '@/api/task'
 

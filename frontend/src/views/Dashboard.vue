@@ -537,4 +537,59 @@ h1 {
 .dashboard-tips {
   margin-top: 10px;
 }
+
+/* 移动端适配 */
+@media (max-width: 767px) {
+  .dashboard-container {
+    padding: 10px;
+  }
+
+  h1 {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .stat-number {
+    font-size: 22px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+  }
+
+  .icon-large {
+    font-size: 32px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .todo-item-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .todo-item-title {
+    font-size: 14px;
+  }
+
+  .todo-item-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard-tips {
+    margin-top: 12px;
+  }
+}
 </style>
