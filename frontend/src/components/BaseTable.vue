@@ -923,6 +923,17 @@ function handleCardClick(row) {
   padding: 5px 12px;
 }
 
+/* 移动端卡片模式下按钮更小 */
+@media (max-width: 767px) {
+  .card-item-actions .el-button {
+    min-height: 22px;
+    height: 22px;
+    font-size: 10px;
+    padding: 2px 6px;
+    line-height: 18px;
+  }
+}
+
 /* 卡片模式下隐藏表格 */
 .is-mobile-card .el-table {
   display: none;
