@@ -353,6 +353,34 @@
     justify-content: center !important;
     vertical-align: middle !important;
   }
+  
+  // ========== 附件列表按钮对齐优化 ==========
+  .attachment-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+  }
+  
+  .attachment-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .attachment-actions .el-button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    vertical-align: middle !important;
+    margin: 0 !important;
+    padding: 6px 10px !important;
+    height: auto !important;
+    font-size: 12px !important;
+  }
 
   // ========== 值班安排移动端日历优化 ==========
   .el-calendar {
@@ -417,7 +445,8 @@
   .card-item-field[data-prop="roleId"],
   .card-item-field[data-prop="dictId"],
   .card-item-field[data-prop="menuId"],
-  .card-item-field[data-prop="userId"] {
+  .card-item-field[data-prop="userId"],
+  .card-item-field[data-prop="sortOrder"] {
     display: none !important;
   }
   

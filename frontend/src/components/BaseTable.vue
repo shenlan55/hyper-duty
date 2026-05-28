@@ -654,7 +654,7 @@ const mobileCardFields = computed(() => {
     return props.cardFields
   }
   // 自动从 columns 提取 max 5 个字段（排除 type='operation'、type='selection' 和 id/sort 类字段）
-  const excludeProps = ['sort', 'id', 'jobId', 'employeeId', 'deptId', 'roleId', 'dictId', 'menuId', 'userId']
+  const excludeProps = ['sort', 'id', 'jobId', 'employeeId', 'deptId', 'roleId', 'dictId', 'menuId', 'userId', 'sortOrder']
   return props.columns
     .filter(c => c && c.prop && !c.type && !excludeProps.includes(c.prop) && !c.prop.toLowerCase().endsWith('id'))
     .slice(0, 5)
