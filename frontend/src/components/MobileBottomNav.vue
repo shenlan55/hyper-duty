@@ -24,7 +24,7 @@ const router = useRouter()
 // 底部Tab配置
 const tabs = [
   { path: '/dashboard', label: '首页', icon: HomeFilled },
-  { path: '/duty/schedule', label: '值班', icon: Clock },
+  { path: '/duty/assignment', label: '值班', icon: Clock },
   { path: '/project/my-task', label: '任务', icon: List },
   { path: '/workflow/todo-task', label: '待办', icon: CircleCheck }
 ]
