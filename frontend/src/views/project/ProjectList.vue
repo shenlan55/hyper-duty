@@ -35,6 +35,7 @@
         :data="tableData"
         :columns="columns"
         :loading="loading"
+        card-title-field="projectName"
         :pagination="{
           currentPage: pagination.currentPage,
           pageSize: pagination.pageSize,

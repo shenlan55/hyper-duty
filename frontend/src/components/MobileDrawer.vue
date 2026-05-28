@@ -13,11 +13,6 @@
               class="drawer-menu"
               @select="handleSelect"
             >
-              <el-menu-item index="/dashboard">
-                <el-icon><HomeFilled /></el-icon>
-                <span>首页</span>
-              </el-menu-item>
-
               <template v-for="menu in menus" :key="menu.id">
                 <el-sub-menu v-if="menu.children && menu.children.length > 0" :index="menu.id">
                   <template #title>
