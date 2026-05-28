@@ -194,7 +194,8 @@
         <div
           v-for="field in mobileCardFields"
           :key="field.prop || field.label"
-          class="card-item-row"
+          class="card-item-row card-item-field"
+          :data-prop="field.prop"
         >
           <span class="card-item-label">{{ field.label }}</span>
           <span class="card-item-value">
@@ -652,9 +653,10 @@ const mobileCardFields = computed(() => {
   if (props.cardFields && props.cardFields.length > 0) {
     return props.cardFields
   }
-  // 自动从 columns 提取 max 5 个字段（排除 type='operation' 和 type='selection'）
+  // 自动从 columns 提取 max 5 个字段（排除 type='operation'、type='selection' 和 id/sort 类字段）
+  const excludeProps = ['sort', 'id', 'jobId', 'employeeId', 'deptId', 'roleId', 'dictId', 'menuId', 'userId']
   return props.columns
-    .filter(c => c && c.prop && !c.type)
+    .filter(c => c && c.prop && !c.type && !excludeProps.includes(c.prop) && !c.prop.toLowerCase().endsWith('id'))
     .slice(0, 5)
     .map(c => ({ prop: c.prop, label: c.label }))
 })
@@ -662,9 +664,30 @@ const mobileCardFields = computed(() => {
 // 获取卡片标题
 function getCardTitle(row) {
   if (props.cardTitleField && row) return row[props.cardTitleField]
-  // 默认取第一个字段的值
-  const firstField = mobileCardFields.value[0]
-  if (firstField && row) return row[firstField.prop]
+  // 默认取第一个合适的字段值（跳过 id, sort, 等看起来像序号的字段）
+  const titlePriorityList = [
+    // 优先找名称类字段
+    'name', 'title', 'jobName', 'employeeName', 'deptName', 
+    'userName', 'roleName', 'dictName', 'menuName',
+    // 然后找编码类
+    'code', 'jobCode', 'employeeCode',
+    // 最后找其他字段但排除序号
+  ]
+  // 先从优先级列表找
+  for (const prop of titlePriorityList) {
+    const field = mobileCardFields.value.find(f => f.prop === prop)
+    if (field && row[field.prop]) {
+      return row[field.prop]
+    }
+  }
+  // 都没找到，就找第一个非 id/sort 的字段
+  const firstValidField = mobileCardFields.value.find(f => 
+    f.prop && f.prop !== 'sort' && f.prop !== 'id' && !f.prop.toLowerCase().endsWith('id')
+  )
+  if (firstValidField && row) return row[firstValidField.prop]
+  // 实在找不到再用 id
+  const idField = mobileCardFields.value.find(f => f.prop === 'id')
+  if (idField && row) return row[idField.prop]
   return ''
 }
 
@@ -813,12 +836,14 @@ function handleCardClick(row) {
   margin-bottom: 10px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
 }
 
 .mobile-card-item:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transform: scale(0.985);
+  background-color: #f8f9fb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .card-item-title {
