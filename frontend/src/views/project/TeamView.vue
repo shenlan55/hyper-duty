@@ -105,8 +105,8 @@
       <!-- 参与人列表 -->
       <div class="project-stakeholders" style="margin-bottom: 20px;">
         <h4 style="margin-bottom: 10px;">参与人</h4>
-        <div v-if="project && project.stakeholders && project.stakeholders.length > 0" class="stakeholders-container">
-          <el-tag v-for="(stakeholder, index) in project.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
+        <div v-if="currentTaskForUpdate && currentTaskForUpdate.stakeholders && currentTaskForUpdate.stakeholders.length > 0" class="stakeholders-container">
+          <el-tag v-for="(stakeholder, index) in currentTaskForUpdate.stakeholders" :key="index" style="margin-right: 8px; margin-bottom: 8px;">
             {{ stakeholder }}
           </el-tag>
         </div>
