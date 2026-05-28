@@ -192,6 +192,60 @@ data.value = data || [];
 - 提供清晰的错误消息
 - 处理表单提交状态
 
+#### 4. 事件处理与防抖
+**事件处理**：
+- 使用 Vue 事件修饰符控制事件行为：
+  - `.prevent`：阻止默认行为
+  - `.stop`：阻止事件冒泡
+  - `.native`：监听组件根元素原生事件
+- 对于弹窗表单，在 el-dialog、el-form、el-input 多个层面拦截回车键事件，防止误操作关闭弹窗或触发默认提交
+
+**防抖机制**：
+- 使用状态变量防止重复提交（如 `isSubmitting`、`isVerifying`）
+- 在 `try-finally` 块中确保状态变量被正确重置
+- 避免在异步操作完成前允许重复触发
+
+**代码示例**：
+```vue
+<template>
+  <!-- 弹窗层面拦截回车键 -->
+  <el-dialog @keyup.enter.prevent.stop>
+    <!-- 表单层面拦截回车键和默认提交 -->
+    <el-form @submit.prevent @keyup.enter.prevent.stop>
+      <!-- 输入框层面拦截回车键 -->
+      <el-input 
+        @keydown.enter.prevent.stop="handleVerifyCode"
+        @keyup.enter.prevent.stop="handleVerifyCode"
+      />
+    </el-form>
+  </el-dialog>
+</template>
+
+<script setup>
+const isSubmitting = ref(false)
+
+const handleSubmit = async () => {
+  if (isSubmitting.value) return  // 防抖检查
+  try {
+    isSubmitting.value = true
+    // 执行提交逻辑
+  } finally {
+    isSubmitting.value = false  // 确保状态重置
+  }
+}
+</script>
+```
+
+**常见问题及解决方案**：
+1. **问题**：在验证码弹窗按回车直接关闭
+   **解决**：在 el-dialog、el-form、el-input 同时使用 `@keyup.enter.prevent.stop`
+
+2. **问题**：一次回车触发两次请求
+   **解决**：移除外层 el-form 的重复事件监听，只在输入框层面处理
+
+3. **问题**：用户快速多次点击提交按钮
+   **解决**：使用防抖状态变量防止重复请求
+
 #### 4. 状态管理
 使用 Pinia 进行全局状态：
 - 保持组件尽可能无状态

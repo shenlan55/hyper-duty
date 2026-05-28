@@ -49,12 +49,15 @@
       width="400px"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
+      @keyup.enter.prevent.stop
     >
       <el-form
         ref="codeFormRef"
         :model="codeForm"
         :rules="codeRules"
         label-position="top"
+        @submit.prevent
+        @keyup.enter.prevent.stop="handleVerifyCode"
       >
         <el-alert
           :title="`验证码已发送至 ${maskedEmail}`"
@@ -69,6 +72,8 @@
               placeholder="请输入验证码"
               prefix-icon="Key"
               maxlength="6"
+              @keyup.enter.prevent.stop="handleVerifyCode"
+              @keydown.enter.prevent.stop="handleVerifyCode"
             />
             <el-button
               type="primary"
@@ -152,14 +157,20 @@ const checkMailConfig = async () => {
   }
 }
 
+const isSubmitting = ref(false)
+
 const handleSubmit = async () => {
+  if (codeDialogVisible.value || isSubmitting.value) return
   try {
+    isSubmitting.value = true
     await loginFormRef.value.validate()
     await doLogin()
   } catch (error) {
     if (error !== false) {
       console.error('操作失败:', error)
     }
+  } finally {
+    isSubmitting.value = false
   }
 }
 
@@ -193,14 +204,20 @@ const startCountdown = () => {
   }, 1000)
 }
 
+const isVerifying = ref(false)
+
 const handleVerifyCode = async () => {
+  if (isVerifying.value) return
   try {
+    isVerifying.value = true
     await codeFormRef.value.validate()
     await doLogin(codeForm.code)
   } catch (error) {
     if (error !== false) {
       console.error('验证失败:', error)
     }
+  } finally {
+    isVerifying.value = false
   }
 }
 
