@@ -120,18 +120,25 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
         List<DutyRecord> authorizedRecords = allPendingRecords.stream()
                 .filter(record -> {
                     try {
-                        // 根据assignmentId查询对应的值班安排
-                        DutyAssignment assignment = dutyAssignmentService.getById(record.getAssignmentId());
-                        if (assignment != null) {
-                            // 根据值班安排的scheduleId查询对应的值班表
-                            Long scheduleId = assignment.getScheduleId();
-                            if (scheduleId != null) {
-                                // 查询该值班表的值班长列表
-                                List<Long> leaderIds = dutyScheduleService.getLeaderIdsByScheduleId(scheduleId);
-                                // 检查当前用户是否是值班长
-                                boolean isLeader = leaderIds.contains(employeeId);
-                                return isLeader;
+                        Long scheduleId = null;
+                        
+                        // 优先使用 record 中的 scheduleId
+                        if (record.getScheduleId() != null) {
+                            scheduleId = record.getScheduleId();
+                        } else if (record.getAssignmentId() != null) {
+                            // 根据 assignmentId 查询对应的值班安排
+                            DutyAssignment assignment = dutyAssignmentService.getById(record.getAssignmentId());
+                            if (assignment != null) {
+                                scheduleId = assignment.getScheduleId();
                             }
+                        }
+                        
+                        if (scheduleId != null) {
+                            // 查询该值班表的值班长列表
+                            List<Long> leaderIds = dutyScheduleService.getLeaderIdsByScheduleId(scheduleId);
+                            // 检查当前用户是否是值班长
+                            boolean isLeader = leaderIds.contains(employeeId);
+                            return isLeader;
                         }
                         return false;
                     } catch (Exception e) {
@@ -188,12 +195,14 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
             queryWrapper.eq(DutyRecord::getEmployeeId, employeeId);
         }
         
-        // 值班表ID筛选（需要关联查询）
+        // 值班表ID筛选（优先使用新添加的 schedule_id 字段）
         if (scheduleId != null) {
-            // 这里需要使用子查询，因为DutyRecord表中没有直接的scheduleId字段
-            // 而是通过assignmentId关联到DutyAssignment表，再关联到scheduleId
-            queryWrapper.inSql(DutyRecord::getAssignmentId, 
-                "SELECT id FROM duty_assignment WHERE schedule_id = " + scheduleId);
+            queryWrapper.and(wrapper -> wrapper
+                .eq(DutyRecord::getScheduleId, scheduleId)
+                .or()
+                .inSql(DutyRecord::getAssignmentId, 
+                    "SELECT id FROM duty_assignment WHERE schedule_id = " + scheduleId)
+            );
         }
         
         // 关键词搜索
@@ -203,10 +212,14 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
                 .or().like(DutyRecord::getCheckOutRemark, keyword);
         }
         
-        // 值班日期筛选（需要关联查询）
+        // 值班日期筛选（优先使用新添加的 duty_date 字段）
         if (date != null && !date.isEmpty()) {
-            queryWrapper.inSql(DutyRecord::getAssignmentId, 
-                "SELECT id FROM duty_assignment WHERE duty_date = '" + date + "'");
+            queryWrapper.and(wrapper -> wrapper
+                .eq(DutyRecord::getDutyDate, date)
+                .or()
+                .inSql(DutyRecord::getAssignmentId, 
+                    "SELECT id FROM duty_assignment WHERE duty_date = '" + date + "'")
+            );
         }
         
         // 按创建时间倒序排序

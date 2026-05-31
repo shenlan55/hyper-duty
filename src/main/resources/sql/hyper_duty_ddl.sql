@@ -471,7 +471,10 @@ ALTER SEQUENCE public.duty_holiday_id_seq OWNED BY public.duty_holiday.id;
 
 CREATE TABLE public.duty_record (
     id bigint NOT NULL,
-    assignment_id bigint NOT NULL,
+    assignment_id bigint,
+    schedule_id bigint,
+    duty_date date,
+    duty_shift integer,
     employee_id bigint NOT NULL,
     check_in_time timestamp without time zone,
     check_out_time timestamp without time zone,
@@ -515,6 +518,33 @@ COMMENT ON COLUMN public.duty_record.id IS '值班记录ID';
 --
 
 COMMENT ON COLUMN public.duty_record.assignment_id IS '关联值班安排ID';
+
+
+--
+-- TOC entry 4118 (class 0 OID 0)
+-- Dependencies: 267
+-- Name: COLUMN duty_record.schedule_id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.duty_record.schedule_id IS '值班表ID';
+
+
+--
+-- TOC entry 4119 (class 0 OID 0)
+-- Dependencies: 267
+-- Name: COLUMN duty_record.duty_date; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.duty_record.duty_date IS '值班日期';
+
+
+--
+-- TOC entry 4120 (class 0 OID 0)
+-- Dependencies: 267
+-- Name: COLUMN duty_record.duty_shift; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.duty_record.duty_shift IS '班次';
 
 
 --
@@ -5432,6 +5462,22 @@ ALTER TABLE ONLY public.sys_user_role
 --
 
 CREATE INDEX assignment_id ON public.duty_record USING btree (assignment_id);
+
+
+--
+-- TOC entry 3772 (class 1259 OID 34661)
+-- Name: idx_duty_record_schedule_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_duty_record_schedule_id ON public.duty_record USING btree (schedule_id);
+
+
+--
+-- TOC entry 3773 (class 1259 OID 34662)
+-- Name: idx_duty_record_duty_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_duty_record_duty_date ON public.duty_record USING btree (duty_date);
 
 
 --

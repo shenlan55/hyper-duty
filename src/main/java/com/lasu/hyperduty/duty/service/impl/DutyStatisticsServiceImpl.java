@@ -244,18 +244,21 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                     }
                 }
                 
-                // 统计当月的加班时长（支持通过 assignmentId 获取日期）
+                // 统计当月的加班时长（支持通过 dutyDate 或 assignmentId 获取日期）
                 if (record.getOvertimeHours() != null) {
                     LocalDate recordDate = null;
                     
-                    if (record.getAssignmentId() != null) {
+                    // 优先使用 record 中的 dutyDate 字段
+                    if (record.getDutyDate() != null) {
+                        recordDate = record.getDutyDate();
+                    } else if (record.getAssignmentId() != null) {
+                        // 如果没有 dutyDate，则通过 assignmentId 获取
                         DutyAssignment assignment = assignmentMap.get(record.getAssignmentId());
                         if (assignment != null && assignment.getDutyDate() != null) {
                             recordDate = assignment.getDutyDate();
                         }
-                    }
-                    
-                    if (recordDate == null && record.getCheckInTime() != null) {
+                    } else if (record.getCheckInTime() != null) {
+                        // 如果前两种都没有，则通过签到时间获取
                         recordDate = record.getCheckInTime().toLocalDate();
                     }
                     
@@ -355,17 +358,18 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                         return false;
                     }
                     
-                    // 获取日期（优先通过 assignmentId 从 dutyAssignment 获取，其次通过 checkInTime）
+                    // 获取日期（优先通过 dutyDate，其次通过 assignmentId 从 dutyAssignment 获取，最后通过 checkInTime）
                     LocalDate recordDate = null;
                     
-                    if (r.getAssignmentId() != null) {
+                    // 优先使用 record 中的 dutyDate 字段
+                    if (r.getDutyDate() != null) {
+                        recordDate = r.getDutyDate();
+                    } else if (r.getAssignmentId() != null) {
                         DutyAssignment assignment = assignmentMap.get(r.getAssignmentId());
                         if (assignment != null && assignment.getDutyDate() != null) {
                             recordDate = assignment.getDutyDate();
                         }
-                    }
-                    
-                    if (recordDate == null && r.getCheckInTime() != null) {
+                    } else if (r.getCheckInTime() != null) {
                         recordDate = r.getCheckInTime().toLocalDate();
                     }
                     

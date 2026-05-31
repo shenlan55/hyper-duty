@@ -5,11 +5,9 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lasu.hyperduty.duty.entity.DutyRecord;
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Data;
-
-
-
 
 
 
@@ -35,6 +33,21 @@ public class DutyRecord implements Serializable {
      * 值班安排ID
      */
     private Long assignmentId;
+    
+    /**
+     * 值班表ID
+     */
+    private Long scheduleId;
+    
+    /**
+     * 值班日期
+     */
+    private LocalDate dutyDate;
+    
+    /**
+     * 班次
+     */
+    private Integer dutyShift;
     
     /**
      * 员工ID
