@@ -1352,6 +1352,7 @@ CREATE TABLE public.duty_shift_config (
     end_time time without time zone NOT NULL,
     duration_hours numeric(4,2) NOT NULL,
     break_hours numeric(4,2) DEFAULT 0.00,
+    overtime_hours numeric(10,2),
     rest_day_rule character varying(100) DEFAULT NULL::character varying,
     is_overtime_shift smallint DEFAULT '0'::smallint,
     status smallint DEFAULT '1'::smallint,
@@ -1448,6 +1449,15 @@ COMMENT ON COLUMN public.duty_shift_config.break_hours IS '休息时长(小时)'
 
 --
 -- TOC entry 4197 (class 0 OID 0)
+-- Dependencies: 233
+-- Name: COLUMN duty_shift_config.overtime_hours; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.duty_shift_config.overtime_hours IS '加班时长(小时)';
+
+
+--
+-- TOC entry 4198 (class 0 OID 0)
 -- Dependencies: 233
 -- Name: COLUMN duty_shift_config.rest_day_rule; Type: COMMENT; Schema: public; Owner: postgres
 --

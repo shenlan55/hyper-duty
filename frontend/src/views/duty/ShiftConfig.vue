@@ -162,13 +162,17 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="休息时长(小时)" prop="breakHours">
+            <el-form-item 
+              v-if="form.isOvertimeShift === 1" 
+              label="加班时长(小时)" 
+              prop="overtimeHours"
+            >
               <el-input-number
-                v-model="form.breakHours"
+                v-model="form.overtimeHours"
                 :min="0"
-                :max="8"
+                :max="24"
                 :step="0.5"
-                placeholder="请输入休息时长"
+                placeholder="请输入加班时长"
                 style="width: 100%"
               />
             </el-form-item>
@@ -278,6 +282,7 @@ const form = reactive({
   isCrossDay: false,
   durationHours: 8,
   breakHours: 0,
+  overtimeHours: 0,
   isOvertimeShift: 0,
   status: 1,
   sort: 0,
@@ -293,7 +298,7 @@ const columns = [
   { prop: 'startTime', label: '上班时间', width: '120' },
   { prop: 'endTime', label: '下班时间', width: '120' },
   { prop: 'durationHours', label: '时长(小时)', width: '120' },
-  { prop: 'breakHours', label: '休息时长(小时)', width: '140' },
+  { prop: 'overtimeHours', label: '加班时长(小时)', width: '140' },
   { prop: 'isOvertimeShift', label: '是否加班班次', width: '120' },
   { prop: 'status', label: '状态', width: '100' },
   { prop: 'remark', label: '备注', minWidth: '200' },
@@ -399,6 +404,7 @@ const resetForm = () => {
     isCrossDay: false,
     durationHours: 8,
     breakHours: 0,
+    overtimeHours: 0,
     isOvertimeShift: 0,
     status: 1,
     sort: 0,
@@ -497,7 +503,7 @@ const handleExport = () => {
       '上班时间': item.startTime,
       '下班时间': item.endTime + (item.isCrossDay ? ' (次日)' : ''),
       '时长(小时)': item.durationHours,
-      '休息时长(小时)': item.breakHours,
+      '加班时长(小时)': item.overtimeHours,
       '是否加班班次': item.isOvertimeShift === 1 ? '是' : '否',
       '状态': item.status === 1 ? '启用' : '禁用',
       '备注': item.remark

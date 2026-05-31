@@ -43,6 +43,8 @@ public class DutyShiftConfig implements Serializable {
 
     private BigDecimal breakHours;
 
+    private BigDecimal overtimeHours;
+
     private String restDayRule;
 
     private Integer isOvertimeShift;

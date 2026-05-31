@@ -113,6 +113,7 @@ public class DutyShiftConfigController {
         }
         shiftConfig.setRestDayRule((String) shiftConfigMap.get("restDayRule"));
         shiftConfig.setIsOvertimeShift((Integer) shiftConfigMap.get("isOvertimeShift"));
+        shiftConfig.setOvertimeHours(convertToBigDecimal(shiftConfigMap.get("overtimeHours")));
         shiftConfig.setStatus((Integer) shiftConfigMap.get("status"));
         shiftConfig.setSort((Integer) shiftConfigMap.get("sort"));
         shiftConfig.setRemark((String) shiftConfigMap.get("remark"));
@@ -188,6 +189,7 @@ public class DutyShiftConfigController {
         }
         shiftConfig.setRestDayRule((String) shiftConfigMap.get("restDayRule"));
         shiftConfig.setIsOvertimeShift((Integer) shiftConfigMap.get("isOvertimeShift"));
+        shiftConfig.setOvertimeHours(convertToBigDecimal(shiftConfigMap.get("overtimeHours")));
         shiftConfig.setStatus((Integer) shiftConfigMap.get("status"));
         shiftConfig.setSort((Integer) shiftConfigMap.get("sort"));
         shiftConfig.setRemark((String) shiftConfigMap.get("remark"));
@@ -237,6 +239,28 @@ public class DutyShiftConfigController {
     public ResponseResult<Boolean> checkIfMutex(@RequestParam Long shiftConfigId1, @RequestParam Long shiftConfigId2) {
         boolean isMutex = dutyShiftMutexService.checkIfMutex(shiftConfigId1, shiftConfigId2);
         return ResponseResult.success(isMutex);
+    }
+
+    private BigDecimal convertToBigDecimal(Object obj) {
+        if (obj == null) {
+            return null;
+        }
+        if (obj instanceof BigDecimal) {
+            return (BigDecimal) obj;
+        } else if (obj instanceof Integer) {
+            return BigDecimal.valueOf((Integer) obj);
+        } else if (obj instanceof Double) {
+            return BigDecimal.valueOf((Double) obj);
+        } else if (obj instanceof Float) {
+            return BigDecimal.valueOf((Float) obj);
+        } else if (obj instanceof String) {
+            try {
+                return new BigDecimal((String) obj);
+            } catch (NumberFormatException e) {
+                return BigDecimal.ZERO;
+            }
+        }
+        return BigDecimal.ZERO;
     }
 
 }
