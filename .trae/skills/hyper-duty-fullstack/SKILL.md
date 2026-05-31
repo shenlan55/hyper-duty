@@ -1,6 +1,6 @@
 ---
 name: "hyper-duty-fullstack"
-description: "Hyper Duty 全栈开发专家，涵盖前端、后端和 DevOps，使用 Spring Boot 3、Vue 3、MyBatis、Element Plus 等技术栈。"
+description: "Hyper Duty 全栈开发专家，涵盖前端、后端和 DevOps，使用 Spring Boot 3、Vue 3、MyBatis、Element Plus 等技术栈。当用户提到全栈开发、前端、后端、API开发、数据库、Spring Boot、Vue、Element Plus、部署、构建等相关需求时，调用此技能。"
 ---
 
 # Hyper Duty 全栈开发专家

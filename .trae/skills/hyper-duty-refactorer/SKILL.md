@@ -1,6 +1,6 @@
 ---
 name: "hyper-duty-refactorer"
-description: "按照最佳实践重构 Hyper Duty 系统代码。优化后端（统一异常处理、DTO/VO、API 版本控制）和前端（组件拆分、常量管理）。提供详细的操作步骤和完整的代码示例。"
+description: "按照最佳实践重构 Hyper Duty 系统代码。优化后端（统一异常处理、DTO/VO、API 版本控制）和前端（组件拆分、常量管理）。提供详细的操作步骤和完整的代码示例。当用户提到重构、代码优化、组件拆分、DTO/VO、API版本控制、代码重构、性能优化等相关需求时，调用此技能。"
 ---
 
 # Hyper Duty 代码重构专家
