@@ -136,7 +136,7 @@
         @export="handleEmployeeExport"
       >
         <template #yearMonth="{ row }">
-          {{ row.year }}年{{ row.month }}月
+          {{ row.year }}年{{ row.month ? row.month + '月' : '' }}
         </template>
         <template #completionRate="{ row }">
           {{ getCompletionRate(row) }}%
@@ -176,7 +176,7 @@ const queryType = ref('month')
 // 默认查询当前月份
 const currentDate = new Date()
 const formattedMonth = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0')
-const formattedYear = currentDate.getFullYear()
+const formattedYear = String(currentDate.getFullYear())
 const selectedDate = ref(formattedMonth)
 
 // 员工统计表格配置
@@ -436,7 +436,7 @@ const handleEmployeeExport = (exportParams) => {
     // 准备导出数据
     const exportData = employeeStatistics.value.map(item => ({
       '员工姓名': item.employeeName,
-      '年月': `${item.year}年${item.month}月`,
+      '年月': `${item.year}年${item.month ? item.month + '月' : ''}`,
       '计划工时(小时)': item.plannedHours,
       '实际工时(小时)': item.actualHours,
       '实际天数': item.actualDays,

@@ -774,8 +774,7 @@ const fetchCompensatoryHours = async () => {
     try {
       const now = new Date()
       const year = now.getFullYear()
-      const month = now.getMonth() + 1
-      const data = await getEmployeeStatistics(year, month)
+      const data = await getEmployeeStatistics(year, null) // 只传年份，不传月份，查询全年
       const employeeStat = data.find(stat => stat.employeeId === userStore.employeeId)
       if (employeeStat) {
         compensatoryHours.value = employeeStat.compensatoryHours || 0
