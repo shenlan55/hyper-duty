@@ -493,12 +493,16 @@ const getApprovalStatusColor = (status) => {
 }
 
 const getEmployeeName = (employeeId) => {
-  const employee = employeeList.value.find(e => e.id === employeeId)
+  if (!employeeId) return '未知'
+  const targetId = parseInt(employeeId) || 0
+  const employee = employeeList.value.find(e => parseInt(e.id) === targetId)
   return employee ? employee.employeeName : '未知'
 }
 
 const getApproverName = (approverId) => {
-  const employee = employeeList.value.find(e => e.id === approverId)
+  if (!approverId) return '未知'
+  const targetId = parseInt(approverId) || 0
+  const employee = employeeList.value.find(e => parseInt(e.id) === targetId)
   return employee ? employee.employeeName : '未知'
 }
 

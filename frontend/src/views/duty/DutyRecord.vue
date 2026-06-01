@@ -170,13 +170,14 @@
         :rules="createRules"
         label-position="top"
       >
-        <el-form-item label="值班表" prop="scheduleId" :disabled="createForm.id">
+        <el-form-item label="值班表" prop="scheduleId" :disabled="createForm.id || dialogMode === 'approval'">
           <el-select
             v-model="createForm.scheduleId"
             placeholder="请选择值班表"
             style="width: 100%"
             @change="handleScheduleChange"
             :loading="assignmentsLoading"
+            :disabled="createForm.id || dialogMode === 'approval'"
           >
             <el-option
               v-for="schedule in scheduleList"
@@ -186,22 +187,24 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="值班日期" prop="dutyDate" :disabled="createForm.id">
+        <el-form-item label="值班日期" prop="dutyDate" :disabled="createForm.id || dialogMode === 'approval'">
           <el-date-picker
             v-model="createForm.dutyDate"
             type="date"
             placeholder="选择值班日期"
             style="width: 100%"
             @change="handleDateChange"
+            :disabled="createForm.id || dialogMode === 'approval'"
           />
         </el-form-item>
-        <el-form-item label="班次" prop="dutyShift" :disabled="createForm.id">
+        <el-form-item label="班次" prop="dutyShift" :disabled="createForm.id || dialogMode === 'approval'">
           <el-select
             v-model="createForm.dutyShift"
             placeholder="请选择班次"
             style="width: 100%"
             @change="handleShiftChange"
             :loading="assignmentsLoading"
+            :disabled="createForm.id || dialogMode === 'approval'"
           >
             <el-option
               v-for="shift in availableShifts"
@@ -220,6 +223,16 @@
             :step="0.5"
             placeholder="请输入加班时长"
             style="width: 100%"
+            :disabled="dialogMode === 'approval'"
+          />
+        </el-form-item>
+        
+        <el-form-item label="加班原因" prop="remark">
+          <el-input
+            v-model="createForm.remark"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入加班原因"
             :disabled="dialogMode === 'approval'"
           />
         </el-form-item>
@@ -410,6 +423,7 @@ const recordColumns = [
   { prop: 'dutyShift', label: '班次', width: '100' },
   { prop: 'employeeId', label: '值班人员', minWidth: '150' },
   { prop: 'overtimeHours', label: '加班时长', width: '100' },
+  { prop: 'remark', label: '加班原因', minWidth: '200' },
   { prop: 'approvalStatus', label: '审批状态', width: '120' },
   { type: 'operation', label: '操作', width: '180', fixed: 'right' }
 ]
@@ -421,6 +435,7 @@ const approvalColumns = [
   { prop: 'dutyShift', label: '班次', width: '100' },
   { prop: 'employeeId', label: '值班人员', minWidth: '150' },
   { prop: 'overtimeHours', label: '加班时长', width: '100' },
+  { prop: 'remark', label: '加班原因', minWidth: '200' },
   { prop: 'approvalStatus', label: '审批状态', width: '120' },
   { type: 'operation', label: '操作', width: '160', fixed: 'right' }
 ]
@@ -551,6 +566,7 @@ const createForm = reactive({
   dutyShift: null,
   isOvertime: true, // 默认是加班
   overtimeHours: 0,
+  remark: '',
   approvalStatus: 'pending'
 })
 
@@ -570,6 +586,9 @@ const createRules = {
   overtimeHours: [
     { required: true, message: '请输入加班时长', trigger: 'blur' }
   ],
+  remark: [
+    { required: true, message: '请输入加班原因', trigger: 'blur' }
+  ],
   approvalStatus: [
     { required: true, message: '请选择审批状态', trigger: 'change', validator: (rule, value, callback) => {
       if (dialogMode.value === 'approval' && !value) {
@@ -585,7 +604,9 @@ const createRules = {
 
 // 获取员工姓名
 const getEmployeeName = (employeeId) => {
-  const employee = employeeList.value.find(e => e.id === employeeId)
+  if (!employeeId) return '未知人员'
+  const targetId = parseInt(employeeId) || 0
+  const employee = employeeList.value.find(e => parseInt(e.id) === targetId)
   return employee ? employee.employeeName : '未知人员'
 }
 
@@ -792,6 +813,7 @@ const openEditDialog = async (record) => {
   createForm.dutyDate = record.dutyDate
   createForm.dutyShift = record.dutyShift
   createForm.overtimeHours = record.overtimeHours
+  createForm.remark = record.remark || ''
   
   // 检查是否是审批模式（值班长且在审批标签页）
   if (isDutyManager.value && activeTab.value === 'approval') {
@@ -1394,6 +1416,7 @@ const handleCreate = async () => {
           assignmentId: assignment.id,
           employeeId: userStore.employeeId,
           overtimeHours: createForm.overtimeHours,
+          remark: createForm.remark,
           approvalStatus: 'pending' // 新建时默认待审批
         }
       } else {
@@ -1404,6 +1427,7 @@ const handleCreate = async () => {
           dutyShift: parseInt(createForm.dutyShift) || 0,
           employeeId: userStore.employeeId,
           overtimeHours: createForm.overtimeHours,
+          remark: createForm.remark,
           approvalStatus: 'pending' // 新建时默认待审批
         }
       }
@@ -1435,7 +1459,8 @@ const handleCreate = async () => {
       // 编辑模式
       const recordData = {
         id: createForm.id,
-        overtimeHours: createForm.overtimeHours
+        overtimeHours: createForm.overtimeHours,
+        remark: createForm.remark
       }
       
       await updateRecord(recordData)
@@ -1527,6 +1552,7 @@ const handleExport = async () => {
         '班次': getShiftName(record.dutyShift),
         '值班人员': getEmployeeName(record.employeeId),
         '加班时长': `${record.overtimeHours || 0}小时`,
+        '加班原因': record.remark || '',
         '审批状态': getApprovalStatusText(record.approvalStatus) || '待审批'
       }
     })
@@ -1564,6 +1590,7 @@ const handleApprovalExport = async () => {
         '班次': getShiftName(record.dutyShift),
         '值班人员': getEmployeeName(record.employeeId),
         '加班时长': `${record.overtimeHours || 0}小时`,
+        '加班原因': record.remark || '',
         '审批状态': getApprovalStatusText(record.approvalStatus) || '待审批'
       }
     })

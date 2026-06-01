@@ -484,6 +484,7 @@ CREATE TABLE public.duty_record (
     overtime_hours numeric(5,2) DEFAULT 0.00,
     approval_status character varying(20) DEFAULT 'pending'::character varying,
     manager_remark character varying(200) DEFAULT NULL::character varying,
+    remark text,
     create_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     update_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     substitute_employee_id bigint,
@@ -630,6 +631,16 @@ COMMENT ON COLUMN public.duty_record.manager_remark IS '经理备注';
 
 --
 -- TOC entry 4127 (class 0 OID 0)
+-- Dependencies: 267
+-- Name: COLUMN duty_record.remark; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+
+COMMENT ON COLUMN public.duty_record.remark IS '加班原因';
+
+
+--
+-- TOC entry 4128 (class 0 OID 0)
 -- Dependencies: 267
 -- Name: COLUMN duty_record.create_time; Type: COMMENT; Schema: public; Owner: postgres
 --

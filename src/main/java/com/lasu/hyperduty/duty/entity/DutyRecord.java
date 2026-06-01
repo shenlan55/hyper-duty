@@ -85,6 +85,11 @@ public class DutyRecord implements Serializable {
     private Integer overtimeHours;
     
     /**
+     * 加班原因
+     */
+    private String remark;
+    
+    /**
      * 审批状态：待审批，已批准，已拒绝
      */
     private String approvalStatus;
