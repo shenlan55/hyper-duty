@@ -88,6 +88,28 @@ data.value = data || [];
 - **缓存一致性**：创建/更新/删除操作后始终清除相关缓存
 - **缓存监控**：定期检查 Redis 缓存使用情况避免膨胀
 
+### 7. 员工姓名获取规范（重要！）
+- **绝对禁止**使用 `getEmployeeList(1, 1000)` 或类似方式获取所有员工
+- **优先策略**：
+  1. 先检查 `userStore` 或 `localStorage` 获取当前登录用户的 employee_id 和 employee_name
+  2. 如果是当前用户，直接返回 userStore 中的姓名
+  3. 如果不是当前用户，再从 employeeList 中查找（保持正常的分页查询）
+- **代码示例**：
+  ```javascript
+  const getEmployeeName = (employeeId) => {
+    if (!employeeId) return '未知人员';
+    const targetId = parseInt(employeeId) || 0;
+    // 优先检查是否是当前登录用户
+    if (targetId === userStore.employeeId && userStore.employeeName) {
+      return userStore.employeeName;
+    }
+    // 再从列表中查找
+    const employee = employeeList.value.find(e => parseInt(e.id) === targetId);
+    return employee ? employee.employeeName : '未知人员';
+  };
+  ```
+- **适用场景**：DutyRecord.vue、LeaveRequest.vue、SwapRequest.vue 等所有需要显示员工姓名的地方
+
 ## 常见问题和解决方案
 
 1. **数据显示问题**：确保 API 调用遵循简化模式，不检查 `response.code`

@@ -606,6 +606,10 @@ const createRules = {
 const getEmployeeName = (employeeId) => {
   if (!employeeId) return '未知人员'
   const targetId = parseInt(employeeId) || 0
+  // 优先检查是否是当前登录用户
+  if (targetId === userStore.employeeId && userStore.employeeName) {
+    return userStore.employeeName
+  }
   const employee = employeeList.value.find(e => parseInt(e.id) === targetId)
   return employee ? employee.employeeName : '未知人员'
 }

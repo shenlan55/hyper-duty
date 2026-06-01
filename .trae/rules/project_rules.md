@@ -109,11 +109,31 @@ COMMENT ON COLUMN public.wf_category.id IS '主键ID';
 CREATE INDEX IF NOT EXISTS idx_category_code ON public.wf_category(category_code);
 ```
 
-## 🎯 技能调用规范
+## 🎯 技能调用规范（强制！）
 
-**重要提示**：遇到任何开发问题，请首先调用 `hyper-duty-navigator` 技能，它会告诉你：
+**超级重要，强制执行！** 遇到任何开发任务或问题，必须 **首先** 调用 `hyper-duty-navigator` 技能，它会告诉你：
 - 该调用哪个具体技能
 - 相关的开发规范
 - 问题排查流程
 
 **不要在项目规则中查找开发规范**，所有具体规范都已分散到各个技能中。
+
+### 为什么必须先调用技能？
+1. **有现成的规范**：每个模块都有专属技能，里面有完整的开发规范
+2. **避免踩坑**：技能中有很多已经踩过的坑的解决方案
+3. **保证一致性**：按照技能规范开发，代码风格和架构保持一致
+4. **节约时间**：技能中有现成的最佳实践，不用从零开始
+
+### 什么时候必须调用技能？
+- 新建功能时 → 先调用对应模块的技能
+- 修改现有代码时 → 先调用对应模块的技能
+- 排查问题时 → 先调用 hyper-duty-navigator
+- 更新文档时 → 先调用 hyper-duty-documentation
+- 重构代码时 → 先调用 hyper-duty-refactorer
+
+### 技能调用流程
+```
+用户需求 → hyper-duty-navigator（必须！）→ 对应模块技能 → 开始开发
+         ↑
+       必须先到这里！
+```

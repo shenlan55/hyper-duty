@@ -533,14 +533,23 @@ const getApprovalStatusName = (status) => {
 const getApprovalStatusColor = (status) => {
   return approvalStatusColorMap[status] || 'info'
 }
-
+ 
 const getEmployeeName = (employeeId) => {
-  const employee = employeeList.value.find(e => e.id === employeeId)
+  if (!employeeId) return '未知'
+  const targetId = parseInt(employeeId) || 0
+  // 优先检查是否是当前登录用户
+  const currentUser = getUserInfo()
+  if (currentUser && targetId === currentUser.employeeId && currentUser.employeeName) {
+    return currentUser.employeeName
+  }
+  const employee = employeeList.value.find(e => parseInt(e.id) === targetId)
   return employee ? employee.employeeName : '未知'
 }
 
 const getScheduleName = (scheduleId) => {
-  const schedule = scheduleList.value.find(s => s.id === scheduleId)
+  if (!scheduleId) return '未知'
+  const targetId = parseInt(scheduleId) || 0
+  const schedule = scheduleList.value.find(s => parseInt(s.id) === targetId)
   return schedule ? schedule.scheduleName : '未知'
 }
 
