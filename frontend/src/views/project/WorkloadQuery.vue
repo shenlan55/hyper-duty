@@ -268,7 +268,8 @@ const loadData = async () => {
       return flattened
     })
     pagination.total = data.total || 0
-    
+
+    // 只有当需要显示绑定列时才加载
     if (tableData.value.length > 0) {
       const firstRow = tableData.value.find(row => row.tableId)
       if (firstRow && firstRow.tableId !== currentTableId.value) {
@@ -402,10 +403,16 @@ const getProgressStatus = (progress) => {
   return 'exception'
 }
 
-onMounted(async () => {
-  loadProjectList()
-  loadEmployeeList()
-  await preloadBindColumns()
+onMounted(() => {
+  // 并行加载项目列表和员工列表
+  Promise.all([
+    loadProjectList(),
+    loadEmployeeList()
+  ]).catch(error => {
+    console.error('初始化数据加载失败', error)
+  })
+  
+  // 直接加载数据，不需要预加载绑定列
   loadData()
 })
 </script>

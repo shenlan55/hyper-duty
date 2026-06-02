@@ -2,11 +2,12 @@ package com.lasu.hyperduty.pm.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lasu.hyperduty.pm.entity.PmTask;
-import com.lasu.hyperduty.pm.mapper.PmTaskMapper;
-import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
+import java.util.Map;
 
 
 
@@ -191,4 +192,68 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "ORDER BY p.project_name, t.create_time DESC" +
             "</script>")
     List<PmTask> selectTasksByIds(@Param("taskIds") List<Long> taskIds);
+
+    /**
+     * 分页查询工作量数据
+     */
+    @Select("<script>" +
+            "SELECT DISTINCT t.id as task_id, t.*, p.project_name, e.employee_name as assignee_name, " +
+            "b.id as binding_id, b.table_id, b.row_id, b.order_no, b.title, b.create_time as bind_time " +
+            "FROM pm_task t " +
+            "LEFT JOIN pm_project p ON t.project_id = p.id " +
+            "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
+            "LEFT JOIN pm_task_custom_row b ON t.id = b.task_id " +
+            "<where>" +
+            "<if test='projectId != null'> AND t.project_id = #{projectId}</if>" +
+            "<if test='taskName != null and taskName != \"\"'> AND t.task_name LIKE CONCAT('%', #{taskName}, '%')</if>" +
+            "<if test='assigneeId != null'> AND t.assignee_id = #{assigneeId}</if>" +
+            "<if test='taskStartDate != null'> AND t.start_date &gt;= #{taskStartDate}</if>" +
+            "<if test='taskEndDate != null'> AND t.end_date &lt;= #{taskEndDate}</if>" +
+            "<if test='bindStartTime != null'> AND b.create_time &gt;= #{bindStartTime}</if>" +
+            "<if test='bindEndTime != null'> AND b.create_time &lt;= #{bindEndTime}</if>" +
+            "<if test='orderNo != null and orderNo != \"\"'> AND b.order_no LIKE CONCAT('%', #{orderNo}, '%')</if>" +
+            "<if test='title != null and title != \"\"'> AND b.title LIKE CONCAT('%', #{title}, '%')</if>" +
+            "</where>" +
+            "ORDER BY t.create_time DESC" +
+            "</script>")
+    List<Map<String, Object>> selectWorkloadPage(
+            @Param("projectId") Long projectId,
+            @Param("taskName") String taskName,
+            @Param("assigneeId") Long assigneeId,
+            @Param("taskStartDate") java.time.LocalDate taskStartDate,
+            @Param("taskEndDate") java.time.LocalDate taskEndDate,
+            @Param("bindStartTime") java.time.LocalDateTime bindStartTime,
+            @Param("bindEndTime") java.time.LocalDateTime bindEndTime,
+            @Param("orderNo") String orderNo,
+            @Param("title") String title);
+
+    /**
+     * 计算工作量查询总条数
+     */
+    @Select("<script>" +
+            "SELECT COUNT(DISTINCT CASE WHEN b.id IS NOT NULL THEN CONCAT(t.id::TEXT, '_', b.id::TEXT) ELSE t.id::TEXT END) " +
+            "FROM pm_task t " +
+            "LEFT JOIN pm_task_custom_row b ON t.id = b.task_id " +
+            "<where>" +
+            "<if test='projectId != null'> AND t.project_id = #{projectId}</if>" +
+            "<if test='taskName != null and taskName != \"\"'> AND t.task_name LIKE CONCAT('%', #{taskName}, '%')</if>" +
+            "<if test='assigneeId != null'> AND t.assignee_id = #{assigneeId}</if>" +
+            "<if test='taskStartDate != null'> AND t.start_date &gt;= #{taskStartDate}</if>" +
+            "<if test='taskEndDate != null'> AND t.end_date &lt;= #{taskEndDate}</if>" +
+            "<if test='bindStartTime != null'> AND b.create_time &gt;= #{bindStartTime}</if>" +
+            "<if test='bindEndTime != null'> AND b.create_time &lt;= #{bindEndTime}</if>" +
+            "<if test='orderNo != null and orderNo != \"\"'> AND b.order_no LIKE CONCAT('%', #{orderNo}, '%')</if>" +
+            "<if test='title != null and title != \"\"'> AND b.title LIKE CONCAT('%', #{title}, '%')</if>" +
+            "</where>" +
+            "</script>")
+    Long countWorkload(
+            @Param("projectId") Long projectId,
+            @Param("taskName") String taskName,
+            @Param("assigneeId") Long assigneeId,
+            @Param("taskStartDate") java.time.LocalDate taskStartDate,
+            @Param("taskEndDate") java.time.LocalDate taskEndDate,
+            @Param("bindStartTime") java.time.LocalDateTime bindStartTime,
+            @Param("bindEndTime") java.time.LocalDateTime bindEndTime,
+            @Param("orderNo") String orderNo,
+            @Param("title") String title);
 }

@@ -760,153 +760,127 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     public Page<WorkloadDTO> getWorkloadPage(Integer pageNum, Integer pageSize, Long projectId, String taskName, Long assigneeId, LocalDate taskStartDate, LocalDate taskEndDate, LocalDateTime bindStartTime, LocalDateTime bindEndTime, String orderNo, String title) {
         Page<WorkloadDTO> resultPage = new Page<>(pageNum, pageSize);
 
-        LambdaQueryWrapper<PmTask> taskWrapper = new LambdaQueryWrapper<>();
-        if (projectId != null) {
-            taskWrapper.eq(PmTask::getProjectId, projectId);
-        }
-        if (taskName != null && !taskName.isEmpty()) {
-            taskWrapper.like(PmTask::getTaskName, taskName);
-        }
-        if (assigneeId != null) {
-            taskWrapper.eq(PmTask::getAssigneeId, assigneeId);
-        }
-        if (taskStartDate != null) {
-            taskWrapper.ge(PmTask::getStartDate, taskStartDate);
-        }
-        if (taskEndDate != null) {
-            taskWrapper.le(PmTask::getEndDate, taskEndDate);
-        }
-        taskWrapper.orderByDesc(PmTask::getCreateTime);
+        // 1. 先查询总条数
+        Long total = baseMapper.countWorkload(projectId, taskName, assigneeId, taskStartDate, taskEndDate, bindStartTime, bindEndTime, orderNo, title);
+        resultPage.setTotal(total != null ? total : 0);
 
-        List<PmTask> allTasks = list(taskWrapper);
-
-        List<Long> taskIds = allTasks.stream().map(PmTask::getId).collect(Collectors.toList());
-
-        List<PmTaskCustomRow> allBindings = new ArrayList<>();
-        if (!taskIds.isEmpty()) {
-            LambdaQueryWrapper<PmTaskCustomRow> bindingWrapper = new LambdaQueryWrapper<>();
-            bindingWrapper.in(PmTaskCustomRow::getTaskId, taskIds);
-            if (bindStartTime != null) {
-                bindingWrapper.ge(PmTaskCustomRow::getCreateTime, bindStartTime);
-            }
-            if (bindEndTime != null) {
-                bindingWrapper.le(PmTaskCustomRow::getCreateTime, bindEndTime);
-            }
-            if (orderNo != null && !orderNo.isEmpty()) {
-                bindingWrapper.like(PmTaskCustomRow::getOrderNo, orderNo);
-            }
-            if (title != null && !title.isEmpty()) {
-                bindingWrapper.like(PmTaskCustomRow::getTitle, title);
-            }
-            allBindings = taskCustomRowMapper.selectList(bindingWrapper);
-        }
-
-        List<Long> projectIds = allTasks.stream().map(PmTask::getProjectId).distinct().collect(Collectors.toList());
-        Map<Long, PmProject> projectMap = new HashMap<>();
-        if (!projectIds.isEmpty()) {
-            List<PmProject> projects = projectMapper.selectBatchIds(projectIds);
-            projectMap = projects.stream().collect(Collectors.toMap(PmProject::getId, p -> p));
-        }
-
-        List<Long> employeeIds = allTasks.stream().map(PmTask::getAssigneeId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-        Map<Long, SysEmployee> employeeMap = new HashMap<>();
-        if (!employeeIds.isEmpty()) {
-            LambdaQueryWrapper<SysEmployee> employeeWrapper = new LambdaQueryWrapper<>();
-            employeeWrapper.in(SysEmployee::getId, employeeIds);
-            List<SysEmployee> employees = sysEmployeeMapper.selectList(employeeWrapper);
-            employeeMap = employees.stream().collect(Collectors.toMap(SysEmployee::getId, e -> e));
-        }
-
-        Map<Long, PmTask> taskMap = allTasks.stream().collect(Collectors.toMap(PmTask::getId, t -> t));
-
-        List<WorkloadDTO> workloadList = new ArrayList<>();
-
-        boolean hasBindingFilter = bindStartTime != null || bindEndTime != null 
-            || (orderNo != null && !orderNo.isEmpty()) 
-            || (title != null && !title.isEmpty());
-
-        if (hasBindingFilter) {
-            for (PmTaskCustomRow binding : allBindings) {
-                PmTask task = taskMap.get(binding.getTaskId());
-                if (task == null) continue;
-
-                WorkloadDTO dto = buildWorkloadDTO(task, projectMap, employeeMap, binding);
-                workloadList.add(dto);
-            }
-        } else {
-            for (PmTask task : allTasks) {
-                List<PmTaskCustomRow> taskBindings = allBindings.stream()
-                    .filter(b -> b.getTaskId().equals(task.getId()))
-                    .collect(Collectors.toList());
-
-                if (taskBindings.isEmpty()) {
-                    WorkloadDTO dto = buildWorkloadDTO(task, projectMap, employeeMap, null);
-                    workloadList.add(dto);
-                } else {
-                    for (PmTaskCustomRow binding : taskBindings) {
-                        WorkloadDTO dto = buildWorkloadDTO(task, projectMap, employeeMap, binding);
-                        workloadList.add(dto);
-                    }
-                }
-            }
-        }
-
-        int total = workloadList.size();
-        resultPage.setTotal(total);
-
-        int fromIndex = (pageNum - 1) * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, total);
-        if (fromIndex < total) {
-            resultPage.setRecords(workloadList.subList(fromIndex, toIndex));
-        } else {
+        if (total == null || total == 0) {
             resultPage.setRecords(new ArrayList<>());
+            return resultPage;
         }
 
+        // 2. 查询所有符合条件的数据
+        List<Map<String, Object>> rawData = baseMapper.selectWorkloadPage(projectId, taskName, assigneeId, taskStartDate, taskEndDate, bindStartTime, bindEndTime, orderNo, title);
+
+        // 3. 在内存中进行分页
+        int fromIndex = (pageNum - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, rawData.size());
+        
+        List<Map<String, Object>> pageData = fromIndex < rawData.size() 
+            ? rawData.subList(fromIndex, toIndex) 
+            : new ArrayList<>();
+
+        // 4. 批量收集需要查询的ID
+        List<Long> tableIds = new ArrayList<>();
+        List<Long> rowIds = new ArrayList<>();
+        
+        for (Map<String, Object> row : pageData) {
+            Object tableId = row.get("table_id");
+            Object rowId = row.get("row_id");
+            if (tableId != null) {
+                tableIds.add(((Number) tableId).longValue());
+            }
+            if (rowId != null) {
+                rowIds.add(((Number) rowId).longValue());
+            }
+        }
+
+        // 5. 批量查询 customTable 和 customTableRow
+        Map<Long, PmCustomTable> tableMap = new HashMap<>();
+        Map<Long, PmCustomTableRow> rowMap = new HashMap<>();
+        
+        if (!tableIds.isEmpty()) {
+            List<PmCustomTable> tables = customTableMapper.selectBatchIds(tableIds);
+            tableMap = tables.stream().collect(Collectors.toMap(PmCustomTable::getId, t -> t));
+        }
+        
+        if (!rowIds.isEmpty()) {
+            List<PmCustomTableRow> rows = customTableRowMapper.selectBatchIds(rowIds);
+            rowMap = rows.stream().collect(Collectors.toMap(PmCustomTableRow::getId, r -> r));
+        }
+
+        // 6. 构建结果对象
+        List<WorkloadDTO> workloadList = new ArrayList<>();
+        for (Map<String, Object> row : pageData) {
+            WorkloadDTO dto = buildWorkloadDTOFromMap(row, tableMap, rowMap);
+            workloadList.add(dto);
+        }
+
+        resultPage.setRecords(workloadList);
         return resultPage;
     }
 
-    private WorkloadDTO buildWorkloadDTO(PmTask task, Map<Long, PmProject> projectMap, Map<Long, SysEmployee> employeeMap, PmTaskCustomRow binding) {
+    /**
+     * 从Map构建WorkloadDTO
+     */
+    private WorkloadDTO buildWorkloadDTOFromMap(Map<String, Object> row, Map<Long, PmCustomTable> tableMap, Map<Long, PmCustomTableRow> rowMap) {
         WorkloadDTO dto = new WorkloadDTO();
-        if (binding != null) {
-            dto.setId(binding.getId());
-        } else {
-            dto.setId(task.getId());
-        }
-        dto.setProjectId(task.getProjectId());
-        dto.setTaskId(task.getId());
-        dto.setTaskName(task.getTaskName());
-        dto.setTaskStatus(task.getStatus());
-        dto.setTaskStatusText(getTaskStatusText(task.getStatus()));
-        dto.setStartDate(task.getStartDate());
-        dto.setEndDate(task.getEndDate());
-        dto.setProgress(task.getProgress());
-        dto.setAssigneeId(task.getAssigneeId());
 
-        PmProject project = projectMap.get(task.getProjectId());
-        if (project != null) {
-            dto.setProjectName(project.getProjectName());
+        // 设置ID
+        Object bindingId = row.get("binding_id");
+        Object taskId = row.get("task_id");
+        if (bindingId != null) {
+            dto.setId(((Number) bindingId).longValue());
+        } else if (taskId != null) {
+            dto.setId(((Number) taskId).longValue());
         }
 
-        SysEmployee employee = employeeMap.get(task.getAssigneeId());
-        if (employee != null) {
-            dto.setAssigneeName(employee.getEmployeeName());
+        // 设置任务相关字段
+        if (taskId != null) {
+            dto.setTaskId(((Number) taskId).longValue());
         }
+        dto.setProjectId(row.get("project_id") != null ? ((Number) row.get("project_id")).longValue() : null);
+        dto.setTaskName((String) row.get("task_name"));
+        dto.setTaskStatus(row.get("status") != null ? ((Number) row.get("status")).intValue() : null);
+        dto.setTaskStatusText(getTaskStatusText(dto.getTaskStatus()));
+        
+        // 设置日期字段
+        if (row.get("start_date") != null) {
+            dto.setStartDate(((java.sql.Date) row.get("start_date")).toLocalDate());
+        }
+        if (row.get("end_date") != null) {
+            dto.setEndDate(((java.sql.Date) row.get("end_date")).toLocalDate());
+        }
+        dto.setProgress(row.get("progress") != null ? ((Number) row.get("progress")).intValue() : null);
+        dto.setAssigneeId(row.get("assignee_id") != null ? ((Number) row.get("assignee_id")).longValue() : null);
 
-        if (binding != null) {
-            dto.setTableId(binding.getTableId());
-            dto.setOrderNo(binding.getOrderNo());
-            dto.setTitle(binding.getTitle());
-            dto.setBindTime(binding.getCreateTime());
+        // 设置关联名称
+        dto.setProjectName((String) row.get("project_name"));
+        dto.setAssigneeName((String) row.get("assignee_name"));
 
-            PmCustomTable table = customTableMapper.selectById(binding.getTableId());
+        // 设置绑定信息
+        Object tableId = row.get("table_id");
+        if (tableId != null) {
+            dto.setTableId(((Number) tableId).longValue());
+            PmCustomTable table = tableMap.get(dto.getTableId());
             if (table != null) {
                 dto.setTableName(table.getTableName());
             }
+        }
+        dto.setOrderNo((String) row.get("order_no"));
+        dto.setTitle((String) row.get("title"));
+        
+        if (row.get("bind_time") != null) {
+            dto.setBindTime(((java.sql.Timestamp) row.get("bind_time")).toLocalDateTime());
+        }
 
-            PmCustomTableRow row = customTableRowMapper.selectById(binding.getRowId());
-            if (row != null && row.getRowData() != null) {
+        // 设置绑定数据
+        Object rowId = row.get("row_id");
+        if (rowId != null) {
+            PmCustomTableRow customRow = rowMap.get(((Number) rowId).longValue());
+            if (customRow != null && customRow.getRowData() != null) {
                 try {
-                    Map<String, Object> rowDataMap = objectMapper.readValue(row.getRowData(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                    Map<String, Object> rowDataMap = objectMapper.readValue(customRow.getRowData(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
                     dto.setBindData(rowDataMap);
                 } catch (Exception e) {
                     log.error("解析行数据失败", e);
