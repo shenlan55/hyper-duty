@@ -5,11 +5,14 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.lasu.hyperduty.duty.dto.LeaveRequestDTO;
 import com.lasu.hyperduty.duty.entity.DutyAssignment;
+import com.lasu.hyperduty.duty.entity.DutySchedule;
 import com.lasu.hyperduty.duty.entity.DutyScheduleEmployee;
 import com.lasu.hyperduty.duty.entity.DutyShiftConfig;
 import com.lasu.hyperduty.duty.entity.LeaveRequest;
 import com.lasu.hyperduty.duty.mapper.LeaveRequestMapper;
+import com.lasu.hyperduty.duty.service.DutyScheduleService;
 import com.lasu.hyperduty.duty.service.*;
 import com.lasu.hyperduty.duty.service.DutyAssignmentService;
 import com.lasu.hyperduty.duty.service.DutyScheduleEmployeeService;
@@ -59,6 +62,9 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
 
     @Autowired
     private DutyShiftConfigService dutyShiftConfigService;
+
+    @Autowired
+    private DutyScheduleService dutyScheduleService;
 
     @Override
     public String generateRequestNo() {
@@ -278,7 +284,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public List<LeaveRequest> getPendingApprovals(Long approverId) {
+    public List<LeaveRequestDTO> getPendingApprovals(Long approverId) {
         // 查询当前审批人负责审批的请假申请（只有值班长才能审批）
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("approval_status", "pending");
@@ -290,7 +296,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         for (LeaveRequest request : result) {
             System.out.println("Request ID: " + request.getId() + ", Status: " + request.getApprovalStatus());
         }
-        return result;
+        return fillDTOList(result);
     }
 
     @Override
@@ -803,5 +809,99 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         }
         // 默认8小时
         return 8;
+    }
+
+    /**
+     * 填充DTO列表
+     * @param requests 请假申请实体列表
+     * @return 填充了关联信息的DTO列表
+     */
+    public List<LeaveRequestDTO> fillDTOList(List<LeaveRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 收集所有需要查询的ID
+        Set<Long> employeeIds = requests.stream()
+                .map(LeaveRequest::getEmployeeId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        Set<Long> scheduleIds = requests.stream()
+                .map(LeaveRequest::getScheduleId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        Set<Long> approverIds = requests.stream()
+                .map(LeaveRequest::getCurrentApproverId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        // 批量查询员工信息
+        final Map<Long, SysEmployee> employeeMap;
+        if (employeeIds != null && !employeeIds.isEmpty()) {
+            employeeMap = sysEmployeeService.lambdaQuery()
+                    .in(SysEmployee::getId, employeeIds)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(SysEmployee::getId, emp -> emp));
+        } else {
+            employeeMap = new HashMap<>();
+        }
+
+        // 批量查询审批人信息
+        final Map<Long, SysEmployee> approverMap;
+        if (approverIds != null && !approverIds.isEmpty()) {
+            approverMap = sysEmployeeService.lambdaQuery()
+                    .in(SysEmployee::getId, approverIds)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(SysEmployee::getId, emp -> emp));
+        } else {
+            approverMap = new HashMap<>();
+        }
+
+        // 批量查询值班表信息
+        final Map<Long, DutySchedule> scheduleMap;
+        if (scheduleIds != null && !scheduleIds.isEmpty()) {
+            scheduleMap = dutyScheduleService.lambdaQuery()
+                    .in(DutySchedule::getId, scheduleIds)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(DutySchedule::getId, schedule -> schedule));
+        } else {
+            scheduleMap = new HashMap<>();
+        }
+
+        // 转换并填充DTO
+        return requests.stream().map(request -> {
+            LeaveRequestDTO dto = LeaveRequestDTO.fromEntity(request);
+
+            // 填充员工姓名
+            if (request.getEmployeeId() != null) {
+                SysEmployee emp = employeeMap.get(request.getEmployeeId());
+                if (emp != null) {
+                    dto.setEmployeeName(emp.getEmployeeName());
+                }
+            }
+
+            // 填充值班表名称
+            if (request.getScheduleId() != null) {
+                DutySchedule schedule = scheduleMap.get(request.getScheduleId());
+                if (schedule != null) {
+                    dto.setScheduleName(schedule.getScheduleName());
+                }
+            }
+
+            // 填充审批人姓名
+            if (request.getCurrentApproverId() != null) {
+                SysEmployee approver = approverMap.get(request.getCurrentApproverId());
+                if (approver != null) {
+                    dto.setApproverName(approver.getEmployeeName());
+                }
+            }
+
+            return dto;
+        }).collect(Collectors.toList());
     }
 }

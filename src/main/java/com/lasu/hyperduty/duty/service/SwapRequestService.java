@@ -3,6 +3,7 @@ package com.lasu.hyperduty.duty.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.lasu.hyperduty.duty.dto.SwapRequestDTO;
 import com.lasu.hyperduty.duty.entity.SwapRequest;
 import com.lasu.hyperduty.duty.service.SwapRequestService;
 import java.util.List;
@@ -26,7 +27,7 @@ public interface SwapRequestService extends IService<SwapRequest> {
 
     List<SwapRequest> getPendingApprovals(Long approverId);
 
-    List<SwapRequest> getMySwapRequests(Long employeeId);
+    List<SwapRequestDTO> getMySwapRequests(Long employeeId);
 
     /**
      * 分页获取我的调班申请
@@ -52,4 +53,11 @@ public interface SwapRequestService extends IService<SwapRequest> {
      * @return 分页结果
      */
     IPage<SwapRequest> getPendingApprovalsPage(Long approverId, Integer page, Integer size, String startDate, String endDate);
+
+    /**
+     * 填充DTO列表
+     * @param requests 调班申请实体列表
+     * @return 填充了关联信息的DTO列表
+     */
+    List<SwapRequestDTO> fillDTOList(List<SwapRequest> requests);
 }

@@ -3,6 +3,7 @@ package com.lasu.hyperduty.duty.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.ResponseResult;
+import com.lasu.hyperduty.duty.dto.SwapRequestDTO;
 import com.lasu.hyperduty.duty.entity.SwapRequest;
 import com.lasu.hyperduty.duty.service.SwapRequestService;
 import java.util.List;
@@ -40,8 +41,8 @@ public class SwapRequestController {
     }
 
     @GetMapping("/my/{employeeId}")
-    public ResponseResult<List<SwapRequest>> getMySwapRequests(@PathVariable Long employeeId) {
-        List<SwapRequest> list = swapRequestService.getMySwapRequests(employeeId);
+    public ResponseResult<List<SwapRequestDTO>> getMySwapRequests(@PathVariable Long employeeId) {
+        List<SwapRequestDTO> list = swapRequestService.getMySwapRequests(employeeId);
         return ResponseResult.success(list);
     }
 

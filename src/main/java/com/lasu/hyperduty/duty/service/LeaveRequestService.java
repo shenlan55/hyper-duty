@@ -3,6 +3,7 @@ package com.lasu.hyperduty.duty.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.lasu.hyperduty.duty.dto.LeaveRequestDTO;
 import com.lasu.hyperduty.duty.entity.LeaveRequest;
 import com.lasu.hyperduty.duty.service.LeaveRequestService;
 import com.lasu.hyperduty.system.entity.SysEmployee;
@@ -24,7 +25,7 @@ public interface LeaveRequestService extends IService<LeaveRequest> {
 
     boolean approveLeaveRequest(Long requestId, Long approverId, String approvalStatus, String opinion, String scheduleAction, List<Map<String, Object>> substituteData, Boolean excludeSameDayShifts);
 
-    List<LeaveRequest> getPendingApprovals(Long approverId);
+    List<LeaveRequestDTO> getPendingApprovals(Long approverId);
 
     List<LeaveRequest> getApprovedApprovals(Long approverId);
 
@@ -111,4 +112,11 @@ public interface LeaveRequestService extends IService<LeaveRequest> {
      * @return 分配后的顶岗数据列表
      */
     List<Map<String, Object>> autoSelectSubstitutes(Long requestId, List<Map<String, Object>> substituteData);
+
+    /**
+     * 填充DTO列表
+     * @param requests 请假申请实体列表
+     * @return 填充了关联信息的DTO列表
+     */
+    List<LeaveRequestDTO> fillDTOList(List<LeaveRequest> requests);
 }

@@ -3,11 +3,21 @@ package com.lasu.hyperduty.duty.service.impl;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.lasu.hyperduty.duty.dto.SwapRequestDTO;
 import com.lasu.hyperduty.duty.entity.DutyAssignment;
+import com.lasu.hyperduty.duty.entity.DutySchedule;
 import com.lasu.hyperduty.duty.entity.SwapRequest;
 import com.lasu.hyperduty.duty.mapper.SwapRequestMapper;
 import com.lasu.hyperduty.duty.service.DutyAssignmentService;
+import com.lasu.hyperduty.duty.service.DutyScheduleService;
 import com.lasu.hyperduty.duty.service.SwapRequestService;
+import com.lasu.hyperduty.system.entity.SysEmployee;
+import com.lasu.hyperduty.system.service.SysEmployeeService;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,6 +45,12 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
 
     @Autowired
     private DutyAssignmentService dutyAssignmentService;
+
+    @Autowired
+    private SysEmployeeService sysEmployeeService;
+
+    @Autowired
+    private DutyScheduleService dutyScheduleService;
 
     @Override
     public String generateRequestNo() {
@@ -202,14 +218,15 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
     }
 
     @Override
-    public List<SwapRequest> getMySwapRequests(Long employeeId) {
-        return lambdaQuery()
+    public List<SwapRequestDTO> getMySwapRequests(Long employeeId) {
+        List<SwapRequest> list = lambdaQuery()
                 .and(wrapper -> wrapper
                         .eq(SwapRequest::getOriginalEmployeeId, employeeId)
                         .or()
                         .eq(SwapRequest::getTargetEmployeeId, employeeId))
                 .orderByDesc(SwapRequest::getCreateTime)
                 .list();
+        return fillDTOList(list);
     }
 
     @Override
@@ -242,5 +259,92 @@ public class SwapRequestServiceImpl extends ServiceImpl<SwapRequestMapper, SwapR
                 .le(endDate != null && !endDate.isEmpty(), SwapRequest::getCreateTime, endDate)
                 .orderByDesc(SwapRequest::getCreateTime)
                 .page(pageInfo);
+    }
+
+    /**
+     * 填充DTO列表
+     * @param requests 调班申请实体列表
+     * @return 填充了关联信息的DTO列表
+     */
+    public List<SwapRequestDTO> fillDTOList(List<SwapRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 收集所有需要查询的ID
+        Set<Long> originalEmployeeIds = requests.stream()
+                .map(SwapRequest::getOriginalEmployeeId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        Set<Long> targetEmployeeIds = requests.stream()
+                .map(SwapRequest::getTargetEmployeeId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        Set<Long> scheduleIds = requests.stream()
+                .map(SwapRequest::getScheduleId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        // 合并所有员工ID
+        Set<Long> allEmployeeIds = new java.util.HashSet<>();
+        allEmployeeIds.addAll(originalEmployeeIds);
+        allEmployeeIds.addAll(targetEmployeeIds);
+
+        // 批量查询员工信息
+        final Map<Long, SysEmployee> employeeMap;
+        if (allEmployeeIds != null && !allEmployeeIds.isEmpty()) {
+            employeeMap = sysEmployeeService.lambdaQuery()
+                    .in(SysEmployee::getId, allEmployeeIds)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(SysEmployee::getId, emp -> emp));
+        } else {
+            employeeMap = new HashMap<>();
+        }
+
+        // 批量查询值班表信息
+        final Map<Long, DutySchedule> scheduleMap;
+        if (scheduleIds != null && !scheduleIds.isEmpty()) {
+            scheduleMap = dutyScheduleService.lambdaQuery()
+                    .in(DutySchedule::getId, scheduleIds)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(DutySchedule::getId, schedule -> schedule));
+        } else {
+            scheduleMap = new HashMap<>();
+        }
+
+        // 转换并填充DTO
+        return requests.stream().map(request -> {
+            SwapRequestDTO dto = SwapRequestDTO.fromEntity(request);
+
+            // 填充原值班人员姓名
+            if (request.getOriginalEmployeeId() != null) {
+                SysEmployee emp = employeeMap.get(request.getOriginalEmployeeId());
+                if (emp != null) {
+                    dto.setOriginalEmployeeName(emp.getEmployeeName());
+                }
+            }
+
+            // 填充目标值班人员姓名
+            if (request.getTargetEmployeeId() != null) {
+                SysEmployee emp = employeeMap.get(request.getTargetEmployeeId());
+                if (emp != null) {
+                    dto.setTargetEmployeeName(emp.getEmployeeName());
+                }
+            }
+
+            // 填充值班表名称
+            if (request.getScheduleId() != null) {
+                DutySchedule schedule = scheduleMap.get(request.getScheduleId());
+                if (schedule != null) {
+                    dto.setScheduleName(schedule.getScheduleName());
+                }
+            }
+
+            return dto;
+        }).collect(Collectors.toList());
     }
 }

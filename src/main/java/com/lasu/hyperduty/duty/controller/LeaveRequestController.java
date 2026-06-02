@@ -3,6 +3,7 @@ package com.lasu.hyperduty.duty.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.ResponseResult;
+import com.lasu.hyperduty.duty.dto.LeaveRequestDTO;
 import com.lasu.hyperduty.duty.entity.LeaveRequest;
 import com.lasu.hyperduty.duty.entity.LeaveSubstitute;
 import com.lasu.hyperduty.duty.service.LeaveRequestService;
@@ -55,8 +56,8 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/pending/{approverId}")
-    public ResponseResult<List<LeaveRequest>> getPendingApprovals(@PathVariable Long approverId) {
-        List<LeaveRequest> list = leaveRequestService.getPendingApprovals(approverId);
+    public ResponseResult<List<LeaveRequestDTO>> getPendingApprovals(@PathVariable Long approverId) {
+        List<LeaveRequestDTO> list = leaveRequestService.getPendingApprovals(approverId);
         return ResponseResult.success(list);
     }
 

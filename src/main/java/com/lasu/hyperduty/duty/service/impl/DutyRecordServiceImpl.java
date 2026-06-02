@@ -274,10 +274,29 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
         
-        Set<Long> scheduleIds = records.stream()
-                .map(DutyRecord::getScheduleId)
+        // 收集所有需要查询的assignmentId，用于获取scheduleId
+        Set<Long> assignmentIds = records.stream()
+                .map(DutyRecord::getAssignmentId)
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
+        
+        Set<Long> scheduleIds = new java.util.HashSet<>();
+        // 从记录中直接获取scheduleId
+        records.stream()
+                .map(DutyRecord::getScheduleId)
+                .filter(id -> id != null)
+                .forEach(scheduleIds::add);
+        
+        // 从assignment中获取scheduleId
+        if (assignmentIds != null && !assignmentIds.isEmpty()) {
+            List<DutyAssignment> assignments = dutyAssignmentService.lambdaQuery()
+                    .in(DutyAssignment::getId, assignmentIds)
+                    .list();
+            assignments.stream()
+                    .map(DutyAssignment::getScheduleId)
+                    .filter(id -> id != null)
+                    .forEach(scheduleIds::add);
+        }
         
         Set<Long> shiftIds = records.stream()
                 .map(DutyRecord::getDutyShift)
@@ -309,6 +328,18 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
             substituteMap = new java.util.HashMap<>();
         }
         
+        // 批量查询assignment信息
+        final Map<Long, DutyAssignment> assignmentMap;
+        if (assignmentIds != null && !assignmentIds.isEmpty()) {
+            assignmentMap = dutyAssignmentService.lambdaQuery()
+                    .in(DutyAssignment::getId, assignmentIds)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(DutyAssignment::getId, assignment -> assignment));
+        } else {
+            assignmentMap = new java.util.HashMap<>();
+        }
+        
         // 批量查询值班表信息
         final Map<Long, DutySchedule> scheduleMap;
         if (scheduleIds != null && !scheduleIds.isEmpty()) {
@@ -337,6 +368,17 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
         return records.stream().map(record -> {
             DutyRecordDTO dto = DutyRecordDTO.fromEntity(record);
             
+            // 确定实际的scheduleId
+            Long actualScheduleId = record.getScheduleId();
+            if (actualScheduleId == null && record.getAssignmentId() != null) {
+                DutyAssignment assignment = assignmentMap.get(record.getAssignmentId());
+                if (assignment != null) {
+                    actualScheduleId = assignment.getScheduleId();
+                    // 同时设置到dto中，方便前端使用
+                    dto.setScheduleId(actualScheduleId);
+                }
+            }
+            
             // 填充员工姓名
             if (record.getEmployeeId() != null) {
                 SysEmployee emp = employeeMap.get(record.getEmployeeId());
@@ -354,8 +396,8 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
             }
             
             // 填充值班表名称
-            if (record.getScheduleId() != null) {
-                DutySchedule schedule = scheduleMap.get(record.getScheduleId());
+            if (actualScheduleId != null) {
+                DutySchedule schedule = scheduleMap.get(actualScheduleId);
                 if (schedule != null) {
                     dto.setScheduleName(schedule.getScheduleName());
                 }

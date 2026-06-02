@@ -183,14 +183,9 @@ const loadTodoList = async () => {
           // 只显示待审批的请假申请
           .filter(item => item.approvalStatus === '待审批' || item.approvalStatus === 'pending')
           .map(item => {
-            // 获取提出人姓名，首先尝试直接从item中获取，然后根据employeeId匹配
-            let creatorName = item.employeeName || item.name || item.employee || '未知'
-            if (creatorName === '未知' && item.employeeId) {
-              const employee = employees.find(e => e.id === item.employeeId)
-              if (employee) {
-                creatorName = employee.name || employee.employeeName || '未知'
-              }
-            }
+            // 从后端返回的DTO中直接获取字段
+            const creatorName = item.employeeName || '未知'
+            const scheduleName = item.scheduleName || '未知值班表'
             
             return {
               id: item.id,
@@ -198,7 +193,7 @@ const loadTodoList = async () => {
               title: `请假审批 - ${item.requestNo || item.id}`,
               creator: creatorName,
               createTime: item.createTime,
-              description: `${creatorName} 申请 ${item.leaveType ? item.leaveType === 1 ? '事假' : item.leaveType === 2 ? '病假' : item.leaveType === 3 ? '年假' : item.leaveType === 4 ? '调休' : '其他' : '未知'}，时长 ${item.totalHours || 0} 小时`,
+              description: `${creatorName} 申请 ${item.leaveType ? item.leaveType === 1 ? '事假' : item.leaveType === 2 ? '病假' : item.leaveType === 3 ? '年假' : item.leaveType === 4 ? '调休' : '其他' : '未知'}，时长 ${item.totalHours || 0} 小时，值班表：${scheduleName}`,
               data: {
                 ...item,
                 employeeName: creatorName,
@@ -219,14 +214,9 @@ const loadTodoList = async () => {
           // 只显示待当前用户处理的调班申请
           .filter(item => item.approvalStatus === 'pending' && item.targetEmployeeId === employeeId)
           .map(item => {
-          // 获取提出人姓名，首先尝试直接从item中获取，然后根据originalEmployeeId匹配
-          let creatorName = item.originalEmployeeName || item.employeeName || item.name || '未知'
-          if (creatorName === '未知' && item.originalEmployeeId) {
-            const employee = employees.find(e => e.id === item.originalEmployeeId)
-            if (employee) {
-              creatorName = employee.name || employee.employeeName || '未知'
-            }
-          }
+          // 从后端返回的DTO中直接获取字段
+          const creatorName = item.originalEmployeeName || '未知'
+          const scheduleName = item.scheduleName || '未知值班表'
           
           return {
             id: item.id,
@@ -234,7 +224,7 @@ const loadTodoList = async () => {
             title: `调班确认 - ${item.requestNo || item.id}`,
             creator: creatorName,
             createTime: item.createTime,
-            description: `${creatorName} 申请与您调班，日期：${item.originalSwapDate || item.swapDate}`,
+            description: `${creatorName} 申请与您调班，日期：${item.originalSwapDate || item.swapDate}，值班表：${scheduleName}`,
             data: {
               ...item,
               originalEmployeeName: creatorName,
@@ -252,28 +242,10 @@ const loadTodoList = async () => {
       const overtimeData = await getPendingOvertimeApprovals(employeeId)
       if (Array.isArray(overtimeData)) {
         overtimeTodos = overtimeData.map(item => {
-          // 根据assignmentId找到对应的值班安排
-          const assignment = assignments.find(a => a.id === item.assignmentId)
-          let scheduleId = null
-          let scheduleName = '未知值班表'
-          
-          if (assignment) {
-            // 根据值班安排的scheduleId找到对应的值班表
-            scheduleId = assignment.scheduleId
-            const schedule = schedules.find(s => s.id === assignment.scheduleId)
-            if (schedule) {
-              scheduleName = schedule.scheduleName
-            }
-          }
-          
-          // 获取提出人姓名，首先尝试直接从item中获取，然后根据employeeId匹配
-          let creatorName = item.employeeName || item.name || item.employee || '未知'
-          if (creatorName === '未知' && item.employeeId) {
-            const employee = employees.find(e => e.id === item.employeeId)
-            if (employee) {
-              creatorName = employee.name || employee.employeeName || '未知'
-            }
-          }
+          // 从后端返回的DTO中直接获取字段
+          const creatorName = item.employeeName || '未知'
+          const scheduleName = item.scheduleName || '未知值班表'
+          const scheduleId = item.scheduleId
           
           return {
             id: item.id,
