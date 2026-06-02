@@ -53,7 +53,7 @@
         </el-row>
 
         <el-form-item label="授权码/密码" prop="authPassword">
-          <el-input v-model="mailConfigForm.authPassword" type="password" placeholder="请输入邮箱授权码" show-password />
+          <el-input v-model="mailConfigForm.authPassword" type="password" :placeholder="mailConfigForm.id ? '不修改请留空' : '请输入邮箱授权码'" show-password />
         </el-form-item>
 
         <el-divider content-position="left">邮件模板配置</el-divider>
@@ -149,6 +149,20 @@ const mailConfigForm = reactive({
   remark: ''
 })
 
+const validateAuthPassword = (rule, value, callback) => {
+  // 如果是新增配置（没有id），密码必填
+  if (!mailConfigForm.id) {
+    if (!value || value.trim() === '') {
+      callback(new Error('请输入授权码/密码'))
+    } else {
+      callback()
+    }
+  } else {
+    // 修改配置时，密码可选
+    callback()
+  }
+}
+
 const rules = {
   smtpHost: [
     { required: true, message: '请输入SMTP服务器地址', trigger: 'blur' }
@@ -161,7 +175,7 @@ const rules = {
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
   ],
   authPassword: [
-    { required: true, message: '请输入授权码/密码', trigger: 'blur' }
+    { validator: validateAuthPassword, trigger: 'blur' }
   ]
 }
 
@@ -204,6 +218,11 @@ const transformFormData = (data) => {
 const handleTestConnection = async () => {
   try {
     await mailConfigFormRef.value.validate()
+    // 测试连接时必须输入密码
+    if (!mailConfigForm.authPassword || mailConfigForm.authPassword.trim() === '') {
+      ElMessage.warning('请输入授权码/密码后再测试连接')
+      return
+    }
     const data = transformFormData(mailConfigForm)
     await testMailConnection(data)
     ElMessage.success('邮件连接测试成功')

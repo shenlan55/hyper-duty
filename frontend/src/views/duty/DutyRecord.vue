@@ -57,13 +57,13 @@
             <template #dutyDate="{ row }">
               {{ formatDate(row.dutyDate) }}
             </template>
-            <template #dutyShift="{ row }">
+            <template #dutyShiftName="{ row }">
               <el-tag :type="'info'">
-                {{ getShiftName(row.dutyShift) }}
+                {{ row.dutyShiftName || getShiftName(row.dutyShift) }}
               </el-tag>
             </template>
-            <template #employeeId="{ row }">
-              {{ getEmployeeName(row.employeeId) }}
+            <template #employeeName="{ row }">
+              {{ row.employeeName || '未知人员' }}
             </template>
             <template #overtimeHours="{ row }">
               {{ row.overtimeHours || 0 }}小时
@@ -117,13 +117,13 @@
             <template #dutyDate="{ row }">
               {{ formatDate(row.dutyDate) }}
             </template>
-            <template #dutyShift="{ row }">
+            <template #dutyShiftName="{ row }">
               <el-tag :type="'info'">
-                {{ getShiftName(row.dutyShift) }}
+                {{ row.dutyShiftName || getShiftName(row.dutyShift) }}
               </el-tag>
             </template>
-            <template #employeeId="{ row }">
-              {{ getEmployeeName(row.employeeId) }}
+            <template #employeeName="{ row }">
+              {{ row.employeeName || '未知人员' }}
             </template>
             <template #overtimeHours="{ row }">
               {{ row.overtimeHours || 0 }}小时
@@ -420,8 +420,8 @@ const recordColumns = [
   { prop: 'id', label: 'ID', width: '80' },
   { prop: 'scheduleName', label: '值班表', minWidth: '150' },
   { prop: 'dutyDate', label: '值班日期', width: '150' },
-  { prop: 'dutyShift', label: '班次', width: '100' },
-  { prop: 'employeeId', label: '值班人员', minWidth: '150' },
+  { prop: 'dutyShiftName', label: '班次', width: '100' },
+  { prop: 'employeeName', label: '值班人员', minWidth: '150' },
   { prop: 'overtimeHours', label: '加班时长', width: '100' },
   { prop: 'remark', label: '加班原因', minWidth: '200' },
   { prop: 'approvalStatus', label: '审批状态', width: '120' },
@@ -432,8 +432,8 @@ const approvalColumns = [
   { prop: 'id', label: 'ID', width: '80' },
   { prop: 'scheduleName', label: '值班表', minWidth: '150' },
   { prop: 'dutyDate', label: '值班日期', width: '150' },
-  { prop: 'dutyShift', label: '班次', width: '100' },
-  { prop: 'employeeId', label: '值班人员', minWidth: '150' },
+  { prop: 'dutyShiftName', label: '班次', width: '100' },
+  { prop: 'employeeName', label: '值班人员', minWidth: '150' },
   { prop: 'overtimeHours', label: '加班时长', width: '100' },
   { prop: 'remark', label: '加班原因', minWidth: '200' },
   { prop: 'approvalStatus', label: '审批状态', width: '120' },

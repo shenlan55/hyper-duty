@@ -1,13 +1,14 @@
 package com.lasu.hyperduty.duty.service;
 
+import com.lasu.hyperduty.common.dto.PageRequestDTO;
+import com.lasu.hyperduty.common.dto.PageResponseDTO;
 import com.lasu.hyperduty.common.service.BasePageService;
+import com.lasu.hyperduty.duty.dto.DutyRecordDTO;
 import com.lasu.hyperduty.duty.entity.DutyRecord;
-import com.lasu.hyperduty.duty.service.DutyRecordService;
 import com.lasu.hyperduty.system.entity.SysEmployee;
 import java.time.LocalDate;
 import java.util.List;
-
-
+import java.util.Map;
 
 
 
@@ -41,5 +42,20 @@ public interface DutyRecordService extends BasePageService<DutyRecord> {
      * @param employeeId 审批人ID
      * @return 待审批的加班记录列表
      */
-    List<DutyRecord> getPendingApprovals(Long employeeId);
+    List<DutyRecordDTO> getPendingApprovals(Long employeeId);
+
+    /**
+     * 分页查询加班记录（返回DTO）
+     * @param pageRequestDTO 分页参数
+     * @param params 查询参数
+     * @return 分页结果
+     */
+    PageResponseDTO<DutyRecordDTO> pageDTO(PageRequestDTO pageRequestDTO, Map<String, Object> params);
+
+    /**
+     * 将实体列表转换为DTO列表并填充关联信息
+     * @param records 实体列表
+     * @return DTO列表
+     */
+    List<DutyRecordDTO> fillDTOList(List<DutyRecord> records);
 }

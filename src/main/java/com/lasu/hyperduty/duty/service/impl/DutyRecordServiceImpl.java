@@ -1,26 +1,31 @@
 package com.lasu.hyperduty.duty.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.dto.PageRequestDTO;
 import com.lasu.hyperduty.common.dto.PageResponseDTO;
 import com.lasu.hyperduty.common.service.impl.CacheableServiceImpl;
+import com.lasu.hyperduty.duty.dto.DutyRecordDTO;
 import com.lasu.hyperduty.duty.entity.DutyAssignment;
 import com.lasu.hyperduty.duty.entity.DutyRecord;
+import com.lasu.hyperduty.duty.entity.DutySchedule;
+import com.lasu.hyperduty.duty.entity.DutyShiftConfig;
 import com.lasu.hyperduty.duty.mapper.DutyRecordMapper;
 import com.lasu.hyperduty.duty.service.DutyAssignmentService;
 import com.lasu.hyperduty.duty.service.DutyRecordService;
 import com.lasu.hyperduty.duty.service.DutyScheduleService;
+import com.lasu.hyperduty.duty.service.DutyShiftConfigService;
 import com.lasu.hyperduty.system.entity.SysEmployee;
 import com.lasu.hyperduty.system.service.SysEmployeeService;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 
 
 
@@ -51,6 +56,9 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
 
     @Autowired
     private DutyScheduleService dutyScheduleService;
+
+    @Autowired
+    private DutyShiftConfigService dutyShiftConfigService;
 
     @Override
     public List<SysEmployee> getAvailableSubstitutes(Long recordId) {
@@ -105,7 +113,7 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
     }
 
     @Override
-    public List<DutyRecord> getPendingApprovals(Long employeeId) {
+    public List<DutyRecordDTO> getPendingApprovals(Long employeeId) {
         // 查询审批状态为待审批的加班记录（兼容中英文）
         List<DutyRecord> allPendingRecords = lambdaQuery()
                 .and(wrapper -> wrapper
@@ -147,7 +155,8 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
                 })
                 .collect(java.util.stream.Collectors.toList());
         
-        return authorizedRecords;
+        // 填充DTO
+        return fillDTOList(authorizedRecords);
     }
 
     @Override
@@ -230,6 +239,140 @@ public class DutyRecordServiceImpl extends CacheableServiceImpl<DutyRecordMapper
         
         // 转换为PageResponseDTO
         return PageResponseDTO.fromPage(resultPage);
+    }
+
+    @Override
+    public PageResponseDTO<DutyRecordDTO> pageDTO(PageRequestDTO pageRequestDTO, Map<String, Object> params) {
+        // 先查询实体分页
+        PageResponseDTO<DutyRecord> recordPage = page(pageRequestDTO, params);
+        
+        // 转换为DTO并填充关联信息
+        List<DutyRecordDTO> dtoList = fillDTOList(recordPage.getRecords());
+        
+        // 构建新的分页响应
+        PageResponseDTO<DutyRecordDTO> dtoPage = new PageResponseDTO<>();
+        BeanUtils.copyProperties(recordPage, dtoPage);
+        dtoPage.setRecords(dtoList);
+        
+        return dtoPage;
+    }
+
+    @Override
+    public List<DutyRecordDTO> fillDTOList(List<DutyRecord> records) {
+        if (records == null || records.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // 收集所有需要查询的ID
+        Set<Long> employeeIds = records.stream()
+                .map(DutyRecord::getEmployeeId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        
+        Set<Long> substituteIds = records.stream()
+                .map(DutyRecord::getSubstituteEmployeeId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        
+        Set<Long> scheduleIds = records.stream()
+                .map(DutyRecord::getScheduleId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        
+        Set<Long> shiftIds = records.stream()
+                .map(DutyRecord::getDutyShift)
+                .filter(id -> id != null)
+                .map(Long::valueOf)
+                .collect(Collectors.toSet());
+        
+        // 批量查询员工信息
+        final Map<Long, SysEmployee> employeeMap;
+        if (employeeIds != null && !employeeIds.isEmpty()) {
+            employeeMap = sysEmployeeService.lambdaQuery()
+                    .in(SysEmployee::getId, employeeIds)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(SysEmployee::getId, emp -> emp));
+        } else {
+            employeeMap = new java.util.HashMap<>();
+        }
+        
+        // 批量查询替补员工信息
+        final Map<Long, SysEmployee> substituteMap;
+        if (substituteIds != null && !substituteIds.isEmpty()) {
+            substituteMap = sysEmployeeService.lambdaQuery()
+                    .in(SysEmployee::getId, substituteIds)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(SysEmployee::getId, emp -> emp));
+        } else {
+            substituteMap = new java.util.HashMap<>();
+        }
+        
+        // 批量查询值班表信息
+        final Map<Long, DutySchedule> scheduleMap;
+        if (scheduleIds != null && !scheduleIds.isEmpty()) {
+            scheduleMap = dutyScheduleService.lambdaQuery()
+                    .in(DutySchedule::getId, scheduleIds)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(DutySchedule::getId, schedule -> schedule));
+        } else {
+            scheduleMap = new java.util.HashMap<>();
+        }
+        
+        // 批量查询班次配置信息
+        final Map<Long, DutyShiftConfig> shiftMap;
+        if (shiftIds != null && !shiftIds.isEmpty()) {
+            shiftMap = dutyShiftConfigService.lambdaQuery()
+                    .in(DutyShiftConfig::getId, shiftIds)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(DutyShiftConfig::getId, shift -> shift));
+        } else {
+            shiftMap = new java.util.HashMap<>();
+        }
+        
+        // 转换并填充DTO
+        return records.stream().map(record -> {
+            DutyRecordDTO dto = DutyRecordDTO.fromEntity(record);
+            
+            // 填充员工姓名
+            if (record.getEmployeeId() != null) {
+                SysEmployee emp = employeeMap.get(record.getEmployeeId());
+                if (emp != null) {
+                    dto.setEmployeeName(emp.getEmployeeName());
+                }
+            }
+            
+            // 填充替补员工姓名
+            if (record.getSubstituteEmployeeId() != null) {
+                SysEmployee substitute = substituteMap.get(record.getSubstituteEmployeeId());
+                if (substitute != null) {
+                    dto.setSubstituteEmployeeName(substitute.getEmployeeName());
+                }
+            }
+            
+            // 填充值班表名称
+            if (record.getScheduleId() != null) {
+                DutySchedule schedule = scheduleMap.get(record.getScheduleId());
+                if (schedule != null) {
+                    dto.setScheduleName(schedule.getScheduleName());
+                }
+            }
+            
+            // 填充班次名称（从班次配置表查询）
+            if (record.getDutyShift() != null) {
+                DutyShiftConfig shiftConfig = shiftMap.get(Long.valueOf(record.getDutyShift()));
+                if (shiftConfig != null) {
+                    dto.setDutyShiftName(shiftConfig.getShiftName());
+                } else {
+                    dto.setDutyShiftName("班次" + record.getDutyShift());
+                }
+            }
+            
+            return dto;
+        }).collect(Collectors.toList());
     }
 
 }

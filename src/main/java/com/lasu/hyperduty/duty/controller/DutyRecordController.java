@@ -5,6 +5,7 @@ import com.lasu.hyperduty.common.annotation.RateLimit;
 import com.lasu.hyperduty.common.dto.PageRequestDTO;
 import com.lasu.hyperduty.common.dto.PageResponseDTO;
 import com.lasu.hyperduty.common.ResponseResult;
+import com.lasu.hyperduty.duty.dto.DutyRecordDTO;
 import com.lasu.hyperduty.duty.entity.DutyRecord;
 import com.lasu.hyperduty.duty.service.DutyRecordService;
 import com.lasu.hyperduty.system.entity.SysEmployee;
@@ -24,9 +25,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-
-
 
 
 
@@ -63,7 +61,7 @@ public class DutyRecordController {
      * @return 加班记录分页列表
      */
     @GetMapping("/list")
-    public ResponseResult<PageResponseDTO<DutyRecord>> getAllRecords(@ModelAttribute PageRequestDTO pageRequestDTO,
+    public ResponseResult<PageResponseDTO<DutyRecordDTO>> getAllRecords(@ModelAttribute PageRequestDTO pageRequestDTO,
                                                                      @RequestParam(required = false) Long scheduleId,
                                                                      @RequestParam(required = false) String keyword,
                                                                      @RequestParam(required = false) String date) {
@@ -80,7 +78,7 @@ public class DutyRecordController {
         }
         
         // 调用服务方法进行分页查询
-        PageResponseDTO<DutyRecord> recordPage = dutyRecordService.page(pageRequestDTO, params);
+        PageResponseDTO<DutyRecordDTO> recordPage = dutyRecordService.pageDTO(pageRequestDTO, params);
         return ResponseResult.success(recordPage);
     }
 
@@ -94,7 +92,7 @@ public class DutyRecordController {
      * @return 加班记录分页列表
      */
     @GetMapping("/list/employee/{employeeId}")
-    public ResponseResult<PageResponseDTO<DutyRecord>> getRecordsByEmployeeId(@PathVariable Long employeeId,
+    public ResponseResult<PageResponseDTO<DutyRecordDTO>> getRecordsByEmployeeId(@PathVariable Long employeeId,
                                                                               @ModelAttribute PageRequestDTO pageRequestDTO,
                                                                               @RequestParam(required = false) Long scheduleId,
                                                                               @RequestParam(required = false) String keyword,
@@ -113,7 +111,7 @@ public class DutyRecordController {
         }
         
         // 调用服务方法进行分页查询
-        PageResponseDTO<DutyRecord> recordPage = dutyRecordService.page(pageRequestDTO, params);
+        PageResponseDTO<DutyRecordDTO> recordPage = dutyRecordService.pageDTO(pageRequestDTO, params);
         return ResponseResult.success(recordPage);
     }
 
@@ -223,8 +221,8 @@ public class DutyRecordController {
      * @return 待审批的加班记录列表
      */
     @GetMapping("/pending/{employeeId}")
-    public ResponseResult<List<DutyRecord>> getPendingApprovals(@PathVariable Long employeeId) {
-        List<DutyRecord> recordList = dutyRecordService.getPendingApprovals(employeeId);
+    public ResponseResult<List<DutyRecordDTO>> getPendingApprovals(@PathVariable Long employeeId) {
+        List<DutyRecordDTO> recordList = dutyRecordService.getPendingApprovals(employeeId);
         return ResponseResult.success(recordList);
     }
 
