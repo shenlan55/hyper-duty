@@ -107,7 +107,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
         statistics.put("avgDailyHours", avgDailyHours);
 
         // 计算总加班时长（只统计已审批通过的）
-        Integer totalOvertimeHours = 0;
+        BigDecimal totalOvertimeHours = BigDecimal.ZERO;
         for (DutyRecord record : records) {
             if (record.getOvertimeHours() != null) {
                 // 只统计已审批通过的加班记录
@@ -115,11 +115,11 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                                     ("approved".equals(record.getApprovalStatus()) || 
                                      "已批准".equals(record.getApprovalStatus()));
                 if (isApproved) {
-                    totalOvertimeHours += record.getOvertimeHours();
+                    totalOvertimeHours = totalOvertimeHours.add(record.getOvertimeHours());
                 }
             }
         }
-        statistics.put("totalOvertimeHours", BigDecimal.valueOf(totalOvertimeHours));
+        statistics.put("totalOvertimeHours", totalOvertimeHours);
 
         // 统计请假申请数量
         statistics.put("totalLeaveRequests", leaveRequests.size());
@@ -230,7 +230,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
             String monthKey = month.getMonthValue() + "月";
 
             BigDecimal hours = BigDecimal.ZERO;
-            Integer overtime = 0;
+            BigDecimal overtime = BigDecimal.ZERO;
 
             // 遍历所有值班记录，统计当月的工时
             for (DutyRecord record : records) {
@@ -270,7 +270,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                                             ("approved".equals(record.getApprovalStatus()) || 
                                              "已批准".equals(record.getApprovalStatus()));
                         if (isApproved) {
-                            overtime += record.getOvertimeHours();
+                            overtime = overtime.add(record.getOvertimeHours());
                         }
                     }
                 }
@@ -278,7 +278,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
 
             // 存储月度统计数据
             monthlyHours.put(monthKey, hours);
-            monthlyOvertime.put(monthKey, BigDecimal.valueOf(overtime));
+            monthlyOvertime.put(monthKey, overtime);
         }
 
         // 构建月度趋势结果
@@ -436,7 +436,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                 List<DutyRecord> approvedOvertime = approvedOvertimeByEmployee.getOrDefault(employeeId, new ArrayList<>());
                 for (DutyRecord record : approvedOvertime) {
                     if (record.getOvertimeHours() != null) {
-                        actualHours = actualHours.add(new BigDecimal(record.getOvertimeHours()));
+                        actualHours = actualHours.add(record.getOvertimeHours());
                     }
                 }
                 stat.put("actualHours", actualHours);
@@ -450,7 +450,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                 // 1. 审批通过的加班记录时长
                 for (DutyRecord record : approvedOvertime) {
                     if (record.getOvertimeHours() != null) {
-                        overtimeHours = overtimeHours.add(new BigDecimal(record.getOvertimeHours()));
+                        overtimeHours = overtimeHours.add(record.getOvertimeHours());
                     }
                 }
                 // 2. 截至当前正常排班是加班班次的加班时长
@@ -602,7 +602,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                     List<DutyRecord> approvedOvertime = approvedOvertimeByEmployee.getOrDefault(employeeId, new ArrayList<>());
                     for (DutyRecord record : approvedOvertime) {
                         if (record.getOvertimeHours() != null) {
-                            actualHours = actualHours.add(new BigDecimal(record.getOvertimeHours()));
+                            actualHours = actualHours.add(record.getOvertimeHours());
                         }
                     }
                     stat.put("actualHours", actualHours);
@@ -616,7 +616,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                     // 1. 审批通过的加班记录时长
                     for (DutyRecord record : approvedOvertime) {
                         if (record.getOvertimeHours() != null) {
-                            overtimeHours = overtimeHours.add(new BigDecimal(record.getOvertimeHours()));
+                            overtimeHours = overtimeHours.add(record.getOvertimeHours());
                         }
                     }
                     // 2. 截至当前正常排班是加班班次的加班时长

@@ -193,6 +193,7 @@
             type="date"
             placeholder="选择值班日期"
             style="width: 100%"
+            value-format="YYYY-MM-DD"
             @change="handleDateChange"
             :disabled="createForm.id || dialogMode === 'approval'"
           />

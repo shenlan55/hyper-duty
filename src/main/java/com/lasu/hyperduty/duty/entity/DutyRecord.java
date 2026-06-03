@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lasu.hyperduty.duty.entity.DutyRecord;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Data;
@@ -82,7 +83,7 @@ public class DutyRecord implements Serializable {
     /**
      * 加班时长（小时）
      */
-    private Integer overtimeHours;
+    private BigDecimal overtimeHours;
     
     /**
      * 加班原因
