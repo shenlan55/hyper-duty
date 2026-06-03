@@ -191,7 +191,7 @@ const fetchCurrentConfig = async () => {
         enableTls: Boolean(data.enableTls),
         fromEmail: data.fromEmail || '',
         fromName: data.fromName || 'Hyper Duty',
-        authPassword: '', // 密码不回显
+        authPassword: mailConfigForm.authPassword || '', // 保留用户已输入的密码，后端不返回密码所以不回显
         loginCodeTemplate: data.loginCodeTemplate || '',
         passwordResetTemplate: data.passwordResetTemplate || '',
         remoteLoginTemplate: data.remoteLoginTemplate || '',
