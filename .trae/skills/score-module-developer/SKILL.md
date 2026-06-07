@@ -36,7 +36,7 @@ description: "积分管理模块开发专家，负责开发和维护积分事件
 | **评分公式** | 员工积分管理模块设计 | `docs/2026-06-04-员工积分管理模块设计.md` |
 | **工时数据对接** | 员工积分管理模块设计 | `docs/2026-06-04-员工积分管理模块设计.md` |
 | **PersonSelector 使用** | 员工积分管理模块设计 | `docs/2026-06-04-员工积分管理模块设计.md` |
-| **菜单配置** | SQL 脚本 | `src/main/resources/sql/hyper_duty_score_menu.sql` |
+| **菜单与权限初始化** | SQL 脚本 | `src/main/resources/sql/hyper_duty_score_dml.sql` |
 | **项目架构与技术栈** | 项目规则 | `.trae/rules/project_rules.md` |
 
 ## 🔧 关键文件和组件
@@ -104,7 +104,8 @@ frontend/src/api/score/
 
 ### 数据库规范
 - SQL 脚本统一放在 `src/main/resources/sql/` 目录
-- 菜单数据使用较大 ID（200+）避免与现有数据冲突
+- 表结构：`hyper_duty_score_ddl.sql`
+- 初始数据（菜单、权限）：`hyper_duty_score_dml.sql`
 - 使用 `ON CONFLICT (id) DO NOTHING` 防止重复执行报错
 
 ## 🐛 常见问题
@@ -112,7 +113,7 @@ frontend/src/api/score/
 | 问题类型 | 解决方案 |
 |---------|---------|
 | **Mapper 未扫描** | 在 `HyperDutyApplication.java` 的 `@MapperScan` 中添加 `"com.lasu.hyperduty.score.mapper"` |
-| **菜单不显示** | 执行 `hyper_duty_score_menu.sql` 插入菜单数据，重新登录 |
+| **菜单不显示** | 执行 `hyper_duty_score_dml.sql` 初始化菜单和权限数据，重新登录 |
 | **下拉框宽度不够** | 给 `el-select` 添加 `style="width: 160px"` 等明确宽度 |
 | **综合评分不显示小数** | 使用 `Number(value).toFixed(2)` 格式化 |
 | **PersonSelector 弹窗层级问题** | PersonSelector 对话框放在对应页面模板中，不要嵌套在其他对话框内 |

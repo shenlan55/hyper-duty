@@ -67,6 +67,7 @@ com.lasu.hyperduty/
 ├── duty/               # 值班管理模块
 ├── pm/                 # 项目管理模块
 ├── workflow/           # 工作流模块
+├── score/              # 积分管理模块
 ├── ai/                 # AI功能模块
 ├── system/             # 系统管理模块
 └── HyperDutyApplication.java
@@ -93,12 +94,14 @@ src/
 ├── views/              # 页面
 │   ├── duty/           # 值班管理
 │   ├── pm/             # 项目管理
+│   ├── score/          # 积分管理
 │   ├── workflow/       # 工作流
 │   └── [其他模块]/
 ├── components/         # 公共组件
 ├── api/                # API接口
 │   ├── duty/
 │   ├── pm/
+│   ├── score/
 │   ├── workflow/
 │   └── [其他模块]/
 ├── stores/             # Pinia状态管理
@@ -130,9 +133,14 @@ src/
 - 注释使用 `COMMENT ON TABLE` 和 `COMMENT ON COLUMN`
 
 ### SQL 脚本管理
-- 表结构脚本：`hyper_duty_{模块名}_ddl.sql`
-- 数据脚本：`hyper_duty_{模块名}_dml.sql`
-- 禁止零散创建 SQL 文件
+- **系统基础表**：`hyper_duty_ddl.sql`（表结构）、`hyper_duty_dml.sql`（初始数据），仅包含 sys_ 前缀的系统表
+- **各管理模块**：每个模块独立维护 DDL 和 DML 文件
+  - `hyper_duty_duty_ddl.sql` / `hyper_duty_duty_dml.sql` — 值班管理
+  - `hyper_duty_pm_ddl.sql` / `hyper_duty_pm_dml.sql` — 项目管理
+  - `hyper_duty_workflow_ddl.sql` — 工作流
+  - `hyper_duty_score_ddl.sql` / `hyper_duty_score_dml.sql` — 积分管理
+  - `hyper_duty_ai_ddl.sql` / `hyper_duty_ai_dml.sql` — AI模块
+- 禁止零散创建 SQL 文件，新增模块必须按 `hyper_duty_{模块名}_ddl.sql` 和 `hyper_duty_{模块名}_dml.sql` 命名
 
 ### 示例 PostgreSQL 表结构
 ```sql
