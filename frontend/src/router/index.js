@@ -287,7 +287,40 @@ const routes = [
                 meta: { title: '发起流程' }
               }
             ]
+          },
+      {
+        path: 'score',
+        name: 'Score',
+        component: () => import('../views/score/ScoreLayout.vue'),
+        meta: { title: '积分管理' },
+        redirect: '/score/event',
+        children: [
+          {
+            path: 'event',
+            name: 'ScoreEvent',
+            component: () => import('../views/score/ScoreEvent.vue'),
+            meta: { title: '积分事件' }
+          },
+          {
+            path: 'record',
+            name: 'ScoreRecord',
+            component: () => import('../views/score/ScoreRecord.vue'),
+            meta: { title: '积分记录' }
+          },
+          {
+            path: 'summary',
+            name: 'ScoreSummary',
+            component: () => import('../views/score/ScoreSummary.vue'),
+            meta: { title: '月度汇总' }
+          },
+          {
+            path: 'evaluation',
+            name: 'ScoreEvaluation',
+            component: () => import('../views/score/ScoreEvaluation.vue'),
+            meta: { title: '评选排名' }
           }
+        ]
+      }
     ]
   }
 ]

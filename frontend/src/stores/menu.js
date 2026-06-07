@@ -290,6 +290,34 @@ export const useMenuStore = defineStore('menu', {
               icon: 'Check'
             }
           ]
+        },
+        {
+          id: 'score',
+          name: '积分管理',
+          path: '/score',
+          icon: 'Trophy',
+          children: [
+            {
+              name: '积分事件',
+              path: '/score/event',
+              icon: 'Setting'
+            },
+            {
+              name: '积分记录',
+              path: '/score/record',
+              icon: 'Edit'
+            },
+            {
+              name: '月度汇总',
+              path: '/score/summary',
+              icon: 'DataAnalysis'
+            },
+            {
+              name: '评选排名',
+              path: '/score/evaluation',
+              icon: 'Trophy'
+            }
+          ]
         }
       ]
       
@@ -333,7 +361,12 @@ export const useMenuStore = defineStore('menu', {
         '/workflow/delegate-list': '委托配置',
         '/workflow/designer': '流程设计器',
         '/workflow/todo-task': '待办任务',
-        '/workflow/done-task': '已办任务'
+        '/workflow/done-task': '已办任务',
+        '/score': '积分管理',
+        '/score/event': '积分事件',
+        '/score/record': '积分记录',
+        '/score/summary': '月度汇总',
+        '/score/evaluation': '评选排名'
       }
     },
 
