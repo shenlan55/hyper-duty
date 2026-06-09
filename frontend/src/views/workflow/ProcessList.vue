@@ -3,7 +3,7 @@
     <el-page-header title="流程定义">
       <template #extra>
         <el-button type="primary" @click="goToDesigner">设计流程</el-button>
-        <el-button @click="syncProcessDefinition">同步流程</el-button>
+        <el-button @click="handleSync">同步流程</el-button>
       </template>
     </el-page-header>
 
@@ -23,6 +23,7 @@
         :data="tableData"
         :loading="loading"
         :pagination="pagination"
+        :backend-pagination="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
       >
@@ -42,8 +43,8 @@
     >
       <el-form :model="bindFormData" label-width="100px">
         <el-form-item label="表单">
-          <el-select v-model="bindFormData.formId" placeholder="请选择表单">
-            <el-option :label="'- 无 -'" :value="''" />
+          <el-select v-model="bindFormData.formId" placeholder="请选择表单" clearable>
+            <el-option label="无" :value="null" />
             <el-option v-for="form in formList" :key="form.id" :label="form.name" :value="form.id" />
           </el-select>
         </el-form-item>
@@ -61,7 +62,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BaseTable from '@/components/BaseTable.vue'
-import { pageProcessDefinition, deleteDeployment, syncProcessDefinition, bindFormToProcess } from '@/api/workflow/process'
+import { pageProcessDefinition, deleteDeployment, syncProcessDefinition as syncProcessDefinitionApi, bindFormToProcess } from '@/api/workflow/process'
 import { listForm } from '@/api/workflow/form'
 
 export default {
@@ -88,7 +89,7 @@ export default {
     const bindFormData = reactive({
       key: '',
       name: '',
-      formId: ''
+      formId: null
     })
 
     const columns = [
@@ -132,9 +133,9 @@ export default {
       router.push('/workflow/designer')
     }
 
-    const syncProcessDefinition = async () => {
+    const handleSync = async () => {
       try {
-        await syncProcessDefinition()
+        await syncProcessDefinitionApi()
         ElMessage.success('同步成功')
         loadData()
       } catch (error) {
@@ -144,8 +145,8 @@ export default {
 
     const bindFormDialog = (row) => {
       bindFormData.key = row.key
-      bindFormData.name = row.name
-      bindFormData.formId = row.formId || ''
+      bindFormData.name = row.name || row.key
+      bindFormData.formId = row.formId || null
       bindFormVisible.value = true
     }
 
@@ -218,7 +219,7 @@ export default {
       loadData,
       resetSearch,
       goToDesigner,
-      syncProcessDefinition,
+      handleSync,
       bindFormDialog,
       handleBindForm,
       viewProcess,

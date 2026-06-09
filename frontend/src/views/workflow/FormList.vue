@@ -263,8 +263,9 @@ const handleSaveForm = async () => {
       id: designForm.value.id,
       formContent: JSON.stringify(rule)
     })
-    ElMessage.success('保存成功')
+    ElMessage.success('表单设计保存成功')
     designerDialogVisible.value = false
+    loadData()
   } catch (error) {
     ElMessage.error(error.message || '保存失败')
   }

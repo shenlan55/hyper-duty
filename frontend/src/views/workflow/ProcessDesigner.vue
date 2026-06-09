@@ -37,7 +37,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BpmnDesigner from '@/components/BpmnDesigner.vue'
 import MobileGuard from '@/components/MobileGuard.vue'
-import { deployProcess as deployProcessApi } from '@/api/workflow/process'
+import { deployProcess as deployProcessApi, getProcessBpmnXml } from '@/api/workflow/process'
 
 export default {
   name: 'ProcessDesigner',
@@ -59,33 +59,12 @@ export default {
     const loadProcess = async (processDefinitionId) => {
       loading.value = true
       try {
-        console.log('正在加载流程, processDefinitionId:', processDefinitionId)
-        
-        // 直接用 axios 原始调用，并且用 Vite 代理
-        const axios = (await import('axios')).default
-        const response = await axios.get(`/api/workflow/process/definition/bpmn/${processDefinitionId}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        })
-        console.log('loadProcess axios 完整响应:', response)
-        console.log('loadProcess response.data:', response.data)
-        
-        // 获取真正的 XML 内容
-        let xml = null
-        if (response.data && response.data.code === 200) {
-          xml = response.data.data
-        } else if (typeof response.data === 'string') {
-          xml = response.data
-        }
-        
-        console.log('最终使用的XML:', xml)
-        
+        // request.js 响应拦截器已自动解包 ResponseResult.data
+        const xml = await getProcessBpmnXml(processDefinitionId)
         if (!xml) {
           console.warn('流程XML为空，使用默认模板')
           ElMessage.warning('流程数据为空，将显示默认模板')
         }
-        
         initialXml.value = xml || ''
         xmlContent.value = xml || ''
         isEditing.value = true

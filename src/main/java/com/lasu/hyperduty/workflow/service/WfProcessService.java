@@ -91,6 +91,15 @@ public interface WfProcessService {
     Page<ProcessInstance> pageMyStartedProcess(Integer pageNum, Integer pageSize, Long userId);
 
     /**
+     * 分页查询我已完成的流程（历史）
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param userId 用户ID
+     * @return 分页结果
+     */
+    Page<HistoricProcessInstance> pageMyCompletedProcess(Integer pageNum, Integer pageSize, Long userId);
+
+    /**
      * 获取流程变量
      * @param processInstanceId 流程实例ID
      * @return 流程变量

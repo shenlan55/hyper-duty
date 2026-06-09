@@ -3,7 +3,7 @@ import request from '@/utils/request'
 // 表单管理API
 export function pageForm(params) {
   return request({
-    url: '/api/workflow/form/page',
+    url: '/workflow/form/page',
     method: 'get',
     params
   })
@@ -11,7 +11,7 @@ export function pageForm(params) {
 
 export function createForm(data) {
   return request({
-    url: '/api/workflow/form',
+    url: '/workflow/form',
     method: 'post',
     data
   })
@@ -19,7 +19,7 @@ export function createForm(data) {
 
 export function updateForm(data) {
   return request({
-    url: '/api/workflow/form',
+    url: '/workflow/form',
     method: 'put',
     data
   })
@@ -27,21 +27,21 @@ export function updateForm(data) {
 
 export function deleteForm(id) {
   return request({
-    url: `/api/workflow/form/${id}`,
+    url: `/workflow/form/${id}`,
     method: 'delete'
   })
 }
 
 export function getForm(id) {
   return request({
-    url: `/api/workflow/form/${id}`,
+    url: `/workflow/form/${id}`,
     method: 'get'
   })
 }
 
 export function listForm(params) {
   return request({
-    url: '/api/workflow/form/page',
+    url: '/workflow/form/page',
     method: 'get',
     params
   })
@@ -49,7 +49,7 @@ export function listForm(params) {
 
 export function getFormDetail(id) {
   return request({
-    url: `/api/workflow/form/${id}`,
+    url: `/workflow/form/${id}`,
     method: 'get'
   })
 }

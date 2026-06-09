@@ -3,7 +3,7 @@ import request from '@/utils/request'
 // 委托管理API
 export function pageDelegate(pageNum, pageSize) {
   return request({
-    url: '/api/workflow/delegate/page',
+    url: '/workflow/delegate/page',
     method: 'get',
     params: { pageNum, pageSize }
   })
@@ -11,7 +11,7 @@ export function pageDelegate(pageNum, pageSize) {
 
 export function createDelegate(data) {
   return request({
-    url: '/api/workflow/delegate',
+    url: '/workflow/delegate',
     method: 'post',
     data
   })
@@ -19,7 +19,7 @@ export function createDelegate(data) {
 
 export function updateDelegate(id, data) {
   return request({
-    url: `/api/workflow/delegate/${id}`,
+    url: `/workflow/delegate/${id}`,
     method: 'put',
     data
   })
@@ -27,21 +27,21 @@ export function updateDelegate(id, data) {
 
 export function deleteDelegate(id) {
   return request({
-    url: `/api/workflow/delegate/${id}`,
+    url: `/workflow/delegate/${id}`,
     method: 'delete'
   })
 }
 
 export function enableDelegate(id) {
   return request({
-    url: `/api/workflow/delegate/enable/${id}`,
+    url: `/workflow/delegate/enable/${id}`,
     method: 'post'
   })
 }
 
 export function disableDelegate(id) {
   return request({
-    url: `/api/workflow/delegate/disable/${id}`,
+    url: `/workflow/delegate/disable/${id}`,
     method: 'post'
   })
 }

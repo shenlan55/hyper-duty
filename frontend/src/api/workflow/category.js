@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 
-const BASE_URL = '/api/workflow/category'
+const BASE_URL = '/workflow/category'
 
 export function pageCategory(params) {
   return request({

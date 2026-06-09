@@ -45,6 +45,7 @@ public class WfProcessServiceImpl implements WfProcessService {
     private final RuntimeService runtimeService;
     private final HistoryService historyService;
     private final IdentityService identityService;
+    private final TaskService taskService;
     private final WfDelegateService wfDelegateService;
     private final WfDefinitionMapper wfDefinitionMapper;
 
@@ -62,15 +63,34 @@ public class WfProcessServiceImpl implements WfProcessService {
                     .list();
 
             for (ProcessDefinition pd : processDefinitions) {
-                WfDefinition wfDefinition = new WfDefinition();
-                wfDefinition.setProcessDefinitionId(pd.getId());
-                wfDefinition.setProcessDefinitionKey(pd.getKey());
-                wfDefinition.setProcessName(pd.getName() != null ? pd.getName() : pd.getKey());
-                wfDefinition.setVersion(pd.getVersion());
-                wfDefinition.setStatus(1);
-                wfDefinition.setCreateTime(java.time.LocalDateTime.now());
-                wfDefinition.setUpdateTime(java.time.LocalDateTime.now());
-                wfDefinitionMapper.insert(wfDefinition);
+                // 检查是否已存在同key的wf_definition，避免重复
+                List<WfDefinition> existing = wfDefinitionMapper.selectList(
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<WfDefinition>()
+                                .eq(WfDefinition::getProcessDefinitionKey, pd.getKey())
+                                .orderByDesc(WfDefinition::getVersion)
+                                .last("LIMIT 1"));
+                
+                WfDefinition wfDefinition;
+                if (!existing.isEmpty()) {
+                    // 更新已有记录
+                    wfDefinition = existing.get(0);
+                    wfDefinition.setProcessDefinitionId(pd.getId());
+                    wfDefinition.setProcessName(pd.getName() != null ? pd.getName() : name);
+                    wfDefinition.setVersion(pd.getVersion());
+                    wfDefinition.setUpdateTime(java.time.LocalDateTime.now());
+                    wfDefinitionMapper.updateById(wfDefinition);
+                } else {
+                    // 新增记录
+                    wfDefinition = new WfDefinition();
+                    wfDefinition.setProcessDefinitionId(pd.getId());
+                    wfDefinition.setProcessDefinitionKey(pd.getKey());
+                    wfDefinition.setProcessName(pd.getName() != null ? pd.getName() : name);
+                    wfDefinition.setVersion(pd.getVersion());
+                    wfDefinition.setStatus(1);
+                    wfDefinition.setCreateTime(java.time.LocalDateTime.now());
+                    wfDefinition.setUpdateTime(java.time.LocalDateTime.now());
+                    wfDefinitionMapper.insert(wfDefinition);
+                }
             }
 
             return deployment;
@@ -172,14 +192,17 @@ public class WfProcessServiceImpl implements WfProcessService {
             Long userId = SecurityUtil.getCurrentUserId();
             String userName = SecurityUtil.getCurrentUsername();
 
+            // 设置流程发起人身份
             identityService.setAuthenticatedUserId(userId.toString());
 
             Map<String, Object> variables = dto.getVariables();
             if (variables == null) {
                 variables = new HashMap<>();
             }
-            variables.put("startUserId", userId);
+            // 设置流程变量，供BPMN中assignee表达式使用（如 ${startUserId}）
+            variables.put("startUserId", userId.toString());
             variables.put("startUserName", userName);
+            variables.put("initiator", userId.toString());
 
             ProcessInstance processInstance;
             if (StringUtils.hasText(dto.getBusinessKey())) {
@@ -193,6 +216,18 @@ public class WfProcessServiceImpl implements WfProcessService {
                         dto.getProcessDefinitionKey(),
                         variables
                 );
+            }
+
+            log.info("流程启动成功: processInstanceId={}, processDefinitionKey={}, startUserId={}", 
+                    processInstance.getId(), dto.getProcessDefinitionKey(), userId);
+            
+            // 检查是否有待办任务生成
+            long taskCount = taskService.createTaskQuery()
+                    .processInstanceId(processInstance.getId())
+                    .count();
+            log.info("流程启动后待办任务数: {}", taskCount);
+            if (taskCount == 0 && !processInstance.isEnded()) {
+                log.warn("流程已启动但无待办任务，请检查BPMN流程中是否配置了用户任务(UserTask)及其assignee");
             }
 
             return processInstance;
@@ -228,6 +263,22 @@ public class WfProcessServiceImpl implements WfProcessService {
         List<ProcessInstance> list = query.listPage((pageNum - 1) * pageSize, pageSize);
 
         Page<ProcessInstance> page = new Page<>(pageNum, pageSize);
+        page.setRecords(list);
+        page.setTotal(total);
+        return page;
+    }
+
+    @Override
+    public Page<HistoricProcessInstance> pageMyCompletedProcess(Integer pageNum, Integer pageSize, Long userId) {
+        org.flowable.engine.history.HistoricProcessInstanceQuery query = historyService.createHistoricProcessInstanceQuery()
+                .startedBy(userId.toString())
+                .finished()
+                .orderByProcessInstanceEndTime().desc();
+
+        long total = query.count();
+        List<HistoricProcessInstance> list = query.listPage((pageNum - 1) * pageSize, pageSize);
+
+        Page<HistoricProcessInstance> page = new Page<>(pageNum, pageSize);
         page.setRecords(list);
         page.setTotal(total);
         return page;

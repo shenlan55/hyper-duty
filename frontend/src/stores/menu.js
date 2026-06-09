@@ -250,6 +250,11 @@ export const useMenuStore = defineStore('menu', {
           icon: 'Operation',
           children: [
             {
+              name: '发起流程',
+              path: '/workflow/start',
+              icon: 'Promotion'
+            },
+            {
               name: '流程定义',
               path: '/workflow/process-list',
               icon: 'Document'
@@ -258,6 +263,16 @@ export const useMenuStore = defineStore('menu', {
               name: '流程实例',
               path: '/workflow/instance-list',
               icon: 'List'
+            },
+            {
+              name: '待办任务',
+              path: '/workflow/todo-task',
+              icon: 'Clock'
+            },
+            {
+              name: '已办任务',
+              path: '/workflow/done-task',
+              icon: 'Check'
             },
             {
               name: '表单管理',
@@ -273,21 +288,6 @@ export const useMenuStore = defineStore('menu', {
               name: '委托配置',
               path: '/workflow/delegate-list',
               icon: 'User'
-            },
-            {
-              name: '流程设计器',
-              path: '/workflow/designer',
-              icon: 'Edit'
-            },
-            {
-              name: '待办任务',
-              path: '/workflow/todo-task',
-              icon: 'Clock'
-            },
-            {
-              name: '已办任务',
-              path: '/workflow/done-task',
-              icon: 'Check'
             }
           ]
         },
@@ -354,6 +354,7 @@ export const useMenuStore = defineStore('menu', {
         '/project/statistics': '项目统计',
         '/project/ai-report': 'AI报告生成',
         '/workflow': '工作流管理',
+        '/workflow/start': '发起流程',
         '/workflow/process-list': '流程定义',
         '/workflow/instance-list': '流程实例',
         '/workflow/form-list': '表单管理',

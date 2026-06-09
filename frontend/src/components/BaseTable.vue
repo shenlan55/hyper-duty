@@ -221,8 +221,8 @@
     <!-- 分页 -->
     <div class="pagination-container" v-if="showPagination && props.pagination">
       <el-pagination
-        v-model:current-page="props.pagination.currentPage"
-        v-model:page-size="props.pagination.pageSize"
+        v-model:current-page="localCurrentPage"
+        v-model:page-size="localPageSize"
         :page-sizes="props.pagination.pageSizes"
         layout="total, sizes, prev, pager, next, jumper"
         :total="props.pagination.total || 0"
@@ -547,15 +547,21 @@ const handleSelectAll = (selection) => {
 }
 
 // 分页方法
+// 使用本地 ref 避免 v-model 直接修改父组件 reactive 对象导致循环
+const localCurrentPage = ref(props.pagination?.currentPage || 1)
+const localPageSize = ref(props.pagination?.pageSize || 10)
+
 const handleSizeChange = (size) => {
-  if (props.pagination) {
+  if (props.pagination && localPageSize.value !== size) {
+    localPageSize.value = size
     props.pagination.pageSize = size
     emit('size-change', size)
   }
 }
 
 const handleCurrentChange = (current) => {
-  if (props.pagination) {
+  if (props.pagination && localCurrentPage.value !== current) {
+    localCurrentPage.value = current
     props.pagination.currentPage = current
     emit('current-change', current)
   }
@@ -570,7 +576,13 @@ watch(
   () => props.pagination,
   (newPagination) => {
     if (newPagination) {
-      // 当pagination变化时，更新内部状态
+      // 同步父组件的分页状态到本地 ref，避免 v-model 直接修改父组件 reactive 对象导致循环
+      if (newPagination.currentPage !== undefined && newPagination.currentPage !== localCurrentPage.value) {
+        localCurrentPage.value = newPagination.currentPage
+      }
+      if (newPagination.pageSize !== undefined && newPagination.pageSize !== localPageSize.value) {
+        localPageSize.value = newPagination.pageSize
+      }
     }
   },
   { deep: true }

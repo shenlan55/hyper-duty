@@ -169,6 +169,10 @@ request.interceptors.response.use(
     
     if (data.code === 200) {
       // 对返回的数据进行HTML实体解码，解决乱码问题
+      // 当请求配置 rawText=true 时跳过解码（用于 XML/Markdown 等结构化文本）
+      if (response.config.rawText) {
+        return data.data
+      }
       return unescapeHtmlDeep(data.data)
     } else {
       // 后端返回错误

@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Tag(name = "表单管理", description = "表单管理接口")
 @RestController
-@RequestMapping("/api/workflow/form")
+@RequestMapping("/workflow/form")
 @RequiredArgsConstructor
 public class WfFormController {
 

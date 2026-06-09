@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Tag(name = "委托管理", description = "委托管理接口")
 @RestController
-@RequestMapping("/api/workflow/delegate")
+@RequestMapping("/workflow/delegate")
 @RequiredArgsConstructor
 public class WfDelegateController {
 

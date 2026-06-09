@@ -86,10 +86,15 @@ const formOption = {
   resetBtn: false
 }
 
+// 清空表单数据
+const clearFormData = () => {
+  Object.keys(formData).forEach(key => delete formData[key])
+}
+
 const handleNodeClick = async (data) => {
   if (data.type === 'process') {
     selectedProcess.value = data
-    formData = reactive({})
+    clearFormData()
     
     if (data.formId) {
       try {
@@ -124,17 +129,16 @@ const handleSubmit = async () => {
 
   try {
     const variables = { ...formData }
-    const response = await startProcess({
+    await startProcess({
       processDefinitionKey: selectedProcess.value.key,
       variables
     })
     
     ElMessage.success('流程发起成功')
-    console.log('流程实例ID:', response.processInstanceId)
     
     selectedProcess.value = null
     formRule.value = []
-    Object.keys(formData).forEach(key => delete formData[key])
+    clearFormData()
   } catch (error) {
     ElMessage.error(error.message || '流程发起失败')
   }
@@ -163,7 +167,7 @@ const loadTreeData = async () => {
     processes.forEach(proc => {
       const processNode = {
         id: 'proc_' + proc.id,
-        label: proc.name,
+        label: proc.name || proc.key || '未命名流程',
         key: proc.key,
         type: 'process',
         formId: proc.formId,

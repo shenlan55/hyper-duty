@@ -76,11 +76,15 @@ public class ProcessDefinitionDTO {
 
     /**
      * 从Flowable ProcessDefinition实体转换（带扩展信息）
+     * processName: 来自wf_definition的流程名称，优先使用，Flowable的getName()可能为null
      */
-    public static ProcessDefinitionDTO fromProcessDefinition(ProcessDefinition processDefinition, Long formId, Long categoryId, String remark) {
+    public static ProcessDefinitionDTO fromProcessDefinition(ProcessDefinition processDefinition, Long formId, Long categoryId, String remark, String processName) {
+        // 优先使用wf_definition中的processName，其次用Flowable的getName()，最后用key兜底
+        String displayName = (processName != null && !processName.isEmpty()) ? processName
+                : (processDefinition.getName() != null ? processDefinition.getName() : processDefinition.getKey());
         return ProcessDefinitionDTO.builder()
                 .id(processDefinition.getId())
-                .name(processDefinition.getName())
+                .name(displayName)
                 .key(processDefinition.getKey())
                 .version(processDefinition.getVersion())
                 .category(processDefinition.getCategory())

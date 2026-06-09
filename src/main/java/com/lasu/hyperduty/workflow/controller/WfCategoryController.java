@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Tag(name = "流程分类管理", description = "流程分类管理接口")
 @RestController
-@RequestMapping("/api/workflow/category")
+@RequestMapping("/workflow/category")
 @RequiredArgsConstructor
 public class WfCategoryController {
 

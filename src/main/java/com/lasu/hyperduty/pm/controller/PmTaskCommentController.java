@@ -29,7 +29,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  * 任务批注控制器
  */
 @RestController
-@RequestMapping("/api/pm/task/comment")
+@RequestMapping("/pm/task/comment")
 public class PmTaskCommentController {
 
     @Autowired

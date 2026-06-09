@@ -109,8 +109,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      */
     private String getProcessedRequestPath(HttpServletRequest request) {
         String requestPath = request.getServletPath();
-        // 移除/api前缀，统一处理路径
-        return requestPath.replace("/api", "");
+        // 精确移除路径开头的 /api 前缀（避免误删路径中含 "api" 子串的段）
+        if (requestPath.startsWith("/api/")) {
+            return requestPath.substring(4);
+        }
+        if (requestPath.equals("/api")) {
+            return "/";
+        }
+        return requestPath;
     }
 
     /**

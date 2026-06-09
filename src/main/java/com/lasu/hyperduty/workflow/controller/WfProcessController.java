@@ -3,13 +3,11 @@ package com.lasu.hyperduty.workflow.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.ResponseResult;
-import com.lasu.hyperduty.workflow.dto.DeploymentDTO;
-import com.lasu.hyperduty.workflow.dto.ProcessDefinitionDTO;
-import com.lasu.hyperduty.workflow.dto.WfProcessStartDTO;
+import com.lasu.hyperduty.common.utils.SecurityUtil;
+import com.lasu.hyperduty.workflow.dto.*;
 import com.lasu.hyperduty.workflow.entity.WfDefinition;
 import com.lasu.hyperduty.workflow.mapper.WfDefinitionMapper;
 import com.lasu.hyperduty.workflow.service.WfProcessService;
-import com.lasu.hyperduty.common.utils.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +18,9 @@ import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +32,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Tag(name = "流程管理", description = "流程管理接口")
 @RestController
-@RequestMapping("/api/workflow/process")
+@RequestMapping("/workflow/process")
 @RequiredArgsConstructor
 public class WfProcessController {
 
@@ -44,8 +42,9 @@ public class WfProcessController {
 
     @Operation(summary = "部署流程")
     @PostMapping("/deploy")
-    public ResponseResult<DeploymentDTO> deployProcess(@RequestParam String name, @RequestBody String bpmnXml) {
-        Deployment deployment = wfProcessService.deployProcess(name, bpmnXml);
+    public ResponseResult<DeploymentDTO> deployProcess(@RequestBody DeployProcessDTO dto) {
+        log.info("部署流程: name={}, bpmnXml长度={}", dto.getName(), dto.getBpmnXml() != null ? dto.getBpmnXml().length() : 0);
+        Deployment deployment = wfProcessService.deployProcess(dto.getName(), dto.getBpmnXml());
         return ResponseResult.success(DeploymentDTO.fromDeployment(deployment));
     }
 
@@ -53,6 +52,8 @@ public class WfProcessController {
     @DeleteMapping("/deploy/{deploymentId}")
     public ResponseResult<Void> deleteDeployment(@PathVariable String deploymentId) {
         wfProcessService.deleteDeployment(deploymentId);
+        // 同步清理扩展表：删除后重新同步，清除孤儿记录
+        syncProcessDefinition();
         return ResponseResult.success();
     }
 
@@ -75,7 +76,7 @@ public class WfProcessController {
                 .map(pd -> {
                     WfDefinition wd = definitionMap.get(pd.getKey());
                     if (wd != null) {
-                        return ProcessDefinitionDTO.fromProcessDefinition(pd, wd.getFormId(), wd.getCategoryId(), wd.getRemark());
+                        return ProcessDefinitionDTO.fromProcessDefinition(pd, wd.getFormId(), wd.getCategoryId(), wd.getRemark(), wd.getProcessName());
                     }
                     return ProcessDefinitionDTO.fromProcessDefinition(pd);
                 })
@@ -88,17 +89,21 @@ public class WfProcessController {
     public ResponseResult<List<ProcessDefinitionDTO>> listProcessDefinition() {
         List<ProcessDefinition> list = wfProcessService.listProcessDefinition();
         
+        // 按key去重，取最新版本的wf_definition（避免重复key导致多条记录）
         List<WfDefinition> wfDefinitions = wfDefinitionMapper.selectList(new LambdaQueryWrapper<>());
         Map<String, WfDefinition> definitionMap = new HashMap<>();
         for (WfDefinition wd : wfDefinitions) {
-            definitionMap.put(wd.getProcessDefinitionKey(), wd);
+            WfDefinition existing = definitionMap.get(wd.getProcessDefinitionKey());
+            if (existing == null || wd.getVersion() > existing.getVersion()) {
+                definitionMap.put(wd.getProcessDefinitionKey(), wd);
+            }
         }
         
         List<ProcessDefinitionDTO> dtoList = list.stream()
                 .map(pd -> {
                     WfDefinition wd = definitionMap.get(pd.getKey());
                     if (wd != null) {
-                        return ProcessDefinitionDTO.fromProcessDefinition(pd, wd.getFormId(), wd.getCategoryId(), wd.getRemark());
+                        return ProcessDefinitionDTO.fromProcessDefinition(pd, wd.getFormId(), wd.getCategoryId(), wd.getRemark(), wd.getProcessName());
                     }
                     return ProcessDefinitionDTO.fromProcessDefinition(pd);
                 })
@@ -119,24 +124,51 @@ public class WfProcessController {
         WfDefinition wd = definitions.isEmpty() ? null : definitions.get(0);
         
         if (wd != null) {
-            return ResponseResult.success(ProcessDefinitionDTO.fromProcessDefinition(processDefinition, wd.getFormId(), wd.getCategoryId(), wd.getRemark()));
+            return ResponseResult.success(ProcessDefinitionDTO.fromProcessDefinition(processDefinition, wd.getFormId(), wd.getCategoryId(), wd.getRemark(), wd.getProcessName()));
         }
         return ResponseResult.success(ProcessDefinitionDTO.fromProcessDefinition(processDefinition));
     }
 
     @Operation(summary = "同步流程定义到扩展表")
     @PostMapping("/definition/sync")
+    @Transactional(rollbackFor = Exception.class)
     public ResponseResult<Void> syncProcessDefinition() {
+        log.info("开始同步流程定义到扩展表...");
         List<ProcessDefinition> processDefinitions = wfProcessService.listProcessDefinition();
         List<WfDefinition> existingDefinitions = wfDefinitionMapper.selectList(new LambdaQueryWrapper<>());
+        log.info("Flowable流程定义数: {}, 扩展表记录数: {}", processDefinitions.size(), existingDefinitions.size());
         
-        Map<String, WfDefinition> existingMap = new HashMap<>();
-        for (WfDefinition wd : existingDefinitions) {
-            existingMap.put(wd.getProcessDefinitionKey(), wd);
+        // 构建Flowable中存在的key集合
+        Map<String, ProcessDefinition> flowablePdMap = new HashMap<>();
+        for (ProcessDefinition pd : processDefinitions) {
+            flowablePdMap.put(pd.getKey(), pd);
         }
         
+        // 构建已存在记录的key→最新版本映射
+        Map<String, WfDefinition> existingMap = new HashMap<>();
+        for (WfDefinition wd : existingDefinitions) {
+            WfDefinition existing = existingMap.get(wd.getProcessDefinitionKey());
+            if (existing == null || wd.getVersion() > existing.getVersion()) {
+                existingMap.put(wd.getProcessDefinitionKey(), wd);
+            }
+        }
+        
+        int updateCount = 0;
+        int insertCount = 0;
+        
+        // 新增Flowable中存在但扩展表不存在的，更新已存在的
         for (ProcessDefinition pd : processDefinitions) {
-            if (!existingMap.containsKey(pd.getKey())) {
+            if (existingMap.containsKey(pd.getKey())) {
+                // 更新已有记录
+                WfDefinition wd = existingMap.get(pd.getKey());
+                wd.setProcessDefinitionId(pd.getId());
+                wd.setProcessName(pd.getName() != null ? pd.getName() : pd.getKey());
+                wd.setVersion(pd.getVersion());
+                wd.setUpdateTime(java.time.LocalDateTime.now());
+                wfDefinitionMapper.updateById(wd);
+                updateCount++;
+            } else {
+                // 插入新记录
                 WfDefinition wd = new WfDefinition();
                 wd.setProcessDefinitionId(pd.getId());
                 wd.setProcessDefinitionKey(pd.getKey());
@@ -146,65 +178,96 @@ public class WfProcessController {
                 wd.setCreateTime(java.time.LocalDateTime.now());
                 wd.setUpdateTime(java.time.LocalDateTime.now());
                 wfDefinitionMapper.insert(wd);
+                insertCount++;
             }
         }
         
+        // 删除Flowable中已不存在的记录
+        int deleteCount = 0;
+        for (WfDefinition wd : existingDefinitions) {
+            if (!flowablePdMap.containsKey(wd.getProcessDefinitionKey())) {
+                wfDefinitionMapper.deleteById(wd.getId());
+                deleteCount++;
+            }
+        }
+        
+        log.info("同步完成: 更新{}条, 新增{}条, 删除{}条", updateCount, insertCount, deleteCount);
         return ResponseResult.success();
     }
 
     @Operation(summary = "绑定表单到流程")
     @PostMapping("/definition/bind-form")
-    public ResponseResult<Void> bindFormToProcess(@RequestParam String processKey, @RequestParam(required = false) Long formId) {
-        // 查询该流程Key的所有记录，只保留版本最高的一条
+    public ResponseResult<Void> bindFormToProcess(@RequestBody BindFormDTO dto) {
+        // 查询该流程Key的最新版本记录
         List<WfDefinition> definitions = wfDefinitionMapper.selectList(new LambdaQueryWrapper<WfDefinition>()
-                .eq(WfDefinition::getProcessDefinitionKey, processKey)
-                .orderByDesc(WfDefinition::getVersion)
-                .last("LIMIT 1"));
+                .eq(WfDefinition::getProcessDefinitionKey, dto.getProcessKey())
+                .orderByDesc(WfDefinition::getVersion));
         
-        WfDefinition wd = definitions.isEmpty() ? null : definitions.get(0);
-        
-        if (wd == null) {
+        if (definitions.isEmpty()) {
             throw new com.lasu.hyperduty.common.exception.BusinessException("流程定义不存在，请先同步流程定义");
         }
         
-        wd.setFormId(formId);
-        wd.setUpdateTime(java.time.LocalDateTime.now());
-        wfDefinitionMapper.updateById(wd);
+        // 更新所有同key的记录为相同的formId
+        for (WfDefinition wd : definitions) {
+            wd.setFormId(dto.getFormId());
+            wd.setUpdateTime(java.time.LocalDateTime.now());
+            wfDefinitionMapper.updateById(wd);
+        }
         
         return ResponseResult.success();
     }
 
     @Operation(summary = "获取流程BPMN XML")
-    @GetMapping("/definition/bpmn/{processDefinitionId}")
-    public ResponseResult<String> getProcessBpmnXml(@PathVariable String processDefinitionId) {
+    @GetMapping("/definition/bpmn-xml")
+    public ResponseResult<String> getProcessBpmnXml(@RequestParam String processDefinitionId) {
         String bpmnXml = wfProcessService.getProcessBpmnXml(processDefinitionId);
-        log.info("返回流程XML, 长度: {}, 内容预览: {}", bpmnXml.length(), 
-                bpmnXml.length() > 100 ? bpmnXml.substring(0, 100) + "..." : bpmnXml);
-        return ResponseResult.success(bpmnXml);
+        log.info("返回流程XML, processDefinitionId={}, length={}", processDefinitionId, bpmnXml.length());
+        // 使用 success(message, data) 重载，避免 String 类型被误识别为 message
+        return ResponseResult.success("success", bpmnXml);
     }
 
     @Operation(summary = "启动流程")
     @PostMapping("/start")
-    public ResponseResult<ProcessInstance> startProcess(@RequestBody WfProcessStartDTO dto) {
+    public ResponseResult<ProcessInstanceDTO> startProcess(@RequestBody WfProcessStartDTO dto) {
         ProcessInstance processInstance = wfProcessService.startProcess(dto);
-        return ResponseResult.success(processInstance);
+        return ResponseResult.success(ProcessInstanceDTO.fromProcessInstance(processInstance));
     }
 
     @Operation(summary = "获取流程实例")
     @GetMapping("/instance/{processInstanceId}")
-    public ResponseResult<ProcessInstance> getProcessInstance(@PathVariable String processInstanceId) {
+    public ResponseResult<ProcessInstanceDTO> getProcessInstance(@PathVariable String processInstanceId) {
         ProcessInstance processInstance = wfProcessService.getProcessInstance(processInstanceId);
-        return ResponseResult.success(processInstance);
+        return ResponseResult.success(ProcessInstanceDTO.fromProcessInstance(processInstance));
     }
 
-    @Operation(summary = "分页查询我发起的流程")
+    @Operation(summary = "分页查询我发起的流程（运行中）")
     @GetMapping("/instance/my/page")
-    public ResponseResult<Page<ProcessInstance>> pageMyStartedProcess(
+    public ResponseResult<Page<ProcessInstanceDTO>> pageMyStartedProcess(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         Long userId = SecurityUtil.getCurrentUserId();
         Page<ProcessInstance> page = wfProcessService.pageMyStartedProcess(pageNum, pageSize, userId);
-        return ResponseResult.success(page);
+        
+        Page<ProcessInstanceDTO> dtoPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
+        dtoPage.setRecords(page.getRecords().stream()
+                .map(ProcessInstanceDTO::fromProcessInstance)
+                .collect(Collectors.toList()));
+        return ResponseResult.success(dtoPage);
+    }
+
+    @Operation(summary = "分页查询我已完成的流程（历史）")
+    @GetMapping("/instance/my/completed/page")
+    public ResponseResult<Page<HistoricProcessInstanceDTO>> pageMyCompletedProcess(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        Page<org.flowable.engine.history.HistoricProcessInstance> page = wfProcessService.pageMyCompletedProcess(pageNum, pageSize, userId);
+        
+        Page<HistoricProcessInstanceDTO> dtoPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
+        dtoPage.setRecords(page.getRecords().stream()
+                .map(HistoricProcessInstanceDTO::fromHistoricProcessInstance)
+                .collect(Collectors.toList()));
+        return ResponseResult.success(dtoPage);
     }
 
     @Operation(summary = "获取流程变量")
@@ -256,24 +319,4 @@ public class WfProcessController {
         return ResponseResult.success(instance);
     }
 
-    @Operation(summary = "调试：列出所有流程定义")
-    @GetMapping("/debug/list-all")
-    public ResponseResult<List<Map<String, Object>>> listAllProcessDefinitions() {
-        List<ProcessDefinition> definitions = repositoryService.createProcessDefinitionQuery().list();
-        List<Map<String, Object>> result = new ArrayList<>();
-        
-        for (ProcessDefinition pd : definitions) {
-            Map<String, Object> info = new HashMap<>();
-            info.put("id", pd.getId());
-            info.put("key", pd.getKey());
-            info.put("name", pd.getName());
-            info.put("version", pd.getVersion());
-            info.put("deploymentId", pd.getDeploymentId());
-            info.put("resourceName", pd.getResourceName());
-            result.add(info);
-        }
-        
-        log.info("调试：找到 {} 个流程定义", result.size());
-        return ResponseResult.success(result);
-    }
 }

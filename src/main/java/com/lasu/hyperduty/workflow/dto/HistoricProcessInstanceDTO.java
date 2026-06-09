@@ -1,6 +1,7 @@
 package com.lasu.hyperduty.workflow.dto;
 
 import lombok.Data;
+import org.flowable.engine.history.HistoricProcessInstance;
 
 import java.util.Date;
 
@@ -78,4 +79,26 @@ public class HistoricProcessInstanceDTO {
      * 超级流程实例ID
      */
     private String superProcessInstanceId;
+
+    /**
+     * 从Flowable HistoricProcessInstance实体转换
+     */
+    public static HistoricProcessInstanceDTO fromHistoricProcessInstance(HistoricProcessInstance hpi) {
+        HistoricProcessInstanceDTO dto = new HistoricProcessInstanceDTO();
+        dto.setId(hpi.getId());
+        dto.setBusinessKey(hpi.getBusinessKey());
+        dto.setProcessDefinitionId(hpi.getProcessDefinitionId());
+        dto.setProcessDefinitionKey(hpi.getProcessDefinitionKey());
+        dto.setProcessDefinitionName(hpi.getProcessDefinitionName());
+        dto.setProcessDefinitionVersion(hpi.getProcessDefinitionVersion());
+        dto.setDeploymentId(hpi.getDeploymentId());
+        dto.setStartTime(hpi.getStartTime());
+        dto.setEndTime(hpi.getEndTime());
+        dto.setDurationInMillis(hpi.getDurationInMillis());
+        dto.setStartUserId(hpi.getStartUserId());
+        dto.setStartActivityId(hpi.getStartActivityId());
+        dto.setDeleteReason(hpi.getDeleteReason());
+        dto.setSuperProcessInstanceId(hpi.getSuperProcessInstanceId());
+        return dto;
+    }
 }

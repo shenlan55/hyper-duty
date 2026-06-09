@@ -19,7 +19,7 @@ import java.util.Map;
  */
 @Tag(name = "任务管理", description = "任务管理接口")
 @RestController
-@RequestMapping("/api/workflow/task")
+@RequestMapping("/workflow/task")
 @RequiredArgsConstructor
 public class WfTaskController {
 
