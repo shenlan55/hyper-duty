@@ -43,13 +43,13 @@
         @export="handleExport"
       >
         <template #isDefault="{ row }">
-          <el-tag :type="row.isDefault === 1 ? 'success' : 'info'">
-            {{ row.isDefault === 1 ? '是' : '否' }}
+          <el-tag :type="yesNoType(row.isDefault)">
+            {{ yesNoLabel(row.isDefault) }}
           </el-tag>
         </template>
         <template #status="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-            {{ row.status === 1 ? '启用' : '禁用' }}
+          <el-tag :type="commonStatusType(row.status)">
+            {{ commonStatusLabel(row.status) }}
           </el-tag>
         </template>
         <template #createTime="{ row }">
@@ -120,6 +120,13 @@ import { listDictType } from '../api/dictType'
 import { formatDateTime } from '../utils/dateUtils'
 import BaseTable from '../components/BaseTable.vue'
 import { useSearchPagination } from '../hooks/usePagination'
+import { useDict } from '../composables/useDict'
+
+// 业务枚举：通用状态 / 是否 走字典
+const { options: commonStatusOptions, labelOf: commonStatusLabel, tagTypeOf: commonStatusType, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
+const { options: yesNoOptions, labelOf: yesNoLabel, tagTypeOf: yesNoType, loadDict: loadYesNoDict } = useDict('yes_no')
+loadYesNoDict()
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -255,8 +262,8 @@ const handleExport = () => {
     item.dictSort,
     item.cssClass,
     item.listClass,
-    item.isDefault === 1 ? '是' : '否',
-    item.status === 1 ? '启用' : '禁用',
+    item.isDefault === 1 ? yesNoLabel(1) : yesNoLabel(0),
+    item.status === 1 ? commonStatusLabel(1) : commonStatusLabel(0),
     item.remark || '',
     formatDateTime(item.createTime)
   ])

@@ -16,10 +16,12 @@
           <el-form-item label="审批状态">
             <el-select v-model="filterForm.approvalStatus" placeholder="请选择审批状态" style="width: 150px;">
               <el-option label="全部" value="" />
-              <el-option label="待审批" value="pending" />
-              <el-option label="已通过" value="approved" />
-              <el-option label="已拒绝" value="rejected" />
-              <el-option label="已取消" value="cancelled" />
+              <el-option
+                v-for="opt in approvalStatusOptions"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
             </el-select>
           </el-form-item>
           <el-form-item label="值班表">
@@ -332,9 +334,16 @@ import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { getUserInfo } from '../../utils/auth'
 import { useSearchPagination } from '../../hooks/usePagination'
 import BaseTable from '../../components/BaseTable.vue'
+import { APPROVAL_STATUS, APPROVAL_STATUS_LABEL, APPROVAL_STATUS_TAG, SHIFT_TYPE_FALLBACK_LABEL } from '../../constants/duty'
 
 const shiftApi = shiftConfigApi()
 const route = useRoute()
+
+// 业务枚举：审批状态选项由 constants/duty.js 集中提供
+const approvalStatusOptions = Object.values(APPROVAL_STATUS).map((value) => ({
+  value,
+  label: APPROVAL_STATUS_LABEL[value] || value
+}))
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -491,26 +500,11 @@ const rules = {
   ]
 }
 
-const shiftNames = {
-  1: '早班',
-  2: '中班',
-  3: '晚班',
-  4: '全天'
-}
+const shiftNames = SHIFT_TYPE_FALLBACK_LABEL
 
-const approvalStatusMap = {
-  'pending': '待审批',
-  'approved': '已通过',
-  'rejected': '已拒绝',
-  'cancelled': '已取消'
-}
+const approvalStatusMap = APPROVAL_STATUS_LABEL
 
-const approvalStatusColorMap = {
-  'pending': 'warning',
-  'approved': 'success',
-  'rejected': 'danger',
-  'cancelled': 'info'
-}
+const approvalStatusColorMap = APPROVAL_STATUS_TAG
 
 const getShiftName = (shift) => {
   // 首先尝试通过班次ID查找

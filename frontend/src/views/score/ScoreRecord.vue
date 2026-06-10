@@ -94,8 +94,8 @@
           <el-select v-model="form.eventId" placeholder="选择事件" @change="onEventChange" style="width: 100%">
             <el-option v-for="evt in eventList" :key="evt.id" :label="evt.eventName" :value="evt.id">
               <span>{{ evt.eventName }}</span>
-              <el-tag size="small" :type="evt.eventType === 1 ? 'success' : 'danger'" style="margin-left: 8px">
-                {{ evt.eventType === 1 ? '加分' : '扣分' }}
+              <el-tag size="small" :type="eventTypeType(evt.eventType)" style="margin-left: 8px">
+                {{ eventTypeLabel(evt.eventType) }}
               </el-tag>
             </el-option>
           </el-select>
@@ -147,6 +147,11 @@ import { Plus, UserFilled } from '@element-plus/icons-vue'
 import PersonSelector from '@/components/PersonSelector.vue'
 import { getScoreRecords, createScoreRecord, deleteScoreRecord } from '../../api/score/index.js'
 import { getScoreEvents } from '../../api/score/index.js'
+import { useDict } from '../../composables/useDict'
+
+// 业务枚举：积分事件类型 走字典
+const { labelOf: eventTypeLabel, tagTypeOf: eventTypeType, loadDict: loadEventTypeDict } = useDict('score_event_type')
+loadEventTypeDict()
 
 const loading = ref(false)
 const recordList = ref([])

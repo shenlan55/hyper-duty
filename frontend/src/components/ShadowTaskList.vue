@@ -38,8 +38,8 @@
 
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getTaskStatusType(row.status)" size="small">
-              {{ getTaskStatusText(row.status) }}
+            <el-tag :type="statusType(row.status)" size="small">
+              {{ statusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -93,10 +93,14 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { getTaskStatusType, getTaskStatusText, getProgressStatus, formatDateTime } from '@/utils/taskUtils'
+import { useDict } from '@/composables/useDict'
+import { getProgressStatus, formatDateTime } from '@/utils/taskUtils'
 import { getTaskListWithShadows, deleteShadowTask } from '@/api/shadowTask'
 import CreateShadowTaskDialog from './CreateShadowTaskDialog.vue'
 import ShadowTaskDetailDialog from './ShadowTaskDetailDialog.vue'
+
+// 业务枚举：状态 走字典
+const { labelOf: statusLabel, tagTypeOf: statusType } = useDict('task_status')
 
 const props = defineProps({
   projectId: {

@@ -53,7 +53,7 @@
             <el-icon v-if="row.isFocus === 1" style="color: #e6a23c; margin-right: 4px;"><TrendCharts /></el-icon>
             <el-tag v-if="row.isShadow === 1" size="small" type="warning" style="margin-right: 8px;">影子</el-tag>
             <span :style="row.isPinned === 1 ? 'color: #f56c6c; font-weight: bold;' : ''">{{ row.taskName }}</span>
-            <el-tag v-if="row.isFocus === 1" size="small" type="warning" style="margin-left: 8px;">重点</el-tag>
+            <el-tag v-if="row.isFocus === 1" size="small" :type="focusType(row.isFocus)" style="margin-left: 8px;">{{ focusLabel(row.isFocus) }}</el-tag>
             <el-tag v-if="row.hasChildren" size="small" type="info" style="margin-left: 8px;">
               {{ row.children ? row.children.length : 0 }}个子任务
             </el-tag>
@@ -63,10 +63,10 @@
           <el-progress :percentage="row.progress" :status="getProgressStatus(row.progress)" />
         </template>
         <template #status="{ row }">
-          <el-tag :type="getTaskStatusType(row.status)">{{ getTaskStatusText(row.status) }}</el-tag>
+          <el-tag :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
         </template>
         <template #priority="{ row }">
-          <el-tag :type="getTaskPriorityType(row.priority)">{{ getTaskPriorityText(row.priority) }}</el-tag>
+          <el-tag :type="priorityType(row.priority)">{{ priorityLabel(row.priority) }}</el-tag>
         </template>
         <template #updateTime="{ row }">
             {{ formatDateTime(row.updateTime) }}
@@ -359,10 +359,16 @@ import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { getTaskBindings, unbindCustomRow, getCustomTableColumns } from '@/api/customTable'
 import { useUserStore } from '@/stores/user'
-import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime, sortTasks } from '@/utils/taskUtils'
+import { useDict } from '@/composables/useDict'
+import { getProgressStatus, formatDateTime, sortTasks } from '@/utils/taskUtils'
 
 const route = useRoute()
 const userStore = useUserStore()
+
+// 业务枚举：状态/优先级 走字典，不再从 taskUtils 读硬编码 map
+const { labelOf: statusLabel, tagTypeOf: statusType } = useDict('task_status')
+const { labelOf: priorityLabel, tagTypeOf: priorityType } = useDict('task_priority')
+const { labelOf: focusLabel, tagTypeOf: focusType } = useDict('task_focus')
 
 // 基础状态
 const loading = ref(false)
@@ -454,7 +460,7 @@ const canCreateTask = computed(() => {
 const getTaskFullName = (row) => {
   let fullName = row.taskName || ''
   if (row.isFocus === 1) {
-    fullName += ' [重点]'
+    fullName += ` [${focusLabel(row.isFocus)}]`
   }
   if (row.hasChildren) {
     fullName += ` [${row.children ? row.children.length : 0}个子任务]`

@@ -18,8 +18,8 @@
         </el-col>
         <el-col :span="12">
           <el-descriptions :column="1" size="small">
-            <el-descriptions-item label="优先级">{{ getTaskPriorityText(currentTask?.priority) }}</el-descriptions-item>
-            <el-descriptions-item label="状态">{{ getTaskStatusText(currentTask?.status) }}</el-descriptions-item>
+            <el-descriptions-item label="优先级">{{ priorityLabel(currentTask?.priority) }}</el-descriptions-item>
+            <el-descriptions-item label="状态">{{ statusLabel(currentTask?.status) }}</el-descriptions-item>
             <el-descriptions-item label="当前进度">{{ currentTask?.progress }}%</el-descriptions-item>
             <el-descriptions-item label="是否重点">
               <el-tag v-if="currentTask?.isFocus === 1" type="warning">是</el-tag>
@@ -104,11 +104,16 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getTaskStatusText, getTaskPriorityText, formatDateTime } from '@/utils/taskUtils'
+import { useDict } from '@/composables/useDict'
+import { formatDateTime } from '@/utils/taskUtils'
 import { getEmployeeList } from '@/api/employee'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
+
+// 业务枚举：状态/优先级 走字典
+const { labelOf: statusLabel } = useDict('task_status')
+const { labelOf: priorityLabel } = useDict('task_priority')
 
 const props = defineProps({
   modelValue: {

@@ -29,13 +29,13 @@
         @export="handleJobExport"
       >
         <template #status="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'warning'">
-            {{ row.status === 1 ? '启用' : '暂停' }}
+          <el-tag :type="jobStatusType(row.status)">
+            {{ jobStatusLabel(row.status) }}
           </el-tag>
         </template>
         <template #concurrent="{ row }">
-          <el-tag :type="row.concurrent === 1 ? 'info' : 'warning'">
-            {{ row.concurrent === 1 ? '允许' : '禁止' }}
+          <el-tag :type="yesNoType(row.concurrent)">
+            {{ yesNoLabel(row.concurrent) }}
           </el-tag>
         </template>
         <template #createTime="{ row }">
@@ -92,8 +92,8 @@
         @export="handleLogExport"
       >
         <template #status="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-            {{ row.status === 1 ? '成功' : '失败' }}
+          <el-tag :type="execStatusType(row.status)">
+            {{ execStatusLabel(row.status) }}
           </el-tag>
         </template>
         <template #startTime="{ row }">
@@ -165,16 +165,22 @@
           <el-col :span="12">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="jobForm.status">
-                <el-radio :value="'1'">启用</el-radio>
-                <el-radio :value="'0'">暂停</el-radio>
+                <el-radio
+                  v-for="opt in jobStatusOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >{{ opt.label }}</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="允许并发" prop="concurrent">
               <el-radio-group v-model="jobForm.concurrent">
-                <el-radio :value="'1'">允许</el-radio>
-                <el-radio :value="'0'">禁止</el-radio>
+                <el-radio
+                  v-for="opt in yesNoOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >{{ opt.label }}</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
@@ -246,6 +252,15 @@ import { formatDateTime } from '../../utils/dateUtils'
 import { safeInput } from '../../utils/xssUtil'
 import { useSearchPagination } from '../../hooks/usePagination'
 import BaseTable from '../../components/BaseTable.vue'
+import { useDict } from '../../composables/useDict'
+
+// 业务枚举：定时任务状态 / 是否允许并发 / 执行状态 走字典
+const { options: jobStatusOptions, labelOf: jobStatusLabel, tagTypeOf: jobStatusType, loadDict: loadJobStatusDict } = useDict('job_status')
+loadJobStatusDict()
+const { options: yesNoOptions, labelOf: yesNoLabel, tagTypeOf: yesNoType, loadDict: loadYesNoDict } = useDict('yes_no')
+loadYesNoDict()
+const { options: execStatusOptions, labelOf: execStatusLabel, tagTypeOf: execStatusType, loadDict: loadExecStatusDict } = useDict('operation_log_status')
+loadExecStatusDict()
 
 const scheduleApi = scheduleJobApi()
 
@@ -669,8 +684,8 @@ const handleJobExport = () => {
     row.cronExpression,
     row.beanName,
     row.methodName,
-    row.status === 1 ? '启用' : '暂停',
-    row.concurrent === 1 ? '允许' : '禁止',
+    jobStatusLabel(row.status),
+    yesNoLabel(row.concurrent),
     row.description || '',
     formatDateTime(row.createTime)
   ])
@@ -703,7 +718,7 @@ const handleLogExport = () => {
     row.jobName,
     row.jobGroup,
     row.jobCode,
-    row.status === 1 ? '成功' : '失败',
+    execStatusLabel(row.status),
     row.executeTime,
     formatDateTime(row.startTime),
     formatDateTime(row.endTime),

@@ -18,13 +18,14 @@
           </el-form>
         </div>
       </template>
-      <!-- 只有当 loading 结束时才渲染 BpmnDesigner，确保 initialXml 已经加载 -->
-      <div v-if="!loading" style="height: 100%;">
+      <!-- 始终挂载 BpmnDesigner，避免先卸载后重挂时旧实例的 importXML 残留访问已销毁 canvas
+           loading 时显示加载层覆盖在画布之上 -->
+      <div style="height: 100%; position: relative;">
         <BpmnDesigner ref="designerRef" :xml="initialXml" @save="handleSave" @change="handleXmlChange" />
-      </div>
-      <div v-else style="height: 100%; display: flex; align-items: center; justify-content: center;">
-        <el-icon class="is-loading" style="font-size: 40px;"><loading /></el-icon>
-        <span style="margin-left: 10px;">加载中...</span>
+        <div v-if="loading" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.7); z-index: 10;">
+          <el-icon class="is-loading" style="font-size: 40px;"><loading /></el-icon>
+          <span style="margin-left: 10px;">加载中...</span>
+        </div>
       </div>
     </el-card>
   </div>

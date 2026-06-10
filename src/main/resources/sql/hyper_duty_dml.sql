@@ -1,4 +1,4 @@
-﻿-- ===============================================================
+﻿﻿-- ===============================================================
 -- Hyper Duty 系统模块初始数据（PostgreSQL 语法）
 -- ===============================================================
 
@@ -15,21 +15,21 @@ INSERT INTO public.sys_dept VALUES (3, '人事部', 1, '003', 2, 1, '2026-02-22 
 INSERT INTO public.sys_dept VALUES (7, '交付二部', 6, '006', 1, 1, '2026-02-22 23:21:27.685729', '2026-02-22 23:21:27.685729');
 INSERT INTO public.sys_dept VALUES (1, '新炬', 0, '001', 1, 1, '2026-02-22 23:21:27.685729', '2026-02-22 23:21:27.685729');
 
-INSERT INTO public.sys_dict_data VALUES (2, 1, '项目经理B', 'ProjectManagerB', 1, '', '', 0, 1, '', '2026-01-18 06:59:18', '2026-01-18 06:59:18');
-INSERT INTO public.sys_dict_data VALUES (4, 1, '组长B', 'TeamLeaderB', 2, '', '', 0, 1, '', '2026-01-18 07:29:07', '2026-01-18 07:29:07');
-INSERT INTO public.sys_dict_data VALUES (5, 1, '组员', 'TeamMember', 3, '', '', 0, 1, '', '2026-01-18 07:30:09', '2026-01-18 07:30:09');
-INSERT INTO public.sys_dict_data VALUES (1, 1, '项目经理A', 'ProjectManagerA', 1, '', '', 0, 1, '', '2026-01-18 06:58:31', '2026-01-18 06:58:31');
-INSERT INTO public.sys_dict_data VALUES (3, 1, '组长A', 'TeamLeaderA', 2, '', '', 0, 1, '', '2026-01-18 07:19:37', '2026-01-18 07:19:37');
-INSERT INTO public.sys_dict_data VALUES (6, 2, '例行工作', '1', 1, '', '', 0, 1, '', '2026-02-20 11:27:16', '2026-02-20 11:27:16');
-INSERT INTO public.sys_dict_data VALUES (27, 2, 'GOC调度', '2', 2, '', '', 0, 1, '', '2026-02-24 20:21:48', '2026-02-24 20:21:48');
-INSERT INTO public.sys_dict_data VALUES (23, 2, '架构治理', '3', 3, '', '', 0, 1, '', '2026-02-24 20:21:08', '2026-02-24 20:21:08');
-INSERT INTO public.sys_dict_data VALUES (24, 2, '入网管控', '4', 4, '', '', 0, 1, '', '2026-02-24 20:21:22', '2026-02-24 20:21:22');
-INSERT INTO public.sys_dict_data VALUES (25, 2, '变更管控', '5', 5, '', '', 0, 1, '', '2026-02-24 20:21:33', '2026-02-24 20:21:33');
-INSERT INTO public.sys_dict_data VALUES (28, 2, '故障治理', '6', 6, '', '', 0, 1, '', '2026-02-24 20:22:42.857598', '2026-02-24 20:22:42.857598');
-INSERT INTO public.sys_dict_data VALUES (26, 2, '运营治理', '7', 7, '', '', 0, 1, '', '2026-02-24 20:21:40', '2026-02-24 20:21:40');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (2, 1, '项目经理B', 'ProjectManagerB', 1, '', '', 0, 1, '', '2026-01-18 06:59:18', '2026-01-18 06:59:18');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (4, 1, '组长B', 'TeamLeaderB', 2, '', '', 0, 1, '', '2026-01-18 07:29:07', '2026-01-18 07:29:07');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (5, 1, '组员', 'TeamMember', 3, '', '', 0, 1, '', '2026-01-18 07:30:09', '2026-01-18 07:30:09');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (1, 1, '项目经理A', 'ProjectManagerA', 1, '', '', 0, 1, '', '2026-01-18 06:58:31', '2026-01-18 06:58:31');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (3, 1, '组长A', 'TeamLeaderA', 2, '', '', 0, 1, '', '2026-01-18 07:19:37', '2026-01-18 07:19:37');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (6, 2, '例行工作', '1', 1, '', '', 0, 1, '', '2026-02-20 11:27:16', '2026-02-20 11:27:16');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (27, 2, 'GOC调度', '2', 2, '', '', 0, 1, '', '2026-02-24 20:21:48', '2026-02-24 20:21:48');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (23, 2, '架构治理', '3', 3, '', '', 0, 1, '', '2026-02-24 20:21:08', '2026-02-24 20:21:08');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (24, 2, '入网管控', '4', 4, '', '', 0, 1, '', '2026-02-24 20:21:22', '2026-02-24 20:21:22');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (25, 2, '变更管控', '5', 5, '', '', 0, 1, '', '2026-02-24 20:21:33', '2026-02-24 20:21:33');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (28, 2, '故障治理', '6', 6, '', '', 0, 1, '', '2026-02-24 20:22:42.857598', '2026-02-24 20:22:42.857598');
+INSERT INTO public.sys_dict_data ON CONFLICT (id) DO NOTHING VALUES (26, 2, '运营治理', '7', 7, '', '', 0, 1, '', '2026-02-24 20:21:40', '2026-02-24 20:21:40');
 
-INSERT INTO public.sys_dict_type VALUES (2, '事项类型', 'ItemType', '', 1, '2026-02-20 11:26:29', '2026-02-20 11:26:29');
-INSERT INTO public.sys_dict_type VALUES (1, '职位--江苏移动统维', 'Position', '', 1, '2026-01-18 06:51:26', '2026-01-18 06:51:26');
+INSERT INTO public.sys_dict_type ON CONFLICT (id) DO NOTHING VALUES (2, '事项类型', 'ItemType', '', 1, '2026-02-20 11:26:29', '2026-02-20 11:26:29');
+INSERT INTO public.sys_dict_type ON CONFLICT (id) DO NOTHING VALUES (1, '职位--江苏移动统维', 'Position', '', 1, '2026-01-18 06:51:26', '2026-01-18 06:51:26');
 
 INSERT INTO public.sys_employee VALUES (1, '管理员', 1, 'EMP001', '13800138000', 'admin@example.com', 1, NULL, NULL, 1, 'admin', '$2a$10$cVw7wDpG1k6uluAFjKuROelCmanmBO/gynn.uv0/Clz4RrXEC76AS', '2026-02-22 23:21:27.70105', '2026-02-22 23:21:27.70105', 1);
 INSERT INTO public.sys_employee VALUES (13, '杜志强', 8, 'EMP007', '18351868973', 'duzhiqiang@shsnc.com', 1, NULL, NULL, 1, 'duzhiqiang', '$2a$10$omKfvUW4m.rvOSfBeIMBgO8MQnji0we9pWiRraE5xiSlzf/kKBUuS', '2026-02-22 23:21:27.70105', '2026-02-22 23:21:27.70105', 13);
@@ -182,6 +182,160 @@ INSERT INTO public.sys_schedule_job VALUES (1, '节假日信息同步', 'system'
 INSERT INTO public.sys_schedule_log VALUES (1, '节假日信息同步', 'system', 1, NULL, '2026-02-23 16:12:31.013229', '2026-02-23 16:12:32.214335', '2026-02-23 16:12:32.214335', 1, 'holidaySync', '', 1201);
 
 INSERT INTO public.sys_user_role VALUES (56, 12, 2, '2026-02-22 23:25:45.053289');
+
+-- ===============================================================
+-- 业务字典（sys_dict_type / sys_dict_data）
+-- 业务枚举统一从字典取，禁止前端硬编码中文标签
+-- ===============================================================
+
+-- 通用启用/禁用
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (10, '通用状态', 'common_status', '通用启用/禁用', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (100, 10, '启用', '1', 1, '', 'primary', 1, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (101, 10, '禁用', '0', 2, '', 'danger', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 操作日志状态（dict_value 与后端 sys_operation_log.status 字段对齐：1=成功 0=失败）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (23, '操作日志状态', 'operation_log_status', '系统管理-操作日志状态', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (230, 23, '成功', '1', 1, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (231, 23, '失败', '0', 2, '', 'danger', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 定时任务状态（dict_value 与后端 sys_schedule_job.status 字段对齐：1=运行 0=暂停）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (24, '定时任务状态', 'job_status', '系统管理-定时任务状态', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (240, 24, '运行', '1', 1, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (241, 24, '暂停', '0', 2, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 评定季度（dict_value 与后端 score_evaluation.quarter 字段对齐：1..4）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (25, '评定季度', 'evaluation_quarter', '积分管理-评定季度（1=第一季度 2=第二季度 3=第三季度 4=第四季度）', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (250, 25, '第一季度', '1', 1, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (251, 25, '第二季度', '2', 2, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (252, 25, '第三季度', '3', 3, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (253, 25, '第四季度', '4', 4, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 是否（dict_value 通用：0=否 1=是；用于"允许并发"等通用是否场景）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (26, '是否', 'yes_no', '通用是否（1=是 0=否）', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (260, 26, '是', '1', 1, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (261, 26, '否', '0', 2, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 请假类型（dict_value 与后端 duty_leave_request.leaveType 字段对齐：1=事假 2=病假 3=年假 4=调休 5=其他）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (27, '请假类型', 'leave_type', '值班管理-请假类型', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (270, 27, '事假', '1', 1, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (271, 27, '病假', '2', 2, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (272, 27, '年假', '3', 3, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (273, 27, '调休', '4', 4, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (274, 27, '其他', '5', 5, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 排班模式（dict_value 与后端 duty_schedule.mode / scheduleMode 字段对齐：1=轮换 2=固定 3=自定义）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (28, '排班模式', 'schedule_mode', '值班管理-排班模式（1=轮换排班 2=固定排班 3=排班模式）', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (280, 28, '轮换排班', '1', 1, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (281, 28, '固定排班', '2', 2, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (282, 28, '排班模式', '3', 3, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 菜单类型（dict_value 与后端 sys_menu.menuType 字段对齐：0=顶级菜单 1=目录 2=菜单 3=按钮）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (29, '菜单类型', 'menu_type', '系统管理-菜单类型（0=顶级菜单 1=目录 2=菜单 3=按钮）', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (290, 29, '顶级菜单', '0', 1, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (291, 29, '目录', '1', 2, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (292, 29, '菜单', '2', 3, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (293, 29, '按钮', '3', 4, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 性别（dict_value 与后端 sys_employee.gender 字段对齐：0=未知 1=男 2=女）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (30, '性别', 'gender', '系统管理-性别（0=未知 1=男 2=女）', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (300, 30, '未知', '0', 1, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (301, 30, '男', '1', 2, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (302, 30, '女', '2', 3, '', 'danger', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 任务状态
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (11, '任务状态', 'task_status', '项目管理-任务状态', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (110, 11, '未开始', '1', 1, '', 'info', 1, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (111, 11, '进行中', '2', 2, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (112, 11, '已完成', '3', 3, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (113, 11, '已暂停', '4', 4, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 任务优先级
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (12, '任务优先级', 'task_priority', '项目管理-任务优先级', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (120, 12, '高', '1', 1, '', 'danger', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (121, 12, '中', '2', 2, '', 'warning', 1, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (122, 12, '低', '3', 3, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 审批状态
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (13, '审批状态', 'approval_status', '通用审批流-审批状态', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (130, 13, '待审批', '0', 1, '', 'info', 1, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (131, 13, '已通过', '1', 2, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (132, 13, '已驳回', '2', 3, '', 'danger', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (133, 13, '已撤回', '3', 4, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 班次类型（dict_value 与后端 sys_shift_config.shiftType 字段对齐：0=白班 1=早班 2=中班 3=晚班 4=全天 5=夜班）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (14, '班次类型', 'shift_type', '值班管理-班次类型', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (140, 14, '白班', '0', 0, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (141, 14, '早班', '1', 1, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (142, 14, '中班', '2', 2, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (143, 14, '晚班', '3', 3, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (144, 14, '全天', '4', 4, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (145, 14, '夜班', '5', 5, '', 'danger', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 是否（通用）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (15, '是否', 'is_yes_no', '通用是否判断（1=是，0=否）', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (150, 15, '是', '1', 1, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (151, 15, '否', '0', 2, '', 'info', 1, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 性别
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (16, '性别', 'gender', '员工性别', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (160, 16, '男', '1', 1, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (161, 16, '女', '0', 2, '', 'danger', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 表单类型
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (17, '表单类型', 'form_type', '工作流-表单类型', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (170, 17, '系统内置', 'system', 1, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (171, 17, '自定义表单', 'custom', 2, '', 'primary', 1, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (172, 17, 'URL 表单', 'url', 3, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 流程部署状态
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (18, '流程部署状态', 'deploy_status', '工作流-流程部署状态', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (180, 18, '已部署', '1', 1, '', 'success', 1, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (181, 18, '已停用', '0', 2, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 项目状态（dict_value 与后端 pm_project.status 字段对齐：1=未开始 2=进行中 3=已完成 4=已暂停 5=已归档）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (19, '项目状态', 'project_status', '项目管理-项目状态', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (190, 19, '未开始', '1', 1, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (191, 19, '进行中', '2', 2, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (192, 19, '已完成', '3', 3, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (193, 19, '已暂停', '4', 4, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (194, 19, '已归档', '5', 5, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 任务优先级（dict_value 与后端 pm_task.priority 字段对齐：1=高 2=中 3=低）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (20, '任务优先级', 'task_priority', '项目管理-任务优先级', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (200, 20, '高', '1', 1, '', 'danger', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (201, 20, '中', '2', 2, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (202, 20, '低', '3', 3, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 任务状态（dict_value 与后端 pm_task.status 字段对齐：1=未开始 2=进行中 3=已完成 4=已暂停 5=已取消）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (21, '任务状态', 'task_status', '项目管理-任务状态', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (210, 21, '未开始', '1', 1, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (211, 21, '进行中', '2', 2, '', 'primary', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (212, 21, '已完成', '3', 3, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (213, 21, '已暂停', '4', 4, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (214, 21, '已取消', '5', 5, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 积分事件类型（dict_value 与后端 score_event.eventType 字段对齐：1=加分 2=扣分）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (22, '积分事件类型', 'score_event_type', '积分管理-事件类型（1=加分 2=扣分）', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (220, 22, '加分', '1', 1, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (221, 22, '扣分', '2', 2, '', 'danger', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 报告类型（dict_value 与后端 ai_report_config.reportType 字段对齐：daily=日报 weekly=周报）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (31, '报告类型', 'report_type', 'AI模块-报告类型（daily=日报 weekly=周报）', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (310, 31, '日报', 'daily', 1, '', 'primary', 1, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (311, 31, '周报', 'weekly', 2, '', 'success', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 任务重点标记（dict_value 与后端 pm_task.is_focus 字段对齐：1=重点 0=普通）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (32, '任务重点', 'task_focus', '项目管理-任务是否重点（1=重点 0=普通）', 1, '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (320, 32, '重点', '1', 1, '', 'warning', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) ON CONFLICT (id) DO NOTHING VALUES (321, 32, '普通', '0', 2, '', 'info', 0, 1, '', '2026-06-10 00:00:00', '2026-06-10 00:00:00');
+
+-- 字典类型 5 IPMAC 备注
+COMMENT ON COLUMN public.sys_dict_data.dict_sort IS '字典排序';
+COMMENT ON COLUMN public.sys_dict_data.dict_label IS '字典标签（中文名）';
+COMMENT ON COLUMN public.sys_dict_data.dict_value IS '字典值（业务编码）';
+COMMENT ON COLUMN public.sys_dict_data.css_class IS 'CSS 类名';
+COMMENT ON public.sys_dict_type.dict_code IS '字典编码（业务唯一标识）';
+
 INSERT INTO public.sys_user_role VALUES (57, 13, 2, '2026-02-22 23:25:45.053289');
 INSERT INTO public.sys_user_role VALUES (58, 14, 2, '2026-02-22 23:25:45.053289');
 INSERT INTO public.sys_user_role VALUES (59, 15, 2, '2026-02-22 23:25:45.053289');

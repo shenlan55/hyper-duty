@@ -27,8 +27,8 @@
         @export="handleExport"
       >
         <template #status="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-            {{ row.status === 1 ? '启用' : '禁用' }}
+          <el-tag :type="commonStatusType(row.status)">
+            {{ commonStatusLabel(row.status) }}
           </el-tag>
         </template>
         <template #createTime="{ row }">
@@ -88,6 +88,11 @@ import {
 import { formatDateTime } from '../utils/dateUtils'
 import BaseTable from '../components/BaseTable.vue'
 import { useSearchPagination } from '../hooks/usePagination'
+import { useDict } from '../composables/useDict'
+
+// 业务枚举：通用状态 走字典
+const { options: commonStatusOptions, labelOf: commonStatusLabel, tagTypeOf: commonStatusType, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -185,7 +190,7 @@ const handleExport = () => {
     item.dictName,
     item.dictCode,
     item.description || '',
-    item.status === 1 ? '启用' : '禁用',
+    item.status === 1 ? commonStatusLabel(1) : commonStatusLabel(0),
     formatDateTime(item.createTime)
   ])
   

@@ -85,10 +85,10 @@
               <el-col :span="12">
                 <el-descriptions :column="1" size="small">
                   <el-descriptions-item label="优先级">
-                    {{ getTaskPriorityText(shadowData.priority) }}
+                    {{ priorityLabel(shadowData.priority) }}
                   </el-descriptions-item>
                   <el-descriptions-item label="状态">
-                    {{ getTaskStatusText(shadowData.status) }}
+                    {{ statusLabel(shadowData.status) }}
                   </el-descriptions-item>
                   <el-descriptions-item label="当前进度">
                     {{ shadowData.progress }}%
@@ -195,14 +195,8 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  getTaskStatusType,
-  getTaskStatusText,
-  getTaskPriorityType,
-  getTaskPriorityText,
-  getProgressStatus,
-  formatDateTime
-} from '@/utils/taskUtils'
+import { useDict } from '@/composables/useDict'
+import { getProgressStatus, formatDateTime } from '@/utils/taskUtils'
 import {
   getShadowTaskDetail,
   getShadowAnnotations,
@@ -213,6 +207,10 @@ import {
 import { getEmployeeList } from '@/api/employee'
 import ProgressHistory from '@/components/ProgressHistory.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
+
+// 业务枚举：状态/优先级 走字典
+const { labelOf: statusLabel } = useDict('task_status')
+const { labelOf: priorityLabel } = useDict('task_priority')
 
 const employeeList = ref([])
 

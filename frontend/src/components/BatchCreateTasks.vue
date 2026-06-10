@@ -34,7 +34,7 @@
         <el-col :span="8">
           <el-form-item label="默认优先级">
             <el-select v-model="sharedForm.priority" placeholder="默认优先级" style="width: 100%;">
-              <el-option v-for="(name, value) in taskPriorityMap" :key="value" :label="name" :value="Number(value)" />
+              <el-option v-for="opt in priorityOptions" :key="opt.value" :label="opt.label" :value="Number(opt.value)" />
             </el-select>
           </el-form-item>
         </el-col>
@@ -77,7 +77,7 @@
         <el-table-column label="优先级" width="130">
           <template #default="{ row }">
             <el-select v-model="row.priority" placeholder="优先级" size="small" style="width: 100%;">
-              <el-option v-for="(name, value) in taskPriorityMap" :key="value" :label="name" :value="Number(value)" />
+              <el-option v-for="opt in priorityOptions" :key="opt.value" :label="opt.label" :value="Number(opt.value)" />
             </el-select>
           </template>
         </el-table-column>
@@ -241,13 +241,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { TASK_PRIORITY_MAP } from '@/constants/task'
+import { useDict } from '@/composables/useDict'
 import FileUpload from '@/components/FileUpload.vue'
 import PersonSelector from '@/components/PersonSelector.vue'
 import { batchCreateTasks } from '@/api/task'
+
+// 业务枚举：优先级 走字典
+const { options: priorityOptions, loadDict: loadPriorityDict } = useDict('task_priority')
 
 const props = defineProps({
   modelValue: {
@@ -281,8 +284,6 @@ const stakeholderDialogVisible = ref(false)
 const selectedAssignees = ref([])
 const currentStakeholderSelection = ref([])
 const currentStakeholderIndex = ref(-1)
-
-const taskPriorityMap = TASK_PRIORITY_MAP
 
 const sharedForm = reactive({
   projectId: null,
@@ -369,6 +370,11 @@ const confirmStakeholderSelection = () => {
   stakeholderDialogVisible.value = false
   currentStakeholderIndex.value = -1
 }
+
+onMounted(() => {
+  // 加载优先级字典
+  loadPriorityDict()
+})
 
 const handleSubmit = async () => {
   if (!sharedForm.projectId) {

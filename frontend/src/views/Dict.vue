@@ -94,13 +94,13 @@
               @export="handleDataExport"
             >
               <template #isDefault="{ row }">
-                <el-tag :type="row.isDefault === 1 ? 'success' : 'info'">
-                  {{ row.isDefault === 1 ? '是' : '否' }}
+                <el-tag :type="yesNoType(row.isDefault)">
+                  {{ yesNoLabel(row.isDefault) }}
                 </el-tag>
               </template>
               <template #status="{ row }">
-                <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-                  {{ row.status === 1 ? '启用' : '禁用' }}
+                <el-tag :type="commonStatusType(row.status)">
+                  {{ commonStatusLabel(row.status) }}
                 </el-tag>
               </template>
               <template #createTime="{ row }">
@@ -205,6 +205,13 @@ import { formatDateTime } from '../utils/dateUtils'
 import { safeInput } from '../utils/xssUtil'
 import { useSearchPagination } from '../hooks/usePagination'
 import BaseTable from '../components/BaseTable.vue'
+import { useDict } from '../composables/useDict'
+
+// 业务枚举：通用状态 / 是否 走字典
+const { options: commonStatusOptions, labelOf: commonStatusLabel, tagTypeOf: commonStatusType, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
+const { options: yesNoOptions, labelOf: yesNoLabel, tagTypeOf: yesNoType, loadDict: loadYesNoDict } = useDict('yes_no')
+loadYesNoDict()
 
 const typeLoading = ref(false)
 const dataLoading = ref(false)

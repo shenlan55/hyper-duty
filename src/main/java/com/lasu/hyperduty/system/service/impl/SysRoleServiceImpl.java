@@ -30,6 +30,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SysRoleServiceImpl extends CacheableServiceImpl<SysRoleMapper, SysRole> implements SysRoleService {
 
+    @Override
+    @Cacheable(value = "role", key = "'allRoles'")
+    public List<SysRole> getAllRoles() {
+        // 按 id 升序返回，输出稳定
+        return baseMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<SysRole>().orderByAsc("id"));
+    }
+
     @Autowired
     private SysRoleMenuMapper sysRoleMenuMapper;
 

@@ -84,7 +84,7 @@
         style="width: 100%;"
       >
         <template #taskStatus="{ row }">
-          <el-tag :type="getTaskStatusType(row.taskStatus)">{{ row.taskStatusText }}</el-tag>
+          <el-tag :type="statusType(row.taskStatus)">{{ row.taskStatusText }}</el-tag>
         </template>
         <template #progress="{ row }">
           <el-progress :percentage="row.progress" :status="getProgressStatus(row.progress)" />
@@ -98,11 +98,15 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import BaseTable from '@/components/BaseTable.vue'
+import { useDict } from '@/composables/useDict'
 import { getWorkloadPage } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { getCustomTableColumns } from '@/api/customTable'
 import { formatDateTime } from '@/utils/dateUtils'
+
+// 业务枚举：状态 type 走字典（label 由后端 DTO 直接返回 taskStatusText）
+const { tagTypeOf: statusType } = useDict('task_status')
 
 const loading = ref(false)
 const tableData = ref([])
@@ -384,16 +388,6 @@ const handleSizeChange = (val) => {
 const handleCurrentChange = (val) => {
   pagination.currentPage = val
   loadData()
-}
-
-const getTaskStatusType = (status) => {
-  switch (status) {
-    case 1: return 'info'
-    case 2: return 'primary'
-    case 3: return 'success'
-    case 4: return 'warning'
-    default: return 'info'
-  }
 }
 
 const getProgressStatus = (progress) => {

@@ -36,12 +36,12 @@
       </el-form-item>
       <el-form-item label="优先级" prop="priority">
         <el-select v-model="form.priority" placeholder="请选择优先级" style="width: 100px;">
-          <el-option v-for="(name, value) in taskPriorityMap" :key="value" :label="name" :value="Number(value)" />
+          <el-option v-for="opt in priorityOptions" :key="opt.value" :label="opt.label" :value="Number(opt.value)" />
         </el-select>
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="form.status" placeholder="请选择状态" style="width: 120px;">
-          <el-option v-for="(name, value) in taskStatusMap" :key="value" :label="name" :value="Number(value)" />
+          <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="Number(opt.value)" />
         </el-select>
       </el-form-item>
       <el-form-item label="进度">
@@ -149,10 +149,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { TASK_STATUS_MAP, TASK_PRIORITY_MAP } from '@/constants/task'
-import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus, formatDateTime, getStatusByProgress, getProgressByStatus } from '@/utils/taskUtils'
+import { useDict } from '@/composables/useDict'
+import { formatDateTime, getStatusByProgress, getProgressByStatus } from '@/utils/taskUtils'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import PersonSelector from '@/components/PersonSelector.vue'
@@ -234,8 +234,13 @@ const rules = {
   endDate: [{ required: true, message: '请选择结束日期', trigger: 'change' }]
 }
 
-const taskStatusMap = TASK_STATUS_MAP
-const taskPriorityMap = TASK_PRIORITY_MAP
+// 业务枚举：状态/优先级的中文 label 必须从字典 API 加载，禁止前端硬编码
+const { options: statusOptions, loadDict: loadStatusDict } = useDict('task_status')
+const { options: priorityOptions, loadDict: loadPriorityDict } = useDict('task_priority')
+
+onMounted(async () => {
+  await Promise.all([loadStatusDict(), loadPriorityDict()])
+})
 
 const assigneeName = computed(() => {
   if (!form.assigneeId) return ''

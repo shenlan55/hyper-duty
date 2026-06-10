@@ -145,8 +145,11 @@
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="assignmentForm.status">
-            <el-radio :value="1">有效</el-radio>
-            <el-radio :value="0">无效</el-radio>
+            <el-radio
+              v-for="opt in commonStatusOptions"
+              :key="opt.value"
+              :value="Number(opt.value)"
+            >{{ opt.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
@@ -193,9 +196,11 @@
         </el-form-item>
         <el-form-item label="排班方式" prop="scheduleType">
           <el-radio-group v-model="batchForm.scheduleType">
-            <el-radio :value="1">轮换排班</el-radio>
-            <el-radio :value="2">固定排班</el-radio>
-            <el-radio :value="3">排班模式</el-radio>
+            <el-radio
+              v-for="opt in scheduleModeOptions"
+              :key="opt.value"
+              :value="Number(opt.value)"
+            >{{ opt.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="日期类型" prop="dateType">
@@ -375,8 +380,8 @@
                 </el-tag>
               </template>
               <template #status="{ row }">
-                <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
-                  {{ row.status === 1 ? '有效' : '无效' }}
+                <el-tag :type="commonStatusType(row.status)" size="small">
+                  {{ commonStatusLabel(row.status) }}
                 </el-tag>
               </template>
               <template #operation="{ row }" v-if="isLeader">
@@ -463,8 +468,11 @@
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="editDetailForm.status">
-            <el-radio label="1">有效</el-radio>
-            <el-radio label="0">无效</el-radio>
+            <el-radio
+              v-for="opt in commonStatusOptions"
+              :key="opt.value"
+              :value="String(opt.value)"
+            >{{ opt.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
@@ -513,6 +521,13 @@ import { useUserStore } from '../../stores/user'
 import BaseTable from '../../components/BaseTable.vue'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
+import { useDict } from '../../composables/useDict'
+
+// 业务枚举：状态（有效/无效）/ 排班模式 走字典
+const { options: commonStatusOptions, labelOf: commonStatusLabel, tagTypeOf: commonStatusType, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
+const { options: scheduleModeOptions, loadDict: loadScheduleModeDict } = useDict('schedule_mode')
+loadScheduleModeDict()
 
 const userStore = useUserStore()
 
@@ -1176,7 +1191,7 @@ const handleExport = async () => {
           '值班日期': item.dutyDate,
           '班次': getShiftName(item.dutyShift),
           '值班人员': getEmployeeName(item.employeeId),
-          '状态': item.status === 1 ? '有效' : '无效',
+          '状态': commonStatusLabel(item.status),
           '备注': item.remark || ''
         }
       })
@@ -1575,7 +1590,7 @@ const handleDetailExport = () => {
     row.employeeName,
     row.deptName,
     row.phone,
-    row.status === 1 ? '有效' : '无效',
+    commonStatusLabel(row.status),
     row.remark || ''
   ])
   

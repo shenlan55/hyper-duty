@@ -37,13 +37,13 @@
           {{ row.endTime }}<span v-if="row.isCrossDay" style="color: #F56C6C; margin-left: 5px;">(次日)</span>
         </template>
         <template #isOvertimeShift="{ row }">
-          <el-tag :type="row.isOvertimeShift === 1 ? 'warning' : 'info'">
-            {{ row.isOvertimeShift === 1 ? '是' : '否' }}
+          <el-tag :type="yesNoType(row.isOvertimeShift)">
+            {{ yesNoLabel(row.isOvertimeShift) }}
           </el-tag>
         </template>
         <template #status="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-            {{ row.status === 1 ? '启用' : '禁用' }}
+          <el-tag :type="commonStatusType(row.status)">
+            {{ commonStatusLabel(row.status) }}
           </el-tag>
         </template>
         <template #operation="{ row }">
@@ -59,7 +59,7 @@
             size="small"
             @click="toggleStatus(row)"
           >
-            {{ row.status === 1 ? '禁用' : '启用' }}
+            {{ commonStatusLabel(row.status === 1 ? '0' : '1') }}
           </el-button>
           <el-button
             type="danger"
@@ -99,20 +99,23 @@
           <el-col :span="12">
             <el-form-item label="班次类型" prop="shiftType">
               <el-select v-model="form.shiftType" placeholder="请选择班次类型" style="width: 100%">
-                <el-option label="白班" :value="0" />
-                <el-option label="早班" :value="1" />
-                <el-option label="中班" :value="2" />
-                <el-option label="晚班" :value="3" />
-                <el-option label="全天" :value="4" />
-                <el-option label="夜班" :value="5" />
+                <el-option
+                  v-for="opt in shiftTypeOptions"
+                  :key="opt.value"
+                  :label="opt.label"
+                  :value="Number(opt.value)"
+                />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="是否加班班次" prop="isOvertimeShift">
               <el-radio-group v-model="form.isOvertimeShift">
-                <el-radio :value="0">否</el-radio>
-                <el-radio :value="1">是</el-radio>
+                <el-radio
+                  v-for="opt in yesNoOptions"
+                  :key="opt.value"
+                  :value="Number(opt.value)"
+                >{{ opt.label }}</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
@@ -188,8 +191,11 @@
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
+            <el-radio
+              v-for="opt in commonStatusOptions"
+              :key="opt.value"
+              :value="Number(opt.value)"
+            >{{ opt.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="排序" prop="sort">
@@ -247,11 +253,20 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import BaseTable from '../../components/BaseTable.vue'
 import { useSearchPagination } from '../../hooks/usePagination'
+import { useDict } from '../../composables/useDict'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { safeInput } from '../../utils/xssUtil'
 
 const shiftApi = shiftConfigApi()
+
+// 业务枚举：班次类型 / 状态 / 是否 走字典
+const { options: shiftTypeOptions, labelOf: shiftTypeLabel, tagTypeOf: shiftTypeType, loadDict: loadShiftTypeDict } = useDict('shift_type')
+loadShiftTypeDict()
+const { options: commonStatusOptions, labelOf: commonStatusLabel, tagTypeOf: commonStatusType, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
+const { options: yesNoOptions, labelOf: yesNoLabel, tagTypeOf: yesNoType, loadDict: loadYesNoDict } = useDict('yes_no')
+loadYesNoDict()
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -326,30 +341,12 @@ const rules = {
   ]
 }
 
-const shiftTypeMap = {
-  0: '白班',
-  1: '早班',
-  2: '中班',
-  3: '晚班',
-  4: '全天',
-  5: '夜班'
-}
-
-const shiftTypeColorMap = {
-  0: 'primary',
-  1: 'success',
-  2: 'info',
-  3: 'warning',
-  4: 'primary',
-  5: 'danger'
-}
-
 const getShiftTypeName = (type) => {
-  return shiftTypeMap[type] || '未知'
+  return shiftTypeLabel(type)
 }
 
 const getShiftTypeColor = (type) => {
-  return shiftTypeColorMap[type] || 'info'
+  return shiftTypeType(type) || 'info'
 }
 
 const fetchShiftConfigList = async () => {
@@ -504,8 +501,8 @@ const handleExport = () => {
       '下班时间': item.endTime + (item.isCrossDay ? ' (次日)' : ''),
       '时长(小时)': item.durationHours,
       '加班时长(小时)': item.overtimeHours,
-      '是否加班班次': item.isOvertimeShift === 1 ? '是' : '否',
-      '状态': item.status === 1 ? '启用' : '禁用',
+      '是否加班班次': yesNoLabel(item.isOvertimeShift),
+      '状态': commonStatusLabel(item.status),
       '备注': item.remark
     }))
     

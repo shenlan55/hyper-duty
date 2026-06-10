@@ -22,8 +22,8 @@
         @current-change="handleCurrentChange"
       >
         <template #status="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'info'">
-            {{ row.status === 1 ? '启用' : '禁用' }}
+          <el-tag :type="commonStatusType(row.status)">
+            {{ commonStatusLabel(row.status) }}
           </el-tag>
         </template>
         <template #createTime="{ row }">
@@ -55,8 +55,11 @@
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="tableForm.status">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
+            <el-radio
+              v-for="opt in commonStatusOptions"
+              :key="opt.value"
+              :value="Number(opt.value)"
+            >{{ opt.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -236,6 +239,11 @@ import {
 } from '@/api/customTable'
 import { getEmployeeList } from '@/api/employee'
 import { formatDateTime } from '@/utils/dateUtils'
+import { useDict } from '@/composables/useDict'
+
+// 业务枚举：状态 走字典
+const { options: commonStatusOptions, labelOf: commonStatusLabel, tagTypeOf: commonStatusType, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
 
 const tableColumns = [
   { prop: 'tableName', label: '表格名称', width: 180 },

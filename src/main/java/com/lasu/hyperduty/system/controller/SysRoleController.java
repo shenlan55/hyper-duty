@@ -65,6 +65,14 @@ public class SysRoleController {
     }
 
     /**
+     * 获取全量角色列表（用于工作流 BPMN 设计器选组弹窗）
+     */
+    @GetMapping("/all")
+    public ResponseResult<List<SysRole>> getAllRolesForSelector() {
+        return ResponseResult.success(sysRoleService.getAllRoles());
+    }
+
+    /**
      * 保存角色
      * @param sysRole 角色信息
      * @return 是否保存成功

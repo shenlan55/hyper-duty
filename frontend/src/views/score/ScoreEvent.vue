@@ -15,8 +15,8 @@
         <el-table-column prop="eventName" label="事件名称" min-width="150" />
         <el-table-column prop="eventType" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.eventType === 1 ? 'success' : 'danger'">
-              {{ row.eventType === 1 ? '加分' : '扣分' }}
+            <el-tag :type="eventTypeType(row.eventType)">
+              {{ eventTypeLabel(row.eventType) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -25,8 +25,8 @@
         <el-table-column prop="sort" label="排序" width="80" />
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'">
-              {{ row.status === 1 ? '启用' : '禁用' }}
+            <el-tag :type="commonStatusType(row.status)">
+              {{ commonStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -48,8 +48,11 @@
         </el-form-item>
         <el-form-item label="事件类型" prop="eventType">
           <el-radio-group v-model="form.eventType">
-            <el-radio :value="1">加分</el-radio>
-            <el-radio :value="2">扣分</el-radio>
+            <el-radio
+              v-for="opt in eventTypeOptions"
+              :key="opt.value"
+              :value="Number(opt.value)"
+            >{{ opt.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="默认分值" prop="defaultScore">
@@ -81,6 +84,13 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getScoreEvents, createScoreEvent, updateScoreEvent, deleteScoreEvent } from '../../api/score/index.js'
+import { useDict } from '../../composables/useDict'
+
+// 业务枚举：事件类型 / 状态 走字典
+const { options: eventTypeOptions, labelOf: eventTypeLabel, tagTypeOf: eventTypeType, loadDict: loadEventTypeDict } = useDict('score_event_type')
+loadEventTypeDict()
+const { options: commonStatusOptions, labelOf: commonStatusLabel, tagTypeOf: commonStatusType, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
 
 const loading = ref(false)
 const eventList = ref([])

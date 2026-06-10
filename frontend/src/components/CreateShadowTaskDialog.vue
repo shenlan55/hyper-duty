@@ -59,11 +59,11 @@
             <el-form-item v-if="selectedTask" label="源任务预览">
               <div class="source-task-preview">
                 <div class="preview-header">
-                  <el-tag :type="getTaskPriorityType(selectedTask.priority)" size="small">
-                    {{ getTaskPriorityText(selectedTask.priority) }}
+                  <el-tag :type="priorityType(selectedTask.priority)" size="small">
+                    {{ priorityLabel(selectedTask.priority) }}
                   </el-tag>
-                  <el-tag :type="getTaskStatusType(selectedTask.status)" size="small">
-                    {{ getTaskStatusText(selectedTask.status) }}
+                  <el-tag :type="statusType(selectedTask.status)" size="small">
+                    {{ statusLabel(selectedTask.status) }}
                   </el-tag>
                 </div>
                 <div class="preview-title">{{ selectedTask.taskName }}</div>
@@ -166,10 +166,15 @@
 import { ref, watch, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { User, Calendar } from '@element-plus/icons-vue'
-import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, getProgressStatus } from '@/utils/taskUtils'
+import { useDict } from '@/composables/useDict'
+import { getProgressStatus } from '@/utils/taskUtils'
 import { getProjectTasks } from '@/api/task'
 import { getProjectPage } from '@/api/project'
 import { createShadowTask } from '@/api/shadowTask'
+
+// 业务枚举：状态/优先级 走字典
+const { labelOf: statusLabel, tagTypeOf: statusType } = useDict('task_status')
+const { labelOf: priorityLabel, tagTypeOf: priorityType } = useDict('task_priority')
 
 const props = defineProps({
   modelValue: {

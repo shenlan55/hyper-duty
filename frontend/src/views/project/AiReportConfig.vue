@@ -26,13 +26,13 @@
         @current-change="handleCurrentChange"
       >
         <template #reportType="{ row }">
-          <el-tag :type="row.reportType === 'daily' ? 'primary' : 'success'">
-            {{ row.reportType === 'daily' ? '日报' : '周报' }}
+          <el-tag :type="reportTypeType(row.reportType)">
+            {{ reportTypeLabel(row.reportType) }}
           </el-tag>
         </template>
         <template #status="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-            {{ row.status === 1 ? '启用' : '禁用' }}
+          <el-tag :type="commonStatusType(row.status)">
+            {{ commonStatusLabel(row.status) }}
           </el-tag>
         </template>
         <template #promptTemplate="{ row }">
@@ -93,8 +93,12 @@
           <el-col :span="12">
             <el-form-item label="报告类型" prop="reportType">
               <el-select v-model="form.reportType" placeholder="请选择报告类型" style="width: 100%;">
-                <el-option label="日报" value="daily" />
-                <el-option label="周报" value="weekly" />
+                <el-option
+                  v-for="opt in reportTypeOptions"
+                  :key="opt.value"
+                  :label="opt.label"
+                  :value="opt.value"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -179,8 +183,11 @@
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
+            <el-radio
+              v-for="opt in commonStatusOptions"
+              :key="opt.value"
+              :value="Number(opt.value)"
+            >{{ opt.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -317,6 +324,13 @@ import { Plus, Edit, Delete, DocumentCopy, Refresh, Check, Close, QuestionFilled
 import BaseTable from '@/components/BaseTable.vue'
 import { formatDateTime } from '@/utils/dateUtils'
 import { getConfigList, getConfigById, saveConfig, deleteConfig } from '@/api/ai-report'
+import { useDict } from '@/composables/useDict'
+
+// 业务枚举：通用状态 / 报告类型 走字典
+const { options: commonStatusOptions, labelOf: commonStatusLabel, tagTypeOf: commonStatusType, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
+const { options: reportTypeOptions, labelOf: reportTypeLabel, tagTypeOf: reportTypeType, loadDict: loadReportTypeDict } = useDict('report_type')
+loadReportTypeDict()
 
 const loading = ref(false)
 const dialogVisible = ref(false)

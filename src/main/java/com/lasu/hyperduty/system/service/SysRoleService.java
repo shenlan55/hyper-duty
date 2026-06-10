@@ -19,6 +19,12 @@ import java.util.List;
 public interface SysRoleService extends IService<SysRole> {
 
     /**
+     * 获取全量角色列表（用于工作流 BPMN 设计器选组弹窗）
+     * @return 全量角色列表
+     */
+    List<SysRole> getAllRoles();
+
+    /**
      * 获取角色菜单列表
      * @param roleId 角色ID
      * @return 菜单ID列表

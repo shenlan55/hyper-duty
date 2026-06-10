@@ -126,6 +126,11 @@ import { safeInput } from '../utils/xssUtil'
 import { useSearchPagination } from '../hooks/usePagination'
 import BaseTable from '../components/BaseTable.vue'
 import PersonSelector from '../components/PersonSelector.vue'
+import { useDict } from '../composables/useDict'
+
+// 业务枚举：状态 走字典
+const { labelOf: commonStatusLabel, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
 
 // 角色列表数据
 const roleList = ref([])
@@ -441,7 +446,7 @@ const handleExport = () => {
     row.roleName,
     row.roleCode,
     row.description || '',
-    row.status === 1 ? '启用' : '禁用',
+    row.status === 1 ? commonStatusLabel(1) : commonStatusLabel(0),
     formatDateTime(row.createTime)
   ])
   

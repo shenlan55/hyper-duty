@@ -87,9 +87,12 @@
         </el-form-item>
         <el-form-item label="菜单类型" prop="type">
           <el-select v-model="menuForm.type" placeholder="请选择菜单类型">
-            <el-option label="目录" :value="1" />
-            <el-option label="菜单" :value="2" />
-            <el-option label="按钮" :value="3" />
+            <el-option
+              v-for="opt in menuTypeOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="Number(opt.value)"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="路由路径" prop="path" v-if="menuForm.type !== 3">
@@ -156,6 +159,11 @@ import {
 import { getMenuList, getMenuById, addMenu, updateMenu, deleteMenu, getMenuTree } from '../api/menu'
 import { safeInput } from '../utils/xssUtil'
 import BaseTable from '../components/BaseTable.vue'
+import { useDict } from '../composables/useDict'
+
+// 业务枚举：菜单类型 走字典
+const { options: menuTypeOptions, loadDict: loadMenuTypeDict } = useDict('menu_type')
+loadMenuTypeDict()
 
 const menuList = ref([])
 const allMenus = ref([])

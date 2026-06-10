@@ -17,10 +17,12 @@
               </el-form-item>
               <el-form-item v-if="periodType === 'QUARTERLY'" label="季度">
                 <el-select v-model="periodIndex" style="width: 140px">
-                  <el-option label="第一季度" :value="1" />
-                  <el-option label="第二季度" :value="2" />
-                  <el-option label="第三季度" :value="3" />
-                  <el-option label="第四季度" :value="4" />
+                  <el-option
+                    v-for="opt in quarterOptions"
+                    :key="opt.value"
+                    :label="opt.label"
+                    :value="Number(opt.value)"
+                  />
                 </el-select>
               </el-form-item>
               <el-form-item>
@@ -53,6 +55,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getEvaluationRanking } from '../../api/score/index.js'
+import { useDict } from '../../composables/useDict'
+
+// 业务枚举：季度 走字典
+const { options: quarterOptions, loadDict: loadQuarterDict } = useDict('evaluation_quarter')
+loadQuarterDict()
 
 const now = new Date()
 const periodType = ref('QUARTERLY')

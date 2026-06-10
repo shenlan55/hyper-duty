@@ -180,17 +180,22 @@
         </el-form-item>
         <el-form-item label="优先级" prop="priority">
           <el-select v-model="taskForm.priority" placeholder="请选择优先级" style="width: 100px;">
-            <el-option label="高" :value="1" />
-            <el-option label="中" :value="2" />
-            <el-option label="低" :value="3" />
+            <el-option
+              v-for="opt in taskPriorityOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="Number(opt.value)"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-select v-model="taskForm.status" placeholder="请选择状态" style="width: 120px;">
-            <el-option label="未开始" :value="1" />
-            <el-option label="进行中" :value="2" />
-            <el-option label="已完成" :value="3" />
-            <el-option label="已暂停" :value="4" />
+            <el-option
+              v-for="opt in taskStatusOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="Number(opt.value)"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="是否重点">
@@ -280,9 +285,12 @@
         </el-form-item>
         <el-form-item label="优先级" prop="priority">
           <el-select v-model="projectForm.priority" placeholder="请选择优先级" style="width: 100px;">
-            <el-option label="高" :value="1" />
-            <el-option label="中" :value="2" />
-            <el-option label="低" :value="3" />
+            <el-option
+              v-for="opt in taskPriorityOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="Number(opt.value)"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="负责人" prop="ownerId">
@@ -477,6 +485,15 @@ import { getProjectTasks, createTask, updateTask } from '@/api/task'
 import { getEmployeeList } from '@/api/employee'
 import { useUserStore } from '@/stores/user'
 import { getStatusByProgress, getProgressByStatus } from '@/utils/taskUtils'
+import { useDict } from '@/composables/useDict'
+
+// 业务枚举：项目状态 / 任务优先级 / 任务状态 走字典
+const { options: projectStatusOptions, labelOf: projectStatusLabel, tagTypeOf: projectStatusType, loadDict: loadProjectStatusDict } = useDict('project_status')
+loadProjectStatusDict()
+const { options: taskPriorityOptions, labelOf: taskPriorityLabel, tagTypeOf: taskPriorityType, loadDict: loadTaskPriorityDict } = useDict('task_priority')
+loadTaskPriorityDict()
+const { options: taskStatusOptions, loadDict: loadTaskStatusDict } = useDict('task_status')
+loadTaskStatusDict()
 
 const route = useRoute()
 const router = useRouter()
@@ -560,12 +577,8 @@ const stakeholderDialogVisible = ref(false)
 const stakeholderNames = ref('')
 const selectedStakeholders = ref([])
 
-const statusList = [
-  { label: '未开始', value: 1 },
-  { label: '进行中', value: 2 },
-  { label: '已完成', value: 3 },
-  { label: '已暂停', value: 4 }
-]
+// 任务看板列：来自字典 task_status
+const statusList = computed(() => taskStatusOptions.value)
 
 const taskForm = reactive({
   id: null,
@@ -627,23 +640,19 @@ const projectRules = {
 }
 
 const getStatusType = (status) => {
-  const types = { 1: 'info', 2: 'primary', 3: 'success', 4: 'warning', 5: '' }
-  return types[status] || 'info'
+  return projectStatusType(status) || 'info'
 }
 
 const getStatusText = (status) => {
-  const texts = { 1: '未开始', 2: '进行中', 3: '已完成', 4: '已暂停', 5: '已归档' }
-  return texts[status] || '未知'
+  return projectStatusLabel(status) || '未知'
 }
 
 const getPriorityType = (priority) => {
-  const types = { 1: 'danger', 2: 'warning', 3: 'info' }
-  return types[priority] || 'info'
+  return taskPriorityType(priority) || 'info'
 }
 
 const getPriorityText = (priority) => {
-  const texts = { 1: '高', 2: '中', 3: '低' }
-  return texts[priority] || '未知'
+  return taskPriorityLabel(priority) || '未知'
 }
 
 const formatDeputyOwners = (deputyOwnerNames) => {

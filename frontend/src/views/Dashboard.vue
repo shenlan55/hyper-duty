@@ -106,9 +106,14 @@ import { getEmployeeList } from '../api/employee'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { formatDateTime } from '../utils/dateUtils'
+import { useDict } from '../composables/useDict'
 
 const router = useRouter()
 const userStore = useUserStore()
+
+// 业务枚举：请假类型 走字典
+const { labelOf: leaveTypeLabel, loadDict: loadLeaveTypeDict } = useDict('leave_type')
+loadLeaveTypeDict()
 
 const statistics = ref({
   deptCount: 0,
@@ -193,7 +198,7 @@ const loadTodoList = async () => {
               title: `请假审批 - ${item.requestNo || item.id}`,
               creator: creatorName,
               createTime: item.createTime,
-              description: `${creatorName} 申请 ${item.leaveType ? item.leaveType === 1 ? '事假' : item.leaveType === 2 ? '病假' : item.leaveType === 3 ? '年假' : item.leaveType === 4 ? '调休' : '其他' : '未知'}，时长 ${item.totalHours || 0} 小时，值班表：${scheduleName}`,
+              description: `${creatorName} 申请 ${item.leaveType ? leaveTypeLabel(item.leaveType) : '未知'}，时长 ${item.totalHours || 0} 小时，值班表：${scheduleName}`,
               data: {
                 ...item,
                 employeeName: creatorName,

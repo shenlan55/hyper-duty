@@ -64,6 +64,20 @@ public class SysEmployeeController {
     }
 
     /**
+     * 获取全量人员列表（用于工作流 BPMN 设计器选人弹窗）
+     * 过滤 password 字段，避免敏感信息泄露
+     */
+    @GetMapping("/all")
+    public ResponseResult<List<SysEmployee>> getAllEmployeesForSelector() {
+        List<SysEmployee> employeeList = sysEmployeeService.getAllEmployees();
+        // 过滤敏感字段
+        if (employeeList != null) {
+            employeeList.forEach(e -> e.setPassword(null));
+        }
+        return ResponseResult.success(employeeList);
+    }
+
+    /**
      * 添加人员
      */
     @PostMapping

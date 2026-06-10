@@ -81,14 +81,14 @@
           <el-progress :percentage="row.progress" :status="getProgressStatus(row.progress)" />
         </template>
         <template #status="{ row }">
-          <el-tag :type="getTaskStatusType(row.status)">{{ getTaskStatusText(row.status) }}</el-tag>
+          <el-tag :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
         </template>
         <template #priority="{ row }">
-          <el-tag :type="getTaskPriorityType(row.priority)">{{ getTaskPriorityText(row.priority) }}</el-tag>
+          <el-tag :type="priorityType(row.priority)">{{ priorityLabel(row.priority) }}</el-tag>
         </template>
         <template #isFocus="{ row }">
-          <el-tag :type="row.isFocus === 1 ? 'warning' : 'info'">
-            {{ row.isFocus === 1 ? '重点' : '普通' }}
+          <el-tag :type="focusType(row.isFocus)">
+            {{ focusLabel(row.isFocus) }}
           </el-tag>
         </template>
         <template #endDate="{ row }">
@@ -127,8 +127,8 @@
           </el-col>
           <el-col :span="12">
             <el-descriptions :column="1" size="small">
-              <el-descriptions-item label="优先级">{{ getTaskPriorityText(currentTaskForUpdate?.priority) }}</el-descriptions-item>
-              <el-descriptions-item label="状态">{{ getTaskStatusText(currentTaskForUpdate?.status) }}</el-descriptions-item>
+              <el-descriptions-item label="优先级">{{ priorityLabel(currentTaskForUpdate?.priority) }}</el-descriptions-item>
+              <el-descriptions-item label="状态">{{ statusLabel(currentTaskForUpdate?.status) }}</el-descriptions-item>
               <el-descriptions-item label="当前进度">{{ currentTaskForUpdate?.progress }}%</el-descriptions-item>
             </el-descriptions>
           </el-col>
@@ -204,9 +204,15 @@ import { getMyProjects } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { getCurrentUserId } from '@/utils/jwt'
 import { useUserStore } from '@/stores/user'
-import { getTaskStatusType, getTaskStatusText, getTaskPriorityType, getTaskPriorityText, formatDateTime, getProgressStatus, sortTasks } from '@/utils/taskUtils'
+import { useDict } from '@/composables/useDict'
+import { formatDateTime, getProgressStatus, sortTasks } from '@/utils/taskUtils'
 
 const userStore = useUserStore()
+
+// 业务枚举：状态/优先级/是否重点 走字典
+const { labelOf: statusLabel, tagTypeOf: statusType } = useDict('task_status')
+const { labelOf: priorityLabel, tagTypeOf: priorityType } = useDict('task_priority')
+const { labelOf: focusLabel, tagTypeOf: focusType } = useDict('task_focus')
 
 const loading = ref(false)
 const tableData = ref([])

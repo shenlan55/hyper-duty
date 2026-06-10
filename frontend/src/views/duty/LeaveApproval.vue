@@ -37,17 +37,22 @@
         <el-form :inline="true" :model="filterForm" class="demo-form-inline">
           <el-form-item label="请假类型">
             <el-select v-model="filterForm.leaveType" placeholder="请选择请假类型" clearable style="width: 150px;">
-              <el-option label="事假" :value="1" />
-              <el-option label="病假" :value="2" />
-              <el-option label="年假" :value="3" />
-              <el-option label="调休" :value="4" />
-              <el-option label="其他" :value="5" />
+              <el-option
+                v-for="opt in leaveTypeOptions"
+                :key="opt.value"
+                :label="opt.label"
+                :value="Number(opt.value)"
+              />
             </el-select>
           </el-form-item>
           <el-form-item label="审批状态" v-if="activeTab === 'approved'">
             <el-select v-model="filterForm.approvalStatus" placeholder="请选择审批状态" clearable style="width: 150px;">
-              <el-option label="已通过" value="approved" />
-              <el-option label="已拒绝" value="rejected" />
+              <el-option
+                v-for="opt in approvalStatusOptions"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
             </el-select>
           </el-form-item>
           <el-form-item label="请假时间">
@@ -299,9 +304,21 @@ import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { useUserStore } from '../../stores/user'
 import BaseTable from '../../components/BaseTable.vue'
 import { useSearchPagination } from '../../hooks/usePagination'
+import { APPROVAL_STATUS, APPROVAL_STATUS_LABEL, APPROVAL_STATUS_TAG } from '../../constants/duty'
+import { useDict } from '../../composables/useDict'
+
+// 业务枚举：请假类型 走字典
+const { options: leaveTypeOptions, labelOf: leaveTypeLabel, tagTypeOf: leaveTypeType, loadDict: loadLeaveTypeDict } = useDict('leave_type')
+loadLeaveTypeDict()
 
 const userStore = useUserStore()
 const route = useRoute()
+
+// 业务枚举：审批状态选项由 constants/duty.js 集中提供
+const approvalStatusOptions = Object.values(APPROVAL_STATUS).map((value) => ({
+  value,
+  label: APPROVAL_STATUS_LABEL[value] || value
+}))
 
 const loading = ref(false)
 const approveDialogVisible = ref(false)
@@ -378,35 +395,25 @@ const scheduleStatus = reactive({
   text: '未检查'
 })
 
-const leaveTypeMap = {
-  1: '事假',
-  2: '病假',
-  3: '年假',
-  4: '调休',
-  5: '其他'
-}
+const leaveTypeMap = computed(() => {
+  const map = {}
+  for (const opt of leaveTypeOptions.value) {
+    map[Number(opt.value)] = opt.label
+  }
+  return map
+})
 
-const leaveTypeColorMap = {
-  1: 'primary',
-  2: 'warning',
-  3: 'success',
-  4: 'info',
-  5: 'danger'
-}
+const leaveTypeColorMap = computed(() => {
+  const map = {}
+  for (const opt of leaveTypeOptions.value) {
+    map[Number(opt.value)] = leaveTypeType(opt.value)
+  }
+  return map
+})
 
-const approvalStatusMap = {
-  'pending': '待审批',
-  'approved': '已通过',
-  'rejected': '已拒绝',
-  'cancelled': '已取消'
-}
+const approvalStatusMap = APPROVAL_STATUS_LABEL
 
-const approvalStatusColorMap = {
-  'pending': 'warning',
-  'approved': 'success',
-  'rejected': 'danger',
-  'cancelled': 'info'
-}
+const approvalStatusColorMap = APPROVAL_STATUS_TAG
 
 // 表格列配置
 const approvalColumns = [
@@ -453,11 +460,11 @@ const handleExport = () => {
 }
 
 const getLeaveTypeName = (type) => {
-  return leaveTypeMap[type] || '未知'
+  return leaveTypeMap.value[type] || leaveTypeLabel(type) || '未知'
 }
 
 const getLeaveTypeColor = (type) => {
-  return leaveTypeColorMap[type] || 'info'
+  return leaveTypeColorMap.value[type] || leaveTypeType(type) || 'info'
 }
 
 const getApprovalStatusName = (status) => {

@@ -41,8 +41,8 @@
             </div>
           </div>
           <div class="status-badge">
-            <el-tag v-if="shadow.sourceTask" :type="getTaskStatusType(shadow.sourceTask.status)" size="small">
-              {{ getTaskStatusText(shadow.sourceTask.status) }}
+            <el-tag v-if="shadow.sourceTask" :type="statusType(shadow.sourceTask.status)" size="small">
+              {{ statusLabel(shadow.sourceTask.status) }}
             </el-tag>
             <el-tag v-else type="info" size="small">源任务已删除</el-tag>
           </div>
@@ -107,10 +107,14 @@
 import { ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { DocumentCopy, Plus, Link, FolderOpened, ChatDotRound, Clock } from '@element-plus/icons-vue'
-import { getTaskStatusType, getTaskStatusText, getProgressStatus, formatDateTime } from '@/utils/taskUtils'
+import { useDict } from '@/composables/useDict'
+import { getProgressStatus, formatDateTime } from '@/utils/taskUtils'
 import { getShadowTasksByTargetProject, deleteShadowTask } from '@/api/shadowTask'
 import CreateShadowTaskDialog from './CreateShadowTaskDialog.vue'
 import ShadowTaskDetailDialog from './ShadowTaskDetailDialog.vue'
+
+// 业务枚举：状态 走字典
+const { labelOf: statusLabel, tagTypeOf: statusType } = useDict('task_status')
 
 const props = defineProps({
   projectId: {

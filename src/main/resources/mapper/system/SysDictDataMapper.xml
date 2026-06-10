@@ -3,7 +3,17 @@
 <mapper namespace="com.lasu.hyperduty.system.mapper.SysDictDataMapper">
 
     <select id="selectByDictTypeId" resultType="com.lasu.hyperduty.system.entity.SysDictData">
-        SELECT * FROM sys_dict_data WHERE dict_type_id = #{dictTypeId} ORDER BY dict_sort ASC
+        SELECT * FROM sys_dict_data WHERE dict_type_id = #{dictTypeId} AND status = 1 ORDER BY dict_sort ASC
+    </select>
+
+    <select id="selectByDictTypeIds" resultType="com.lasu.hyperduty.system.entity.SysDictData">
+        SELECT * FROM sys_dict_data
+        WHERE status = 1
+          AND dict_type_id IN
+        <foreach collection="dictTypeIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY dict_type_id ASC, dict_sort ASC
     </select>
 
 </mapper>

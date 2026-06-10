@@ -284,6 +284,7 @@ import BaseTable from '../../components/BaseTable.vue'
 import { safeInput } from '../../utils/xssUtil'
 import { useRoute } from 'vue-router'
 import { useSearchPagination } from '../../hooks/usePagination'
+import { APPROVAL_STATUS_LABEL, APPROVAL_STATUS_TAG, SHIFT_TYPE_FALLBACK_LABEL } from '../../constants/duty'
 
 const route = useRoute()
 
@@ -393,26 +394,6 @@ const isDutyManager = computed(() => {
   return isLeader
 })
 
-// 班次选项
-const shiftOptions = [
-  {
-    label: '早班',
-    value: 1
-  },
-  {
-    label: '中班',
-    value: 2
-  },
-  {
-    label: '晚班',
-    value: 3
-  },
-  {
-    label: '全天',
-    value: 4
-  }
-]
-
 // 当前记录信息
 const currentRecord = ref(null)
 
@@ -513,51 +494,25 @@ const checkIfDutyManager = async () => {
 
 
 
-// 审批状态中英文转换
-const approvalStatusMap = {
-  pending: '待审批',
-  approved: '已批准',
-  rejected: '已拒绝',
-  '待审批': '待审批',
-  '已批准': '已批准',
-  '已拒绝': '已拒绝'
-}
-
-const approvalStatusReverseMap = {
-  '待审批': 'pending',
-  '已批准': 'approved',
-  '已拒绝': 'rejected',
-  pending: 'pending',
-  approved: 'approved',
-  rejected: 'rejected'
-}
-
-// 审批状态类型映射
-const approvalType = {
-  pending: 'warning',
-  approved: 'success',
-  rejected: 'danger',
-  '待审批': 'warning',
-  '已批准': 'success',
-  '已拒绝': 'danger'
-}
+// 审批状态 label/type 走 constants/duty.js（统一管理）
 
 // 标准化状态为英文代码
 const normalizeApprovalStatus = (status) => {
   if (!status) return 'pending'
-  return approvalStatusReverseMap[status] || status
+  // 兼容中英文双向
+  if (APPROVAL_STATUS_LABEL[status]) return status
+  const found = Object.entries(APPROVAL_STATUS_LABEL).find(([, label]) => label === status)
+  return found ? found[0] : status
 }
 
 // 判断是否是已批准状态
 const isApprovedStatus = (status) => {
-  const normalized = normalizeApprovalStatus(status)
-  return normalized === 'approved'
+  return normalizeApprovalStatus(status) === 'approved'
 }
 
 // 判断是否是待审批状态
 const isPendingStatus = (status) => {
-  const normalized = normalizeApprovalStatus(status)
-  return normalized === 'pending'
+  return normalizeApprovalStatus(status) === 'pending'
 }
 
 const createForm = reactive({
@@ -618,14 +573,22 @@ const getEmployeeName = (employeeId) => {
 // 获取状态名称
 
 
-// 获取审批状态中文显示
+// 获取审批状态中文显示（label 走 constants/duty.js）
 const getApprovalStatusText = (status) => {
-  return approvalStatusMap[status] || status
+  if (!status) return '待审批'
+  // 先尝试直接命中英文编码
+  if (APPROVAL_STATUS_LABEL[status]) return APPROVAL_STATUS_LABEL[status]
+  // 兼容中文输入
+  const found = Object.entries(APPROVAL_STATUS_LABEL).find(([, label]) => label === status)
+  return found ? found[1] : status
 }
 
-// 获取审批类型
+// 获取审批类型（type 走 constants/duty.js）
 const getApprovalType = (status) => {
-  return approvalType[status] || 'info'
+  if (!status) return 'info'
+  if (APPROVAL_STATUS_TAG[status]) return APPROVAL_STATUS_TAG[status]
+  const found = Object.entries(APPROVAL_STATUS_TAG).find(([, label]) => label === status)
+  return found ? found[1] : 'info'
 }
 
 const getEmployeeDeptName = (deptId) => {
@@ -1091,20 +1054,9 @@ const getShiftName = (shift) => {
     return shiftConfig.shiftName
   }
   
-  // 直接硬编码班次名称，作为备选方案
-  const shiftMap = {
-    1: '早班',
-    2: '中班',
-    3: '晚班',
-    4: '全天',
-    5: 'GOC夜班',
-    6: 'GOC白班',
-    7: 'SRE夜班',
-    8: 'GOC白班' // 从数据库查询结果中，我们知道班次8的名称是"GOC白班"
-  }
-  
-  if (shiftMap[shiftNum]) {
-    return shiftMap[shiftNum]
+  // 直接返回 fallback 班次名称（早/中/晚/全天，GOC/SRE 班次由 sys_shift_config 提供）
+  if (SHIFT_TYPE_FALLBACK_LABEL[shiftNum]) {
+    return SHIFT_TYPE_FALLBACK_LABEL[shiftNum]
   }
   
   // 如果没有找到，使用默认格式

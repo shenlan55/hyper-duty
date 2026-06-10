@@ -5,9 +5,12 @@ import com.lasu.hyperduty.common.annotation.RateLimit;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.system.entity.SysDictData;
 import com.lasu.hyperduty.system.service.SysDictDataService;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,6 +51,28 @@ public class SysDictDataController {
     public ResponseResult<List<SysDictData>> getByDictTypeId(@PathVariable Long dictTypeId) {
         List<SysDictData> dataList = sysDictDataService.getByDictTypeId(dictTypeId);
         return ResponseResult.success(dataList);
+    }
+
+    /**
+     * 按 dict_code 批量查询字典数据
+     * 用于前端动态加载业务枚举（任务状态/班次/审批状态/是否等）
+     * 例：GET /dict/data/byCodes?codes=task_status,task_priority,approval_status
+     * @param codes 逗号分隔的字典编码
+     * @return Map<dictCode, List<SysDictData>>
+     */
+    @GetMapping("/byCodes")
+    public ResponseResult<Map<String, List<SysDictData>>> getByDictTypeCodes(
+            @RequestParam("codes") String codes) {
+        if (!StringUtils.hasText(codes)) {
+            return ResponseResult.success(java.util.Collections.emptyMap());
+        }
+        List<String> codeList = Arrays.stream(codes.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+        Map<String, List<SysDictData>> result = sysDictDataService.getByDictTypeCodes(codeList);
+        return ResponseResult.success(result);
     }
 
     @GetMapping("/detail/{id}")

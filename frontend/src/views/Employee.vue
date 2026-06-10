@@ -54,7 +54,7 @@
             :class="row.gender === 1 ? 'gender-tag-male' : row.gender === 2 ? 'gender-tag-female' : 'gender-tag-unknown'"
             size="small"
           >
-            {{ row.gender === 1 ? '男' : row.gender === 2 ? '女' : '未知' }}
+            {{ genderLabel(row.gender) }}
           </el-tag>
         </template>
         <template #dictTypeId="{ row }">
@@ -64,8 +64,8 @@
           {{ getDictDataLabel(row.dictDataId, row.dictTypeId) }}
         </template>
         <template #status="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-            {{ row.status === 1 ? '启用' : '禁用' }}
+          <el-tag :type="commonStatusType(row.status)">
+            {{ commonStatusLabel(row.status) }}
           </el-tag>
         </template>
         <template #createTime="{ row }">
@@ -173,9 +173,12 @@
                 placeholder="请选择性别"
                 style="width: 100%"
               >
-                <el-option label="未知" :value="0" />
-                <el-option label="男" :value="1" />
-                <el-option label="女" :value="2" />
+                <el-option
+                  v-for="opt in genderOptions"
+                  :key="opt.value"
+                  :label="opt.label"
+                  :value="Number(opt.value)"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -232,8 +235,11 @@
         </el-row>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="employeeForm.status">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
+            <el-radio
+              v-for="opt in commonStatusOptions"
+              :key="opt.value"
+              :value="Number(opt.value)"
+            >{{ opt.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -266,6 +272,13 @@ import { formatDateTime } from '../utils/dateUtils'
 import { safeInput } from '../utils/xssUtil'
 import { useSearchPagination } from '../hooks/usePagination'
 import BaseTable from '../components/BaseTable.vue'
+import { useDict } from '../composables/useDict'
+
+// 业务枚举：状态 / 性别 走字典
+const { options: commonStatusOptions, labelOf: commonStatusLabel, tagTypeOf: commonStatusType, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
+const { options: genderOptions, labelOf: genderLabel, loadDict: loadGenderDict } = useDict('gender')
+loadGenderDict()
 
 // 响应式数据
 const deptFilter = ref('')
@@ -629,10 +642,10 @@ const handleExport = () => {
     getDeptName(row.deptId),
     row.phone,
     row.email,
-    row.gender === 1 ? '男' : row.gender === 2 ? '女' : '未知',
+    genderLabel(row.gender),
     getDictTypeName(row.dictTypeId),
     getDictDataLabel(row.dictDataId, row.dictTypeId),
-    row.status === 1 ? '启用' : '禁用',
+    commonStatusLabel(row.status),
     formatDateTime(row.createTime)
   ])
   

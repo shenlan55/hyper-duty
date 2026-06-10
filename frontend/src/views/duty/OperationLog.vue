@@ -81,8 +81,8 @@
         @export="handleExport"
       >
         <template #status="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-            {{ row.status === 1 ? '成功' : '失败' }}
+          <el-tag :type="logStatusType(row.status)">
+            {{ logStatusLabel(row.status) }}
           </el-tag>
         </template>
         <template #createTime="{ row }">
@@ -115,8 +115,8 @@
         <el-descriptions-item label="请求URL">{{ currentLog.requestUrl }}</el-descriptions-item>
         <el-descriptions-item label="执行时间">{{ currentLog.executionTime }}ms</el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag :type="currentLog.status === 1 ? 'success' : 'danger'">
-            {{ currentLog.status === 1 ? '成功' : '失败' }}
+          <el-tag :type="logStatusType(currentLog.status)">
+            {{ logStatusLabel(currentLog.status) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item v-if="currentLog.errorMsg" label="错误信息" :span="2">
@@ -137,9 +137,14 @@ import {
   deleteOperationLog
 } from '../../api/duty/operationLog'
 import { safeInput } from '../../utils/xssUtil'
+import { formatDateTime } from '../../utils/dateUtils'
 import { useSearchPagination } from '../../hooks/usePagination'
 import BaseTable from '../../components/BaseTable.vue'
-import { formatDateTime } from '../../utils/dateUtils'
+import { useDict } from '../../composables/useDict'
+
+// 业务枚举：状态 走字典
+const { labelOf: logStatusLabel, tagTypeOf: logStatusType, loadDict: loadLogStatusDict } = useDict('operation_log_status')
+loadLogStatusDict()
 
 const loading = ref(false)
 const viewDialogVisible = ref(false)
@@ -262,7 +267,7 @@ const handleExport = () => {
     row.requestMethod,
     row.ipAddress,
     row.executionTime,
-    row.status === 1 ? '成功' : '失败',
+    logStatusLabel(row.status),
     formatDateTime(row.createTime)
   ])
   

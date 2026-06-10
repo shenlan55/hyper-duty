@@ -16,8 +16,8 @@
         @current-change="handleCurrentChange"
       >
         <template #status="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'info'">
-            {{ row.status === 1 ? '启用' : '禁用' }}
+          <el-tag :type="commonStatusType(row.status)">
+            {{ commonStatusLabel(row.status) }}
           </el-tag>
         </template>
         <template #actions="{ row }">
@@ -44,14 +44,22 @@
         </el-form-item>
         <el-form-item label="表单类型" prop="formType">
           <el-select v-model="form.formType" placeholder="请选择">
-            <el-option label="动态表单" value="dynamic" />
-            <el-option label="自定义表单" value="custom" />
+            <el-option
+              v-for="opt in formTypeOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-select v-model="form.status" placeholder="请选择">
-            <el-option label="启用" :value="1" />
-            <el-option label="禁用" :value="0" />
+            <el-option
+              v-for="opt in commonStatusOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="Number(opt.value)"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
@@ -113,7 +121,14 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BaseTable from '@/components/BaseTable.vue'
 import { pageForm, getForm, createForm, updateForm, deleteForm } from '@/api/workflow/form'
+import { useDict } from '@/composables/useDict'
 import designer from '@form-create/designer'
+
+// 业务枚举：表单类型 / 状态 走字典
+const { options: formTypeOptions, loadDict: loadFormTypeDict } = useDict('form_type')
+loadFormTypeDict()
+const { options: commonStatusOptions, labelOf: commonStatusLabel, tagTypeOf: commonStatusType, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
 
 const loading = ref(false)
 const tableData = ref([])

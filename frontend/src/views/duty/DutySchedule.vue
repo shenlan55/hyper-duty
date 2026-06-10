@@ -36,8 +36,8 @@
           {{ formatDate(row.endDate) }}
         </template>
         <template #status="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-            {{ row.status === 1 ? '启用' : '禁用' }}
+          <el-tag :type="commonStatusType(row.status)">
+            {{ commonStatusLabel(row.status) }}
           </el-tag>
         </template>
         <template #operation="{ row }">
@@ -110,8 +110,11 @@
         
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="scheduleForm.status">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
+            <el-radio
+              v-for="opt in commonStatusOptions"
+              :key="opt.value"
+              :value="Number(opt.value)"
+            >{{ opt.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
         
@@ -200,6 +203,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BaseTable from '../../components/BaseTable.vue'
+import { useDict } from '../../composables/useDict'
 import {
   getScheduleList,
   getScheduleById,
@@ -219,6 +223,10 @@ import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { safeInput } from '../../utils/xssUtil'
 import { useSearchPagination } from '../../hooks/usePagination'
+
+// 业务枚举：状态 走字典
+const { options: commonStatusOptions, labelOf: commonStatusLabel, tagTypeOf: commonStatusType, loadDict: loadCommonStatusDict } = useDict('common_status')
+loadCommonStatusDict()
 
 const loading = ref(false)
 const dialogVisible = ref(false)

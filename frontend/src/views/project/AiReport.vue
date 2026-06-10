@@ -123,8 +123,8 @@
         @current-change="handleCurrentChange"
       >
         <template #reportType="{ row }">
-          <el-tag :type="row.reportType === 'daily' ? 'primary' : 'success'">
-            {{ row.reportType === 'daily' ? '日报' : '周报' }}
+          <el-tag :type="reportTypeType(row.reportType)">
+            {{ reportTypeLabel(row.reportType) }}
           </el-tag>
         </template>
         <template #createTime="{ row }">
@@ -166,6 +166,11 @@ import {
 import { getProjectPage } from '@/api/project'
 import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/dateUtils'
+import { useDict } from '@/composables/useDict'
+
+// 业务枚举：报告类型 走字典
+const { labelOf: reportTypeLabel, tagTypeOf: reportTypeType, loadDict: loadReportTypeDict } = useDict('report_type')
+loadReportTypeDict()
 
 const router = useRouter()
 const userStore = useUserStore()

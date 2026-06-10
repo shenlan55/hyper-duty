@@ -552,7 +552,7 @@ const localCurrentPage = ref(props.pagination?.currentPage || 1)
 const localPageSize = ref(props.pagination?.pageSize || 10)
 
 const handleSizeChange = (size) => {
-  if (props.pagination && localPageSize.value !== size) {
+  if (props.pagination && props.pagination.pageSize !== size) {
     localPageSize.value = size
     props.pagination.pageSize = size
     emit('size-change', size)
@@ -560,7 +560,7 @@ const handleSizeChange = (size) => {
 }
 
 const handleCurrentChange = (current) => {
-  if (props.pagination && localCurrentPage.value !== current) {
+  if (props.pagination && props.pagination.currentPage !== current) {
     localCurrentPage.value = current
     props.pagination.currentPage = current
     emit('current-change', current)
