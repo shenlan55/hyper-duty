@@ -45,9 +45,9 @@
               />
               
               <el-radio-group v-model="viewMode" size="small" class="view-mode-group">
-                <el-radio-button label="day">日</el-radio-button>
-                <el-radio-button label="week">周</el-radio-button>
-                <el-radio-button label="month">月</el-radio-button>
+                <el-radio-button value="day">日</el-radio-button>
+                <el-radio-button value="week">周</el-radio-button>
+                <el-radio-button value="month">月</el-radio-button>
               </el-radio-group>
             </div>
             
