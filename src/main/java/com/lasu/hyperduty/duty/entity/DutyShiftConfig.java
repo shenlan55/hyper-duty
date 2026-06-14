@@ -45,6 +45,10 @@ public class DutyShiftConfig implements Serializable {
 
     private BigDecimal overtimeHours;
 
+    private BigDecimal weekendOvertimeHours;
+
+    private BigDecimal holidayOvertimeHours;
+
     private String restDayRule;
 
     private Integer isOvertimeShift;

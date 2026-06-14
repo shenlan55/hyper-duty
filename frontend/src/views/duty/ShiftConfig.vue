@@ -165,9 +165,9 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item 
-              v-if="form.isOvertimeShift === 1" 
-              label="加班时长(小时)" 
+            <el-form-item
+              v-if="form.isOvertimeShift === 1"
+              label="加班时长(小时)"
               prop="overtimeHours"
             >
               <el-input-number
@@ -175,7 +175,33 @@
                 :min="0"
                 :max="24"
                 :step="0.5"
-                placeholder="请输入加班时长"
+                placeholder="日常加班时长"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row v-if="form.isOvertimeShift === 1" :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="休息日加班时长(小时)" prop="weekendOvertimeHours">
+              <el-input-number
+                v-model="form.weekendOvertimeHours"
+                :min="0"
+                :max="24"
+                :step="0.5"
+                placeholder="留空则使用日常加班时长"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="法定节假日加班时长(小时)" prop="holidayOvertimeHours">
+              <el-input-number
+                v-model="form.holidayOvertimeHours"
+                :min="0"
+                :max="24"
+                :step="0.5"
+                placeholder="留空则使用日常加班时长"
                 style="width: 100%"
               />
             </el-form-item>
@@ -298,6 +324,8 @@ const form = reactive({
   durationHours: 8,
   breakHours: 0,
   overtimeHours: 0,
+  weekendOvertimeHours: null,
+  holidayOvertimeHours: null,
   isOvertimeShift: 0,
   status: 1,
   sort: 0,
@@ -314,6 +342,8 @@ const columns = [
   { prop: 'endTime', label: '下班时间', width: '120' },
   { prop: 'durationHours', label: '时长(小时)', width: '120' },
   { prop: 'overtimeHours', label: '加班时长(小时)', width: '140' },
+  { prop: 'weekendOvertimeHours', label: '休息日加班(小时)', width: '160' },
+  { prop: 'holidayOvertimeHours', label: '节假日加班(小时)', width: '160' },
   { prop: 'isOvertimeShift', label: '是否加班班次', width: '120' },
   { prop: 'status', label: '状态', width: '100' },
   { prop: 'remark', label: '备注', minWidth: '200' },
@@ -402,6 +432,8 @@ const resetForm = () => {
     durationHours: 8,
     breakHours: 0,
     overtimeHours: 0,
+    weekendOvertimeHours: null,
+    holidayOvertimeHours: null,
     isOvertimeShift: 0,
     status: 1,
     sort: 0,
@@ -501,6 +533,8 @@ const handleExport = () => {
       '下班时间': item.endTime + (item.isCrossDay ? ' (次日)' : ''),
       '时长(小时)': item.durationHours,
       '加班时长(小时)': item.overtimeHours,
+      '休息日加班时长(小时)': item.weekendOvertimeHours,
+      '法定节假日加班时长(小时)': item.holidayOvertimeHours,
       '是否加班班次': yesNoLabel(item.isOvertimeShift),
       '状态': commonStatusLabel(item.status),
       '备注': item.remark

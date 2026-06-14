@@ -66,6 +66,8 @@ public class DutyShiftConfigServiceImpl extends CacheableServiceImpl<DutyShiftCo
             map.put("durationHours", config.getDurationHours());
             map.put("breakHours", config.getBreakHours());
             map.put("overtimeHours", config.getOvertimeHours());
+            map.put("weekendOvertimeHours", config.getWeekendOvertimeHours());
+            map.put("holidayOvertimeHours", config.getHolidayOvertimeHours());
             map.put("restDayRule", config.getRestDayRule());
             map.put("isOvertimeShift", config.getIsOvertimeShift());
             map.put("status", config.getStatus());
@@ -130,6 +132,8 @@ public class DutyShiftConfigServiceImpl extends CacheableServiceImpl<DutyShiftCo
             map.put("durationHours", config.getDurationHours());
             map.put("breakHours", config.getBreakHours());
             map.put("overtimeHours", config.getOvertimeHours());
+            map.put("weekendOvertimeHours", config.getWeekendOvertimeHours());
+            map.put("holidayOvertimeHours", config.getHolidayOvertimeHours());
             map.put("restDayRule", config.getRestDayRule());
             map.put("isOvertimeShift", config.getIsOvertimeShift());
             map.put("status", config.getStatus());
@@ -172,6 +176,8 @@ public class DutyShiftConfigServiceImpl extends CacheableServiceImpl<DutyShiftCo
         map.put("isCrossDay", config.getIsCrossDay());
         map.put("durationHours", config.getDurationHours());
         map.put("breakHours", config.getBreakHours());
+        map.put("weekendOvertimeHours", config.getWeekendOvertimeHours());
+        map.put("holidayOvertimeHours", config.getHolidayOvertimeHours());
         map.put("restDayRule", config.getRestDayRule());
         map.put("isOvertimeShift", config.getIsOvertimeShift());
         map.put("status", config.getStatus());

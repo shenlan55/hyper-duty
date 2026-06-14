@@ -1,4 +1,4 @@
-﻿-- ===============================================================
+-- ===============================================================
 -- Hyper Duty 值班管理模块表结构（PostgreSQL 语法）
 -- ===============================================================
 
@@ -339,6 +339,8 @@ CREATE TABLE public.duty_shift_config (
     duration_hours numeric(4,2) NOT NULL,
     break_hours numeric(4,2) DEFAULT 0.00,
     overtime_hours numeric(10,2),
+    weekend_overtime_hours numeric(10,2),
+    holiday_overtime_hours numeric(10,2),
     rest_day_rule character varying(100) DEFAULT NULL::character varying,
     is_overtime_shift smallint DEFAULT '0'::smallint,
     status smallint DEFAULT '1'::smallint,
@@ -369,6 +371,10 @@ COMMENT ON COLUMN public.duty_shift_config.break_hours IS '休息时长(小时)'
 
 COMMENT ON COLUMN public.duty_shift_config.overtime_hours IS '加班时长(小时)';
 
+COMMENT ON COLUMN public.duty_shift_config.weekend_overtime_hours IS '休息日加班时长(小时)';
+
+COMMENT ON COLUMN public.duty_shift_config.holiday_overtime_hours IS '法定节假日加班时长(小时)';
+
 COMMENT ON COLUMN public.duty_shift_config.rest_day_rule IS '休息日规则';
 
 COMMENT ON COLUMN public.duty_shift_config.is_overtime_shift IS '是否加班班次:0-否,1-是';
@@ -389,6 +395,11 @@ COMMENT ON COLUMN public.duty_shift_config.is_cross_day IS '是否跨天:0-否,1
 ALTER TABLE public.pm_task ADD COLUMN stakeholders TEXT;
 
 -- 创建项目参与者关联表
+
+ALTER TABLE public.duty_shift_config ADD COLUMN IF NOT EXISTS weekend_overtime_hours numeric(10,2);
+ALTER TABLE public.duty_shift_config ADD COLUMN IF NOT EXISTS holiday_overtime_hours numeric(10,2);
+COMMENT ON COLUMN public.duty_shift_config.weekend_overtime_hours IS '休息日加班时长(小时)';
+COMMENT ON COLUMN public.duty_shift_config.holiday_overtime_hours IS '法定节假日加班时长(小时)';
 
 CREATE TABLE public.duty_shift_mutex (
     id bigint NOT NULL,

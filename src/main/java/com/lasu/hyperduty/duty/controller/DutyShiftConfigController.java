@@ -114,6 +114,8 @@ public class DutyShiftConfigController {
         shiftConfig.setRestDayRule((String) shiftConfigMap.get("restDayRule"));
         shiftConfig.setIsOvertimeShift((Integer) shiftConfigMap.get("isOvertimeShift"));
         shiftConfig.setOvertimeHours(convertToBigDecimal(shiftConfigMap.get("overtimeHours")));
+        shiftConfig.setWeekendOvertimeHours(convertToBigDecimal(shiftConfigMap.get("weekendOvertimeHours")));
+        shiftConfig.setHolidayOvertimeHours(convertToBigDecimal(shiftConfigMap.get("holidayOvertimeHours")));
         shiftConfig.setStatus((Integer) shiftConfigMap.get("status"));
         shiftConfig.setSort((Integer) shiftConfigMap.get("sort"));
         shiftConfig.setRemark((String) shiftConfigMap.get("remark"));
@@ -190,6 +192,8 @@ public class DutyShiftConfigController {
         shiftConfig.setRestDayRule((String) shiftConfigMap.get("restDayRule"));
         shiftConfig.setIsOvertimeShift((Integer) shiftConfigMap.get("isOvertimeShift"));
         shiftConfig.setOvertimeHours(convertToBigDecimal(shiftConfigMap.get("overtimeHours")));
+        shiftConfig.setWeekendOvertimeHours(convertToBigDecimal(shiftConfigMap.get("weekendOvertimeHours")));
+        shiftConfig.setHolidayOvertimeHours(convertToBigDecimal(shiftConfigMap.get("holidayOvertimeHours")));
         shiftConfig.setStatus((Integer) shiftConfigMap.get("status"));
         shiftConfig.setSort((Integer) shiftConfigMap.get("sort"));
         shiftConfig.setRemark((String) shiftConfigMap.get("remark"));

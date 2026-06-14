@@ -9,6 +9,7 @@ import com.lasu.hyperduty.duty.entity.DutyStatistics;
 import com.lasu.hyperduty.duty.entity.LeaveRequest;
 import com.lasu.hyperduty.duty.mapper.DutyStatisticsMapper;
 import com.lasu.hyperduty.duty.service.DutyAssignmentService;
+import com.lasu.hyperduty.duty.service.DutyHolidayService;
 import com.lasu.hyperduty.duty.service.DutyRecordService;
 import com.lasu.hyperduty.duty.service.DutyScheduleService;
 import com.lasu.hyperduty.duty.service.DutyShiftConfigService;
@@ -63,6 +64,48 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
 
     @Autowired
     private DutyShiftConfigService dutyShiftConfigService;
+
+    @Autowired
+    private DutyHolidayService dutyHolidayService;
+
+    /**
+     * 按排班日期类型选用加班工时
+     * <p>
+     * 优先级：法定节假日 → 休息日（周末且非调休工作日） → 日常
+     * 未配置时回退到 overtimeHours（保持向后兼容）
+     *
+     * @param shiftConfig 班次配置
+     * @param dutyDate    排班日期
+     * @return 加班工时；班次非加班班次/未配置时返回 null
+     */
+    private BigDecimal pickOvertimeHoursByDate(DutyShiftConfig shiftConfig, LocalDate dutyDate) {
+        if (shiftConfig == null
+            || shiftConfig.getIsOvertimeShift() == null
+            || shiftConfig.getIsOvertimeShift() != 1) {
+            return null;
+        }
+        BigDecimal fallback = shiftConfig.getOvertimeHours();
+        if (dutyDate == null) {
+            return fallback;
+        }
+        // 1. 法定节假日
+        try {
+            if (dutyHolidayService != null && dutyHolidayService.isHoliday(dutyDate)) {
+                return shiftConfig.getHolidayOvertimeHours() != null
+                    ? shiftConfig.getHolidayOvertimeHours() : fallback;
+            }
+        } catch (Exception ignore) {
+            // 节假日服务异常时走默认规则
+        }
+        // 2. 周末（且非调休工作日）
+        java.time.DayOfWeek dow = dutyDate.getDayOfWeek();
+        if (dow == java.time.DayOfWeek.SATURDAY || dow == java.time.DayOfWeek.SUNDAY) {
+            return shiftConfig.getWeekendOvertimeHours() != null
+                ? shiftConfig.getWeekendOvertimeHours() : fallback;
+        }
+        // 3. 普通工作日
+        return fallback;
+    }
 
     @Override
     public Map<String, Object> getOverallStatistics() {
@@ -619,14 +662,12 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                             overtimeHours = overtimeHours.add(record.getOvertimeHours());
                         }
                     }
-                    // 2. 截至当前正常排班是加班班次的加班时长
+                    // 2. 截至当前正常排班是加班班次的加班时长（按排班日期类型选用）
                     for (DutyAssignment assignment : actualAssignments) {
                         DutyShiftConfig shiftConfig = getShiftConfig(assignment, shiftConfigMap);
-                        if (shiftConfig != null &&
-                            shiftConfig.getIsOvertimeShift() != null &&
-                            shiftConfig.getIsOvertimeShift() == 1 &&
-                            shiftConfig.getOvertimeHours() != null) {
-                            overtimeHours = overtimeHours.add(shiftConfig.getOvertimeHours());
+                        BigDecimal hours = pickOvertimeHoursByDate(shiftConfig, assignment.getDutyDate());
+                        if (hours != null) {
+                            overtimeHours = overtimeHours.add(hours);
                         }
                     }
                     stat.put("overtimeHours", overtimeHours);
