@@ -16,11 +16,58 @@ import java.util.List;
 public interface PmTaskShadowMapper extends BaseMapper<PmTaskShadow> {
 
     /**
-     * 查询：真实任务 + 影子任务（UNION ALL）
+     * 查询：真实任务 + 影子任务（UNION ALL）根任务分页
+     * 业务过滤下沉到 SQL + LIMIT/OFFSET，关联子查询改 LATERAL
      * @param projectId 项目ID
-     * @return 任务列表
+     * @param taskName 任务名（模糊）
+     * @param assigneeName 负责人名（模糊）
+     * @param status 状态
+     * @param priority 优先级
+     * @param assigneeId 负责人ID
+     * @param offset 偏移
+     * @param pageSize 每页条数
+     * @return 当前页根任务列表
      */
-    List<ShadowTaskVO> selectTaskListWithShadows(@Param("projectId") Long projectId);
+    List<ShadowTaskVO> selectRootTaskPageWithShadows(
+            @Param("projectId") Long projectId,
+            @Param("taskName") String taskName,
+            @Param("assigneeName") String assigneeName,
+            @Param("status") Integer status,
+            @Param("priority") Integer priority,
+            @Param("assigneeId") Long assigneeId,
+            @Param("offset") Integer offset,
+            @Param("pageSize") Integer pageSize);
+
+    /**
+     * 查询：根任务总数（真实任务 + 影子任务，分别计数求和）
+     */
+    long countRootTaskWithShadows(
+            @Param("projectId") Long projectId,
+            @Param("taskName") String taskName,
+            @Param("assigneeName") String assigneeName,
+            @Param("status") Integer status,
+            @Param("priority") Integer priority,
+            @Param("assigneeId") Long assigneeId);
+
+    /**
+     * 查询：子树（按 parent_id IN 批量拉取真实子任务 + 影子子任务）
+     * 用于"根任务+完整子树一页"的跟随展示
+     */
+    List<ShadowTaskVO> selectSubTasksByRootIds(
+            @Param("rootIds") List<Long> rootIds,
+            @Param("projectId") Long projectId);
+
+    /**
+     * 查询：项目下所有根任务（真实任务 + 影子任务 UNION ALL，无分页/过滤）
+     * 用途：旧 API getTaskListWithShadows / 导出场景
+     */
+    List<ShadowTaskVO> selectAllRootTasksWithShadows(@Param("projectId") Long projectId);
+
+    /**
+     * 查询：项目下所有非根任务（真实子 + 影子子，无 IN 限制）
+     * 用途：按"行"分页时一次性拉所有子，service 层做内存切分（根任务不可切断）
+     */
+    List<ShadowTaskVO> selectAllSubTasksWithShadows(@Param("projectId") Long projectId);
 
     /**
      * 查询：影子任务详情

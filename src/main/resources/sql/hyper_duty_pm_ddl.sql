@@ -1,5 +1,7 @@
-﻿-- ===============================================================
+-- ===============================================================
 -- Hyper Duty 项目管理模块表结构（PostgreSQL 语法）
+-- 版本：v3 (2026-06-21)
+-- 变更：pm_task 新增 attachments / stakeholders / is_focus 字段
 -- ===============================================================
 
 CREATE TABLE IF NOT EXISTS public.pm_project_participant (
@@ -123,7 +125,10 @@ CREATE TABLE public.pm_task (
     task_level integer DEFAULT 1,
     progress integer DEFAULT 0,
     is_pinned integer DEFAULT 0,
-    module_id bigint
+    module_id bigint,
+    attachments text,
+    stakeholders text,
+    is_focus smallint DEFAULT 0
 );
 
 COMMENT ON TABLE public.pm_task IS '任务表';
@@ -153,6 +158,12 @@ COMMENT ON COLUMN public.pm_task.create_by IS '创建人ID';
 COMMENT ON COLUMN public.pm_task.create_time IS '创建时间';
 
 COMMENT ON COLUMN public.pm_task.update_time IS '更新时间';
+
+COMMENT ON COLUMN public.pm_task.attachments IS '附件JSON列表（task_attachment 服务的存储）';
+
+COMMENT ON COLUMN public.pm_task.stakeholders IS '干系人JSON列表（前端缓存的展示用）';
+
+COMMENT ON COLUMN public.pm_task.is_focus IS '是否重点：0-否，1-是（重点任务单独标识）';
 
 CREATE TABLE public.pm_task_comment (
     id bigint NOT NULL,
@@ -468,3 +479,103 @@ BEGIN
     CREATE INDEX idx_shadow_parent_id ON public.pm_task_shadow(parent_id);
   END IF;
 END $$;
+
+-- =====================================================
+-- v3 (2026-06-21) - pm_task 新增字段（手动 ALTER 合规化）
+-- =====================================================
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'pm_task' AND column_name = 'attachments'
+  ) THEN
+    ALTER TABLE pm_task ADD COLUMN attachments text;
+    COMMENT ON COLUMN pm_task.attachments IS '附件JSON列表（task_attachment 服务的存储）';
+  END IF;
+END $$;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'pm_task' AND column_name = 'stakeholders'
+  ) THEN
+    ALTER TABLE pm_task ADD COLUMN stakeholders text;
+    COMMENT ON COLUMN pm_task.stakeholders IS '干系人JSON列表（前端缓存的展示用）';
+  END IF;
+END $$;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'pm_task' AND column_name = 'is_focus'
+  ) THEN
+    ALTER TABLE pm_task ADD COLUMN is_focus smallint DEFAULT 0;
+    COMMENT ON COLUMN pm_task.is_focus IS '是否重点：0-否，1-是（重点任务单独标识）';
+  END IF;
+END $$;
+
+-- =====================================================
+-- 索引（性能优化）
+-- 说明：所有索引使用 CONCURRENTLY 不锁表，IF NOT EXISTS 幂等
+-- =====================================================
+
+-- pm_task 业务索引（任务管理主表）
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_project_id
+    ON public.pm_task(project_id);
+COMMENT ON INDEX public.idx_pm_task_project_id IS '任务-项目ID索引（任务管理主接口使用）';
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_assignee_id
+    ON public.pm_task(assignee_id);
+COMMENT ON INDEX public.idx_pm_task_assignee_id IS '任务-负责人ID索引（我的任务使用）';
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_status
+    ON public.pm_task(status);
+COMMENT ON INDEX public.idx_pm_task_status IS '任务-状态索引（状态过滤使用）';
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_parent_id
+    ON public.pm_task(parent_id);
+COMMENT ON INDEX public.idx_pm_task_parent_id IS '任务-父任务ID索引（父子关系使用）';
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_priority
+    ON public.pm_task(priority);
+COMMENT ON INDEX public.idx_pm_task_priority IS '任务-优先级索引（排序使用）';
+
+-- pm_task 联合索引（覆盖"我的任务"主查询）
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_assignee_status
+    ON public.pm_task(assignee_id, status);
+COMMENT ON INDEX public.idx_pm_task_assignee_status IS '任务-负责人+状态联合索引';
+
+-- pm_task 排序索引（置顶/创建时间排序使用）
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_is_pinned
+    ON public.pm_task(is_pinned);
+COMMENT ON INDEX public.idx_pm_task_is_pinned IS '任务-置顶索引（ORDER BY is_pinned DESC）';
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_create_time
+    ON public.pm_task(create_time DESC);
+COMMENT ON INDEX public.idx_pm_task_create_time IS '任务-创建时间索引（ORDER BY create_time DESC）';
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_project_status
+    ON public.pm_task(project_id, status);
+COMMENT ON INDEX public.idx_pm_task_project_status IS '任务-项目+状态联合索引（任务管理主接口使用）';
+
+-- pm_task_shadow 业务索引
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_shadow_project_id
+    ON public.pm_task_shadow(project_id);
+COMMENT ON INDEX public.idx_pm_task_shadow_project_id IS '影子任务-项目ID索引';
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_shadow_source_task_id
+    ON public.pm_task_shadow(source_task_id);
+COMMENT ON INDEX public.idx_pm_task_shadow_source_task_id IS '影子任务-源任务ID索引';
+
+-- pm_task_progress_update 索引（解决 MAX(create_time) 子查询）
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_progress_update_task_id
+    ON public.pm_task_progress_update(task_id, create_time DESC);
+COMMENT ON INDEX public.idx_pm_task_progress_update_task_id IS '进展更新-任务ID+时间索引（UNION ALL 子查询）';
+
+-- pm_shadow_annotation 索引（解决 COUNT 子查询）
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_shadow_annotation_shadow_id
+    ON public.pm_shadow_annotation(shadow_id);
+COMMENT ON INDEX public.idx_pm_shadow_annotation_shadow_id IS '影子批注-影子ID索引';

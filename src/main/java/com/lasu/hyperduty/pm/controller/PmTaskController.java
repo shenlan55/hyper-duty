@@ -3,23 +3,20 @@ package com.lasu.hyperduty.pm.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.ResponseResult;
 import com.lasu.hyperduty.common.dto.WorkloadDTO;
-import com.lasu.hyperduty.pm.dto.BatchTaskCreateDTO;
-import com.lasu.hyperduty.pm.dto.TaskCreateDTO;
-import com.lasu.hyperduty.pm.dto.TaskQueryDTO;
-import com.lasu.hyperduty.pm.dto.TaskUpdateDTO;
-import com.lasu.hyperduty.pm.dto.TaskVO;
+import com.lasu.hyperduty.common.utils.SecurityUtil;
+import com.lasu.hyperduty.pm.dto.*;
 import com.lasu.hyperduty.pm.entity.PmTask;
 import com.lasu.hyperduty.pm.service.PmTaskService;
-import com.lasu.hyperduty.common.utils.SecurityUtil;
 import jakarta.validation.Valid;
-import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -76,6 +73,35 @@ public class PmTaskController {
             @RequestParam(required = false) String taskName) {
         List<PmTask> tasks = pmTaskService.getMyTasks(employeeId, taskName);
         return ResponseResult.success(tasks);
+    }
+
+    /**
+     * 获取我的任务统计（按状态分组 + 即将到期）
+     * 用于"我的任务"页首屏统计卡片
+     */
+    @GetMapping("/my/{employeeId}/stats")
+    public ResponseResult<Map<String, Object>> getMyTaskStats(
+            @PathVariable Long employeeId,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String taskName) {
+        Map<String, Object> stats = pmTaskService.getMyTaskStats(employeeId, projectId, taskName);
+        return ResponseResult.success(stats);
+    }
+
+    /**
+     * 我的任务分页（SQL 真分页）
+     * 用于"我的任务"页签页表格
+     */
+    @GetMapping("/my/{employeeId}/page")
+    public ResponseResult<Page<PmTask>> pageMyTasks(
+            @PathVariable Long employeeId,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String taskName,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        Page<PmTask> page = pmTaskService.pageMyTasks(employeeId, projectId, status, taskName, pageNum, pageSize);
+        return ResponseResult.success(page);
     }
 
     /**

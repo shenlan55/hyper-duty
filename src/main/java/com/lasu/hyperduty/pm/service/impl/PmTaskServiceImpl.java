@@ -68,99 +68,45 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     @Override
     public Page<PmTask> pageList(Integer pageNum, Integer pageSize, Long projectId, Long assigneeId, Integer status, Integer priority, String taskName, String assigneeName) {
         Page<PmTask> page = new Page<>(pageNum, pageSize);
-        
-        // 查询所有符合条件的任务
-        List<PmTask> allTasks = baseMapper.selectTaskPage(projectId, assigneeId, status, priority, taskName, assigneeName);
-        
-        // 确保所有任务的附件都有previewUrl
-        allTasks = attachmentService.ensureAttachmentsForTaskList(allTasks);
-        
-        // 修正所有任务的层级
-        fixTaskLevels(allTasks);
-        
-        // 构建完整的树形结构，得到根任务列表
-        List<PmTask> rootTasks = buildFlatRootTasks(allTasks);
-        
-        // 构建父子关系映射
+
+        // ===== 1. 根任务总数（SQL COUNT） =====
+        Long total = baseMapper.countRootTask(projectId, assigneeId, status, priority, taskName, assigneeName);
+        page.setTotal(total == null ? 0L : total);
+        if (page.getTotal() == 0) {
+            page.setRecords(new ArrayList<>());
+            return page;
+        }
+
+        // ===== 2. 当前页根任务（SQL 真分页，LIMIT/OFFSET） =====
+        int offset = (pageNum - 1) * pageSize;
+        List<PmTask> rootTasks = baseMapper.selectRootTaskPage(
+                projectId, assigneeId, status, priority, taskName, assigneeName, offset, pageSize);
+        if (rootTasks.isEmpty()) {
+            page.setRecords(new ArrayList<>());
+            return page;
+        }
+
+        // ===== 3. 一次性拉取所有根的子树（保持"根任务+完整子树一页"语义） =====
+        List<Long> rootIds = rootTasks.stream().map(PmTask::getId).collect(Collectors.toList());
+        List<PmTask> subTasks = baseMapper.selectSubTasksByRootIds(rootIds, projectId);
+
+        // ===== 4. 按 parentId 构建父子关系映射 =====
         Map<Long, List<PmTask>> parentIdToChildrenMap = new HashMap<>();
-        for (PmTask task : allTasks) {
-            Long parentId = task.getParentId() != null ? task.getParentId() : 0L;
-            if (!parentIdToChildrenMap.containsKey(parentId)) {
-                parentIdToChildrenMap.put(parentId, new java.util.ArrayList<>());
-            }
-            parentIdToChildrenMap.get(parentId).add(task);
+        for (PmTask sub : subTasks) {
+            Long parentId = sub.getParentId() != null ? sub.getParentId() : 0L;
+            parentIdToChildrenMap.computeIfAbsent(parentId, k -> new ArrayList<>()).add(sub);
         }
-        
-        // 第一步：构建完整的扁平任务列表（按树形结构展开）
-        List<PmTask> flatAllTasks = new java.util.ArrayList<>();
+
+        // ===== 5. 拼装：根 + 跟随的子任务（树形扁平展开） =====
+        List<PmTask> result = new ArrayList<>();
         for (PmTask rootTask : rootTasks) {
-            addTaskToResult(flatAllTasks, rootTask, parentIdToChildrenMap);
-        }
-        
-        // 第二步：确定每个根任务在扁平列表中的起始和结束索引
-        List<RootTaskRange> rootTaskRanges = new java.util.ArrayList<>();
-        int currentIndex = 0;
-        for (PmTask rootTask : rootTasks) {
-            int count = countTaskAndChildren(rootTask, parentIdToChildrenMap);
-            rootTaskRanges.add(new RootTaskRange(rootTask, currentIndex, currentIndex + count));
-            currentIndex += count;
-        }
-        
-        // 第三步：预先计算好每页应该显示哪些根任务
-        List<List<RootTaskRange>> pagesRootTasks = new java.util.ArrayList<>();
-        List<RootTaskRange> currentPageRootTasks = new java.util.ArrayList<>();
-        int currentPageTaskCount = 0;
-        
-        for (RootTaskRange range : rootTaskRanges) {
-            int taskCount = range.endIndex - range.startIndex;
-            
-            // 如果当前页是空的，直接添加这个根任务
-            if (currentPageRootTasks.isEmpty()) {
-                currentPageRootTasks.add(range);
-                currentPageTaskCount += taskCount;
-            } else {
-                // 当前页已有任务，先检查：添加这个根任务自己（+1条）会不会超过pageSize
-                if (currentPageTaskCount + 1 > pageSize) {
-                    // 会超过！保存当前页，然后新根任务从新页开始
-                    pagesRootTasks.add(new java.util.ArrayList<>(currentPageRootTasks));
-                    
-                    // 新开一页，添加这个根任务
-                    currentPageRootTasks.clear();
-                    currentPageRootTasks.add(range);
-                    currentPageTaskCount = taskCount;
-                } else {
-                    // 不会超过，添加到当前页，这个根任务及其所有子任务都在当前页
-                    currentPageRootTasks.add(range);
-                    currentPageTaskCount += taskCount;
-                }
-            }
-        }
-        
-        // 添加最后一页
-        if (!currentPageRootTasks.isEmpty()) {
-            pagesRootTasks.add(currentPageRootTasks);
-        }
-        
-        // 第四步：调整total使得前端显示的总页数等于pagesRootTasks.size()
-        int adjustedTotal = pagesRootTasks.size() * pageSize;
-        page.setTotal(adjustedTotal);
-        
-        // 第五步：获取当前页的根任务
-        List<PmTask> pageRootTasks = new java.util.ArrayList<>();
-        if (pageNum <= pagesRootTasks.size()) {
-            List<RootTaskRange> targetPageRanges = pagesRootTasks.get(pageNum - 1);
-            for (RootTaskRange range : targetPageRanges) {
-                pageRootTasks.add(range.rootTask);
-            }
-        }
-        
-        // 第六步：构建结果列表
-        List<PmTask> result = new java.util.ArrayList<>();
-        for (PmTask rootTask : pageRootTasks) {
             addTaskToResult(result, rootTask, parentIdToChildrenMap);
         }
+
+        // ===== 6. 附件处理（保留原逻辑） =====
+        result = attachmentService.ensureAttachmentsForTaskList(result);
+
         page.setRecords(result);
-        
         return page;
     }
     
@@ -351,6 +297,124 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
     @Override
     public List<PmTask> getMyTasksByProject(Long employeeId, Long projectId, String taskName) {
         return baseMapper.selectMyTasksByProject(employeeId, projectId, taskName);
+    }
+
+    @Override
+    public Map<String, Object> getMyTaskStats(Long employeeId, Long projectId, String taskName) {
+        Map<String, Object> raw = baseMapper.selectMyTaskStats(employeeId, projectId, taskName);
+        if (raw == null) {
+            return new HashMap<>();
+        }
+        // 字段名转 long（PG COUNT 返回 bigint）
+        Map<String, Object> result = new HashMap<>();
+        result.put("total", toLong(raw.get("total")));
+        result.put("pending", toLong(raw.get("pending")));
+        result.put("inProgress", toLong(raw.get("in_progress")));
+        result.put("completed", toLong(raw.get("completed")));
+        result.put("paused", toLong(raw.get("paused")));
+        result.put("upcoming", toLong(raw.get("upcoming")));
+        return result;
+    }
+
+    private static long toLong(Object v) {
+        if (v == null) return 0L;
+        if (v instanceof Number) return ((Number) v).longValue();
+        try { return Long.parseLong(v.toString()); } catch (Exception e) { return 0L; }
+    }
+
+    @Override
+    public Page<PmTask> pageMyTasks(Long employeeId, Long projectId, Integer status, String taskName, Integer pageNum, Integer pageSize) {
+        Page<PmTask> page = new Page<>(pageNum, pageSize);
+
+        // ===== 1. 一次查所有"我的根任务"（assignee=me OR stakeholder, parent_id=0/IS NULL） =====
+        List<PmTask> allMyRoots = baseMapper.selectAllMyRootTasks(employeeId, projectId, status, taskName);
+        if (allMyRoots.isEmpty()) {
+            page.setTotal(0L);
+            page.setRecords(new ArrayList<>());
+            return page;
+        }
+
+        // ===== 2. 一次查所有"我的子任务"（assignee=me OR stakeholder, parent_id>0） =====
+        List<PmTask> allMySubs = baseMapper.selectAllMySubTasks(employeeId, projectId, status, taskName);
+
+        // ===== 3. 按 parentId 统计每个根的子数 =====
+        Map<Long, Integer> subCountMap = new HashMap<>();
+        for (PmTask sub : allMySubs) {
+            Long parentId = sub.getParentId() != null ? sub.getParentId() : 0L;
+            subCountMap.merge(parentId, 1, Integer::sum);
+        }
+
+        // ===== 4. 计算每个根的行数 rc[i] = 1 + 子数 =====
+        int totalRoots = allMyRoots.size();
+        int[] rc = new int[totalRoots];
+        for (int i = 0; i < totalRoots; i++) {
+            rc[i] = 1 + subCountMap.getOrDefault(allMyRoots.get(i).getId(), 0);
+        }
+        int totalRows = 0;
+        for (int c : rc) totalRows += c;
+
+        // ===== 5. "根不可切断"分页算法（与 PmTaskShadowServiceImpl 同款） =====
+        // 规则：每页装满 pageSize 行（根不可切断）→ 累加每个根的行数，超 pageSize 就开新页
+        //       如果一个根本身就 > pageSize（行数很多），则单独占 1 页
+        int[] pageOfRoot = new int[totalRoots]; // 每个根归属的页码（1-based）
+        int curPageRows = 0, curPage = 1;
+        for (int i = 0; i < totalRoots; i++) {
+            if (curPageRows == 0) {
+                pageOfRoot[i] = curPage;
+                curPageRows += rc[i];
+            } else if (curPageRows + rc[i] > pageSize) {
+                curPage++;
+                pageOfRoot[i] = curPage;
+                curPageRows = rc[i];
+            } else {
+                pageOfRoot[i] = curPage;
+                curPageRows += rc[i];
+            }
+        }
+        int totalPages = curPage;
+
+        // ===== 6. 找出当前页的根范围 =====
+        int fromIdx = -1, toIdx = -1;
+        for (int i = 0; i < totalRoots; i++) {
+            if (pageOfRoot[i] == pageNum) {
+                if (fromIdx == -1) fromIdx = i;
+                toIdx = i;
+            }
+        }
+        if (fromIdx == -1) {
+            // 超出范围
+            page.setTotal((long) totalRows);
+            page.setRecords(new ArrayList<>());
+            return page;
+        }
+
+        // ===== 7. 拼装当前页根 + 子 =====
+        List<PmTask> pageRoots = allMyRoots.subList(fromIdx, toIdx + 1);
+        Set<Long> pageRootIds = pageRoots.stream().map(PmTask::getId).collect(Collectors.toSet());
+        List<PmTask> pageSubs = allMySubs.stream()
+                .filter(s -> pageRootIds.contains(s.getParentId() != null ? s.getParentId() : 0L))
+                .collect(Collectors.toList());
+
+        // ===== 8. 按 parentId 构建父子关系映射 =====
+        Map<Long, List<PmTask>> parentIdToChildrenMap = new HashMap<>();
+        for (PmTask sub : pageSubs) {
+            Long parentId = sub.getParentId() != null ? sub.getParentId() : 0L;
+            parentIdToChildrenMap.computeIfAbsent(parentId, k -> new ArrayList<>()).add(sub);
+        }
+
+        // ===== 9. 拼装：根 + 跟随的子任务（树形扁平展开） =====
+        List<PmTask> result = new ArrayList<>();
+        for (PmTask rootTask : pageRoots) {
+            addTaskToResult(result, rootTask, parentIdToChildrenMap);
+        }
+
+        // ===== 10. 附件处理（保留原逻辑） =====
+        result = attachmentService.ensureAttachmentsForTaskList(result);
+
+        // ===== 11. 设置 total = 实际行数（与 stats API 的"任务总数"一致） =====
+        page.setTotal((long) totalRows);
+        page.setRecords(result);
+        return page;
     }
 
     @Override

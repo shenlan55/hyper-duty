@@ -46,6 +46,30 @@ export function getMyTasks(employeeId, taskName) {
   })
 }
 
+/**
+ * 我的任务分页（SQL 真分页，推荐使用）
+ * @param {number} employeeId
+ * @param {object} params { projectId?, status?, taskName?, pageNum, pageSize }
+ */
+export function pageMyTasks(employeeId, params) {
+  return request({
+    url: `/pm/task/my/${employeeId}/page`,
+    method: 'get',
+    params
+  })
+}
+
+/**
+ * 我的任务统计（按状态计数 + 即将到期）
+ */
+export function getMyTaskStats(employeeId, params) {
+  return request({
+    url: `/pm/task/my/${employeeId}/stats`,
+    method: 'get',
+    params
+  })
+}
+
 export function getMyTasksByProject(employeeId, projectId, taskName) {
   return request({
     url: `/pm/task/my/${employeeId}/project/${projectId}`,

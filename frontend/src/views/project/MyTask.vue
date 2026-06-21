@@ -66,6 +66,7 @@
           pageSizes: pagination.pageSizes,
           total: pagination.total
         }"
+        :backend-pagination="true"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
       >
@@ -199,7 +200,7 @@ import RichTextEditor from '@/components/RichTextEditor.vue'
 import ProgressHistory from '@/components/ProgressHistory.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
-import { getMyTasks, getMyTasksByProject, pinTask, getUpcomingTasks, getTaskDetail, updateTask, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
+import { pageMyTasks, getMyTaskStats, getMyTasksByProject, pinTask, getTaskDetail, updateTask, createProgressUpdate, getTaskProgressUpdates } from '@/api/task'
 import { getMyProjects } from '@/api/project'
 import { getEmployeeList } from '@/api/employee'
 import { getCurrentUserId } from '@/utils/jwt'
@@ -308,27 +309,34 @@ const loadData = async () => {
       return
     }
 
-    let data = []
-    if (activeTab.value === 'upcoming') {
-      data = await getUpcomingTasks(employeeId)
-    } else {
-      if (selectedProjectId.value === '0') {
-        data = await getMyTasks(employeeId, searchForm.taskName)
-      } else {
-        data = await getMyTasksByProject(employeeId, selectedProjectId.value, searchForm.taskName)
-      }
-    }
+    // 状态映射：tab → 任务状态值
+    let statusParam = null
+    if (activeTab.value === 'pending') statusParam = 1
+    else if (activeTab.value === 'inProgress') statusParam = 2
+    // 'all' 和 'upcoming' 不传 status，后端用 status=null 查所有
+    // 'upcoming' 通过统计卡的 upcoming 数量显示，表格仍显示全部
+    // （保留原"我的任务"表格语义，不替换为即将到期筛选）
 
-    if (activeTab.value === 'pending') {
-      data = data.filter(task => task.status === 1)
-    } else if (activeTab.value === 'inProgress') {
-      data = data.filter(task => task.status === 2)
-    }
+    const projectIdParam = selectedProjectId.value === '0' ? null : selectedProjectId.value
 
-    tableData.value = sortTasks(data)
-    pagination.total = data.length
+    // 并行：分页数据 + 统计（独立查询，无依赖）
+    const [pageResult, statsResult] = await Promise.all([
+      pageMyTasks(employeeId, {
+        projectId: projectIdParam,
+        status: statusParam,
+        taskName: searchForm.taskName || undefined,
+        pageNum: pagination.currentPage,
+        pageSize: pagination.pageSize
+      }),
+      getMyTaskStats(employeeId, {
+        projectId: projectIdParam,
+        taskName: searchForm.taskName || undefined
+      })
+    ])
 
-    updateStats(data)
+    tableData.value = pageResult?.records || []
+    pagination.total = pageResult?.total || 0
+    applyStats(statsResult || {})
   } catch (error) {
     ElMessage.error('加载数据失败')
   } finally {
@@ -336,11 +344,12 @@ const loadData = async () => {
   }
 }
 
-const updateStats = (data) => {
-  stats.total = data.length
-  stats.pending = data.filter(task => task.status === 1).length
-  stats.inProgress = data.filter(task => task.status === 2).length
-  stats.completed = data.filter(task => task.status === 3).length
+// 后端统计注入
+const applyStats = (s) => {
+  stats.total = s.total || 0
+  stats.pending = s.pending || 0
+  stats.inProgress = s.inProgress || 0
+  stats.completed = s.completed || 0
 }
 
 const handleTabChange = () => {
@@ -361,10 +370,13 @@ watch(() => searchForm.taskName, () => {
 
 const handleSizeChange = (val) => {
   pagination.pageSize = val
+  pagination.currentPage = 1
+  loadData()
 }
 
 const handleCurrentChange = (val) => {
   pagination.currentPage = val
+  loadData()
 }
 
 const handleUpdateProgress = async (row) => {

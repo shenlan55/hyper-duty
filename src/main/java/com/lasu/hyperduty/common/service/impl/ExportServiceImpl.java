@@ -169,7 +169,7 @@ public class ExportServiceImpl {
         if (queryDTO.getProjectIds() != null && !queryDTO.getProjectIds().isEmpty()) {
             for (Long projectId : queryDTO.getProjectIds()) {
                 // 查询该项目的所有任务（真实 + 影子）
-                List<ShadowTaskVO> shadowTasks = pmTaskShadowMapper.selectTaskListWithShadows(projectId);
+                List<ShadowTaskVO> shadowTasks = pmTaskShadowMapper.selectAllRootTasksWithShadows(projectId);
                 
                 List<TaskInfo> taskInfos = new ArrayList<>();
                 for (ShadowTaskVO vo : shadowTasks) {

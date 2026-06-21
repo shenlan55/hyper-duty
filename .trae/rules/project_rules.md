@@ -150,7 +150,9 @@ src/
   - `hyper_duty_workflow_ddl.sql` — 工作流
   - `hyper_duty_score_ddl.sql` / `hyper_duty_score_dml.sql` — 积分管理
   - `hyper_duty_ai_ddl.sql` / `hyper_duty_ai_dml.sql` — AI模块
-- 禁止零散创建 SQL 文件，新增模块必须按 `hyper_duty_{模块名}_ddl.sql` 和 `hyper_duty_{模块名}_dml.sql` 命名
+- **禁止零散创建 SQL 文件**，新增模块必须按 `hyper_duty_{模块名}_ddl.sql` 和 `hyper_duty_{模块名}_dml.sql` 命名
+- **一个模块一个 DDL 文件**：表结构 + 索引 + 字段升级（DO 块）+ 注释全部合到一个 DDL，**禁止**单独创建 `hyper_duty_{模块名}_idx_ddl.sql`、`hyper_duty_{模块名}_alter.sql` 等补丁文件
+- **禁止目录**：DML 必须在 `src/main/resources/sql/`，不要放到项目根目录或 docs/
 
 ### 示例 PostgreSQL 表结构
 ```sql

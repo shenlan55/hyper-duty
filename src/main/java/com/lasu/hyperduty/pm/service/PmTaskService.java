@@ -12,6 +12,7 @@ import com.lasu.hyperduty.pm.entity.PmTask;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 
 
@@ -33,6 +34,23 @@ public interface PmTaskService extends IService<PmTask> {
     List<PmTask> getMyTasks(Long employeeId, String taskName);
 
     List<PmTask> getMyTasksByProject(Long employeeId, Long projectId, String taskName);
+
+    /**
+     * 获取我的任务统计（按状态分组计数 + 即将到期）
+     * 一条 SQL 聚合：total / pending / inProgress / completed / paused / upcoming
+     */
+    Map<String, Object> getMyTaskStats(Long employeeId, Long projectId, String taskName);
+
+    /**
+     * 我的任务分页 - 真实任务（SQL 真分页）
+     * @param employeeId 当前员工ID
+     * @param projectId 项目ID（可选，为 null 时查所有项目）
+     * @param status 任务状态（可选，为 null 时查所有状态）
+     * @param taskName 任务名模糊搜索（可选）
+     * @param pageNum 页码（1 开始）
+     * @param pageSize 每页条数
+     */
+    Page<PmTask> pageMyTasks(Long employeeId, Long projectId, Integer status, String taskName, Integer pageNum, Integer pageSize);
 
     PmTask getTaskDetail(Long id);
 
