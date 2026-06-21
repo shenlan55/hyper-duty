@@ -353,7 +353,8 @@ import { APPROVAL_STATUS, APPROVAL_STATUS_LABEL, APPROVAL_STATUS_TAG } from '../
 import { useDict } from '../../composables/useDict'
 
 // 业务枚举：请假类型 走字典
-const { options: leaveTypeOptions, labelOf: leaveTypeLabel, tagTypeOf: leaveTypeType, loadDict: loadLeaveTypeDict } = useDict('leave_type')
+// defaultValue 暴露字典中 is_default=1 的值，用于表单初始化默认值
+const { options: leaveTypeOptions, labelOf: leaveTypeLabel, tagTypeOf: leaveTypeType, loadDict: loadLeaveTypeDict, defaultValue: leaveTypeDefault } = useDict('leave_type')
 loadLeaveTypeDict()
 
 // 业务枚举：审批状态选项由 constants/duty.js 集中提供
@@ -419,14 +420,15 @@ const form = reactive({
   id: null,
   employeeId: null,
   scheduleId: null,
-  leaveType: 1,
+  // leaveType 默认值由字典 is_default 决定（见下方 watch 逻辑），初始置空避免硬编码
+  leaveType: null,
   shiftConfigId: null,
   shiftConfigIds: [],
   startDate: null,
   endDate: null,
   startTime: null,
   endTime: null,
-  totalHours: 8,
+  totalHours: 0,
   reason: '',
   attachmentUrl: ''
 })
@@ -742,11 +744,14 @@ const resetForm = () => {
   if (formRef.value) {
     formRef.value.resetFields()
   }
+  // leaveType 默认值取自字典 is_default=1 的项（类型转 Number 与 el-option :value 保持一致）
+  // 若字典未设置默认值或尚未加载完成，则保持 null
+  const defaultLeaveType = leaveTypeDefault.value != null ? Number(leaveTypeDefault.value) : null
   Object.assign(form, {
     id: null,
     employeeId: userStore.employeeId,
     scheduleId: null,
-    leaveType: 1,
+    leaveType: defaultLeaveType,
     shiftConfigId: null,
     shiftConfigIds: [],
     startDate: null,
@@ -761,6 +766,13 @@ const resetForm = () => {
   // 重置禁用班次状态
   disabledShiftIds.value.clear()
 }
+
+// 字典加载完成后，自动应用默认值（首次进入页面时 form.leaveType 为 null 的情况）
+watch(leaveTypeDefault, (val) => {
+  if (val != null && form.leaveType == null) {
+    form.leaveType = Number(val)
+  }
+}, { immediate: true })
 
 // 处理值班表选择变化
 const handleScheduleChange = async (scheduleId) => {

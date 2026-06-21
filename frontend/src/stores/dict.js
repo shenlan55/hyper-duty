@@ -82,16 +82,54 @@ export const useDictStore = defineStore('dict', {
 
     /**
      * 获取 el-select 风格的下拉选项
+     * 防御性兜底：即便后端未排序，前端也按 dictSort 升序 + id 升序排列，保证展示顺序与字典表一致
      * @param {string} code
-     * @returns {Array<{label:string, value:any, raw:Object}>}
+     * @returns {Array<{label:string, value:any, isDefault:boolean, raw:Object}>}
      */
     getOptions(code) {
       const list = this.dictMap[code] || []
-      return list.map(d => ({
+      // 排序：先按 dictSort 升序，再按 id 升序（兜底）
+      const sorted = [...list].sort((a, b) => {
+        const sa = a.dictSort ?? 0
+        const sb = b.dictSort ?? 0
+        if (sa !== sb) return sa - sb
+        return (a.id ?? 0) - (b.id ?? 0)
+      })
+      return sorted.map(d => ({
         label: d.dictLabel,
         value: d.dictValue,  // 保持字符串，业务侧按需转 Number
+        isDefault: d.isDefault === 1,  // 暴露默认项标记，供组件初始化使用
         raw: d
       }))
+    },
+
+    /**
+     * 获取字典中标记为"默认项"的值（is_default = 1）
+     * 若字典未加载完成 / 未设置默认项，返回 null
+     * @param {string} code
+     * @returns {string|null}
+     */
+    getDefaultValue(code) {
+      const list = this.dictMap[code] || []
+      const found = list.find(d => d.isDefault === 1)
+      return found ? found.dictValue : null
+    },
+
+    /**
+     * 获取字典中标记为"默认项"的完整 option
+     * @param {string} code
+     * @returns {{label:string, value:any, isDefault:boolean, raw:Object}|null}
+     */
+    getDefaultOption(code) {
+      const list = this.dictMap[code] || []
+      const found = list.find(d => d.isDefault === 1)
+      if (!found) return null
+      return {
+        label: found.dictLabel,
+        value: found.dictValue,
+        isDefault: true,
+        raw: found
+      }
     },
 
     /**
