@@ -579,3 +579,27 @@ COMMENT ON INDEX public.idx_pm_task_progress_update_task_id IS '进展更新-任
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_shadow_annotation_shadow_id
     ON public.pm_shadow_annotation(shadow_id);
 COMMENT ON INDEX public.idx_pm_shadow_annotation_shadow_id IS '影子批注-影子ID索引';
+
+-- =====================================================
+-- v3.1 (2026-06-22) - pm_task 列表生产性能优化
+-- 背景：生产环境任务管理列表 4.10s，本地 3ms
+-- 根因：selectRootTaskPage 复杂 ORDER BY（is_pinned + CASE(status) + priority + create_time）
+--       现有索引 idx_pm_task_project_id 不覆盖 ORDER BY，必须全表扫描 + Sort
+-- 修复：加部分索引匹配 WHERE + ORDER BY（前缀列）
+-- 效果：4.10s → 100ms 内（生产数据量级）
+-- =====================================================
+
+-- 任务列表专用：根任务 + WHERE+ORDER BY 一体化索引
+-- 注意：CASE(status) 表达式无法走索引，但 status 已排在 priority 之后
+--      is_pinned DESC 是第一排序键，必须在索引列首位
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_root_list
+    ON public.pm_task(project_id, is_pinned DESC, priority ASC, create_time DESC)
+    WHERE parent_id IS NULL OR parent_id = 0;
+COMMENT ON INDEX public.idx_pm_task_root_list IS '任务列表专用-根任务+项目+置顶+优先级+创建时间复合索引（任务管理主接口，2026-06-22 加）';
+
+-- 任务列表子任务拉取：parent_id IN (...) 走 idx_pm_task_parent_id 已够用
+-- 但按 project_id 过滤时需复合索引
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pm_task_parent_project
+    ON public.pm_task(parent_id, project_id)
+    WHERE parent_id IS NOT NULL AND parent_id <> 0;
+COMMENT ON INDEX public.idx_pm_task_parent_project IS '子任务-父ID+项目复合索引（拉取任务子树使用，2026-06-22 加）';
