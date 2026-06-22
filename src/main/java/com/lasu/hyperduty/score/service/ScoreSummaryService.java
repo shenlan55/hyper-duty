@@ -32,4 +32,13 @@ public interface ScoreSummaryService {
      * @return 评选排名列表
      */
     List<Map<String, Object>> getEvaluationRanking(String periodType, Integer year, Integer periodIndex);
+
+    /**
+     * 查询当前评选周期的权重配置（用于前端公示排名规则）
+     * @param periodType 周期类型 QUARTERLY/YEARLY
+     * @param year 年份
+     * @param periodIndex 季度1-4 / 年度1
+     * @return Map(pointWeight, hourWeight, source, ...)；无配置时 source="default"
+     */
+    Map<String, Object> getCurrentEvaluationConfig(String periodType, Integer year, Integer periodIndex);
 }

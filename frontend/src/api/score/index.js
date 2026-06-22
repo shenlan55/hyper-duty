@@ -55,3 +55,8 @@ export function generateMonthlySummary(params) {
 export function getEvaluationRanking(params) {
   return request({ url: '/score/evaluation', method: 'get', params })
 }
+
+/** 查询当前评选周期权重配置（前端公示排名规则用） */
+export function getEvaluationConfig(params) {
+  return request({ url: '/score/evaluation/config', method: 'get', params })
+}

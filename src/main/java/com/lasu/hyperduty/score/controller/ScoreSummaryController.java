@@ -55,4 +55,18 @@ public class ScoreSummaryController {
         List<Map<String, Object>> list = scoreSummaryService.getEvaluationRanking(periodType, year, periodIndex);
         return ResponseResult.success(list);
     }
+
+    /**
+     * 查询当前评选周期的权重配置（用于前端"?"悬浮提示公示排名规则）
+     * 2026-06-22 新增：动态读取 score_period_config 中 status=1 的配置
+     *              无配置时返回默认权重 0.6/0.4，source=default
+     */
+    @GetMapping("/evaluation/config")
+    public ResponseResult<Map<String, Object>> getCurrentEvaluationConfig(
+            @RequestParam String periodType,
+            @RequestParam Integer year,
+            @RequestParam Integer periodIndex) {
+        Map<String, Object> config = scoreSummaryService.getCurrentEvaluationConfig(periodType, year, periodIndex);
+        return ResponseResult.success(config);
+    }
 }

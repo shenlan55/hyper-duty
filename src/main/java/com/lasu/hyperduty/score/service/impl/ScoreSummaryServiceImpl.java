@@ -187,6 +187,33 @@ public class ScoreSummaryServiceImpl implements ScoreSummaryService {
         return result;
     }
 
+    @Override
+    public Map<String, Object> getCurrentEvaluationConfig(String periodType, Integer year, Integer periodIndex) {
+        // 查周期配置（status=1 进行中）
+        ScorePeriodConfig config = scorePeriodConfigMapper.selectOne(
+                new LambdaQueryWrapper<ScorePeriodConfig>()
+                        .eq(ScorePeriodConfig::getPeriodType, periodType)
+                        .eq(ScorePeriodConfig::getPeriodYear, year)
+                        .eq(ScorePeriodConfig::getPeriodIndex, periodIndex)
+                        .eq(ScorePeriodConfig::getStatus, 1)
+        );
+        Map<String, Object> result = new HashMap<>();
+        result.put("periodType", periodType);
+        result.put("year", year);
+        result.put("periodIndex", periodIndex);
+        if (config == null) {
+            // 无配置时返回默认值
+            result.put("pointWeight", DEFAULT_POINT_WEIGHT);
+            result.put("hourWeight", DEFAULT_HOUR_WEIGHT);
+            result.put("source", "default");
+        } else {
+            result.put("pointWeight", config.getPointWeight());
+            result.put("hourWeight", config.getHourWeight());
+            result.put("source", "config");
+        }
+        return result;
+    }
+
     /**
      * 获取当前周期配置
      */
