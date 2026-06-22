@@ -103,11 +103,53 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
             addTaskToResult(result, rootTask, parentIdToChildrenMap);
         }
 
-        // ===== 6. 附件处理（保留原逻辑） =====
+        // ===== 6. 批量注入最后进度更新时间（替代原 LATERAL N+1） =====
+        injectLastProgressUpdateTime(result);
+
+        // ===== 7. 附件处理（保留原逻辑） =====
         result = attachmentService.ensureAttachmentsForTaskList(result);
 
         page.setRecords(result);
         return page;
+    }
+
+    /**
+     * 批量预取每个任务的最后进度更新时间，注入到 PmTask.lastProgressUpdateTime
+     * 2026-06-22 优化：替代 LATERAL 子查询，避免 N+1
+     */
+    private void injectLastProgressUpdateTime(List<PmTask> tasks) {
+        if (tasks == null || tasks.isEmpty()) {
+            return;
+        }
+        List<Long> taskIds = tasks.stream().map(PmTask::getId).collect(Collectors.toList());
+        List<Map<String, Object>> progressList = baseMapper.selectLastProgressTimesByTaskIds(taskIds);
+        if (progressList == null || progressList.isEmpty()) {
+            return;
+        }
+        Map<Long, LocalDateTime> progressMap = new HashMap<>(progressList.size() * 2);
+        for (Map<String, Object> row : progressList) {
+            Object tid = row.get("task_id");
+            Object time = row.get("last_progress_update_time");
+            if (tid != null && time != null) {
+                progressMap.put(((Number) tid).longValue(), toLocalDateTime(time));
+            }
+        }
+        for (PmTask task : tasks) {
+            if (task.getId() != null) {
+                task.setLastProgressUpdateTime(progressMap.get(task.getId()));
+            }
+        }
+    }
+
+    /**
+     * 把 Object 转 LocalDateTime（PG 的 Timestamp/LocalDateTime 都可能）
+     */
+    private static LocalDateTime toLocalDateTime(Object v) {
+        if (v == null) return null;
+        if (v instanceof LocalDateTime) return (LocalDateTime) v;
+        if (v instanceof java.sql.Timestamp) return ((java.sql.Timestamp) v).toLocalDateTime();
+        if (v instanceof java.util.Date) return ((java.util.Date) v).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+        try { return LocalDateTime.parse(v.toString()); } catch (Exception e) { return null; }
     }
     
     /**

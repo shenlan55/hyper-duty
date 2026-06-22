@@ -21,19 +21,13 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
 
     /**
      * 根任务分页：真实任务版（按"根任务+完整子树一页"分页）
-     * 关联子查询改 LATERAL + 走 task_id+create_time 索引
+     * 2026-06-22 优化：去掉 LATERAL，progress_time 由 service 批量预取注入
      */
     @Select("<script>" +
-            "SELECT t.*, e.employee_name as owner_name, p.project_name, " +
-            "lpu.last_progress_update_time " +
+            "SELECT t.*, e.employee_name as owner_name, p.project_name " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
-            "LEFT JOIN LATERAL ( " +
-            "    SELECT MAX(create_time) AS last_progress_update_time " +
-            "    FROM pm_task_progress_update " +
-            "    WHERE task_id = t.id " +
-            ") lpu ON TRUE " +
             "<where> " +
             "  (t.parent_id IS NULL OR t.parent_id = 0) " +
             "<if test='projectId != null'> AND t.project_id = #{projectId}</if> " +
@@ -87,18 +81,13 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
     /**
      * 子树批量：按 parent_id IN (rootIds) 拉所有子任务
      * 用于"根任务+完整子树一页"展示
+     * 2026-06-22 优化：去掉 LATERAL，progress_time 由 service 批量预取注入
      */
     @Select("<script>" +
-            "SELECT t.*, e.employee_name as owner_name, p.project_name, " +
-            "lpu.last_progress_update_time " +
+            "SELECT t.*, e.employee_name as owner_name, p.project_name " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
-            "LEFT JOIN LATERAL ( " +
-            "    SELECT MAX(create_time) AS last_progress_update_time " +
-            "    FROM pm_task_progress_update " +
-            "    WHERE task_id = t.id " +
-            ") lpu ON TRUE " +
             "WHERE t.parent_id IN " +
             "<foreach collection='rootIds' item='rid' open='(' separator=',' close=')'>#{rid}</foreach> " +
             "<if test='projectId != null'> AND t.project_id = #{projectId}</if> " +
@@ -106,6 +95,20 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
             "</script>")
     List<PmTask> selectSubTasksByRootIds(@Param("rootIds") List<Long> rootIds,
                                           @Param("projectId") Long projectId);
+
+    /**
+     * 批量预取：一次查多个 task 的最后进度更新时间
+     * 2026-06-22 新增：替代原 LATERAL 子查询（避免 N+1 + PreparedStatement 冷启动慢）
+     * 走索引 idx_pm_task_progress_update_task_id
+     */
+    @Select("<script>" +
+            "SELECT task_id, MAX(create_time) AS last_progress_update_time " +
+            "FROM pm_task_progress_update " +
+            "WHERE task_id IN " +
+            "<foreach collection='taskIds' item='tid' open='(' separator=',' close=')'>#{tid}</foreach> " +
+            "GROUP BY task_id" +
+            "</script>")
+    List<Map<String, Object>> selectLastProgressTimesByTaskIds(@Param("taskIds") List<Long> taskIds);
 
     @Select("<script>" +
             "SELECT COUNT(*) " +
