@@ -213,9 +213,10 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
             addTaskToResult(result, rootTask, parentIdToChildrenMap);
         }
 
-        // ===== 11. 调整 total：让前端 el-pagination 显示正确的页数 =====
-        // 前端 pageSize × 实际页数 = 应显示的 total（如 2 页 × 10/页 = 20）
-        page.setTotal((long) totalPages * pageSize);
+        // ===== 11. total 用真实行数（之前用 totalPages * pageSize 会算多） =====
+        // 例：11 个根 + 0 子 + pageSize=10 → 实际 11 行，2 页
+        // 旧 total = 2 * 10 = 20（错误）→ 新 total = 11
+        page.setTotal((long) totalRows);
         page.setRecords(result);
         return page;
     }

@@ -24,7 +24,13 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
      * 2026-06-22 优化：去掉 LATERAL，progress_time 由 service 批量预取注入
      */
     @Select("<script>" +
-            "SELECT t.*, e.employee_name as owner_name, p.project_name " +
+            "SELECT " +
+            "  t.id, t.project_id, t.parent_id, t.task_level, t.task_name, " +
+            "  t.priority, t.status, t.progress, t.start_date, t.end_date, " +
+            "  t.assignee_id, t.attachments, " +
+            "  t.is_pinned, t.is_focus, " +
+            "  t.create_by, t.create_time, t.update_time, " +
+            "  e.employee_name as owner_name, p.project_name " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
@@ -82,9 +88,16 @@ public interface PmTaskMapper extends BaseMapper<PmTask> {
      * 子树批量：按 parent_id IN (rootIds) 拉所有子任务
      * 用于"根任务+完整子树一页"展示
      * 2026-06-22 优化：去掉 LATERAL，progress_time 由 service 批量预取注入
+     * 2026-06-22 优化：白名单 select，去掉 description/task_code/module_id/stakeholders 大字段
      */
     @Select("<script>" +
-            "SELECT t.*, e.employee_name as owner_name, p.project_name " +
+            "SELECT " +
+            "  t.id, t.project_id, t.parent_id, t.task_level, t.task_name, " +
+            "  t.priority, t.status, t.progress, t.start_date, t.end_date, " +
+            "  t.assignee_id, t.attachments, " +
+            "  t.is_pinned, t.is_focus, " +
+            "  t.create_by, t.create_time, t.update_time, " +
+            "  e.employee_name as owner_name, p.project_name " +
             "FROM pm_task t " +
             "LEFT JOIN sys_employee e ON t.assignee_id = e.id " +
             "LEFT JOIN pm_project p ON t.project_id = p.id " +
