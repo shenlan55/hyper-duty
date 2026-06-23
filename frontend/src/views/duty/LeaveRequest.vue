@@ -694,6 +694,26 @@ const resetFilter = () => {
   fetchMyLeaveRequests()
 }
 
+// 获取可调休工时（提前声明，供 resetForm 和 watch 回调使用）
+const fetchCompensatoryHours = async () => {
+  if (form.leaveType === 4) { // 调休
+    try {
+      const now = new Date()
+      const year = now.getFullYear()
+      const data = await getEmployeeStatistics(year, null) // 只传年份，不传月份，查询全年
+      const employeeStat = data.find(stat => stat.employeeId === userStore.employeeId)
+      if (employeeStat) {
+        compensatoryHours.value = employeeStat.compensatoryHours || 0
+      }
+    } catch (error) {
+      console.error('获取可调休工时失败:', error)
+      compensatoryHours.value = 0
+    }
+  } else {
+    compensatoryHours.value = 0
+  }
+}
+
 const openAddDialog = () => {
   resetForm()
   dialogTitle.value = '申请请假'
@@ -762,6 +782,10 @@ const resetForm = () => {
     reason: '',
     attachmentUrl: ''
   })
+  // 程序化赋值默认值不会触发 el-select 的 @change 事件，需手动调用 fetchCompensatoryHours 加载可调休工时
+  if (defaultLeaveType != null) {
+    fetchCompensatoryHours()
+  }
   fileList.value = []
   // 重置禁用班次状态
   disabledShiftIds.value.clear()
@@ -771,6 +795,8 @@ const resetForm = () => {
 watch(leaveTypeDefault, (val) => {
   if (val != null && form.leaveType == null) {
     form.leaveType = Number(val)
+    // 程序化赋值不会触发 el-select 的 @change 事件，需手动调用 fetchCompensatoryHours 加载可调休工时
+    fetchCompensatoryHours()
   }
 }, { immediate: true })
 
@@ -796,26 +822,6 @@ const handleScheduleChange = async (scheduleId) => {
   
   // 更新禁用班次状态
   await updateDisabledShifts([])
-}
-
-// 获取可调休工时
-const fetchCompensatoryHours = async () => {
-  if (form.leaveType === 4) { // 调休
-    try {
-      const now = new Date()
-      const year = now.getFullYear()
-      const data = await getEmployeeStatistics(year, null) // 只传年份，不传月份，查询全年
-      const employeeStat = data.find(stat => stat.employeeId === userStore.employeeId)
-      if (employeeStat) {
-        compensatoryHours.value = employeeStat.compensatoryHours || 0
-      }
-    } catch (error) {
-      console.error('获取可调休工时失败:', error)
-      compensatoryHours.value = 0
-    }
-  } else {
-    compensatoryHours.value = 0
-  }
 }
 
 const handleSave = async () => {
