@@ -366,9 +366,9 @@ const route = useRoute()
 const userStore = useUserStore()
 
 // 业务枚举：状态/优先级 走字典，不再从 taskUtils 读硬编码 map
-const { labelOf: statusLabel, tagTypeOf: statusType } = useDict('task_status')
-const { labelOf: priorityLabel, tagTypeOf: priorityType } = useDict('task_priority')
-const { labelOf: focusLabel, tagTypeOf: focusType } = useDict('task_focus')
+const { labelOf: statusLabel, tagTypeOf: statusType, loadDict: loadStatusDict } = useDict('task_status')
+const { labelOf: priorityLabel, tagTypeOf: priorityType, loadDict: loadPriorityDict } = useDict('task_priority')
+const { labelOf: focusLabel, tagTypeOf: focusType, loadDict: loadFocusDict } = useDict('task_focus')
 
 // 基础状态
 const loading = ref(false)
@@ -1050,6 +1050,13 @@ const handleDelete = async (row) => {
 
 // 初始化
 onMounted(async () => {
+  // 加载业务字典（状态/优先级/是否重点）
+  Promise.all([
+    loadStatusDict(),
+    loadPriorityDict(),
+    loadFocusDict()
+  ])
+  
   await Promise.all([
     loadEmployeeList()
   ])

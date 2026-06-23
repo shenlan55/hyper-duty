@@ -211,9 +211,9 @@ import { formatDateTime, getProgressStatus, sortTasks } from '@/utils/taskUtils'
 const userStore = useUserStore()
 
 // 业务枚举：状态/优先级/是否重点 走字典
-const { labelOf: statusLabel, tagTypeOf: statusType } = useDict('task_status')
-const { labelOf: priorityLabel, tagTypeOf: priorityType } = useDict('task_priority')
-const { labelOf: focusLabel, tagTypeOf: focusType } = useDict('task_focus')
+const { labelOf: statusLabel, tagTypeOf: statusType, loadDict: loadStatusDict } = useDict('task_status')
+const { labelOf: priorityLabel, tagTypeOf: priorityType, loadDict: loadPriorityDict } = useDict('task_priority')
+const { labelOf: focusLabel, tagTypeOf: focusType, loadDict: loadFocusDict } = useDict('task_focus')
 
 const loading = ref(false)
 const tableData = ref([])
@@ -539,6 +539,13 @@ const handleToggleFocus = async (row) => {
 }
 
 onMounted(() => {
+  // 加载业务字典（状态/优先级/是否重点）
+  Promise.all([
+    loadStatusDict(),
+    loadPriorityDict(),
+    loadFocusDict()
+  ])
+  
   loadProjects()
   loadEmployeeList()
   loadData()
