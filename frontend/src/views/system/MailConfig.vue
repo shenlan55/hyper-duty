@@ -191,7 +191,9 @@ const fetchCurrentConfig = async () => {
         enableTls: Boolean(data.enableTls),
         fromEmail: data.fromEmail || '',
         fromName: data.fromName || 'Hyper Duty',
-        authPassword: mailConfigForm.authPassword || '', // 保留用户已输入的密码，后端不返回密码所以不回显
+        // 后端已配置密码时返回 ****** 占位符（前端 type=password 会显示为 ••••••），
+        // 未配置时返回 null；用 ?? 保留占位符和 null 两种语义
+        authPassword: data.authPassword ?? '',
         loginCodeTemplate: data.loginCodeTemplate || '',
         passwordResetTemplate: data.passwordResetTemplate || '',
         remoteLoginTemplate: data.remoteLoginTemplate || '',
@@ -206,13 +208,19 @@ const fetchCurrentConfig = async () => {
 }
 
 // 转换数据格式：Boolean -> Integer (1/0)
+// 密码为 ****** 占位符（用户未修改）时，从 payload 中删除 authPassword 字段，
+// 后端 Service 收到后保留数据库原密码
 const transformFormData = (data) => {
-  return {
+  const payload = {
     ...data,
     enableSsl: data.enableSsl ? 1 : 0,
     enableTls: data.enableTls ? 1 : 0,
     enableEmailLogin: data.enableEmailLogin ? 1 : 0
   }
+  if (payload.authPassword === '******') {
+    delete payload.authPassword
+  }
+  return payload
 }
 
 const handleTestConnection = async () => {

@@ -51,8 +51,11 @@ public class SysMailConfigServiceImpl extends ServiceImpl<SysMailConfigMapper, S
         if (config.getId() == null) {
             config.setCreateTime(LocalDateTime.now());
         } else {
-            // 如果是更新且密码为空，则保留原有密码
-            if (config.getAuthPassword() == null || config.getAuthPassword().trim().isEmpty()) {
+            // 更新场景：密码为空或前端占位符 ****** 时，保留数据库原密码
+            String incomingPassword = config.getAuthPassword();
+            boolean isPlaceholder = "******".equals(incomingPassword);
+            boolean isEmpty = incomingPassword == null || incomingPassword.trim().isEmpty();
+            if (isPlaceholder || isEmpty) {
                 SysMailConfig existingConfig = getActiveConfig();
                 if (existingConfig != null) {
                     config.setAuthPassword(existingConfig.getAuthPassword());

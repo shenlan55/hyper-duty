@@ -44,8 +44,11 @@ public class SysMailConfigController {
     public ResponseResult<SysMailConfig> getCurrentConfig() {
         SysMailConfig config = mailConfigService.getActiveConfig();
         if (config != null) {
-            // 不返回密码
-            config.setAuthPassword(null);
+            // 已配置密码时返回 ****** 占位符，前端 type=password 会显示为 ••••••
+            // 真正的密码不出库，前端保存时通过 ****** 识别"不修改"
+            if (config.getAuthPassword() != null && !config.getAuthPassword().isEmpty()) {
+                config.setAuthPassword("******");
+            }
         }
         return ResponseResult.success(config);
     }
