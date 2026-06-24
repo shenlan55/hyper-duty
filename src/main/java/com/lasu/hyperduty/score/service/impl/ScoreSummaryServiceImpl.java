@@ -53,8 +53,8 @@ public class ScoreSummaryServiceImpl implements ScoreSummaryService {
         BigDecimal pointWeight = (config != null) ? config.getPointWeight() : DEFAULT_POINT_WEIGHT;
         BigDecimal hourWeight = (config != null) ? config.getHourWeight() : DEFAULT_HOUR_WEIGHT;
 
-        // 查询所有有积分记录或有加班工时的员工
-        List<Long> employeeIds = getEmployeeIdsWithData(year, month);
+        // 查询所有正常状态的员工（status=1）
+        List<Long> employeeIds = getAllActiveEmployeeIds();
 
         for (Long employeeId : employeeIds) {
             // 汇总积分
@@ -240,25 +240,20 @@ public class ScoreSummaryServiceImpl implements ScoreSummaryService {
     }
 
     /**
-     * 获取有数据的员工ID列表
+     * 获取所有正常状态的员工ID列表（status=1）
      */
-    private List<Long> getEmployeeIdsWithData(Integer year, Integer month) {
-        List<Long> employeeIds = new ArrayList<>();
-
-        // 从积分记录中获取
-        List<ScoreRecord> records = scoreRecordMapper.selectList(
-                new LambdaQueryWrapper<ScoreRecord>()
-                        .eq(ScoreRecord::getPeriodYear, year)
-                        .eq(ScoreRecord::getPeriodMonth, month)
-                        .select(ScoreRecord::getEmployeeId)
-                        .groupBy(ScoreRecord::getEmployeeId)
+    private List<Long> getAllActiveEmployeeIds() {
+        List<SysEmployee> employees = sysEmployeeMapper.selectList(
+                new LambdaQueryWrapper<SysEmployee>()
+                        .eq(SysEmployee::getStatus, 1)
+                        .select(SysEmployee::getId)
+                        .orderByAsc(SysEmployee::getId)
         );
-        for (ScoreRecord record : records) {
-            if (!employeeIds.contains(record.getEmployeeId())) {
-                employeeIds.add(record.getEmployeeId());
-            }
-        }
 
+        List<Long> employeeIds = new ArrayList<>();
+        for (SysEmployee employee : employees) {
+            employeeIds.add(employee.getId());
+        }
         return employeeIds;
     }
 }
