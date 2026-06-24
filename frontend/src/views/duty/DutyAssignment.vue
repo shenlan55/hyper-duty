@@ -908,13 +908,16 @@ const fetchScheduleEmployees = async (scheduleId, showError = true) => {
       getScheduleLeaders(scheduleId)
     ])
     // 转换员工详情数据格式，确保与原来的allEmployeeList结构一致
-    scheduleEmployeeList.value = (employeeDetails || []).map(emp => ({
-      id: emp.id,
-      employeeName: emp.employee_name,
-      employeeCode: emp.employee_code,
-      deptId: emp.dept_id,
-      status: emp.status
-    }))
+    // 过滤掉已禁用的员工（status !== 1），避免排班时选择已禁用人员
+    scheduleEmployeeList.value = (employeeDetails || [])
+      .filter(emp => emp.status === 1)
+      .map(emp => ({
+        id: emp.id,
+        employeeName: emp.employee_name,
+        employeeCode: emp.employee_code,
+        deptId: emp.dept_id,
+        status: emp.status
+      }))
     scheduleLeaderList.value = leaderIds || []
     return scheduleEmployeeList.value
   } catch (error) {

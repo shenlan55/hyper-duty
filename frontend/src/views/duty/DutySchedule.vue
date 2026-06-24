@@ -153,6 +153,7 @@
                 :titles="['可选人员', '已选人员']"
                 filterable
                 filter-placeholder="搜索人员"
+                :render-content="renderTransferItem"
               />
             </div>
           </el-tab-pane>
@@ -351,11 +352,27 @@ const fetchEmployeeList = async () => {
     allEmployeeList.value = (data?.records || []).map(emp => ({
       key: emp.id,
       label: emp.employeeName,
-      disabled: emp.status !== 1
+      isDisabled: emp.status !== 1  // 标记是否禁用，但不使用 el-transfer 的 disabled 属性
     }))
   } catch (error) {
     ElMessage.error('获取员工列表失败')
   }
+}
+
+/**
+ * 自定义渲染 transfer 列表项
+ * 已禁用员工显示为灰色，但允许从右侧移除
+ */
+const renderTransferItem = (h, option) => {
+  return h('span', {
+    class: { 'disabled-employee': option.isDisabled },
+    style: option.isDisabled ? 'color: #c0c4cc; cursor: not-allowed;' : ''
+  }, [
+    h('span', option.label),
+    option.isDisabled ? h('span', {
+      style: 'margin-left: 8px; font-size: 12px; color: #f56c6c;'
+    }, '(已禁用)') : null
+  ].filter(Boolean))
 }
 
 const shiftApi = shiftConfigApi()
@@ -564,5 +581,14 @@ onMounted(async () => {
   gap: 10px;
   max-height: 300px;
   overflow-y: auto;
+}
+
+/* 已禁用员工样式：灰色显示 + 禁用标识 */
+:deep(.disabled-employee) {
+  color: #c0c4cc !important;
+}
+
+:deep(.el-transfer-panel__item.disabled-employee) {
+  color: #c0c4cc !important;
 }
 </style>
