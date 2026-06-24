@@ -112,7 +112,7 @@
     <el-dialog
       v-model="assigneeDialogVisible"
       title="选择负责人"
-      width="900px"
+      width="1000px"
       max-width="90vw"
     >
       <div style="padding: 10px;">
@@ -131,7 +131,7 @@
     <el-dialog
       v-model="stakeholderDialogVisible"
       title="选择参与人"
-      width="900px"
+      width="1000px"
       max-width="90vw"
     >
       <div style="padding: 10px;">
