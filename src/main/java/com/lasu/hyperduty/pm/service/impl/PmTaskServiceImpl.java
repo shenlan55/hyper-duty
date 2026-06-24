@@ -395,59 +395,68 @@ public class PmTaskServiceImpl extends ServiceImpl<PmTaskMapper, PmTask> impleme
         int totalRows = 0;
         for (int c : rc) totalRows += c;
 
-        // ===== 5. "根不可切断"分页算法（与 PmTaskShadowServiceImpl 同款） =====
-        // 规则：每页装满 pageSize 行（根不可切断）→ 累加每个根的行数，超 pageSize 就开新页
-        //       如果一个根本身就 > pageSize（行数很多），则单独占 1 页
-        int[] pageOfRoot = new int[totalRoots]; // 每个根归属的页码（1-based）
-        int curPageRows = 0, curPage = 1;
-        for (int i = 0; i < totalRoots; i++) {
-            if (curPageRows == 0) {
-                pageOfRoot[i] = curPage;
-                curPageRows += rc[i];
-            } else if (curPageRows + rc[i] > pageSize) {
-                curPage++;
-                pageOfRoot[i] = curPage;
-                curPageRows = rc[i];
-            } else {
-                pageOfRoot[i] = curPage;
-                curPageRows += rc[i];
-            }
-        }
-        int totalPages = curPage;
+        // ===== 5. 用"行号累计 + 区间相交"分页（修复 pageOfRoot 误判 bug） =====
+        // 关键：旧 pageOfRoot[i] 只记"主要归属页"，大根跨多页时后续页找不到该根 → 空页！
+        // 新算法：维护每个根的 [rootStartRow, rootEndRow) 区间，pageNum 用 [pageStart, pageEnd) 区间相交判断。
+        int totalPages = (totalRows + pageSize - 1) / pageSize;
 
-        // ===== 6. 找出当前页的根范围 =====
-        int fromIdx = -1, toIdx = -1;
+        int[] rootStartRow = new int[totalRoots];
+        int[] rootEndRow = new int[totalRoots];
+        int cumRow = 0;
         for (int i = 0; i < totalRoots; i++) {
-            if (pageOfRoot[i] == pageNum) {
-                if (fromIdx == -1) fromIdx = i;
-                toIdx = i;
-            }
+            rootStartRow[i] = cumRow;
+            cumRow += rc[i];
+            rootEndRow[i] = cumRow;
         }
-        if (fromIdx == -1) {
-            // 超出范围
+
+        // ===== 6. 当前页行号范围 =====
+        int pageStart = (pageNum - 1) * pageSize;
+        int pageEnd = Math.min(pageStart + pageSize, totalRows);
+
+        if (pageStart >= totalRows) {
             page.setTotal((long) totalRows);
             page.setRecords(new ArrayList<>());
             return page;
         }
 
-        // ===== 7. 拼装当前页根 + 子 =====
-        List<PmTask> pageRoots = allMyRoots.subList(fromIdx, toIdx + 1);
-        Set<Long> pageRootIds = pageRoots.stream().map(PmTask::getId).collect(Collectors.toSet());
-        List<PmTask> pageSubs = allMySubs.stream()
-                .filter(s -> pageRootIds.contains(s.getParentId() != null ? s.getParentId() : 0L))
-                .collect(Collectors.toList());
-
-        // ===== 8. 按 parentId 构建父子关系映射 =====
-        Map<Long, List<PmTask>> parentIdToChildrenMap = new HashMap<>();
-        for (PmTask sub : pageSubs) {
-            Long parentId = sub.getParentId() != null ? sub.getParentId() : 0L;
-            parentIdToChildrenMap.computeIfAbsent(parentId, k -> new ArrayList<>()).add(sub);
+        // ===== 7. 找出当前页"涉及到的根"（区间相交） =====
+        int fromIdx = -1, toIdx = -1;
+        for (int i = 0; i < totalRoots; i++) {
+            if (rootEndRow[i] > pageStart && rootStartRow[i] < pageEnd) {
+                if (fromIdx == -1) fromIdx = i;
+                toIdx = i;
+            }
+            if (rootStartRow[i] >= pageEnd) break;
         }
 
-        // ===== 9. 拼装：根 + 跟随的子任务（树形扁平展开） =====
+        // ===== 8. 收集每个根的子任务列表 =====
+        Map<Long, List<PmTask>> rootIdToAllSubs = new HashMap<>();
+        for (PmTask sub : allMySubs) {
+            Long parentId = sub.getParentId() != null ? sub.getParentId() : 0L;
+            rootIdToAllSubs.computeIfAbsent(parentId, k -> new ArrayList<>()).add(sub);
+        }
+
+        // ===== 9. 拼装当前页 records：根（按需） + 该根在当前页的子切片 =====
         List<PmTask> result = new ArrayList<>();
-        for (PmTask rootTask : pageRoots) {
-            addTaskToResult(result, rootTask, parentIdToChildrenMap);
+        for (int i = fromIdx; i <= toIdx; i++) {
+            PmTask root = allMyRoots.get(i);
+            List<PmTask> allSubs = rootIdToAllSubs.getOrDefault(root.getId(), new ArrayList<>());
+            int subCount = allSubs.size();
+
+            // 子切片起止（不含根本身）
+            int subStartIdx = Math.max(0, pageStart - rootStartRow[i] - 1);
+            int subEndIdx = Math.min(subCount, pageEnd - rootStartRow[i] - 1);
+            if (subEndIdx < subStartIdx) subEndIdx = subStartIdx;
+
+            // 根标题是否在当前页（仅 rootStartRow 落在 [pageStart, pageEnd) 时显示）
+            boolean showRoot = (pageStart <= rootStartRow[i] && rootStartRow[i] < pageEnd);
+
+            if (showRoot) {
+                result.add(root);
+            }
+            if (subStartIdx < subEndIdx) {
+                result.addAll(allSubs.subList(subStartIdx, subEndIdx));
+            }
         }
 
         // ===== 10. 附件处理（保留原逻辑） =====

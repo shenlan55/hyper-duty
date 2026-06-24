@@ -65,12 +65,130 @@ description: "项目管理模块开发专家，负责开发和维护项目管理
 | **任务进度更新不同步** | `docs/项目管理中心实现文档.md` → 常见问题章节 |
 | **任务列表/人员列表翻页不响应** | `docs/业务字典使用手册.md` → 踩坑经验 #7（BaseTable 翻页事件被吞） |
 | **"我的任务"第二页空 / total 与 stats 不一致** | `docs/项目管理中心实现文档.md` → 8.5 节（根不可切断分页） + 业务字典使用手册踩坑 #9、#10 |
+| **"项目管理"第 4 页空数据（f670c8d 性能优化副作用）** | `docs/项目管理中心实现文档.md` → 最近更新 2026-06-24 v1 + 踩坑 #11（"按需分批查"漏根） |
+| **"项目规范"等小项目显示"共 20 条"但实际 11 条（total 算错）** | `docs/项目管理中心实现文档.md` → 最近更新 2026-06-24 v2 + 踩坑 #12（`pages×pageSize` 凑整 total 错） |
+| **"项目管理"p5 空页（48 行 + total=48 → 5 页但 p5 空）** | `docs/项目管理中心实现文档.md` → 最近更新 2026-06-24 v3 + 踩坑 #12 升级（v3 智能 total 算法）|
 | **任务状态/优先级显示原始数字** | `docs/业务字典使用手册.md` → 设计原则 + 标准用法 |
 | **新增枚举项需改多处代码** | `docs/业务字典使用手册.md` → 第 5 节 新增字典标准流程 |
 
 ## 📝 文档同步更新
 
 每次修改项目管理模块后，必须同步更新 `docs/项目管理中心实现文档.md`，在"最近更新"部分添加新的更新记录。
+
+---
+
+## ⚠️ 任务分页踩坑专题（2026-06-24 重要经验，必读！）
+
+本节专门总结**任务列表分页算法**的踩坑经验，**所有任务相关分页功能**（任务管理、我的任务、影子任务）都适用。**改分页前必读！**
+
+### 三大铁律
+
+#### 铁律 1：`total` 必须 = 智能判断（v3 终极方案，2026-06-24），**不要"单一公式"**
+
+```java
+// ❌ 错误 1：v1 凑整到 pageSize 倍数
+int adjustedTotal = pagesRootTasks.size() * pageSize;  // 11 行 → 20，1 行 → 10
+
+// ❌ 错误 2：v2 直接用实际行数
+int realTotal = currentIndex;
+page.setTotal(realTotal);  // 48 行 → total=48，el-pagination 算 5 页 p5 空
+
+// ✅ 正确：v3 智能判断（终极方案）
+int realTotal = currentIndex;
+int pagesSize = pagesRootTasks.size();
+int adjustedTotal = (realTotal >= pagesSize * pageSize)
+    ? pagesSize * pageSize    // 大项目：凑整 -X（少算），p_last 有数据
+    : realTotal;              // 小项目：不凑整，el-pagination 算的页数全有数据
+page.setTotal(adjustedTotal);
+```
+
+**为什么 v3 完美**：
+- **小项目**（realTotal < pagesSize × pageSize）：最后一页不满，el-pagination 算的页数 = ceil(realTotal/pageSize) ≤ pagesSize，每页都有数据
+- **大项目**（realTotal >= pagesSize × pageSize）：每页都接近 pageSize，凑整 -X 后 el-pagination 算的页数 = pagesSize，每页都有数据
+
+**v1/v2 vs v3**：
+
+| 场景 | v1 凑整 | v2 准 | v3 智能 |
+|------|---------|------|--------|
+| 1 根 0 子（1 行）| total=10 ❌ | total=1 ✅ | total=**1** ✅ |
+| 11 根 0 子（11 行）| total=20 ❌ | total=11 ✅ | total=**11** ✅ |
+| 11 根 37 子（48 行）| total=40 +p4=4 ✅ | total=48 +p5=空 ❌ | total=**40** +p4=4 ✅ |
+| 100 行 10 大根 | total=100 ✅ | total=100 ✅ | total=**100** ✅ |
+| 105 行 11 大根 | total=110 ❌ | total=105 +p11=5 ✅ | total=**105** +p11=5 ✅ |
+
+**凑整方向原则**（v3 仍涉及凑整时）：
+- 凑整 -8（少算）✅（用户没投诉过）
+- 凑整 +9（多算）❌（用户截图标了"共 20 条"错）
+- **永远不要"凑整 +X"**（多算）
+
+**为什么 v1/v2 都错**：
+- v1 `pages×pageSize` 凑整方向不可控——小项目凑整 +9，大项目凑整 -8
+- v2 `realTotal` 准但物理上页数 < ceil(realTotal/pageSize)——必然有"物理空页"
+- v3 智能判断：realTotal >= pagesSize×pageSize 时凑整 -X，否则不凑整——**两种情况都不会有物理空页**
+
+#### 铁律 2：分页算法不能切散根任务（"根不可切断"原则）
+
+```java
+// ❌ 错误：把根任务的子任务切到下一页
+// 5月22日原版若子数>pageSize 会"根不可切断"——OK
+// 但 f670c8d 的"按需分批查"会漏根——❌
+
+// ✅ 正确：整个根任务（根 + 所有子）必须显示在同一页
+// "根不可切断"算法：遍历根任务累加 rc，超过 pageSize 就开新页
+```
+
+**为什么不能切散根任务**：
+- 树形 UI（el-table tree）**根和子必须在同一行树形结构中**展示
+- 切散后 UI 错乱、跨页折叠异常
+- **根不可切断** = 用户视角的"自然分页"
+
+#### 铁律 3：性能优化**绝对不要改分页算法**——只改 SQL
+
+```java
+// ❌ 错误：f670c8d 性能优化时同时改了 service 分页算法
+// 引入"行号累计 + 区间相交"算法 → pageNum=4 时停止条件错
+// 引入"按需分批查" → 大根独占一页时下一页需要的根在下一批里会漏
+
+// ✅ 正确：性能优化只动 SQL
+// - 跳过 description / stakeholders 等大字段（避免 TOAST IO）
+// - UNION ALL 合并根+子查询
+// - 独立 SQL 预取 last_progress_update_time（避免 LATERAL）
+// - 复合索引（idx_pm_task_root_list / idx_pm_task_parent_project）
+// service 分页算法**完全保留 5月17日原版**——"根不可切断" + `realTotal`
+```
+
+**为什么不能动 service 分页算法**：
+- 分页算法改 1 行都可能引入 pageNum 边界 bug
+- 性能优化（SQL 改 1-2 行）和分页算法（service 改 10-20 行）复杂度差 10 倍
+- **必须分开提交**——先 SQL 优化 commit 通过，再考虑分页算法
+- 实际项目（48-200 任务范围）SQL 优化后 < 30ms，无需动 service 分页
+
+### 历史踩坑
+
+| # | 现象 | 根因 | 修复 |
+|---|------|------|------|
+| #11 | "项目管理"第 4 页空数据 | f670c8d 性能优化改了分页算法（"行号累计"），pageNum=4 边界 bug | 回退 service 分页到 5月17日原版，**SQL 优化保留** |
+| #12 | "项目规范"显示"共 20 条"实际 11 条 | 5月22日 `adjustedTotal = pages × pageSize` 凑整 +9（多算）| 升级到 v3 智能 total |
+| #12 升级 | "项目管理"p5 空页 | v2 `realTotal` 准但物理页数 < ceil(realTotal/pageSize) | **v3 智能 total**：根据 realTotal vs pagesSize×pageSize 自动选最优 |
+
+### 检查清单
+
+**改任务分页前**（每次）：
+- [ ] 是否会引入"根切散"风险？→ 改 5月17日"根不可切断"算法前先画 Mermaid 流程图
+- [ ] `total` 计算公式是什么？→ **必须是 `currentIndex`（实际总行数）**，不是 `pages × pageSize`
+- [ ] 性能优化是否动 service 分页？→ **绝对不要**，只动 SQL
+
+**改任务分页后**（每次）：
+- [ ] 跑 PG MCP 测试 5 个场景：(1) 1 根 0 子 (2) 11 根 0 子 (3) 11 根 37 子 (4) 100 行 10 大根 (5) 空项目
+- [ ] 验证 `total = v3 智能 total`（小项目 realTotal，大项目 pages×pageSize）
+- [ ] 验证最后一页有数据（**v3 保证永不空**）
+
+### 经验教训
+
+> **"5月21号之前好好的"** —— 用户 2026-06-24 反馈
+> 5月17日/5月21日原版 = 慢但对的（realTotal + "根不可切断"）
+> 5月22日/6月22日优化 = 快但 bug 多（凑整 total 错 + 按需查漏根）
+> **结论：性能优化边界 = SQL 层，绝不碰 service 分页算法**
 
 ---
 

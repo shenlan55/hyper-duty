@@ -4,7 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lasu.hyperduty.common.utils.SecurityUtil;
-import com.lasu.hyperduty.pm.dto.*;
+import com.lasu.hyperduty.pm.dto.PmShadowAnnotationVO;
+import com.lasu.hyperduty.pm.dto.ShadowAnnotationCreateDTO;
+import com.lasu.hyperduty.pm.dto.ShadowAnnotationWithProjectVO;
+import com.lasu.hyperduty.pm.dto.ShadowTaskCreateDTO;
+import com.lasu.hyperduty.pm.dto.ShadowTaskUpdateDTO;
+import com.lasu.hyperduty.pm.dto.ShadowTaskVO;
 import com.lasu.hyperduty.pm.entity.PmProject;
 import com.lasu.hyperduty.pm.entity.PmShadowAnnotation;
 import com.lasu.hyperduty.pm.entity.PmTask;
@@ -23,7 +28,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -117,127 +125,224 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
         String currentUsername = SecurityUtil.getCurrentUsername();
         Page<ShadowTaskVO> page = new Page<>(pageNum, pageSize);
 
-        // ===== 1. 一次查项目下所有根任务（真实 + 影子 UNION ALL，无分页） =====
-        List<ShadowTaskVO> allRoots = taskShadowMapper.selectAllRootTasksWithShadows(projectId);
-        if (allRoots.isEmpty()) {
-            page.setTotal(0L);
-            page.setRecords(new ArrayList<>());
-            return page;
+        // 1. 查项目下所有任务（根+子）—— 用 f670c8d 拆分后的两个接口拼出等价于 5月22日 selectTaskListWithShadows 的 allTasks
+        //    selectAllRootTasksWithShadows: parent_id=0/IS NULL 的根任务
+        //    selectAllSubTasksWithShadows: parent_id>0 的子任务
+        //    合并 = 5月22日原版 "selectTaskListWithShadows 一次查全量"
+        List<ShadowTaskVO> allTasks = new ArrayList<>();
+        allTasks.addAll(taskShadowMapper.selectAllRootTasksWithShadows(projectId));
+        allTasks.addAll(taskShadowMapper.selectAllSubTasksWithShadows(projectId));
+
+        // 2. 应用过滤条件
+        if (taskName != null && !taskName.isEmpty()) {
+            allTasks = allTasks.stream()
+                    .filter(task -> task.getTaskName() != null && task.getTaskName().toLowerCase().contains(taskName.toLowerCase()))
+                    .collect(Collectors.toList());
+        }
+        if (assigneeName != null && !assigneeName.isEmpty()) {
+            allTasks = allTasks.stream()
+                    .filter(task -> task.getOwnerName() != null && task.getOwnerName().toLowerCase().contains(assigneeName.toLowerCase()))
+                    .collect(Collectors.toList());
+        }
+        if (status != null) {
+            allTasks = allTasks.stream()
+                    .filter(task -> task.getStatus() != null && task.getStatus().equals(status))
+                    .collect(Collectors.toList());
+        }
+        if (priority != null) {
+            allTasks = allTasks.stream()
+                    .filter(task -> task.getPriority() != null && task.getPriority().equals(priority))
+                    .collect(Collectors.toList());
         }
 
-        // ===== 2. 一次查项目下所有子任务（按行分页用，根任务不可切断） =====
-        List<ShadowTaskVO> allSubTasks = taskShadowMapper.selectAllSubTasksWithShadows(projectId);
-
-        // ===== 3. 按 parentId 统计每个根的子数 =====
-        Map<Long, Integer> subCountMap = new HashMap<>();
-        for (ShadowTaskVO sub : allSubTasks) {
-            Long parentId = sub.getParentId() != null ? sub.getParentId() : 0L;
-            subCountMap.merge(parentId, 1, Integer::sum);
-        }
-
-        // ===== 4. 计算每个根的"行数"（1 + 子数） =====
-        int totalRoots = allRoots.size();
-        int[] rowCountOfRoot = new int[totalRoots];
-        for (int i = 0; i < totalRoots; i++) {
-            rowCountOfRoot[i] = 1 + subCountMap.getOrDefault(allRoots.get(i).getId(), 0);
-        }
-        int totalRows = 0;
-        for (int c : rowCountOfRoot) totalRows += c;
-
-        // ===== 5. "根不可切断"分页算法（与 PmTaskServiceImpl 原 pageList 同款） =====
-        // 规则：每页装满 pageSize 行（根不可切断）→ 累加每个根的行数，超 pageSize 就开新页
-        //       如果一个根本身就 > pageSize（行数很多），则单独占 1 页
-        int[] pageOfRoot = new int[totalRoots]; // 每个根归属的页码（1-based）
-        int currentPageRows = 0;
-        int currentPage = 1;
-        for (int i = 0; i < totalRoots; i++) {
-            int rc = rowCountOfRoot[i];
-            if (currentPageRows == 0) {
-                // 当前页空，直接放这个根（即使超 pageSize 也放这里——保证不切断）
-                pageOfRoot[i] = currentPage;
-                currentPageRows += rc;
-            } else if (currentPageRows + rc > pageSize) {
-                // 当前页非空，加上这个根会超 pageSize → 开新页
-                currentPage++;
-                pageOfRoot[i] = currentPage;
-                currentPageRows = rc;
-            } else {
-                // 不超，添加到当前页
-                pageOfRoot[i] = currentPage;
-                currentPageRows += rc;
-            }
-        }
-        int totalPages = currentPage;
-
-        // ===== 6. 找出当前页的根范围 =====
-        int fromRootIdx = -1, toRootIdx = -1;
-        for (int i = 0; i < totalRoots; i++) {
-            if (pageOfRoot[i] == pageNum) {
-                if (fromRootIdx == -1) fromRootIdx = i;
-                toRootIdx = i;
-            }
-        }
-        if (fromRootIdx == -1) {
-            // 超出范围（pageNum 超过总页数）
-            page.setTotal((long) totalRows);
-            page.setRecords(new ArrayList<>());
-            return page;
-        }
-
-        // ===== 7. 拼装当前页根 + 子 =====
-        List<ShadowTaskVO> pageRoots = allRoots.subList(fromRootIdx, toRootIdx + 1);
-        Set<Long> pageRootIds = pageRoots.stream().map(ShadowTaskVO::getId).collect(Collectors.toSet());
-        List<ShadowTaskVO> pageSubs = allSubTasks.stream()
-                .filter(s -> pageRootIds.contains(s.getParentId() != null ? s.getParentId() : 0L))
-                .collect(Collectors.toList());
-
-        // ===== 8. 按 parentId 构建父子关系映射 =====
-        Map<Long, List<ShadowTaskVO>> parentIdToChildrenMap = new HashMap<>();
-        for (ShadowTaskVO sub : pageSubs) {
-            Long parentId = sub.getParentId() != null ? sub.getParentId() : 0L;
-            parentIdToChildrenMap.computeIfAbsent(parentId, k -> new ArrayList<>()).add(sub);
-        }
-
-        // ===== 9. 设置权限 =====
+        // 3. 设置权限
         Long employeeId = currentEmployeeId != null ? currentEmployeeId : getEmployeeIdByUsername(currentUsername);
-        for (ShadowTaskVO task : pageRoots) {
-            applyTaskPermission(task, currentUsername, employeeId);
-        }
-        for (ShadowTaskVO task : pageSubs) {
-            applyTaskPermission(task, currentUsername, employeeId);
+        for (ShadowTaskVO task : allTasks) {
+            if (task.getIsShadow() != null && task.getIsShadow() == 1) {
+                // 影子任务
+                PmTaskShadow shadow = taskShadowMapper.selectById(task.getId());
+                if (shadow != null) {
+                    boolean isOwner = shadow.getCreatedBy() != null && currentUsername != null && shadow.getCreatedBy().equals(currentUsername);
+                    task.setHasPermission(isOwner);
+                    task.setHasDeletePermission(isOwner);
+                }
+            } else {
+                // 真实任务
+                boolean hasPermission = hasRealTaskPermission(task.getId(), employeeId);
+                boolean hasDeletePermission = hasRealTaskDeletePermission(task.getId(), employeeId);
+                task.setHasPermission(hasPermission);
+                task.setHasDeletePermission(hasDeletePermission);
+            }
         }
 
-        // ===== 10. 拼装：根 + 跟随的子任务（树形扁平展开） =====
+        // 4. 构建父子关系映射
+        Map<Long, List<ShadowTaskVO>> parentIdToChildrenMap = new HashMap<>();
+        for (ShadowTaskVO task : allTasks) {
+            Long parentId = task.getParentId() != null ? task.getParentId() : 0L;
+            if (!parentIdToChildrenMap.containsKey(parentId)) {
+                parentIdToChildrenMap.put(parentId, new ArrayList<>());
+            }
+            parentIdToChildrenMap.get(parentId).add(task);
+        }
+
+        // 5. 获取并排序根任务 - 先分组再合并
+        List<ShadowTaskVO> rawRootTasks = parentIdToChildrenMap.getOrDefault(0L, new ArrayList<>());
+        
+        // 分组：先分成4组
+        List<ShadowTaskVO> pinnedInProgress = new ArrayList<>(); // 置顶的未开始/进行中
+        List<ShadowTaskVO> pinnedCompleted = new ArrayList<>();   // 置顶的已完成/已暂停
+        List<ShadowTaskVO> unpinnedInProgress = new ArrayList<>(); // 非置顶的未开始/进行中
+        List<ShadowTaskVO> unpinnedCompleted = new ArrayList<>();  // 非置顶的已完成/已暂停
+        
+        for (ShadowTaskVO task : rawRootTasks) {
+            int isPinned = (task.getIsPinned() != null) ? task.getIsPinned() : 0;
+            int statusOrder = getStatusOrder(task.getStatus());
+            
+            if (isPinned == 1) {
+                if (statusOrder == 0) {
+                    pinnedInProgress.add(task);
+                } else {
+                    pinnedCompleted.add(task);
+                }
+            } else {
+                if (statusOrder == 0) {
+                    unpinnedInProgress.add(task);
+                } else {
+                    unpinnedCompleted.add(task);
+                }
+            }
+        }
+        
+        // 在每个组内按优先级和创建时间排序
+        java.util.Comparator<ShadowTaskVO> groupComparator = (a, b) -> {
+            int priA = (a.getPriority() != null) ? a.getPriority() : 999;
+            int priB = (b.getPriority() != null) ? b.getPriority() : 999;
+            if (priA != priB) {
+                return priA - priB;
+            }
+            if (a.getCreateTime() != null && b.getCreateTime() != null) {
+                return a.getCreateTime().compareTo(b.getCreateTime());
+            }
+            return 0;
+        };
+        
+        pinnedInProgress.sort(groupComparator);
+        pinnedCompleted.sort(groupComparator);
+        unpinnedInProgress.sort(groupComparator);
+        unpinnedCompleted.sort(groupComparator);
+        
+        // 按照顺序合并
+        List<ShadowTaskVO> rootTasks = new ArrayList<>();
+        rootTasks.addAll(pinnedInProgress);
+        rootTasks.addAll(pinnedCompleted);
+        rootTasks.addAll(unpinnedInProgress);
+        rootTasks.addAll(unpinnedCompleted);
+
+        // 6. 确定每个根任务在扁平列表中的起始和结束索引
+        List<RootTaskRange> rootTaskRanges = new ArrayList<>();
+        int currentIndex = 0;
+        for (ShadowTaskVO rootTask : rootTasks) {
+            int count = countTaskAndChildren(rootTask, parentIdToChildrenMap);
+            rootTaskRanges.add(new RootTaskRange(rootTask, currentIndex, currentIndex + count));
+            currentIndex += count;
+        }
+
+        // 7. 预先计算好每页应该显示哪些根任务
+        List<List<RootTaskRange>> pagesRootTasks = new ArrayList<>();
+        List<RootTaskRange> currentPageRootTasks = new ArrayList<>();
+        int currentPageTaskCount = 0;
+
+        for (RootTaskRange range : rootTaskRanges) {
+            int taskCount = range.endIndex - range.startIndex;
+            boolean hasChildren = taskCount > 1; // 这个根任务是否有子任务
+
+            // 如果当前页是空的，直接添加这个根任务（不管它有多少子任务）
+            if (currentPageRootTasks.isEmpty()) {
+                currentPageRootTasks.add(range);
+                currentPageTaskCount += taskCount;
+            } else {
+                // 检查当前页是否都是根任务（没有子任务）
+                boolean currentPageAllRootTasks = true;
+                for (RootTaskRange existingRange : currentPageRootTasks) {
+                    int existingTaskCount = existingRange.endIndex - existingRange.startIndex;
+                    if (existingTaskCount > 1) {
+                        currentPageAllRootTasks = false;
+                        break;
+                    }
+                }
+
+                if (currentPageAllRootTasks && !hasChildren) {
+                    // 都是根任务，且当前要添加的也是根任务：按pageSize严格分页
+                    if (currentPageTaskCount + 1 > pageSize) {
+                        // 超过pageSize，保存当前页，新根任务从新页开始
+                        pagesRootTasks.add(new ArrayList<>(currentPageRootTasks));
+                        currentPageRootTasks.clear();
+                        currentPageRootTasks.add(range);
+                        currentPageTaskCount = taskCount;
+                    } else {
+                        // 不超过，添加到当前页
+                        currentPageRootTasks.add(range);
+                        currentPageTaskCount += taskCount;
+                    }
+                } else {
+                    // 有子任务的情况：检查添加这个根任务自己（+1条）会不会超过pageSize
+                    if (currentPageTaskCount + 1 > pageSize) {
+                        // 会超过！保存当前页，然后新根任务从新页开始
+                        pagesRootTasks.add(new ArrayList<>(currentPageRootTasks));
+
+                        // 新开一页，添加这个根任务（它的所有子任务都在这一页）
+                        currentPageRootTasks.clear();
+                        currentPageRootTasks.add(range);
+                        currentPageTaskCount = taskCount;
+                    } else {
+                        // 不会超过，添加到当前页，这个根任务及其所有子任务都在当前页
+                        currentPageRootTasks.add(range);
+                        currentPageTaskCount += taskCount;
+                    }
+                }
+            }
+        }
+
+        // 添加最后一页
+        if (!currentPageRootTasks.isEmpty()) {
+            pagesRootTasks.add(currentPageRootTasks);
+        }
+
+        // 8. 智能 total（2026-06-24 v3 终极方案）
+        //    ⚠️ 两个目标冲突：
+        //      - "total 准"（realTotal）→ el-pagination 算 5 页时 p5 可能空
+        //      - "最后一页不空"（pagesRootTasks.size() × pageSize）→ 小项目 total 多算
+        //    ✅ 智能判断凑整方向：
+        //      - 如果 realTotal >= pagesSize × pageSize → 物理每页都接近 pageSize，用 pagesSize×pageSize 凑整（少算 -X，p_last 有数据）
+        //      - 如果 realTotal <  pagesSize × pageSize → 最后一页不满，用 realTotal（el-pagination 算的页数 <= pagesSize 都有数据）
+        //    📊 验证：
+        //      - 1 根 0 子（1 行）：pages=1, 1<10 → total=1, ceil(1/10)=1 页 p1=1 行 ✅
+        //      - 11 根 0 子"项目规范"（11 行）：pages=2, 11<20 → total=11, ceil(11/10)=2 页 p1=10 p2=1 ✅
+        //      - 11 根 37 子"项目管理"（48 行）：pages=4, 48>=40 → total=40, ceil(40/10)=4 页 p1=22 p2=12 p3=10 p4=4 ✅（凑整 -8，p4 4 行不空）
+        int realTotal = currentIndex;
+        int pagesSize = pagesRootTasks.size();
+        int adjustedTotal = (realTotal >= pagesSize * pageSize)
+            ? pagesSize * pageSize    // 大项目：凑整 -8（少算），p_last 有数据
+            : realTotal;              // 小项目：不凑整，el-pagination 算的页数全有数据
+        page.setTotal(adjustedTotal);
+
+        // 9. 获取当前页的根任务
+        List<ShadowTaskVO> pageRootTasks = new ArrayList<>();
+        if (pageNum <= pagesRootTasks.size()) {
+            List<RootTaskRange> targetPageRanges = pagesRootTasks.get(pageNum - 1);
+            for (RootTaskRange range : targetPageRanges) {
+                pageRootTasks.add(range.rootTask);
+            }
+        }
+
+        // 10. 构建结果列表
         List<ShadowTaskVO> result = new ArrayList<>();
-        for (ShadowTaskVO rootTask : pageRoots) {
+        for (ShadowTaskVO rootTask : pageRootTasks) {
             addTaskToResult(result, rootTask, parentIdToChildrenMap);
         }
-
-        // ===== 11. total 用真实行数（之前用 totalPages * pageSize 会算多） =====
-        // 例：11 个根 + 0 子 + pageSize=10 → 实际 11 行，2 页
-        // 旧 total = 2 * 10 = 20（错误）→ 新 total = 11
-        page.setTotal((long) totalRows);
         page.setRecords(result);
-        return page;
-    }
 
-    /**
-     * 单个任务权限赋值（与旧逻辑一致，保留 N+1 优化空间）
-     */
-    private void applyTaskPermission(ShadowTaskVO task, String currentUsername, Long employeeId) {
-        if (task.getIsShadow() != null && task.getIsShadow() == 1) {
-            PmTaskShadow shadow = taskShadowMapper.selectById(task.getId());
-            if (shadow != null) {
-                boolean isOwner = shadow.getCreatedBy() != null
-                        && currentUsername != null
-                        && shadow.getCreatedBy().equals(currentUsername);
-                task.setHasPermission(isOwner);
-                task.setHasDeletePermission(isOwner);
-            }
-        } else {
-            task.setHasPermission(hasRealTaskPermission(task.getId(), employeeId));
-            task.setHasDeletePermission(hasRealTaskDeletePermission(task.getId(), employeeId));
-        }
+        return page;
     }
     
     /**
@@ -264,7 +369,10 @@ public class PmTaskShadowServiceImpl implements PmTaskShadowService {
     public List<ShadowTaskVO> getTaskListWithShadows(Long projectId, Long currentEmployeeId) {
         String currentUsername = SecurityUtil.getCurrentUsername();
         Long employeeId = currentEmployeeId != null ? currentEmployeeId : getEmployeeIdByUsername(currentUsername);
-        List<ShadowTaskVO> tasks = taskShadowMapper.selectAllRootTasksWithShadows(projectId);
+        // 5月22日原版用 selectTaskListWithShadows 一次查全量；f670c8d 拆成两个接口，合并效果一致
+        List<ShadowTaskVO> tasks = new ArrayList<>();
+        tasks.addAll(taskShadowMapper.selectAllRootTasksWithShadows(projectId));
+        tasks.addAll(taskShadowMapper.selectAllSubTasksWithShadows(projectId));
         for (ShadowTaskVO task : tasks) {
             if (task.getIsShadow() != null && task.getIsShadow() == 1) {
                 // 影子任务
