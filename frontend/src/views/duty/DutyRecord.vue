@@ -534,10 +534,10 @@ const createRules = {
     { required: true, message: '请选择值班表', trigger: 'blur' }
   ],
   dutyDate: [
-    { required: true, message: '请选择值班日期', trigger: 'blur' }
+    { required: true, message: '请选择值班日期', trigger: ['blur', 'change'] }
   ],
   dutyShift: [
-    { required: true, message: '请选择班次', trigger: 'blur' }
+    { required: true, message: '请选择班次', trigger: ['blur', 'change'] }
   ],
   overtimeHours: [
     { required: true, message: '请输入加班时长', trigger: 'blur' }

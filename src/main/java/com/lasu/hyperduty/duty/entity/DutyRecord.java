@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lasu.hyperduty.duty.entity.DutyRecord;
+import jakarta.validation.constraints.NotNull;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -38,16 +39,19 @@ public class DutyRecord implements Serializable {
     /**
      * 值班表ID
      */
+    @NotNull(message = "值班表ID不能为空")
     private Long scheduleId;
-    
+
     /**
      * 值班日期
      */
+    @NotNull(message = "值班日期不能为空")
     private LocalDate dutyDate;
-    
+
     /**
      * 班次
      */
+    @NotNull(message = "班次不能为空")
     private Integer dutyShift;
     
     /**
