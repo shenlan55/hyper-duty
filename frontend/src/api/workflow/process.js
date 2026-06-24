@@ -145,3 +145,20 @@ export function getHistoricProcessInstance(processInstanceId) {
     method: 'get'
   })
 }
+
+/** 发起人撤回流程 */
+export function withdrawProcess(processInstanceId, reason) {
+  return request({
+    url: `/workflow/process/instance/withdraw/${processInstanceId}`,
+    method: 'post',
+    params: { reason }
+  })
+}
+
+/** 获取流程跟踪图数据（BPMN XML + 已完成/当前节点） */
+export function getProcessTraceData(processInstanceId) {
+  return request({
+    url: `/workflow/process/instance/trace/${processInstanceId}`,
+    method: 'get'
+  })
+}

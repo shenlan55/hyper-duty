@@ -22,6 +22,11 @@ const props = defineProps({
   currentActivityIds: {
     type: Array,
     default: () => []
+  },
+  // 已结束/跳过节点（灰色）
+  terminatedActivityIds: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -52,11 +57,20 @@ const renderBpmn = async () => {
         console.debug('Node not found:', id)
       }
     })
-    
+
     // 高亮当前节点
     props.currentActivityIds.forEach(id => {
       try {
         canvas.addMarker(id, 'highlight-current')
+      } catch (e) {
+        console.debug('Node not found:', id)
+      }
+    })
+
+    // 高亮已结束/跳过节点
+    props.terminatedActivityIds.forEach(id => {
+      try {
+        canvas.addMarker(id, 'highlight-terminated')
       } catch (e) {
         console.debug('Node not found:', id)
       }
@@ -72,9 +86,12 @@ watch(() => props.bpmnXml, () => {
 })
 
 // 监听高亮节点变化
-watch([() => props.completedActivityIds, () => props.currentActivityIds], () => {
-  renderBpmn()
-})
+watch(
+  [() => props.completedActivityIds, () => props.currentActivityIds, () => props.terminatedActivityIds],
+  () => {
+    renderBpmn()
+  }
+)
 
 onMounted(() => {
   initViewer()
@@ -109,5 +126,13 @@ onMounted(() => {
   fill: #fef0f0 !important;
   stroke: #f56c6c !important;
   stroke-width: 2px !important;
+}
+
+/* 已结束/跳过节点 - 灰色 */
+.highlight-terminated .djs-visual > :nth-child(1) {
+  fill: #f4f4f5 !important;
+  stroke: #909399 !important;
+  stroke-width: 1.5px !important;
+  opacity: 0.6;
 }
 </style>

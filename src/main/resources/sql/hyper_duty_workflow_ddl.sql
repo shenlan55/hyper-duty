@@ -207,3 +207,168 @@ INSERT INTO public.sys_role_menu VALUES (750, 2, 100, '2026-05-10 00:00:00');
 INSERT INTO public.sys_role_menu VALUES (751, 2, 103, '2026-05-10 00:00:00');
 INSERT INTO public.sys_role_menu VALUES (752, 2, 104, '2026-05-10 00:00:00');
 INSERT INTO public.sys_role_menu VALUES (753, 2, 105, '2026-05-10 00:00:00');
+
+
+-- ===============================================================
+-- 2026-06-24 工作流增强：处理人配置 / 抄送 / 撤回
+-- ===============================================================
+
+-- 节点处理人配置表（流程设计师在 UserTask 节点上配置，发布时持久化）
+-- 用于「流程设计面板」展示节点处理人配置，以及发起时校验节点可处理人
+-- 真实运行时仍以 BPMN XML 的 camunda:assignee / candidateUsers / candidateGroups 为准
+CREATE TABLE IF NOT EXISTS public.wf_node_handler (
+    id BIGSERIAL PRIMARY KEY,
+    process_definition_id VARCHAR(100) NOT NULL,
+    process_definition_key VARCHAR(100) NOT NULL,
+    node_id VARCHAR(100) NOT NULL,
+    node_name VARCHAR(200),
+    handler_type VARCHAR(50) NOT NULL,
+    handler_config TEXT,
+    multi_instance_type VARCHAR(20) DEFAULT 'none',
+    multi_instance_config TEXT,
+    cc_config TEXT,
+    seq INT DEFAULT 0,
+    create_time TIMESTAMP,
+    update_time TIMESTAMP,
+    CONSTRAINT uk_node_handler UNIQUE (process_definition_id, node_id)
+);
+CREATE INDEX IF NOT EXISTS idx_node_handler_key ON public.wf_node_handler(process_definition_key);
+COMMENT ON TABLE public.wf_node_handler IS '流程节点处理人配置表';
+COMMENT ON COLUMN public.wf_node_handler.id IS '主键ID';
+COMMENT ON COLUMN public.wf_node_handler.process_definition_id IS '流程定义ID';
+COMMENT ON COLUMN public.wf_node_handler.process_definition_key IS '流程定义KEY';
+COMMENT ON COLUMN public.wf_node_handler.node_id IS '节点ID（UserTask BPMN id）';
+COMMENT ON COLUMN public.wf_node_handler.node_name IS '节点名称';
+COMMENT ON COLUMN public.wf_node_handler.handler_type IS '处理人类型（字典 wf_handler_type）';
+COMMENT ON COLUMN public.wf_node_handler.handler_config IS '处理人配置 JSON：人员ID/角色ID/变量名/表单字段等';
+COMMENT ON COLUMN public.wf_node_handler.multi_instance_type IS '多实例类型：none/parallel/sequential';
+COMMENT ON COLUMN public.wf_node_handler.multi_instance_config IS '多实例配置 JSON：完成条件、比例等';
+COMMENT ON COLUMN public.wf_node_handler.cc_config IS '抄送配置 JSON：人员、角色、触发时机';
+COMMENT ON COLUMN public.wf_node_handler.seq IS '排序';
+
+
+-- 抄送记录表
+CREATE TABLE IF NOT EXISTS public.wf_cc (
+    id BIGSERIAL PRIMARY KEY,
+    process_instance_id VARCHAR(100) NOT NULL,
+    process_definition_id VARCHAR(100),
+    process_name VARCHAR(200),
+    node_id VARCHAR(100),
+    node_name VARCHAR(200),
+    cc_user_id BIGINT NOT NULL,
+    cc_user_name VARCHAR(100) NOT NULL,
+    title VARCHAR(200),
+    content TEXT,
+    from_user_id BIGINT,
+    from_user_name VARCHAR(100),
+    read_status SMALLINT DEFAULT 0,
+    read_time TIMESTAMP,
+    create_time TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_cc_user ON public.wf_cc(cc_user_id);
+CREATE INDEX IF NOT EXISTS idx_cc_instance ON public.wf_cc(process_instance_id);
+CREATE INDEX IF NOT EXISTS idx_cc_status ON public.wf_cc(read_status);
+COMMENT ON TABLE public.wf_cc IS '流程抄送表';
+COMMENT ON COLUMN public.wf_cc.id IS '主键ID';
+COMMENT ON COLUMN public.wf_cc.process_instance_id IS '流程实例ID';
+COMMENT ON COLUMN public.wf_cc.process_definition_id IS '流程定义ID';
+COMMENT ON COLUMN public.wf_cc.process_name IS '流程名称';
+COMMENT ON COLUMN public.wf_cc.node_id IS '触发抄送的节点ID';
+COMMENT ON COLUMN public.wf_cc.node_name IS '触发抄送的节点名称';
+COMMENT ON COLUMN public.wf_cc.cc_user_id IS '抄送人ID';
+COMMENT ON COLUMN public.wf_cc.cc_user_name IS '抄送人姓名';
+COMMENT ON COLUMN public.wf_cc.title IS '抄送标题';
+COMMENT ON COLUMN public.wf_cc.content IS '抄送内容/意见';
+COMMENT ON COLUMN public.wf_cc.from_user_id IS '抄送发起人ID';
+COMMENT ON COLUMN public.wf_cc.from_user_name IS '抄送发起人姓名';
+COMMENT ON COLUMN public.wf_cc.read_status IS '阅读状态：0=未读 1=已读';
+COMMENT ON COLUMN public.wf_cc.read_time IS '阅读时间';
+COMMENT ON COLUMN public.wf_cc.create_time IS '创建时间';
+
+
+-- 给 wf_instance 增加撤回相关字段（DO 块兼容已有库）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema='public' AND table_name='wf_instance' AND column_name='withdraw_user_id') THEN
+        ALTER TABLE public.wf_instance ADD COLUMN withdraw_user_id BIGINT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema='public' AND table_name='wf_instance' AND column_name='withdraw_user_name') THEN
+        ALTER TABLE public.wf_instance ADD COLUMN withdraw_user_name VARCHAR(100);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema='public' AND table_name='wf_instance' AND column_name='withdraw_time') THEN
+        ALTER TABLE public.wf_instance ADD COLUMN withdraw_time TIMESTAMP;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema='public' AND table_name='wf_instance' AND column_name='withdraw_reason') THEN
+        ALTER TABLE public.wf_instance ADD COLUMN withdraw_reason VARCHAR(500);
+    END IF;
+END$$;
+COMMENT ON COLUMN public.wf_instance.withdraw_user_id IS '撤回人ID';
+COMMENT ON COLUMN public.wf_instance.withdraw_user_name IS '撤回人姓名';
+COMMENT ON COLUMN public.wf_instance.withdraw_time IS '撤回时间';
+COMMENT ON COLUMN public.wf_instance.withdraw_reason IS '撤回原因';
+
+
+-- ===============================================================
+-- 新增工作流业务字典
+-- ===============================================================
+
+-- 33. 处理人类型（wf_handler_type）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) VALUES (33, '处理人类型', 'wf_handler_type', '工作流-节点处理人类型', 1, '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (330, 33, '指定人员', 'ASSIGNEE', 1, '', 'primary', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (331, 33, '候选人', 'CANDIDATE_USERS', 2, '', 'success', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (332, 33, '候选角色', 'CANDIDATE_GROUPS', 3, '', 'info', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (333, 33, '发起人', 'INITIATOR', 4, '', 'warning', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (334, 33, '发起人部门负责人', 'DEPT_LEADER', 5, '', 'warning', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (335, 33, '角色负责人', 'ROLE_LEADER', 6, '', 'warning', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (336, 33, '上一步处理人', 'PREV_ASSIGNEE', 7, '', 'info', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (337, 33, '表单内人员字段', 'FORM_FIELD', 8, '', 'primary', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (338, 33, '流程变量', 'VARIABLE', 9, '', 'info', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+
+-- 34. 流程实例状态（wf_instance_status，含"已撤回"）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) VALUES (34, '流程实例状态', 'wf_instance_status', '工作流-流程实例状态（0=进行中 1=已完成 2=已作废 3=已撤回）', 1, '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (340, 34, '进行中', '0', 1, '', 'primary', 1, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (341, 34, '已完成', '1', 2, '', 'success', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (342, 34, '已作废', '2', 3, '', 'info', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (343, 34, '已撤回', '3', 4, '', 'warning', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+
+-- 35. 多实例会签类型（wf_multi_instance_type）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) VALUES (35, '多实例类型', 'wf_multi_instance_type', '工作流-多实例类型（none/single/parallel/sequential/countersign）', 1, '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (350, 35, '单人审批', 'none', 1, '', 'info', 1, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (351, 35, '会签（全部同意）', 'countersign', 2, '', 'primary', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (352, 35, '或签（任一同意）', 'or_sign', 3, '', 'success', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (353, 35, '顺序会签', 'sequential', 4, '', 'warning', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (354, 35, '按比例通过', 'ratio', 5, '', 'warning', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+
+-- 36. 抄送状态（wf_cc_status）
+INSERT INTO public.sys_dict_type (id, dict_name, dict_code, description, status, create_time, update_time) VALUES (36, '抄送状态', 'wf_cc_status', '工作流-抄送阅读状态（0=未读 1=已读）', 1, '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (360, 36, '未读', '0', 1, '', 'danger', 1, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+INSERT INTO public.sys_dict_data (id, dict_type_id, dict_label, dict_value, dict_sort, css_class, list_class, is_default, status, remark, create_time, update_time) VALUES (361, 36, '已读', '1', 2, '', 'info', 0, 1, '', '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+
+
+-- ===============================================================
+-- 新增工作流菜单
+-- ===============================================================
+
+-- 109. 发起流程（卡片列表，替代旧版 /workflow/start）
+INSERT INTO public.sys_menu VALUES (109, '发起流程', 100, '/workflow/start', 'views/workflow/ProcessStart.vue', 'workflow:start:list', 2, 'Promotion', 2, 1, '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+
+-- 110. 抄送我的
+INSERT INTO public.sys_menu VALUES (110, '抄送我的', 100, '/workflow/cc-list', 'views/workflow/CcList.vue', 'workflow:cc:list', 2, 'Share', 9, 1, '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+
+-- 111. 我发起的流程（独立入口，旧版合并在 103 流程实例下）
+INSERT INTO public.sys_menu VALUES (111, '我发起的', 100, '/workflow/my-started', 'views/workflow/MyStartedList.vue', 'workflow:instance:my', 2, 'EditPen', 10, 1, '2026-06-24 00:00:00', '2026-06-24 00:00:00');
+
+-- 超级管理员拥有新增菜单权限
+INSERT INTO public.sys_role_menu VALUES (709, 1, 109, '2026-06-24 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (710, 1, 110, '2026-06-24 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (711, 1, 111, '2026-06-24 00:00:00');
+
+-- 普通用户拥有新增菜单权限
+INSERT INTO public.sys_role_menu VALUES (754, 2, 109, '2026-06-24 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (755, 2, 110, '2026-06-24 00:00:00');
+INSERT INTO public.sys_role_menu VALUES (756, 2, 111, '2026-06-24 00:00:00');
+

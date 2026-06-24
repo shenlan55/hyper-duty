@@ -319,4 +319,18 @@ public class WfProcessController {
         return ResponseResult.success(instance);
     }
 
+    @Operation(summary = "发起人撤回流程（需未结束、未审批）")
+    @PostMapping("/instance/withdraw/{processInstanceId}")
+    public ResponseResult<Void> withdrawProcess(@PathVariable String processInstanceId, @RequestParam(required = false) String reason) {
+        wfProcessService.withdrawProcess(processInstanceId, reason);
+        return ResponseResult.success();
+    }
+
+    @Operation(summary = "获取流程跟踪图数据：含 BPMN XML、已完成节点、当前节点")
+    @GetMapping("/instance/trace/{processInstanceId}")
+    public ResponseResult<Map<String, Object>> getProcessTraceData(@PathVariable String processInstanceId) {
+        Map<String, Object> data = wfProcessService.getProcessTraceData(processInstanceId);
+        return ResponseResult.success(data);
+    }
+
 }

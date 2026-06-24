@@ -7,7 +7,9 @@ import com.lasu.hyperduty.workflow.service.WfProcessService;
 import com.lasu.hyperduty.workflow.service.WfDelegateService;
 import com.lasu.hyperduty.common.utils.SecurityUtil;
 import com.lasu.hyperduty.workflow.entity.WfDefinition;
+import com.lasu.hyperduty.workflow.entity.WfInstance;
 import com.lasu.hyperduty.workflow.mapper.WfDefinitionMapper;
+import com.lasu.hyperduty.workflow.mapper.WfInstanceMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.HistoryService;
@@ -29,6 +31,8 @@ import org.springframework.util.StringUtils;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +52,7 @@ public class WfProcessServiceImpl implements WfProcessService {
     private final TaskService taskService;
     private final WfDelegateService wfDelegateService;
     private final WfDefinitionMapper wfDefinitionMapper;
+    private final WfInstanceMapper wfInstanceMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -338,5 +343,113 @@ public class WfProcessServiceImpl implements WfProcessService {
         return historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(processInstanceId)
                 .singleResult();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void withdrawProcess(String processInstanceId, String reason) {
+        try {
+            Long userId = SecurityUtil.getCurrentUserId();
+            String userName = SecurityUtil.getCurrentUsername();
+
+            ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
+                    .processInstanceId(processInstanceId)
+                    .singleResult();
+            if (processInstance == null) {
+                throw new BusinessException("流程实例不存在或已结束");
+            }
+            if (processInstance.isEnded()) {
+                throw new BusinessException("流程已结束，无法撤回");
+            }
+            if (!String.valueOf(userId).equals(processInstance.getStartUserId())) {
+                throw new BusinessException("仅发起人可撤回流程");
+            }
+
+            // 检查是否已有节点完成（不允许撤回已审批的流程）
+            long finishedActivityCount = historyService.createHistoricActivityInstanceQuery()
+                    .processInstanceId(processInstanceId)
+                    .activityType("userTask")
+                    .finished()
+                    .count();
+            if (finishedActivityCount > 0) {
+                throw new BusinessException("流程已审批，无法撤回");
+            }
+
+            // 作废流程实例
+            runtimeService.deleteProcessInstance(processInstanceId, reason != null ? reason : "发起人撤回");
+
+            // 同步扩展表
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<WfInstance> wrapper =
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+            wrapper.eq(WfInstance::getProcessInstanceId, processInstanceId);
+            WfInstance instance = wfInstanceMapper.selectOne(wrapper);
+            if (instance != null) {
+                instance.setStatus(5); // 5=已撤回（与字典 wf_instance_status 对应）
+                instance.setWithdrawUserId(userId);
+                instance.setWithdrawUserName(userName);
+                instance.setWithdrawTime(LocalDateTime.now());
+                instance.setWithdrawReason(reason);
+                instance.setUpdateTime(LocalDateTime.now());
+                instance.setEndTime(LocalDateTime.now());
+                wfInstanceMapper.updateById(instance);
+            }
+            log.info("流程撤回成功: processInstanceId={}, userId={}, reason={}", processInstanceId, userId, reason);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("撤回流程失败", e);
+            throw new BusinessException("撤回流程失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    public Map<String, Object> getProcessTraceData(String processInstanceId) {
+        Map<String, Object> result = new HashMap<>();
+
+        // 查询流程实例
+        ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
+                .processInstanceId(processInstanceId)
+                .singleResult();
+        HistoricProcessInstance historicProcessInstance = null;
+        if (processInstance == null) {
+            // 已结束，查历史
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery()
+                    .processInstanceId(processInstanceId)
+                    .singleResult();
+            if (historicProcessInstance == null) {
+                throw new BusinessException("流程实例不存在");
+            }
+        }
+        String processDefinitionId = processInstance != null
+                ? processInstance.getProcessDefinitionId()
+                : historicProcessInstance.getProcessDefinitionId();
+        result.put("processInstanceId", processInstanceId);
+        result.put("processDefinitionId", processDefinitionId);
+        result.put("bpmnXml", getProcessBpmnXml(processDefinitionId));
+
+        // 历史活动实例
+        List<HistoricActivityInstance> activities = getHistoricActivityInstances(processInstanceId);
+        List<String> finishedNodeIds = new ArrayList<>();
+        List<String> currentNodeIds = new ArrayList<>();
+        for (HistoricActivityInstance a : activities) {
+            if (a.getActivityType() == null) {
+                continue;
+            }
+            // 只关心 userTask / startEvent / endEvent
+            String type = a.getActivityType();
+            if (!("userTask".equals(type) || "startEvent".equals(type) || "endEvent".equals(type))) {
+                continue;
+            }
+            if (a.getEndTime() != null) {
+                finishedNodeIds.add(a.getActivityId());
+            } else if (processInstance != null && !processInstance.isEnded()) {
+                currentNodeIds.add(a.getActivityId());
+            }
+        }
+        result.put("finishedNodeIds", finishedNodeIds);
+        result.put("currentNodeIds", currentNodeIds);
+        result.put("activities", activities);
+        result.put("isEnded", processInstance == null || processInstance.isEnded());
+        return result;
     }
 }

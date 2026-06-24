@@ -146,4 +146,19 @@ public interface WfProcessService {
      */
     HistoricProcessInstance getHistoricProcessInstance(String processInstanceId);
 
+    /**
+     * 发起人撤回流程
+     * <p>仅当流程未结束、当前用户是发起人、且尚无审批完成的节点时允许撤回。
+     * @param processInstanceId 流程实例ID
+     * @param reason 撤回原因
+     */
+    void withdrawProcess(String processInstanceId, String reason);
+
+    /**
+     * 获取流程跟踪图数据：含 BPMN XML 和已完成/当前节点列表
+     * @param processInstanceId 流程实例ID
+     * @return 流程跟踪数据
+     */
+    java.util.Map<String, Object> getProcessTraceData(String processInstanceId);
+
 }

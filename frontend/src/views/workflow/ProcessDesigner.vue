@@ -21,7 +21,7 @@
       <!-- 始终挂载 BpmnDesigner，避免先卸载后重挂时旧实例的 importXML 残留访问已销毁 canvas
            loading 时显示加载层覆盖在画布之上 -->
       <div style="height: 100%; position: relative;">
-        <BpmnDesigner ref="designerRef" :xml="initialXml" @save="handleSave" @change="handleXmlChange" />
+        <BpmnDesigner ref="designerRef" :xml="initialXml" @save="handleSave" @change="handleXmlChange" @process-key-change="handleProcessKeyChange" />
         <div v-if="loading" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.7); z-index: 10;">
           <el-icon class="is-loading" style="font-size: 40px;"><loading /></el-icon>
           <span style="margin-left: 10px;">加载中...</span>
@@ -38,7 +38,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BpmnDesigner from '@/components/BpmnDesigner.vue'
 import MobileGuard from '@/components/MobileGuard.vue'
-import { deployProcess as deployProcessApi, getProcessBpmnXml } from '@/api/workflow/process'
+import { deployProcess as deployProcessApi, getProcessBpmnXml, getLatestProcessDefinition } from '@/api/workflow/process'
 
 export default {
   name: 'ProcessDesigner',
@@ -47,7 +47,11 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const designerRef = ref(null)
+    // 流程名称（部署时使用的显示名，编辑模式下禁用）
     const processName = ref('')
+    // 流程 Key（来自 BPMN XML 中 <bpmn:process id="...">，由 BpmnDesigner 通过 @process-key-change 事件透出）
+    // Flowable 部署时强依赖该字段，部署前必须校验非空
+    const processKey = ref('')
     const xmlContent = ref('')
     const initialXml = ref('')
     const isEditing = ref(false)
@@ -86,12 +90,30 @@ export default {
       xmlContent.value = xml
     }
 
+    /**
+     * 接收 BpmnDesigner 透出的 processKey
+     * 触发时机：用户在设计器内编辑（commandStack.changed）或加载 XML 完成时
+     * @param {string} key BPMN XML 中 <bpmn:process> 节点的 id 属性（即 processKey）
+     */
+    const handleProcessKeyChange = (key) => {
+      processKey.value = key || ''
+      // 用 processKey 兜底 processName：覆盖新建（忘记填名称）+ 编辑（URL 未带 processName 场景）
+      // 仅当 processName 仍为空时才覆盖，避免覆盖用户已填写/URL 透传的名称
+      if (!processName.value && key) {
+        processName.value = key
+      }
+    }
+
     const handleDeployProcess = async () => {
       if (!processName.value) {
         ElMessage.warning('请输入流程名称')
         return
       }
-
+      // 校验 processKey：BPMN XML 中 <bpmn:process> 节点必须包含 id（Flowable 部署时强依赖）
+      if (!processKey.value) {
+        ElMessage.warning('请在设计器中配置流程（流程 Key 不能为空）')
+        return
+      }
       if (!xmlContent.value) {
         ElMessage.warning('请设计流程')
         return
@@ -125,11 +147,13 @@ export default {
       goBack,
       designerRef,
       processName,
+      processKey,
       initialXml,
       isEditing,
       loading,
       handleSave,
       handleXmlChange,
+      handleProcessKeyChange,
       handleDeployProcess
     }
   }

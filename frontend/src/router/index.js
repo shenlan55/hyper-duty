@@ -285,6 +285,18 @@ const routes = [
                 name: 'ProcessStart',
                 component: () => import('../views/workflow/ProcessStart.vue'),
                 meta: { title: '发起流程' }
+              },
+              {
+                path: 'start/detail',
+                name: 'ProcessStartDetail',
+                component: () => import('../views/workflow/ProcessStartDetail.vue'),
+                meta: { title: '填写发起表单' }
+              },
+              {
+                path: 'cc-list',
+                name: 'CcList',
+                component: () => import('../views/workflow/CcList.vue'),
+                meta: { title: '抄送我的' }
               }
             ]
           },

@@ -40,4 +40,16 @@ public class WfInstance {
 
     private LocalDateTime endTime;
 
+    /** 撤回人ID */
+    private Long withdrawUserId;
+
+    /** 撤回人姓名 */
+    private String withdrawUserName;
+
+    /** 撤回时间 */
+    private LocalDateTime withdrawTime;
+
+    /** 撤回原因 */
+    private String withdrawReason;
+
 }

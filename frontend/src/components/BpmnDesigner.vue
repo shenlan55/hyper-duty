@@ -17,6 +17,7 @@
     </div>
     <div class="content">
       <div class="canvas" ref="canvas"></div>
+
       <!-- 节点属性侧栏 -->
       <div class="property-panel" v-show="showPanel">
         <div class="panel-header">
@@ -38,70 +39,175 @@
             </el-form-item>
           </el-form>
 
-          <!-- UserTask 专属：处理人 / 表单 -->
+          <!-- UserTask 专属：处理人 / 表单 / 多实例 / 抄送 -->
           <template v-if="isUserTask">
+            <!-- 1. 处理人类型 -->
             <el-divider>环节处理人</el-divider>
             <el-form label-position="top" size="small">
-              <el-form-item label="Assignee（单人）">
-                <div class="picker-row">
-                  <el-input
-                    v-model="userTaskForm.assigneeLabel"
-                    placeholder="点击右侧按钮选择"
-                    readonly
+              <el-form-item label="处理人类型">
+                <el-select
+                  v-model="userTaskForm.handlerType"
+                  placeholder="请选择处理人类型"
+                  style="width: 100%"
+                  @change="onHandlerTypeChange"
+                >
+                  <el-option
+                    v-for="opt in handlerTypeOptions"
+                    :key="opt.value"
+                    :label="opt.label"
+                    :value="opt.value"
                   />
-                  <el-button type="primary" size="small" @click="openAssigneeDialog">
-                    选择
-                  </el-button>
-                  <el-button
-                    v-if="userTaskForm.assigneeLabel"
-                    size="small"
-                    @click="clearAssignee"
-                  >
-                    清空
-                  </el-button>
-                </div>
+                </el-select>
+                <div class="hint">切换处理人类型会自动加载对应配置表单</div>
               </el-form-item>
 
-              <el-form-item label="Candidate Users（多人）">
-                <div class="picker-row">
+              <!-- ASSIGNEE 指定人员 -->
+              <template v-if="userTaskForm.handlerType === 'ASSIGNEE'">
+                <el-form-item label="指定处理人">
+                  <div class="picker-row">
+                    <el-input
+                      v-model="userTaskForm.assigneeLabel"
+                      placeholder="点击右侧按钮选择"
+                      readonly
+                    />
+                    <el-button type="primary" size="small" @click="openAssigneeDialog">选择</el-button>
+                    <el-button v-if="userTaskForm.assigneeLabel" size="small" @click="clearAssignee">清空</el-button>
+                  </div>
+                </el-form-item>
+              </template>
+
+              <!-- CANDIDATE_USERS 候选人 -->
+              <template v-if="userTaskForm.handlerType === 'CANDIDATE_USERS'">
+                <el-form-item label="候选人（多选）">
+                  <div class="picker-row">
+                    <el-input
+                      v-model="userTaskForm.candidateUsersLabel"
+                      placeholder="点击右侧按钮选择"
+                      readonly
+                    />
+                    <el-button type="primary" size="small" @click="openCandidateUsersDialog">选择</el-button>
+                    <el-button v-if="userTaskForm.candidateUsersLabel" size="small" @click="clearCandidateUsers">清空</el-button>
+                  </div>
+                </el-form-item>
+              </template>
+
+              <!-- CANDIDATE_GROUPS 候选角色 -->
+              <template v-if="userTaskForm.handlerType === 'CANDIDATE_GROUPS'">
+                <el-form-item label="候选角色（多选）">
+                  <div class="picker-row">
+                    <el-input
+                      v-model="userTaskForm.candidateGroupsLabel"
+                      placeholder="点击右侧按钮选择"
+                      readonly
+                    />
+                    <el-button type="primary" size="small" @click="openCandidateGroupsDialog">选择</el-button>
+                    <el-button v-if="userTaskForm.candidateGroupsLabel" size="small" @click="clearCandidateGroups">清空</el-button>
+                  </div>
+                </el-form-item>
+              </template>
+
+              <!-- INITIATOR 发起人 -->
+              <template v-if="userTaskForm.handlerType === 'INITIATOR'">
+                <el-alert type="info" :closable="false" show-icon>
+                  流程发起人即为处理人，运行时自动取流程 startUserId。
+                </el-alert>
+              </template>
+
+              <!-- DEPT_LEADER 发起人部门负责人 -->
+              <template v-if="userTaskForm.handlerType === 'DEPT_LEADER'">
+                <el-form-item label="部门范围">
+                  <el-radio-group v-model="userTaskForm.deptLeaderScope">
+                    <el-radio value="current">发起人所在部门</el-radio>
+                    <el-radio value="parent">发起人上级部门</el-radio>
+                    <el-radio value="root">顶级部门</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+                <el-alert type="info" :closable="false" show-icon>
+                  运行时通过流程变量 deptLeaderUserIds 解析，任务监听器注入。
+                </el-alert>
+              </template>
+
+              <!-- ROLE_LEADER 角色负责人 -->
+              <template v-if="userTaskForm.handlerType === 'ROLE_LEADER'">
+                <el-form-item label="目标角色">
+                  <div class="picker-row">
+                    <el-input v-model="userTaskForm.roleLeaderLabel" readonly placeholder="点击选择角色" />
+                    <el-button type="primary" size="small" @click="openRoleLeaderDialog">选择</el-button>
+                    <el-button v-if="userTaskForm.roleLeaderLabel" size="small" @click="clearRoleLeader">清空</el-button>
+                  </div>
+                </el-form-item>
+              </template>
+
+              <!-- PREV_ASSIGNEE 上一步处理人 -->
+              <template v-if="userTaskForm.handlerType === 'PREV_ASSIGNEE'">
+                <el-alert type="info" :closable="false" show-icon>
+                  上一节点的处理人，运行时通过流程变量 prevAssignee 注入。
+                </el-alert>
+              </template>
+
+              <!-- FORM_FIELD 表单内人员字段 -->
+              <template v-if="userTaskForm.handlerType === 'FORM_FIELD'">
+                <el-form-item label="表单字段名">
                   <el-input
-                    v-model="userTaskForm.candidateUsersLabel"
-                    placeholder="点击右侧按钮选择"
-                    readonly
+                    v-model="userTaskForm.formFieldName"
+                    placeholder="例如：managerId"
                   />
-                  <el-button type="primary" size="small" @click="openCandidateUsersDialog">
-                    选择
-                  </el-button>
-                  <el-button
-                    v-if="userTaskForm.candidateUsersLabel"
-                    size="small"
-                    @click="clearCandidateUsers"
-                  >
-                    清空
-                  </el-button>
-                </div>
+                  <div class="hint">运行时取业务表单中该字段值作为处理人</div>
+                </el-form-item>
+              </template>
+
+              <!-- VARIABLE 流程变量 -->
+              <template v-if="userTaskForm.handlerType === 'VARIABLE'">
+                <el-form-item label="流程变量名">
+                  <el-input
+                    v-model="userTaskForm.varName"
+                    placeholder="例如：nextHandler"
+                  />
+                  <div class="hint">运行时取流程变量值作为处理人（变量值为用户名）</div>
+                </el-form-item>
+              </template>
+
+              <!-- 2. 多实例会签 / 或签 -->
+              <el-divider>多人审批方式</el-divider>
+              <el-form-item label="审批方式">
+                <el-select v-model="userTaskForm.multiInstanceType" style="width: 100%" @change="applyMultiInstance">
+                  <el-option label="单人审批" value="none" />
+                  <el-option label="会签（全部同意）" value="countersign" />
+                  <el-option label="或签（任一同意）" value="or_sign" />
+                  <el-option label="顺序会签" value="sequential" />
+                  <el-option label="按比例通过" value="ratio" />
+                </el-select>
               </el-form-item>
 
-              <el-form-item label="Candidate Groups（候选组）">
-                <div class="picker-row">
-                  <el-input
-                    v-model="userTaskForm.candidateGroupsLabel"
-                    placeholder="点击右侧按钮选择"
-                    readonly
-                  />
-                  <el-button type="primary" size="small" @click="openCandidateGroupsDialog">
-                    选择
-                  </el-button>
-                  <el-button
-                    v-if="userTaskForm.candidateGroupsLabel"
-                    size="small"
-                    @click="clearCandidateGroups"
-                  >
-                    清空
-                  </el-button>
-                </div>
+              <el-form-item v-if="userTaskForm.multiInstanceType === 'ratio'" label="通过比例（%）">
+                <el-input-number
+                  v-model="userTaskForm.multiInstanceRatio"
+                  :min="1"
+                  :max="100"
+                  controls-position="right"
+                />
               </el-form-item>
 
+              <!-- 3. 节点抄送 -->
+              <el-divider>节点抄送</el-divider>
+              <el-form-item label="触发时机">
+                <el-radio-group v-model="userTaskForm.ccTriggerOn">
+                  <el-radio value="node_end">节点完成后</el-radio>
+                  <el-radio value="node_start">节点开始时</el-radio>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item label="抄送人（多选）">
+                <div class="picker-row">
+                  <el-input v-model="userTaskForm.ccUsersLabel" readonly placeholder="点击选择抄送人" />
+                  <el-button type="primary" size="small" @click="openCcUsersDialog">选择</el-button>
+                  <el-button v-if="userTaskForm.ccUsersLabel" size="small" @click="clearCcUsers">清空</el-button>
+                </div>
+              </el-form-item>
+              <el-form-item label="抄送人姓名">
+                <el-input v-model="userTaskForm.ccNames" placeholder="可选，附加抄送说明" />
+              </el-form-item>
+
+              <!-- 4. 关联表单 / 其它 -->
               <el-divider>关联表单</el-divider>
               <el-form-item label="Form Key（表单标识）">
                 <el-input
@@ -154,7 +260,7 @@
     <!-- 选多人弹窗 -->
     <SelectorDialog
       v-model="dialogs.candidateUsers.visible"
-      title="选择 Candidate Users（多选）"
+      title="选择候选人（多选）"
       :options="employeeOptions"
       :columns="employeeColumns"
       value-key="username"
@@ -163,16 +269,39 @@
       @confirm="onCandidateUsersConfirm"
     />
 
-    <!-- 选组弹窗 -->
+    <!-- 选角色弹窗 -->
     <SelectorDialog
       v-model="dialogs.candidateGroups.visible"
-      title="选择 Candidate Groups（多选）"
+      title="选择候选角色（多选）"
       :options="roleOptions"
       :columns="roleColumns"
       value-key="roleCode"
       :multiple="true"
       :selected="userTaskForm.candidateGroupsValue"
       @confirm="onCandidateGroupsConfirm"
+    />
+
+    <!-- 角色负责人选角色 -->
+    <SelectorDialog
+      v-model="dialogs.roleLeader.visible"
+      title="选择目标角色"
+      :options="roleOptions"
+      :columns="roleColumns"
+      value-key="roleCode"
+      :selected="userTaskForm.roleLeaderCode"
+      @confirm="onRoleLeaderConfirm"
+    />
+
+    <!-- 抄送人选人 -->
+    <SelectorDialog
+      v-model="dialogs.ccUsers.visible"
+      title="选择抄送人（多选）"
+      :options="employeeOptions"
+      :columns="employeeColumns"
+      value-key="username"
+      :multiple="true"
+      :selected="userTaskForm.ccUserNames"
+      @confirm="onCcUsersConfirm"
     />
   </div>
 </template>
@@ -185,12 +314,12 @@ import 'bpmn-js/dist/assets/diagram-js.css'
 import 'bpmn-js/dist/assets/bpmn-js.css'
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css'
 import chineseTranslation from 'bpmn-js-i18n/translations/zn'
-// 注册 camunda moddle，让 bpmn-js 识别 camunda:assignee / camunda:candidateUsers 等
-// Flowable 7 完全兼容 camunda 命名空间，运行时按 camunda 属性解析处理人
 import camundaModdleDescriptor from 'camunda-bpmn-moddle/resources/camunda.json'
 import SelectorDialog from './SelectorDialog.vue'
 import { listAllEmployees } from '@/api/system/employee'
 import { listAllRoles } from '@/api/system/role'
+import { getDictDataByCodes } from '@/api/dict'
+import { saveBatchNodeHandler } from '@/api/workflow/nodeHandler'
 
 export default {
   name: 'BpmnDesigner',
@@ -199,46 +328,88 @@ export default {
     xml: {
       type: String,
       default: ''
+    },
+    /**
+     * 流程定义 ID（编辑已有流程时传入），用于按 processDefinitionId 加载/保存节点处理人配置
+     */
+    processDefinitionId: {
+      type: String,
+      default: ''
+    },
+    /**
+     * 流程定义 KEY（部署后从 BPMN 解析得到，可通过 ref 暴露给父组件）
+     */
+    processDefinitionKey: {
+      type: String,
+      default: ''
     }
   },
-  emits: ['save', 'change'],
+  emits: ['save', 'change', 'process-key-change'],
   setup(props, { emit }) {
     const canvas = ref(null)
     const fileInput = ref(null)
     const modeler = ref(null)
 
-    // 当前选中的 bpmn 元素
     const selectedElement = ref(null)
-    // 节点基础表单
     const baseForm = ref(null)
+
     // UserTask 专属表单
     const userTaskForm = reactive({
-      // 显示用
-      assigneeLabel: '',
-      candidateUsersLabel: '',
-      candidateGroupsLabel: '',
-      // 实际值（username 字符串 / username 数组 / roleCode 数组）
+      handlerType: 'ASSIGNEE',
+      // 指定人员
       assigneeValue: '',
+      assigneeLabel: '',
+      // 候选人
       candidateUsersValue: [],
+      candidateUsersLabel: '',
+      // 候选角色
       candidateGroupsValue: [],
-      // 其它字段
+      candidateGroupsLabel: '',
+      // 部门负责人
+      deptLeaderScope: 'current',
+      // 角色负责人
+      roleLeaderCode: '',
+      roleLeaderLabel: '',
+      // 表单字段
+      formFieldName: '',
+      // 流程变量
+      varName: '',
+      // 多实例
+      multiInstanceType: 'none',
+      multiInstanceRatio: 60,
+      // 抄送
+      ccTriggerOn: 'node_end',
+      ccUserNames: [],
+      ccUsersLabel: '',
+      ccNames: '',
+      // 其它
       formKey: '',
       dueDate: '',
       priority: 50
     })
 
-    // 弹窗可见性
     const dialogs = reactive({
       assignee: { visible: false },
       candidateUsers: { visible: false },
-      candidateGroups: { visible: false }
+      candidateGroups: { visible: false },
+      roleLeader: { visible: false },
+      ccUsers: { visible: false }
     })
 
-    // 选项数据
     const employeeOptions = ref([])
     const roleOptions = ref([])
+    const handlerTypeOptions = ref([
+      { label: '指定人员', value: 'ASSIGNEE' },
+      { label: '候选人', value: 'CANDIDATE_USERS' },
+      { label: '候选角色', value: 'CANDIDATE_GROUPS' },
+      { label: '发起人', value: 'INITIATOR' },
+      { label: '发起人部门负责人', value: 'DEPT_LEADER' },
+      { label: '角色负责人', value: 'ROLE_LEADER' },
+      { label: '上一步处理人', value: 'PREV_ASSIGNEE' },
+      { label: '表单内人员字段', value: 'FORM_FIELD' },
+      { label: '流程变量', value: 'VARIABLE' }
+    ])
 
-    // 列配置
     const employeeColumns = [
       { prop: 'employeeName', label: '姓名', width: 100 },
       { prop: 'username', label: '登录账号', width: 120 },
@@ -249,23 +420,14 @@ export default {
       { prop: 'roleCode', label: '角色编码', width: 160 }
     ]
 
-    // 是否显示侧栏
     const showPanel = computed(() => !!selectedElement.value)
-    // 面板标题
     const panelTitle = computed(() => {
       if (!selectedElement.value) return '属性'
       const bo = selectedElement.value.businessObject
-      const type = bo.$type || 'Element'
-      // bpmn 命名空间前缀统一去掉
-      return `${type} 属性`
+      return `${bo.$type || 'Element'} 属性`
     })
-    // 当前选中是否为 UserTask
-    const isUserTask = computed(() => {
-      if (!selectedElement.value) return false
-      return selectedElement.value.type === 'bpmn:UserTask'
-    })
+    const isUserTask = computed(() => selectedElement.value?.type === 'bpmn:UserTask')
 
-    // 自定义中文模块
     const customTranslate = {
       translate: ['value', function (template, replacements) {
         replacements = replacements || {}
@@ -277,35 +439,40 @@ export default {
       }]
     }
 
-    // 导入中锁：避免 onMounted 的 importBpmn 与 props.xml 触发的 watch importBpmn 并发执行
-    // 并发时 bpmn-js 内部按 rootElement id 索引的缓存会被破坏，抛 "root-0" 错误
     let importing = false
     let pendingXml = null
 
-    // 初始化 BpmnModeler
+    /**
+     * 初始化 BpmnModeler
+     */
     const initModeler = () => {
       modeler.value = new BpmnModeler({
         container: canvas.value,
         keyboard: { bindTo: window },
         additionalModules: [customTranslate],
-        // 注册 camunda moddle 后，bo.assignee / bo.candidateUsers 等即可正常读写
         moddleExtensions: { camunda: camundaModdleDescriptor }
       })
 
-      // 监听 commandStack，序列化变更并向父组件发送最新 XML
       modeler.value.on('commandStack.changed', () => {
         modeler.value.saveXML({ format: true }).then((result) => {
           emit('change', result.xml)
+          // 解析并通知 processDefinitionKey
+          try {
+            const processMatch = result.xml.match(/<bpmn:process[^>]*\bid="([^"]+)"/)
+            if (processMatch) {
+              emit('process-key-change', processMatch[1])
+            }
+          } catch (e) {
+            /* ignore */
+          }
         })
       })
 
-      // 监听选中变化
       const eventBus = modeler.value.get('eventBus')
       eventBus.on('selection.changed', (e) => {
         const sel = (e.newSelection && e.newSelection[0]) || null
         handleElementSelected(sel)
       })
-      // 监听元素属性变化（外部修改后回填表单）
       eventBus.on('element.changed', (e) => {
         if (selectedElement.value && e.element && e.element.id === selectedElement.value.id) {
           fillFormFromElement(e.element)
@@ -317,7 +484,6 @@ export default {
 
     /**
      * 选中节点后填充表单
-     * @param {Object} element bpmn-js 元素
      */
     const handleElementSelected = (element) => {
       selectedElement.value = element
@@ -338,9 +504,23 @@ export default {
         name: bo.name || ''
       }
       if (element.type === 'bpmn:UserTask') {
+        // 解析 handlerConfig (若元素上存在 camunda:assignee 等，写回表单)
         const assignee = bo.assignee || ''
         const candidateUsersStr = bo.candidateUsers || ''
         const candidateGroupsStr = bo.candidateGroups || ''
+
+        // 默认根据已有信息推断 handlerType
+        if (assignee && assignee.startsWith('${') && assignee.includes('initiator')) {
+          userTaskForm.handlerType = 'INITIATOR'
+        } else if (assignee) {
+          userTaskForm.handlerType = 'ASSIGNEE'
+        } else if (candidateUsersStr) {
+          userTaskForm.handlerType = 'CANDIDATE_USERS'
+        } else if (candidateGroupsStr) {
+          userTaskForm.handlerType = 'CANDIDATE_GROUPS'
+        } else {
+          userTaskForm.handlerType = 'ASSIGNEE'
+        }
 
         userTaskForm.assigneeValue = assignee
         userTaskForm.candidateUsersValue = candidateUsersStr
@@ -354,27 +534,30 @@ export default {
         userTaskForm.dueDate = bo.dueDate || ''
         userTaskForm.priority = bo.priority != null ? Number(bo.priority) : 50
 
-        // 反查 label
+        // 解析多实例：bpmn 元素的 loopCharacteristics
+        const loop = bo.loopCharacteristics
+        if (loop) {
+          userTaskForm.multiInstanceType = loop.isSequential ? 'sequential' : 'countersign'
+        } else {
+          userTaskForm.multiInstanceType = 'none'
+        }
+
         userTaskForm.assigneeLabel = resolveEmployeeLabel(assignee)
         userTaskForm.candidateUsersLabel = userTaskForm.candidateUsersValue
           .map((u) => resolveEmployeeLabel(u))
-          .filter(Boolean)
-          .join('、')
+          .filter(Boolean).join('、')
         userTaskForm.candidateGroupsLabel = userTaskForm.candidateGroupsValue
           .map((g) => resolveRoleLabel(g))
-          .filter(Boolean)
-          .join('、')
+          .filter(Boolean).join('、')
       }
     }
 
-    /** 通过 username 反查员工姓名 */
     const resolveEmployeeLabel = (username) => {
       if (!username) return ''
       const e = employeeOptions.value.find((o) => o.username === username)
       if (!e) return username
       return e.employeeName ? `${e.employeeName}（${username}）` : username
     }
-    /** 通过 roleCode 反查角色名 */
     const resolveRoleLabel = (code) => {
       if (!code) return ''
       const r = roleOptions.value.find((o) => o.roleCode === code)
@@ -382,73 +565,177 @@ export default {
       return r.roleName ? `${r.roleName}（${code}）` : code
     }
 
-    // 通用：通过 modeling 服务更新属性
     const updateElementProperty = (key, value) => {
       if (!selectedElement.value || !modeler.value) return
       const modeling = modeler.value.get('modeling')
       modeling.updateProperties(selectedElement.value, { [key]: value })
     }
 
-    // 基础属性变更（name）
-    const onBasePropChange = (key, value) => {
-      updateElementProperty(key, value)
+    const onBasePropChange = (key, value) => updateElementProperty(key, value)
+    const onUserTaskPropChange = (key, value) => updateElementProperty(key, value)
+
+    /**
+     * 处理人类型变化：把当前类型写到 bpmn 元素的 camunda 命名空间
+     * 注意：bpmn-js 的 camunda 扩展支持的属性：
+     *   - assignee（单值）
+     *   - candidateUsers（字符串，逗号分隔）
+     *   - candidateGroups（字符串，逗号分隔）
+     * 对 DEPT_LEADER / PREV_ASSIGNEE / FORM_FIELD / VARIABLE 这类需要运行时解析的类型，
+     * 这里统一以表达式占位，真实解析在任务监听器中完成。
+     */
+    const onHandlerTypeChange = () => {
+      if (!selectedElement.value || selectedElement.value.type !== 'bpmn:UserTask') return
+      const modeling = modeler.value.get('modeling')
+      const bo = selectedElement.value.businessObject
+      const t = userTaskForm.handlerType
+
+      let assignee = ''
+      let candidateUsers = ''
+      let candidateGroups = ''
+
+      switch (t) {
+        case 'ASSIGNEE':
+          assignee = userTaskForm.assigneeValue || ''
+          break
+        case 'CANDIDATE_USERS':
+          candidateUsers = (userTaskForm.candidateUsersValue || []).join(',')
+          break
+        case 'CANDIDATE_GROUPS':
+          candidateGroups = (userTaskForm.candidateGroupsValue || []).join(',')
+          break
+        case 'INITIATOR':
+          assignee = '${initiator}'
+          break
+        case 'FORM_FIELD':
+          assignee = '${' + (userTaskForm.formFieldName || 'managerId') + '}'
+          break
+        case 'VARIABLE':
+          assignee = '${' + (userTaskForm.varName || 'nextHandler') + '}'
+          break
+        case 'PREV_ASSIGNEE':
+          assignee = '${prevAssignee}'
+          break
+        case 'DEPT_LEADER':
+        case 'ROLE_LEADER':
+          // 复杂类型：使用占位表达式，由 TaskListener 注入
+          assignee = '${nextHandler}'
+          break
+        default:
+          break
+      }
+
+      modeling.updateProperties(selectedElement.value, {
+        assignee,
+        candidateUsers,
+        candidateGroups
+      })
     }
 
-    // UserTask 字段变更（formKey / dueDate / priority）
-    const onUserTaskPropChange = (key, value) => {
-      updateElementProperty(key, value)
+    /**
+     * 多实例会签 / 或签：将 loopCharacteristics 写到 bpmn 元素
+     */
+    const applyMultiInstance = () => {
+      if (!selectedElement.value || selectedElement.value.type !== 'bpmn:UserTask' || !modeler.value) return
+      const modeling = modeler.value.get('modeling')
+      const bo = selectedElement.value.businessObject
+      const moddle = modeler.value.get('moddle')
+      const bpmnReplace = modeler.value.get('bpmnReplace', false)
+
+      const t = userTaskForm.multiInstanceType
+      if (t === 'none') {
+        if (bo.loopCharacteristics) {
+          modeling.updateProperties(selectedElement.value, { loopCharacteristics: undefined })
+        }
+        return
+      }
+
+      const isSequential = t === 'sequential'
+      const isRatio = t === 'ratio'
+      const props = {
+        isSequential,
+        // 集合默认走 candidateUsers/candidateGroups 或者 assignee；用 camunda:Collection 表达式
+        'camunda:collection': '${multiInstanceUsers}',
+        'camunda:elementVariable': 'assignee'
+      }
+      if (isRatio) {
+        props['camunda:completionCondition'] =
+          `nrOfCompletedInstances/nrOfInstances >= ${userTaskForm.multiInstanceRatio / 100}`
+      } else if (t === 'countersign') {
+        props['camunda:completionCondition'] = 'nrOfCompletedInstances/nrOfInstances >= 1'
+      } else if (t === 'or_sign') {
+        props['camunda:completionCondition'] = 'nrOfCompletedInstances >= 1'
+      } else if (t === 'sequential') {
+        props['camunda:completionCondition'] = 'nrOfCompletedInstances/nrOfInstances >= 1'
+      }
+
+      const loopCharacteristics = moddle.create('bpmn:MultiInstanceLoopCharacteristics', props)
+      modeling.updateProperties(selectedElement.value, { loopCharacteristics })
     }
 
-    /** 打开选 Assignee 弹窗（单选） */
-    const openAssigneeDialog = () => {
-      dialogs.assignee.visible = true
-    }
+    /**
+     * 选 Assignee 弹窗
+     */
+    const openAssigneeDialog = () => { dialogs.assignee.visible = true }
     const onAssigneeConfirm = (username) => {
-      // 写入 bo.assignee（moddle 序列化时会自动加上 camunda: 前缀）
-      updateElementProperty('assignee', username || '')
       userTaskForm.assigneeValue = username || ''
       userTaskForm.assigneeLabel = resolveEmployeeLabel(username)
+      onHandlerTypeChange()
     }
     const clearAssignee = () => {
-      updateElementProperty('assignee', '')
       userTaskForm.assigneeValue = ''
       userTaskForm.assigneeLabel = ''
+      onHandlerTypeChange()
     }
 
-    /** 打开选 Candidate Users 弹窗（多选） */
-    const openCandidateUsersDialog = () => {
-      dialogs.candidateUsers.visible = true
-    }
+    const openCandidateUsersDialog = () => { dialogs.candidateUsers.visible = true }
     const onCandidateUsersConfirm = (usernames) => {
       const list = Array.isArray(usernames) ? usernames : []
-      // camunda moddle 中 candidateUsers 是 String（逗号分隔）
-      updateElementProperty('candidateUsers', list.join(','))
       userTaskForm.candidateUsersValue = list
       userTaskForm.candidateUsersLabel = list.map((u) => resolveEmployeeLabel(u)).filter(Boolean).join('、')
+      onHandlerTypeChange()
     }
     const clearCandidateUsers = () => {
-      updateElementProperty('candidateUsers', '')
       userTaskForm.candidateUsersValue = []
       userTaskForm.candidateUsersLabel = ''
+      onHandlerTypeChange()
     }
 
-    /** 打开选 Candidate Groups 弹窗（多选） */
-    const openCandidateGroupsDialog = () => {
-      dialogs.candidateGroups.visible = true
-    }
+    const openCandidateGroupsDialog = () => { dialogs.candidateGroups.visible = true }
     const onCandidateGroupsConfirm = (codes) => {
       const list = Array.isArray(codes) ? codes : []
-      updateElementProperty('candidateGroups', list.join(','))
       userTaskForm.candidateGroupsValue = list
       userTaskForm.candidateGroupsLabel = list.map((g) => resolveRoleLabel(g)).filter(Boolean).join('、')
+      onHandlerTypeChange()
     }
     const clearCandidateGroups = () => {
-      updateElementProperty('candidateGroups', '')
       userTaskForm.candidateGroupsValue = []
       userTaskForm.candidateGroupsLabel = ''
+      onHandlerTypeChange()
     }
 
-    /** 清空当前选择 */
+    const openRoleLeaderDialog = () => { dialogs.roleLeader.visible = true }
+    const onRoleLeaderConfirm = (code) => {
+      userTaskForm.roleLeaderCode = code || ''
+      userTaskForm.roleLeaderLabel = resolveRoleLabel(code)
+      onHandlerTypeChange()
+    }
+    const clearRoleLeader = () => {
+      userTaskForm.roleLeaderCode = ''
+      userTaskForm.roleLeaderLabel = ''
+      onHandlerTypeChange()
+    }
+
+    const openCcUsersDialog = () => { dialogs.ccUsers.visible = true }
+    const onCcUsersConfirm = (usernames) => {
+      const list = Array.isArray(usernames) ? usernames : []
+      userTaskForm.ccUserNames = list
+      userTaskForm.ccUsersLabel = list.map((u) => resolveEmployeeLabel(u)).filter(Boolean).join('、')
+    }
+    const clearCcUsers = () => {
+      userTaskForm.ccUserNames = []
+      userTaskForm.ccUsersLabel = ''
+    }
+
     const clearSelection = () => {
       if (!modeler.value) return
       const selection = modeler.value.get('selection')
@@ -457,30 +744,106 @@ export default {
       baseForm.value = null
     }
 
-    /** 加载后端全量数据 */
+    /**
+     * 加载员工 / 角色列表 + 字典
+     */
     const loadOptions = async () => {
       try {
-        // 并行拉取，失败不阻塞画布渲染
         const [emp, role] = await Promise.all([
-          listAllEmployees().catch((e) => {
-            console.error('加载员工列表失败', e)
-            ElMessage.warning('加载员工列表失败，请稍后重试')
-            return []
-          }),
-          listAllRoles().catch((e) => {
-            console.error('加载角色列表失败', e)
-            ElMessage.warning('加载角色列表失败，请稍后重试')
-            return []
-          })
+          listAllEmployees().catch(() => []),
+          listAllRoles().catch(() => [])
         ])
         employeeOptions.value = Array.isArray(emp) ? emp : []
         roleOptions.value = Array.isArray(role) ? role : []
       } catch (e) {
         console.error('加载选项数据失败', e)
       }
+      // 字典：handlerType 从后端拉取（用户希望遵循业务字典）
+      try {
+        const dictMap = await getDictDataByCodes('wf_handler_type')
+        const records = dictMap?.wf_handler_type || []
+        if (Array.isArray(records) && records.length > 0) {
+          handlerTypeOptions.value = records.map((r) => ({
+            label: r.dictLabel,
+            value: r.dictValue
+          }))
+        }
+      } catch (e) {
+        console.warn('加载处理人类型字典失败，使用本地默认', e)
+      }
     }
 
-    // 导入BPMN（带锁，避免并发 importXML 破坏 bpmn-js 内部状态）
+    /**
+     * 提取 bpmn 中所有 UserTask 节点的处理人配置
+     * （用于部署时持久化到 wf_node_handler）
+     */
+    const collectNodeHandlers = () => {
+      if (!modeler.value) return []
+      const elementRegistry = modeler.value.get('elementRegistry')
+      const result = []
+      elementRegistry.filter((el) => el.type === 'bpmn:UserTask').forEach((el) => {
+        const bo = el.businessObject
+        // 构造 handlerConfig JSON
+        let handlerConfig = {}
+        switch (userTaskForm.handlerType) {
+          case 'ASSIGNEE':
+            handlerConfig = { username: userTaskForm.assigneeValue }
+            break
+          case 'CANDIDATE_USERS':
+            handlerConfig = { usernames: userTaskForm.candidateUsersValue }
+            break
+          case 'CANDIDATE_GROUPS':
+            handlerConfig = { roleCodes: userTaskForm.candidateGroupsValue }
+            break
+          case 'FORM_FIELD':
+            handlerConfig = { fieldName: userTaskForm.formFieldName }
+            break
+          case 'VARIABLE':
+            handlerConfig = { varName: userTaskForm.varName }
+            break
+          case 'DEPT_LEADER':
+            handlerConfig = { scope: userTaskForm.deptLeaderScope }
+            break
+          case 'ROLE_LEADER':
+            handlerConfig = { roleCode: userTaskForm.roleLeaderCode }
+            break
+          case 'INITIATOR':
+          case 'PREV_ASSIGNEE':
+            handlerConfig = {}
+            break
+        }
+        // 多实例配置
+        const multiInstanceConfig = userTaskForm.multiInstanceType === 'ratio'
+          ? { type: 'ratio', ratio: userTaskForm.multiInstanceRatio }
+          : { type: userTaskForm.multiInstanceType }
+        // 抄送配置
+        const ccConfig = {
+          triggerOn: userTaskForm.ccTriggerOn,
+          usernames: userTaskForm.ccUserNames,
+          names: userTaskForm.ccNames
+        }
+        result.push({
+          nodeId: el.id,
+          nodeName: bo.name || '',
+          handlerType: userTaskForm.handlerType,
+          handlerConfig: JSON.stringify(handlerConfig),
+          multiInstanceType: userTaskForm.multiInstanceType,
+          multiInstanceConfig: JSON.stringify(multiInstanceConfig),
+          ccConfig: JSON.stringify(ccConfig)
+        })
+      })
+      return result
+    }
+
+    /**
+     * 暴露给父组件：部署前调用，持久化节点处理人配置
+     */
+    const saveAllNodeHandlers = async (processDefinitionId, processDefinitionKey) => {
+      const handlers = collectNodeHandlers()
+      if (!handlers.length) return
+      await saveBatchNodeHandler(processDefinitionId, processDefinitionKey, handlers)
+    }
+
     const importBpmn = async (xml) => {
       if (!modeler.value) return
       if (importing) {
@@ -515,6 +878,11 @@ export default {
         await modeler.value.importXML(bpmnXml)
         const cv = modeler.value.get('canvas')
         cv.zoom('fit-viewport')
+        // 解析 process key
+        const processMatch = bpmnXml.match(/<bpmn:process[^>]*\bid="([^"]+)"/)
+        if (processMatch) {
+          emit('process-key-change', processMatch[1])
+        }
       } catch (error) {
         console.error('导入BPMN失败', error)
       } finally {
@@ -529,7 +897,6 @@ export default {
       }
     }
 
-    // 保存
     const save = async () => {
       try {
         const result = await modeler.value.saveXML({ format: true })
@@ -539,7 +906,6 @@ export default {
       }
     }
 
-    // 导出XML
     const exportXml = async () => {
       try {
         const result = await modeler.value.saveXML({ format: true })
@@ -557,10 +923,7 @@ export default {
       }
     }
 
-    // 导入XML
-    const importXml = () => {
-      fileInput.value.click()
-    }
+    const importXml = () => { fileInput.value.click() }
     const handleFileImport = (event) => {
       const file = event.target.files[0]
       if (!file) return
@@ -571,25 +934,12 @@ export default {
       reader.readAsText(file)
     }
 
-    // 缩放
-    const zoomIn = () => {
-      const cv = modeler.value.get('canvas')
-      cv.zoom(cv.zoom() * 1.1)
-    }
-    const zoomOut = () => {
-      const cv = modeler.value.get('canvas')
-      cv.zoom(cv.zoom() * 0.9)
-    }
-    const zoomReset = () => {
-      const cv = modeler.value.get('canvas')
-      cv.zoom('fit-viewport')
-    }
+    const zoomIn = () => { modeler.value.get('canvas').zoom(modeler.value.get('canvas').zoom() * 1.1) }
+    const zoomOut = () => { modeler.value.get('canvas').zoom(modeler.value.get('canvas').zoom() * 0.9) }
+    const zoomReset = () => { modeler.value.get('canvas').zoom('fit-viewport') }
 
-    // 监听 xml prop 变化
     watch(() => props.xml, (newXml) => {
-      if (newXml) {
-        importBpmn(newXml)
-      }
+      if (newXml) importBpmn(newXml)
     })
 
     onMounted(() => {
@@ -608,7 +958,6 @@ export default {
       canvas,
       fileInput,
       modeler,
-      // 状态
       baseForm,
       userTaskForm,
       dialogs,
@@ -616,10 +965,10 @@ export default {
       roleOptions,
       employeeColumns,
       roleColumns,
+      handlerTypeOptions,
       showPanel,
       panelTitle,
       isUserTask,
-      // 方法
       save,
       exportXml,
       importXml,
@@ -629,6 +978,8 @@ export default {
       zoomReset,
       onBasePropChange,
       onUserTaskPropChange,
+      onHandlerTypeChange,
+      applyMultiInstance,
       openAssigneeDialog,
       onAssigneeConfirm,
       clearAssignee,
@@ -638,7 +989,14 @@ export default {
       openCandidateGroupsDialog,
       onCandidateGroupsConfirm,
       clearCandidateGroups,
-      clearSelection
+      openRoleLeaderDialog,
+      onRoleLeaderConfirm,
+      clearRoleLeader,
+      openCcUsersDialog,
+      onCcUsersConfirm,
+      clearCcUsers,
+      clearSelection,
+      saveAllNodeHandlers
     }
   }
 }
@@ -671,7 +1029,7 @@ export default {
 }
 
 .property-panel {
-  width: 340px;
+  width: 360px;
   border-left: 1px solid #e5e7eb;
   background: #fff;
   display: flex;
@@ -708,6 +1066,12 @@ export default {
 .picker-row .el-input {
   flex: 1;
   min-width: 0;
+}
+
+.hint {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
 }
 
 :deep(.el-divider) {
