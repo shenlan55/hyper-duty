@@ -288,6 +288,11 @@ export const useMenuStore = defineStore('menu', {
               name: '委托配置',
               path: '/workflow/delegate-list',
               icon: 'User'
+            },
+            {
+              name: '我发起的',
+              path: '/workflow/my-started',
+              icon: 'Promotion'
             }
           ]
         },
@@ -363,6 +368,7 @@ export const useMenuStore = defineStore('menu', {
         '/workflow/designer': '流程设计器',
         '/workflow/todo-task': '待办任务',
         '/workflow/done-task': '已办任务',
+        '/workflow/my-started': '我发起的',
         '/score': '积分管理',
         '/score/event': '积分事件',
         '/score/record': '积分记录',

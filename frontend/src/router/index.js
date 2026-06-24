@@ -297,6 +297,12 @@ const routes = [
                 name: 'CcList',
                 component: () => import('../views/workflow/CcList.vue'),
                 meta: { title: '抄送我的' }
+              },
+              {
+                path: 'my-started',
+                name: 'MyStartedProcessList',
+                component: () => import('../views/workflow/MyStartedList.vue'),
+                meta: { title: '我发起的' }
               }
             ]
           },
