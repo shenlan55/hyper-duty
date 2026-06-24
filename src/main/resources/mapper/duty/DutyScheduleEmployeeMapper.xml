@@ -19,11 +19,11 @@
     <select id="getScheduleEmployeesWithDetails" resultType="java.util.Map">
         SELECT
             e.id,
-            e.employee_name,
-            e.employee_code,
-            e.dept_id,
+            e.employee_name AS employeeName,
+            e.employee_code AS employeeCode,
+            e.dept_id AS deptId,
             e.status,
-            dse.is_leader
+            dse.is_leader AS isLeader
         FROM
             duty_schedule_employee dse
         LEFT JOIN

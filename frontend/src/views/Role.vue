@@ -97,11 +97,12 @@
     </el-dialog>
     
     <!-- 用户绑定对话框 -->
-    <el-dialog v-model="userBindVisible" title="角色用户绑定" width="900px" max-width="90vw">
-      <div class="user-bind-container" style="height: 500px;">
+    <el-dialog v-model="userBindVisible" title="角色用户绑定" width="1000px">
+      <div style="padding: 10px;">
         <PersonSelector
           v-model="selectedUsers"
           @change="handleUserSelectionChange"
+          style="height: 520px;"
         />
       </div>
       <template #footer>

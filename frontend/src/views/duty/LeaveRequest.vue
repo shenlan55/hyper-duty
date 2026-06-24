@@ -508,7 +508,7 @@ const getEmployeeName = (employeeId) => {
     return userStore.employeeName
   }
   const employee = employeeList.value.find(e => parseInt(e.id) === targetId)
-  return employee ? employee.employeeName : '未知'
+  return employee ? (employee.employeeName || employee.employeename || employee.name || '未知') : '未知'
 }
 
 const getApproverName = (approverId) => {
@@ -519,7 +519,7 @@ const getApproverName = (approverId) => {
     return userStore.employeeName
   }
   const employee = employeeList.value.find(e => parseInt(e.id) === targetId)
-  return employee ? employee.employeeName : '未知'
+  return employee ? (employee.employeeName || employee.employeename || employee.name || '未知') : '未知'
 }
 
 const getShiftNames = (shiftConfigIds) => {

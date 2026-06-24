@@ -187,7 +187,7 @@
                       <el-option
                         v-for="employee in getAvailableSubstitutesForRow(scope.row)"
                         :key="employee.id"
-                        :label="employee.employeeName"
+                        :label="employee.employeeName || employee.employeename || employee.name || `ID:${employee.id}`"
                         :value="employee.id"
                       />
                     </el-select>
@@ -477,7 +477,7 @@ const getApprovalStatusColor = (status) => {
 
 const getEmployeeName = (employeeId) => {
   const employee = scheduleEmployeeList.value.find(e => e.id === employeeId) || employeeList.value.find(e => e.id === employeeId)
-  return employee ? employee.employeeName : '未知'
+  return employee ? (employee.employeeName || employee.employeename || employee.name || '未知') : '未知'
 }
 
 const getShiftNames = (shiftConfigIds) => {

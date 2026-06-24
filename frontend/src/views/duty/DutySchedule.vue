@@ -140,22 +140,13 @@
     <el-dialog
       v-model="employeeDialogVisible"
       title="值班人员管理"
-      width="700px"
+      width="1000px"
     >
       <div class="employee-manage">
         <el-tabs v-model="activeTab">
           <el-tab-pane label="人员列表" name="list">
-            <div class="selected-employees">
-              <div class="section-title">已选人员（{{ selectedEmployeeList.length }}人）</div>
-              <el-transfer
-                v-model="selectedEmployeeList"
-                :data="allEmployeeList"
-                :titles="['可选人员', '已选人员']"
-                filterable
-                filter-placeholder="搜索人员"
-                :render-content="renderTransferItem"
-              />
-            </div>
+            <!-- 使用通用选人组件 -->
+            <PersonSelector v-model="selectedEmployeeList" />
           </el-tab-pane>
           <el-tab-pane label="值班长设置" name="leader">
             <div class="leader-setting">
@@ -200,7 +191,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BaseTable from '../../components/BaseTable.vue'
@@ -211,7 +202,7 @@ import {
   addSchedule,
   updateSchedule,
   deleteSchedule,
-  getScheduleEmployees,
+  getScheduleEmployeesWithDetails, // 使用带详情的接口获取完整员工信息
   getScheduleLeaders,
   getScheduleShifts,
   updateScheduleEmployees,
@@ -220,6 +211,7 @@ import {
   updateScheduleEmployeesAndLeaders
 } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
+import PersonSelector from '../../components/PersonSelector.vue'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { formatDate, formatDateTime } from '../../utils/dateUtils'
 import { safeInput } from '../../utils/xssUtil'
@@ -349,10 +341,13 @@ const fetchScheduleList = async () => {
 const fetchEmployeeList = async () => {
   try {
     const data = await getEmployeeList(1, 1000, '') // 传递较大的pageSize以获取所有员工
-    allEmployeeList.value = (data?.records || []).map(emp => ({
+    const employees = data?.records || []
+
+    // 用于transfer组件（保持兼容）
+    allEmployeeList.value = employees.map(emp => ({
       key: emp.id,
       label: emp.employeeName,
-      isDisabled: emp.status !== 1  // 标记是否禁用，但不使用 el-transfer 的 disabled 属性
+      isDisabled: emp.status !== 1  // 标记是否禁用
     }))
   } catch (error) {
     ElMessage.error('获取员工列表失败')
@@ -490,12 +485,16 @@ const handleDelete = async (id) => {
 
 const openEmployeeDialog = async (schedule) => {
   currentScheduleId.value = schedule.id
+
   try {
+    // 使用带详情的接口获取完整员工信息（包括姓名、部门等）
     const [employeeData, leaderData, shiftData] = await Promise.all([
-      getScheduleEmployees(schedule.id),
+      getScheduleEmployeesWithDetails(schedule.id),
       getScheduleLeaders(schedule.id),
       getScheduleShifts(schedule.id)
     ])
+
+    // 直接使用后端返回的完整员工信息
     selectedEmployeeList.value = employeeData || []
     selectedLeaderList.value = leaderData || []
     selectedShiftList.value = shiftData || []
@@ -561,7 +560,6 @@ onMounted(async () => {
 }
 
 .section-title {
-  font-size: 14px;
   font-weight: bold;
   margin-bottom: 10px;
   color: #303133;

@@ -53,7 +53,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="1100px"
+      width="1000px"
       destroy-on-close
     >
       <ScheduleModeEdit

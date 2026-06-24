@@ -117,9 +117,9 @@
     </el-dialog>
 
     <!-- 筛选区员工选择对话框 -->
-    <el-dialog v-model="filterEmployeeDialogVisible" title="选择员工" width="900px" max-width="90vw">
+    <el-dialog v-model="filterEmployeeDialogVisible" title="选择员工" width="1000px">
       <div style="padding: 10px;">
-        <PersonSelector v-model="filterSelectedEmployees" style="height: 500px;" />
+        <PersonSelector v-model="filterSelectedEmployees" style="height: 520px;" />
       </div>
       <template #footer>
         <el-button @click="filterEmployeeDialogVisible = false">取消</el-button>
@@ -128,9 +128,9 @@
     </el-dialog>
 
     <!-- 录入表单员工选择对话框 -->
-    <el-dialog v-model="formEmployeeDialogVisible" title="选择员工" width="900px" max-width="90vw">
+    <el-dialog v-model="formEmployeeDialogVisible" title="选择员工" width="1000px">
       <div style="padding: 10px;">
-        <PersonSelector v-model="formSelectedEmployees" style="height: 500px;" />
+        <PersonSelector v-model="formSelectedEmployees" style="height: 520px;" />
       </div>
       <template #footer>
         <el-button @click="formEmployeeDialogVisible = false">取消</el-button>

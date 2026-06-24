@@ -40,7 +40,7 @@
     </el-dialog>
 
     <!-- 转办对话框 -->
-    <el-dialog v-model="reassignDialogVisible" title="转办任务" width="900px">
+    <el-dialog v-model="reassignDialogVisible" title="转办任务" width="1000px">
       <el-form :model="reassignForm" label-width="100px">
         <el-form-item label="转办人">
           <el-input v-model="reassignForm.userName" disabled placeholder="点击下方选择人员" />
@@ -49,6 +49,7 @@
           <PersonSelector
             v-model="selectedReassignPerson"
             @change="handleReassignPersonChange"
+            style="height: 400px;"
           />
         </el-form-item>
         <el-form-item label="转办原因">
@@ -62,7 +63,7 @@
     </el-dialog>
 
     <!-- 委托对话框 -->
-    <el-dialog v-model="delegateDialogVisible" title="委托任务" width="900px">
+    <el-dialog v-model="delegateDialogVisible" title="委托任务" width="1000px">
       <el-form :model="delegateForm" label-width="100px">
         <el-form-item label="委托人">
           <el-input v-model="delegateForm.userName" disabled placeholder="点击下方选择人员" />
@@ -71,6 +72,7 @@
           <PersonSelector
             v-model="selectedDelegatePerson"
             @change="handleDelegatePersonChange"
+            style="height: 400px;"
           />
         </el-form-item>
         <el-form-item label="委托原因">
@@ -84,7 +86,7 @@
     </el-dialog>
 
     <!-- 批量转办对话框 -->
-    <el-dialog v-model="batchReassignDialogVisible" title="批量转办" width="900px">
+    <el-dialog v-model="batchReassignDialogVisible" title="批量转办" width="1000px">
       <el-form :model="batchReassignForm" label-width="100px">
         <el-form-item label="选择待转交的人">
           <el-select v-model="batchReassignForm.fromUserId" placeholder="请选择" style="width: 100%" clearable>
@@ -103,6 +105,7 @@
           <PersonSelector
             v-model="selectedBatchReassignPerson"
             @change="handleBatchReassignPersonChange"
+            style="height: 400px;"
           />
         </el-form-item>
         <el-form-item label="转办原因">

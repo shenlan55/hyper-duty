@@ -567,7 +567,7 @@ const getEmployeeName = (employeeId) => {
     return userStore.employeeName
   }
   const employee = employeeList.value.find(e => parseInt(e.id) === targetId)
-  return employee ? employee.employeeName : '未知人员'
+  return employee ? (employee.employeeName || employee.employeename || employee.name || '未知人员') : '未知人员'
 }
 
 // 获取状态名称

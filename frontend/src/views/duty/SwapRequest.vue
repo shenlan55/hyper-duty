@@ -222,7 +222,7 @@
                       <el-option
                         v-for="employee in availableEmployeeList.filter(emp => emp.id !== detail.originalEmployeeId)"
                         :key="employee.id"
-                        :label="employee.employeeName"
+                        :label="employee.employeeName || employee.employeename || employee.name || `ID:${employee.id}`"
                         :value="employee.id"
                       />
                     </el-select>
@@ -537,7 +537,8 @@ const getEmployeeName = (employeeId) => {
     return currentUser.employeeName
   }
   const employee = employeeList.value.find(e => parseInt(e.id) === targetId)
-  return employee ? employee.employeeName : '未知'
+  const name = employee ? (employee.employeeName || employee.employeename || employee.name) : ''
+  return name || '未知'
 }
 
 const getScheduleName = (scheduleId) => {
@@ -549,9 +550,10 @@ const getScheduleName = (scheduleId) => {
 
 const filterEmployee = (query) => {
   if (query) {
-    return availableEmployeeList.value.filter(employee => 
-      employee.employeeName.toLowerCase().includes(query.toLowerCase())
-    )
+    return availableEmployeeList.value.filter(employee => {
+      const name = employee.employeeName || employee.employeename || employee.name || ''
+      return name.toLowerCase().includes(query.toLowerCase())
+    })
   }
   return availableEmployeeList.value
 }

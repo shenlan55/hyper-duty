@@ -138,7 +138,7 @@
             <el-option
               v-for="employee in scheduleEmployeeList"
               :key="employee.id"
-              :label="employee.employeeName"
+              :label="employee.employeeName || employee.employeename || employee.name || `ID:${employee.id}`"
               :value="employee.id"
             />
           </el-select>
@@ -290,7 +290,7 @@
             <el-option
               v-for="employee in scheduleEmployeeList"
               :key="employee.id"
-              :label="employee.employeeName"
+              :label="employee.employeeName || employee.employeename || employee.name || `ID:${employee.id}`"
               :value="employee.id"
             />
           </el-select>
@@ -702,7 +702,7 @@ const getShiftTypeColor = (shiftId) => {
 
 const getEmployeeName = (employeeId) => {
   const employee = scheduleEmployeeList.value.find(e => e.id === employeeId)
-  return employee ? employee.employeeName : '未知人员'
+  return employee ? (employee.employeeName || employee.employeename || employee.name || '未知人员') : '未知人员'
 }
 
 // 根据员工ID获取员工信息
@@ -913,9 +913,10 @@ const fetchScheduleEmployees = async (scheduleId, showError = true) => {
       .filter(emp => emp.status === 1)
       .map(emp => ({
         id: emp.id,
-        employeeName: emp.employee_name,
-        employeeCode: emp.employee_code,
-        deptId: emp.dept_id,
+        // 兼容多种字段命名格式：employee_name(下划线) / employeeName(驼峰) / employeename(小写)
+        employeeName: emp.employee_name || emp.employeeName || emp.employeename || emp.name,
+        employeeCode: emp.employee_code || emp.employeeCode || emp.employeecode,
+        deptId: emp.dept_id || emp.deptId || emp.deptid,
         status: emp.status
       }))
     scheduleLeaderList.value = leaderIds || []

@@ -138,14 +138,13 @@
         <el-dialog
           v-model="ownerDialogVisible"
           title="选择负责人"
-          width="900px"
-          max-width="90vw"
+          width="1000px"
         >
-          <div style="padding: 10px; height: 600px; overflow: auto;">
+          <div style="padding: 10px;">
             <PersonSelector
               v-model="selectedOwners"
               @change="handleOwnerChange"
-              style="height: 500px;"
+              style="height: 520px;"
             />
           </div>
           <template #footer>
@@ -158,8 +157,7 @@
         <el-dialog
           v-model="deputyOwnerDialogVisible"
           title="选择代理负责人"
-          width="900px"
-          max-width="90vw"
+          width="1000px"
         >
           <div style="padding: 10px; height: 600px; overflow: auto;">
             <PersonSelector
@@ -213,14 +211,13 @@
         <el-dialog
           v-model="participantsDialogVisible"
           title="选择参与人"
-          width="900px"
-          max-width="90vw"
+          width="1000px"
         >
-          <div style="padding: 10px; height: 600px; overflow: auto;">
+          <div style="padding: 10px;">
             <PersonSelector
               v-model="selectedParticipants"
               @change="handleParticipantsChange"
-              style="height: 500px;"
+              style="height: 520px;"
             />
           </div>
           <template #footer>
@@ -470,6 +467,21 @@ const handleEdit = async (row) => {
     Object.assign(form, projectDetail)
     // 同步负责人姓名到ownerName变量
     ownerName.value = form.ownerName || ''
+
+    // 同步项目负责人选择（新增）
+    if (form.ownerId) {
+      try {
+        await loadEmployeeList()
+        const owner = employeeList.value.find(emp => emp.id === form.ownerId)
+        if (owner) {
+          selectedOwners.value = [owner]
+          console.log('已回显项目负责人:', owner.employeeName)
+        }
+      } catch (error) {
+        console.error('加载项目负责人失败', error)
+      }
+    }
+
     // 同步代理负责人姓名到deputyOwnerName变量
     if (form.deputyOwnerNames) {
       if (Array.isArray(form.deputyOwnerNames)) {

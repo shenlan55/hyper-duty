@@ -357,14 +357,13 @@
         <el-dialog
           v-model="participantsDialogVisible"
           title="选择参与人"
-          width="900px"
-          max-width="90vw"
+          width="1000px"
         >
-          <div style="padding: 10px; height: 600px; overflow: auto;">
+          <div style="padding: 10px;">
             <PersonSelector
               v-model="selectedParticipants"
               @change="handleParticipantsChange"
-              style="height: 500px;"
+              style="height: 520px;"
             />
           </div>
           <template #footer>
@@ -396,13 +395,12 @@
     <el-dialog
       v-model="assigneeDialogVisible"
       title="选择负责人"
-      width="900px"
-      max-width="90vw"
+      width="1000px"
     >
       <div style="padding: 10px;">
         <PersonSelector
           v-model="selectedAssignees"
-          style="height: 500px;"
+          style="height: 520px;"
         />
       </div>
       <template #footer>
@@ -415,13 +413,12 @@
     <el-dialog
       v-model="ownerDialogVisible"
       title="选择负责人"
-      width="900px"
-      max-width="90vw"
+      width="1000px"
     >
       <div style="padding: 10px;">
         <PersonSelector
           v-model="selectedOwners"
-          style="height: 500px;"
+          style="height: 520px;"
         />
       </div>
       <template #footer>
@@ -434,13 +431,12 @@
     <el-dialog
       v-model="deputyOwnerDialogVisible"
       title="选择代理负责人"
-      width="900px"
-      max-width="90vw"
+      width="1000px"
     >
       <div style="padding: 10px;">
         <PersonSelector
           v-model="selectedDeputyOwners"
-          style="height: 500px;"
+          style="height: 520px;"
         />
       </div>
       <template #footer>
@@ -453,14 +449,13 @@
     <el-dialog
       v-model="stakeholderDialogVisible"
       title="选择参与人"
-      width="900px"
-      max-width="90vw"
+      width="1000px"
     >
       <div style="padding: 10px;">
         <PersonSelector
           v-model="selectedStakeholders"
           @change="handleStakeholderChange"
-          style="height: 500px;"
+          style="height: 520px;"
         />
       </div>
       <template #footer>
@@ -819,7 +814,22 @@ const handleEdit = async () => {
   } else {
     deputyOwnerName.value = ''
   }
-  
+
+  // 同步项目负责人选择（新增）
+  if (projectForm.ownerId) {
+    try {
+      const data = await getEmployeeList(1, 1000)
+      const employeeList = data?.records || []
+      const owner = employeeList.find(emp => emp.id === projectForm.ownerId)
+      if (owner) {
+        selectedOwners.value = [owner]
+        console.log('已回显项目负责人:', owner.employeeName)
+      }
+    } catch (error) {
+      console.error('加载项目负责人失败', error)
+    }
+  }
+
   // 同步代理负责人选择
   if (projectForm.deputyOwnerIds) {
     if (Array.isArray(projectForm.deputyOwnerIds)) {

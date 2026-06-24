@@ -204,13 +204,12 @@
     <el-dialog
       v-model="assigneeDialogVisible"
       title="选择负责人"
-      width="900px"
-      max-width="90vw"
+      width="1000px"
     >
       <div style="padding: 10px;">
         <PersonSelector
           v-model="selectedAssignees"
-          style="height: 500px;"
+          style="height: 520px;"
         />
       </div>
       <template #footer>
@@ -223,13 +222,12 @@
     <el-dialog
       v-model="stakeholderDialogVisible"
       title="选择参与人"
-      width="900px"
-      max-width="90vw"
+      width="1000px"
     >
       <div style="padding: 10px;">
         <PersonSelector
           v-model="currentStakeholderSelection"
-          style="height: 500px;"
+          style="height: 520px;"
         />
       </div>
       <template #footer>
