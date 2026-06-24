@@ -1,86 +1,121 @@
 <template>
   <div class="employee-container">
-    <el-card shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <span>人员管理</span>
-          <el-button type="primary" @click="openAddDialog">
-            <el-icon><Plus /></el-icon>
-            添加人员
-          </el-button>
-        </div>
-      </template>
-      
-      <BaseTable
-        v-loading="loading"
-        :data="employeeList"
-        :columns="columns"
-        :show-pagination="true"
-        :pagination="pagination"
-        :backend-pagination="true"
-        :show-search="true"
-        :search-placeholder="'请输入人员姓名或编码'"
-        :show-export="true"
-        :show-column-control="true"
-        :show-skeleton="true"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-        @search="handleTableSearch"
-        @export="handleExport"
-      >
-        <template #toolbar>
-          <el-select
-            v-model="deptFilter"
-            placeholder="按部门筛选"
+    <!-- 左右布局容器 -->
+    <div class="employee-layout">
+      <!-- 左侧部门树 -->
+      <div class="dept-tree-panel">
+        <el-card shadow="hover" class="tree-card">
+          <template #header>
+            <div class="tree-header">
+              <span>部门列表</span>
+              <el-button link type="primary" @click="handleRefreshDeptTree">
+                <el-icon><Refresh /></el-icon>
+              </el-button>
+            </div>
+          </template>
+
+          <el-input
+            v-model="deptSearchText"
+            placeholder="搜索部门"
             clearable
-            class="dept-filter"
-            @change="handleDeptFilter"
-            filterable
+            class="dept-search-input"
+            :prefix-icon="Search"
+          />
+
+          <el-tree
+            ref="deptTreeRef"
+            :data="deptTreeData"
+            :props="deptTreeProps"
+            :expand-on-click-node="false"
+            :filter-node-method="filterDeptNode"
+            :default-expand-all="true"
+            :highlight-current="true"
+            node-key="id"
+            class="dept-tree"
+            @node-click="handleDeptNodeClick"
           >
-            <el-option label="全部部门" value="" />
-            <el-option
-              v-for="dept in deptList"
-              :key="dept.id"
-              :label="dept.deptName"
-              :value="dept.id"
-            />
-          </el-select>
-        </template>
-        <template #deptId="{ row }">
-          {{ getDeptName(row.deptId) }}
-        </template>
-        <template #gender="{ row }">
-          <el-tag 
-            :class="row.gender === 1 ? 'gender-tag-male' : row.gender === 2 ? 'gender-tag-female' : 'gender-tag-unknown'"
-            size="small"
+            <template #default="{ node, data }">
+              <div class="custom-tree-node">
+                <span class="node-label">{{ node.label }}</span>
+                <el-badge
+                  v-if="getDeptEmployeeCount(data.id) > 0"
+                  :value="getDeptEmployeeCount(data.id)"
+                  class="employee-count-badge"
+                  type="info"
+                />
+              </div>
+            </template>
+          </el-tree>
+        </el-card>
+      </div>
+
+      <!-- 右侧人员列表 -->
+      <div class="employee-list-panel">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <span>人员管理</span>
+              <el-button type="primary" @click="openAddDialog">
+                <el-icon><Plus /></el-icon>
+                添加人员
+              </el-button>
+            </div>
+          </template>
+
+          <BaseTable
+            v-loading="loading"
+            :data="employeeList"
+            :columns="columns"
+            :show-pagination="true"
+            :pagination="pagination"
+            :backend-pagination="true"
+            :show-search="true"
+            :search-placeholder="'请输入人员姓名或编码'"
+            :show-export="true"
+            :show-column-control="true"
+            :show-skeleton="true"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            @search="handleTableSearch"
+            @export="handleExport"
           >
-            {{ genderLabel(row.gender) }}
-          </el-tag>
-        </template>
-        <template #dictTypeId="{ row }">
-          {{ getDictTypeName(row.dictTypeId) }}
-        </template>
-        <template #dictDataId="{ row }">
-          {{ getDictDataLabel(row.dictDataId, row.dictTypeId) }}
-        </template>
-        <template #status="{ row }">
-          <el-tag :type="commonStatusType(row.status)">
-            {{ commonStatusLabel(row.status) }}
-          </el-tag>
-        </template>
-        <template #createTime="{ row }">
-          {{ formatDateTime(row.createTime) }}
-        </template>
-        <template #operation="{ row }">
-          <el-button type="primary" size="small" @click="openEditDialog(row)">
-            编辑
-          </el-button>
-          <el-button type="danger" size="small" @click="handleDelete(row.id)">
-            删除
-          </el-button>
-        </template>
-    </BaseTable>
-    </el-card>
+            <template #deptId="{ row }">
+              {{ getDeptName(row.deptId) }}
+            </template>
+            <template #gender="{ row }">
+              <el-tag
+                :class="row.gender === 1 ? 'gender-tag-male' : row.gender === 2 ? 'gender-tag-female' : 'gender-tag-unknown'"
+                size="small"
+              >
+                {{ genderLabel(row.gender) }}
+              </el-tag>
+            </template>
+            <template #dictTypeId="{ row }">
+              {{ getDictTypeName(row.dictTypeId) }}
+            </template>
+            <template #dictDataId="{ row }">
+              {{ getDictDataLabel(row.dictDataId, row.dictTypeId) }}
+            </template>
+            <template #status="{ row }">
+              <el-tag :type="commonStatusType(row.status)">
+                {{ commonStatusLabel(row.status) }}
+              </el-tag>
+            </template>
+            <template #createTime="{ row }">
+              {{ formatDateTime(row.createTime) }}
+            </template>
+            <template #operation="{ row }">
+              <el-button type="primary" size="small" @click="openEditDialog(row)">
+                编辑
+              </el-button>
+              <el-button type="danger" size="small" @click="handleDelete(row.id)">
+                删除
+              </el-button>
+            </template>
+          </BaseTable>
+        </el-card>
+      </div>
+    </div>
 
     <!-- 新增/编辑对话框 -->
     <el-dialog
@@ -256,8 +291,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { Plus, Edit, Delete, Search } from '@element-plus/icons-vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { Plus, Edit, Delete, Search, Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getEmployeeList,
@@ -265,7 +300,7 @@ import {
   updateEmployee,
   deleteEmployee
 } from '../api/employee'
-import { getDeptList } from '../api/dept'
+import { getDeptList, getDeptTree } from '../api/dept'
 import { listDictType } from '../api/dictType'
 import { getDictDataByType } from '../api/dictData'
 import { formatDateTime } from '../utils/dateUtils'
@@ -281,12 +316,25 @@ const { options: genderOptions, labelOf: genderLabel, loadDict: loadGenderDict }
 loadGenderDict()
 
 // 响应式数据
-const deptFilter = ref('')
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogLoading = ref(false)
 const dialogTitle = ref('添加人员')
 const employeeFormRef = ref()
+
+// 部门树相关
+const deptTreeRef = ref()
+const deptTreeData = ref([])
+const deptTreeProps = {
+  children: 'children',
+  label: 'deptName'
+}
+const deptSearchText = ref('')
+const selectedDeptId = ref(null) // 当前选中的部门ID，null表示全部
+const deptEmployeeCountMap = ref({}) // 部门-人数映射
+
+// 部门列表（用于表单下拉框和显示）
+const deptList = ref([])
 
 // 表格列配置
 const columns = [
@@ -332,9 +380,6 @@ const handleSizeChange = (val) => {
 
 // 人员列表
 const employeeList = ref([])
-
-// 部门数据
-const deptList = ref([])
 
 // 字典类型数据
 const dictTypeList = ref([])
@@ -397,27 +442,100 @@ const employeeRules = {
   ]
 }
 
-// 过滤后的人员列表
+// 过滤后的人员列表（保留用于兼容，但实际筛选已移至后端）
 const filteredEmployeeList = computed(() => {
-  let list = employeeList.value
-  
-  // 按搜索词过滤
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    list = list.filter(emp => 
-      emp.employeeName.toLowerCase().includes(query) || 
-      emp.employeeCode.toLowerCase().includes(query) ||
-      (emp.username && emp.username.toLowerCase().includes(query))
-    )
-  }
-  
-  // 按部门筛选
-  if (deptFilter.value) {
-    list = list.filter(emp => emp.deptId === deptFilter.value)
-  }
-  
-  return list
+  return employeeList.value
 })
+
+// ==================== 部门树相关方法 ====================
+
+/**
+ * 获取部门树数据
+ * 调用getDeptTree接口获取完整的部门树形结构
+ */
+const fetchDeptTreeData = async () => {
+  try {
+    const data = await getDeptTree()
+    deptTreeData.value = data || []
+    // 同时获取扁平化的部门列表（用于表单下拉框）
+    await fetchDeptList()
+  } catch (error) {
+    console.error('获取部门树失败:', error)
+    ElMessage.error('获取部门树失败')
+  }
+}
+
+/**
+ * 部门树节点点击事件
+ * @param {Object} data - 点击的节点数据对象
+ */
+const handleDeptNodeClick = (data) => {
+  selectedDeptId.value = data.id
+  // 重置到第一页并刷新人员列表
+  currentPage.value = 1
+  fetchEmployeeList()
+}
+
+/**
+ * 部门树过滤方法
+ * 用于前端搜索过滤部门节点
+ * @param {String} value - 搜索关键词
+ * @param {Object} data - 节点数据
+ * @returns {Boolean} 是否匹配
+ */
+const filterDeptNode = (value, data) => {
+  if (!value) return true
+  return data.deptName.toLowerCase().includes(value.toLowerCase())
+}
+
+/**
+ * 监听部门搜索文本变化，实时过滤树节点
+ */
+watch(deptSearchText, (val) => {
+  deptTreeRef.value?.filter(val)
+})
+
+/**
+ * 获取指定部门的人员数量
+ * @param {Number} deptId - 部门ID
+ * @returns {Number} 该部门的人数
+ */
+const getDeptEmployeeCount = (deptId) => {
+  return deptEmployeeCountMap.value[deptId] || 0
+}
+
+/**
+ * 刷新部门树数据
+ */
+const handleRefreshDeptTree = async () => {
+  await fetchDeptTreeData()
+  // 重新加载人员数量统计
+  await fetchDeptEmployeeCounts()
+  ElMessage.success('部门树已刷新')
+}
+
+/**
+ * 获取各部门的人员数量统计
+ * 用于在部门树上显示每个部门的人数badge
+ */
+const fetchDeptEmployeeCounts = async () => {
+  try {
+    const data = await getEmployeeList(1, 99999, '', null)
+    const allEmployees = data.records || []
+    
+    // 统计每个部门的人数
+    const countMap = {}
+    for (const emp of allEmployees) {
+      if (emp.deptId) {
+        countMap[emp.deptId] = (countMap[emp.deptId] || 0) + 1
+      }
+    }
+    
+    deptEmployeeCountMap.value = countMap
+  } catch (error) {
+    console.error('获取部门人员统计失败:', error)
+  }
+}
 
 
 
@@ -503,7 +621,8 @@ const handleDictTypeChange = (dictTypeId) => {
 const fetchEmployeeList = async () => {
   loading.value = true
   try {
-    const deptId = deptFilter.value || null
+    // 使用选中的部门ID进行筛选（null表示全部部门）
+    const deptId = selectedDeptId.value || null
     const data = await getEmployeeList(currentPage.value, pageSize.value, searchQuery.value, deptId)
     employeeList.value = data.records || []
     total.value = data.total || 0
@@ -516,7 +635,7 @@ const fetchEmployeeList = async () => {
   }
 }
 
-// 按部门筛选
+// 按部门筛选（已由handleDeptNodeClick替代，保留用于兼容）
 const handleDeptFilter = () => {
   currentPage.value = 1
   fetchEmployeeList()
@@ -668,8 +787,13 @@ const handleExport = () => {
 
 // 生命周期钩子
 onMounted(async () => {
-  await fetchDeptList()
+  // 1. 先加载部门树
+  await fetchDeptTreeData()
+  // 2. 加载部门人员统计（用于显示badge）
+  await fetchDeptEmployeeCounts()
+  // 3. 加载字典类型和字典数据
   await fetchDictTypeList()
+  // 4. 加载人员列表（默认显示全部）
   await fetchEmployeeList()
 })
 </script>
@@ -677,6 +801,84 @@ onMounted(async () => {
 <style scoped>
 .employee-container {
   padding: 10px;
+}
+
+/* 左右布局容器 */
+.employee-layout {
+  display: flex;
+  gap: 16px;
+  align-items: stretch; /* 让左右两侧高度一致 */
+}
+
+/* 左侧部门树面板 */
+.dept-tree-panel {
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+}
+
+.tree-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-card :deep(.el-card__header) {
+  flex-shrink: 0;
+}
+
+.tree-card :deep(.el-card__body) {
+  padding: 12px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.dept-search-input {
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.dept-tree {
+  flex: 1; /* 让树填充剩余空间 */
+  overflow-y: auto;
+}
+
+/* 自定义树节点样式 */
+.custom-tree-node {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-right: 8px;
+}
+
+.node-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.employee-count-badge {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* 右侧人员列表面板 */
+.employee-list-panel {
+  flex: 1;
+  min-width: 0; /* 防止flex子项溢出 */
 }
 
 .card-header {
@@ -694,10 +896,6 @@ onMounted(async () => {
 
 .search-input {
   width: 300px;
-}
-
-.dept-filter {
-  width: 200px;
 }
 
 .pagination-container {
@@ -722,5 +920,29 @@ onMounted(async () => {
   background-color: #F4F4F5;
   color: #909399;
   border-color: #E9E9EB;
- }
+}
+
+/* 响应式适配：小屏幕时隐藏左侧树或改为可折叠 */
+@media (max-width: 1200px) {
+  .dept-tree-panel {
+    width: 240px;
+    min-width: 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  .employee-layout {
+    flex-direction: column;
+  }
+
+  .dept-tree-panel {
+    width: 100%;
+    min-width: 100%;
+    max-height: 300px;
+  }
+
+  .employee-list-panel {
+    width: 100%;
+  }
+}
 </style>
