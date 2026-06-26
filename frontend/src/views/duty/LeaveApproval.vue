@@ -92,7 +92,7 @@
         @export="handleExport"
       >
         <template #employeeName="{ row }">
-          {{ getEmployeeName(row.employeeId) }}
+          {{ row.employeeName || getEmployeeName(row.employeeId) }}
         </template>
         <template #leaveType="{ row }">
           <el-tag :type="getLeaveTypeColor(row.leaveType)">
@@ -139,7 +139,7 @@
       >
         <el-descriptions :column="1" border>
           <el-descriptions-item label="申请编号">{{ currentRequest.requestNo }}</el-descriptions-item>
-          <el-descriptions-item label="申请人">{{ getEmployeeName(currentRequest.employeeId) }}</el-descriptions-item>
+          <el-descriptions-item label="申请人">{{ currentRequest.employeeName || getEmployeeName(currentRequest.employeeId) }}</el-descriptions-item>
           <el-descriptions-item label="值班表">{{ getScheduleName(currentRequest.scheduleId) }}</el-descriptions-item>
           <el-descriptions-item label="请假类型">
             <el-tag :type="getLeaveTypeColor(currentRequest.leaveType)">
