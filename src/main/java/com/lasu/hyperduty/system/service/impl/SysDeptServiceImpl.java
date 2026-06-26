@@ -24,24 +24,52 @@ public class SysDeptServiceImpl extends CacheableServiceImpl<SysDeptMapper, SysD
     @Override
     @Cacheable(value = "dept", key = "'allDepts'")
     public List<SysDept> getAllDepts() {
-        // 通用部门查询接口：默认只返回启用部门（status=1），与 SysEmployeeServiceImpl.getAllEmployees 规范一致
-        // 2026-06-27 修复：除 system 模块外，其他模块不应拿到禁用部门（如选人/统计/报表）
-        return lambdaQuery().eq(SysDept::getStatus, 1).list();
+        // 通用部门查询接口（默认全量，包括禁用）
+        // 调用方：系统管理（Dept.vue / Employee.vue / SystemStatisticsController）
+        // 业务模块选人/选部门 → 用 getActiveDepts() 替代
+        // 2026-06-27 重构：双接口方案，方法名即契约，避免"白名单"维护成本
+        return list();
     }
 
     @Override
     // 暂时禁用缓存，确保返回最新数据
     // @Cacheable(value = "dept", key = "'deptTree'")
     public List<SysDept> getDeptTree() {
-        // 部门树查询：默认只返回启用部门（status=1）
-        // PersonSelector.vue 选部门时不应出现已禁用部门；保留根节点（parent_id=0）以便子部门能找到归属
-        // 2026-06-27 修复：见 navigator 避坑 #18
-        List<SysDept> allDepts = lambdaQuery().eq(SysDept::getStatus, 1).list();
+        // 部门树查询（默认全量，包括禁用）
+        // 调用方：系统管理（Dept.vue / Employee.vue）
+        // 业务模块选人 → 用 getActiveDeptTree() 替代
+        // 2026-06-27 重构：双接口方案
+        List<SysDept> allDepts = list();
         System.out.println("所有部门数据: " + allDepts);
 
         // 构建部门树
         List<SysDept> deptTree = buildDeptTree(allDepts, 0L);
         System.out.println("构建后的部门树: " + deptTree);
+        return deptTree;
+    }
+
+    @Override
+    @Cacheable(value = "dept", key = "'activeDepts'")
+    public List<SysDept> getActiveDepts() {
+        // 启用部门查询接口（只返回 status=1）
+        // 调用方：业务模块（PersonSelector / EmployeeSelector / DutyAssignment / DutyStatisticsServiceImpl）
+        // 2026-06-27 新增：双接口方案，业务模块专用
+        return lambdaQuery().eq(SysDept::getStatus, 1).list();
+    }
+
+    @Override
+    // 暂时禁用缓存，确保返回最新数据
+    // @Cacheable(value = "dept", key = "'activeDeptTree'")
+    public List<SysDept> getActiveDeptTree() {
+        // 启用部门树查询（只返回 status=1）
+        // 调用方：业务模块选人（PersonSelector.vue）
+        // 2026-06-27 新增：双接口方案，业务模块专用
+        List<SysDept> activeDepts = lambdaQuery().eq(SysDept::getStatus, 1).list();
+        System.out.println("启用部门数据: " + activeDepts);
+
+        // 构建部门树
+        List<SysDept> deptTree = buildDeptTree(activeDepts, 0L);
+        System.out.println("启用部门树: " + deptTree);
         return deptTree;
     }
 
@@ -64,12 +92,14 @@ public class SysDeptServiceImpl extends CacheableServiceImpl<SysDeptMapper, SysD
     }
 
     /**
-     * 清除所有部门缓存
+     * 清除所有部门缓存（含启用/全量两组）
      */
     private void clearAllDeptCache() {
-        // 清除所有部门缓存
+        // 清除所有部门缓存（双接口都要清）
         CacheUtil.delete("dept::allDepts");
         CacheUtil.delete("dept::deptTree");
+        CacheUtil.delete("dept::activeDepts");
+        CacheUtil.delete("dept::activeDeptTree");
     }
 
     @Override

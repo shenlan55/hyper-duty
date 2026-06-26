@@ -32,7 +32,7 @@ public class SysDeptController {
     private SysDeptService sysDeptService;
 
     /**
-     * 获取所有部门列表
+     * 获取所有部门列表（全量，包括禁用）—— 系统管理用
      */
     @GetMapping("/list")
     public ResponseResult<List<SysDept>> getAllDepts() {
@@ -41,12 +41,32 @@ public class SysDeptController {
     }
 
     /**
-     * 获取部门树结构
+     * 获取部门树结构（全量，包括禁用）—— 系统管理用
      */
     @GetMapping("/tree")
     public ResponseResult<List<SysDept>> getDeptTree() {
         List<SysDept> deptTree = sysDeptService.getDeptTree();
         return ResponseResult.success(deptTree);
+    }
+
+    /**
+     * 获取启用部门列表（status=1）—— 业务模块选人/选部门用
+     * 2026-06-27 新增：双接口方案
+     */
+    @GetMapping("/active-list")
+    public ResponseResult<List<SysDept>> getActiveDepts() {
+        List<SysDept> activeDeptList = sysDeptService.getActiveDepts();
+        return ResponseResult.success(activeDeptList);
+    }
+
+    /**
+     * 获取启用部门树（status=1）—— 业务模块选人用
+     * 2026-06-27 新增：双接口方案
+     */
+    @GetMapping("/active-tree")
+    public ResponseResult<List<SysDept>> getActiveDeptTree() {
+        List<SysDept> activeDeptTree = sysDeptService.getActiveDeptTree();
+        return ResponseResult.success(activeDeptTree);
     }
 
     /**

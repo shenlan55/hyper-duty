@@ -175,13 +175,13 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
         // 获取所有基础数据
         List<DutyAssignment> assignments = dutyAssignmentService.list();
         // 2026-06-27 修复：部门统计只统计启用员工 + 启用部门
+        // 员工走 sysEmployeeService.lambdaQuery().eq(status, 1)（员工"自己被禁"过滤）
+        // 部门走 sysDeptService.getActiveDepts()（部门"自己被禁"过滤；与 SysEmployeeServiceImpl.getAllEmployees 规范一致）
         // （与 getEmployeeStatistics 保持一致：见 navigator 避坑 #17、#18）
         List<SysEmployee> employees = sysEmployeeService.lambdaQuery()
                 .eq(SysEmployee::getStatus, 1)
                 .list();
-        List<SysDept> depts = sysDeptService.lambdaQuery()
-                .eq(SysDept::getStatus, 1)
-                .list();
+        List<SysDept> depts = sysDeptService.getActiveDepts();
 
         // 构建员工ID到员工的映射
         Map<Long, SysEmployee> employeeMap = employees.stream()

@@ -57,7 +57,7 @@
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue'
 import { getEmployeeList } from '@/api/employee'
-import { getDeptList } from '@/api/dept'
+import { getActiveDeptList } from '@/api/dept'
 
 const props = defineProps({
   modelValue: {
@@ -100,7 +100,7 @@ watch(() => props.modelValue, (newValue) => {
 // 加载部门列表
 const loadDeptList = async () => {
   try {
-    const data = await getDeptList()
+    const data = await getActiveDeptList()
     deptList.value = data || []
   } catch (error) {
     console.error('加载部门列表失败', error)

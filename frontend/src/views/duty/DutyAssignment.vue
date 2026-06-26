@@ -511,7 +511,7 @@ import {
 } from '../../api/duty/assignment'
 import { getAllSchedules, getScheduleEmployees, getScheduleLeaders, getScheduleShifts, getScheduleModeList, generateScheduleByMode, getScheduleEmployeesWithDetails } from '../../api/duty/schedule'
 import { getEmployeeList } from '../../api/employee'
-import { getDeptList } from '../../api/dept'
+import { getActiveDeptList } from '../../api/dept'
 import { shiftConfigApi } from '../../api/duty/shiftConfig'
 import { holidayApi } from '../../api/duty/holiday'
 import { getEmployeeLeaveInfo as getEmployeeLeaveInfoAPI, getSubstitutesByEmployees } from '../../api/duty/leaveRequest'
@@ -833,7 +833,7 @@ const fetchScheduleList = async () => {
 // 获取部门列表
 const fetchDeptList = async () => {
   try {
-    const data = await getDeptList()
+    const data = await getActiveDeptList()
     deptList.value = data || []
   } catch (error) {
     // console.error('获取部门列表失败:', error)

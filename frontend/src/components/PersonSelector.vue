@@ -173,7 +173,7 @@
 <script setup>
 import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { Refresh, Search } from '@element-plus/icons-vue'
-import { getDeptTree } from '@/api/dept'
+import { getDeptTree, getActiveDeptTree } from '@/api/dept'
 import { getEmployeesByDeptId, getEmployeeList } from '@/api/employee'
 
 const props = defineProps({
@@ -268,7 +268,7 @@ watch(deptSearchText, (val) => {
  */
 const loadDeptTree = async () => {
   try {
-    const data = await getDeptTree()
+    const data = await getActiveDeptTree()
     if (data && Array.isArray(data)) {
       deptTree.value = data.map(dept => ({
         ...dept,
