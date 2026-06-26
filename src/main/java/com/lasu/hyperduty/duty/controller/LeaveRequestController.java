@@ -152,7 +152,7 @@ public class LeaveRequestController {
      * 分页获取待审批请假申请
      */
     @GetMapping("/pending/page/{approverId}")
-    public ResponseResult<IPage<LeaveRequest>> getPendingApprovalsPage(
+    public ResponseResult<IPage<LeaveRequestDTO>> getPendingApprovalsPage(
             @PathVariable Long approverId,
             @RequestParam Integer page,
             @RequestParam Integer size,
@@ -161,7 +161,7 @@ public class LeaveRequestController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String searchQuery) {
-        IPage<LeaveRequest> result = leaveRequestService.getPendingApprovalsPage(
+        IPage<LeaveRequestDTO> result = leaveRequestService.getPendingApprovalsPage(
                 approverId, page, size, scheduleId, leaveType, startDate, endDate, searchQuery);
         return ResponseResult.success(result);
     }
@@ -170,7 +170,7 @@ public class LeaveRequestController {
      * 分页获取已审批请假申请
      */
     @GetMapping("/approved/page/{approverId}")
-    public ResponseResult<IPage<LeaveRequest>> getApprovedApprovalsPage(
+    public ResponseResult<IPage<LeaveRequestDTO>> getApprovedApprovalsPage(
             @PathVariable Long approverId,
             @RequestParam Integer page,
             @RequestParam Integer size,
@@ -180,7 +180,7 @@ public class LeaveRequestController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String searchQuery) {
-        IPage<LeaveRequest> result = leaveRequestService.getApprovedApprovalsPage(
+        IPage<LeaveRequestDTO> result = leaveRequestService.getApprovedApprovalsPage(
                 approverId, page, size, scheduleId, leaveType, approvalStatus, startDate, endDate, searchQuery);
         return ResponseResult.success(result);
     }

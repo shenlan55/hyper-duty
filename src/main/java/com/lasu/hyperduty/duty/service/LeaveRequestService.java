@@ -74,9 +74,9 @@ public interface LeaveRequestService extends IService<LeaveRequest> {
      * @param startDate 开始日期（可选）
      * @param endDate 结束日期（可选）
      * @param searchQuery 搜索关键词（可选）
-     * @return 分页结果
+     * @return 分页结果（DTO 已自动填充 employeeName / scheduleName / approverName）
      */
-    IPage<LeaveRequest> getPendingApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String startDate, String endDate, String searchQuery);
+    IPage<LeaveRequestDTO> getPendingApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String startDate, String endDate, String searchQuery);
 
     /**
      * 分页获取已审批请假申请
@@ -89,9 +89,9 @@ public interface LeaveRequestService extends IService<LeaveRequest> {
      * @param startDate 开始日期（可选）
      * @param endDate 结束日期（可选）
      * @param searchQuery 搜索关键词（可选）
-     * @return 分页结果
+     * @return 分页结果（DTO 已自动填充 employeeName / scheduleName / approverName）
      */
-    IPage<LeaveRequest> getApprovedApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String approvalStatus, String startDate, String endDate, String searchQuery);
+    IPage<LeaveRequestDTO> getApprovedApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String approvalStatus, String startDate, String endDate, String searchQuery);
 
     /**
      * 获取可用的顶岗人员

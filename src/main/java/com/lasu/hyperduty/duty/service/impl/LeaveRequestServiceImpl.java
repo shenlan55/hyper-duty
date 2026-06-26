@@ -474,35 +474,35 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
-    public IPage<LeaveRequest> getPendingApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String startDate, String endDate, String searchQuery) {
+    public IPage<LeaveRequestDTO> getPendingApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String startDate, String endDate, String searchQuery) {
         IPage<LeaveRequest> iPage = new Page<>(page, size);
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
-        
+
         // 基础条件：审批状态为待审批
         queryWrapper.eq("approval_status", "pending");
         // 添加条件：当前审批人是请假申请的审批人（值班长）
         queryWrapper.eq("current_approver_id", approverId);
-        
+
         // 可选条件：值班表ID
         if (scheduleId != null) {
             queryWrapper.eq("schedule_id", scheduleId);
         }
-        
+
         // 可选条件：请假类型
         if (leaveType != null) {
             queryWrapper.eq("leave_type", leaveType);
         }
-        
+
         // 可选条件：开始日期
         if (startDate != null && !startDate.isEmpty()) {
             queryWrapper.ge("start_date", LocalDate.parse(startDate));
         }
-        
+
         // 可选条件：结束日期
         if (endDate != null && !endDate.isEmpty()) {
             queryWrapper.le("end_date", LocalDate.parse(endDate));
         }
-        
+
         // 可选条件：搜索关键词
         if (searchQuery != null && !searchQuery.isEmpty()) {
             queryWrapper.and(wrapper -> wrapper
@@ -511,18 +511,22 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
                     .or().like("employee_id", searchQuery)
             );
         }
-        
+
         // 排序：创建时间倒序
         queryWrapper.orderByDesc("create_time");
-        
-        return this.page(iPage, queryWrapper);
+
+        // 分页查询实体，再转为 DTO 并批量注入 employeeName / scheduleName / approverName
+        IPage<LeaveRequest> entityPage = this.page(iPage, queryWrapper);
+        IPage<LeaveRequestDTO> dtoPage = entityPage.convert(LeaveRequestDTO::fromEntity);
+        dtoPage.setRecords(fillDTOList(entityPage.getRecords()));
+        return dtoPage;
     }
 
     @Override
-    public IPage<LeaveRequest> getApprovedApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String approvalStatus, String startDate, String endDate, String searchQuery) {
+    public IPage<LeaveRequestDTO> getApprovedApprovalsPage(Long approverId, Integer page, Integer size, Long scheduleId, Integer leaveType, String approvalStatus, String startDate, String endDate, String searchQuery) {
         IPage<LeaveRequest> iPage = new Page<>(page, size);
         QueryWrapper<LeaveRequest> queryWrapper = new QueryWrapper<>();
-        
+
         // 基础条件：审批状态为已审批或已拒绝
         queryWrapper.in("approval_status", "approved", "rejected");
         // 添加条件：当前审批人是请假申请的审批人，或者当前审批人是请假申请的发起人
@@ -531,32 +535,32 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
                 .or()
                 .eq("employee_id", approverId)
         );
-        
+
         // 可选条件：值班表ID
         if (scheduleId != null) {
             queryWrapper.eq("schedule_id", scheduleId);
         }
-        
+
         // 可选条件：请假类型
         if (leaveType != null) {
             queryWrapper.eq("leave_type", leaveType);
         }
-        
+
         // 可选条件：审批状态
         if (approvalStatus != null && !approvalStatus.isEmpty()) {
             queryWrapper.eq("approval_status", approvalStatus);
         }
-        
+
         // 可选条件：开始日期
         if (startDate != null && !startDate.isEmpty()) {
             queryWrapper.ge("start_date", LocalDate.parse(startDate));
         }
-        
+
         // 可选条件：结束日期
         if (endDate != null && !endDate.isEmpty()) {
             queryWrapper.le("end_date", LocalDate.parse(endDate));
         }
-        
+
         // 可选条件：搜索关键词
         if (searchQuery != null && !searchQuery.isEmpty()) {
             queryWrapper.and(wrapper -> wrapper
@@ -565,11 +569,15 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
                     .or().like("employee_id", searchQuery)
             );
         }
-        
+
         // 排序：更新时间倒序
         queryWrapper.orderByDesc("update_time");
-        
-        return this.page(iPage, queryWrapper);
+
+        // 分页查询实体，再转为 DTO 并批量注入 employeeName / scheduleName / approverName
+        IPage<LeaveRequest> entityPage = this.page(iPage, queryWrapper);
+        IPage<LeaveRequestDTO> dtoPage = entityPage.convert(LeaveRequestDTO::fromEntity);
+        dtoPage.setRecords(fillDTOList(entityPage.getRecords()));
+        return dtoPage;
     }
 
     @Override

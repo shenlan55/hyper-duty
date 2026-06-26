@@ -231,7 +231,7 @@
     >
       <el-descriptions :column="2" border>
         <el-descriptions-item label="申请编号">{{ currentRequest.requestNo }}</el-descriptions-item>
-        <el-descriptions-item label="申请人">{{ getEmployeeName(currentRequest.employeeId) }}</el-descriptions-item>
+        <el-descriptions-item label="申请人">{{ currentRequest.employeeName || getEmployeeName(currentRequest.employeeId) }}</el-descriptions-item>
         <el-descriptions-item label="请假类型">
           <el-tag :type="getLeaveTypeColor(currentRequest.leaveType)">
             {{ getLeaveTypeName(currentRequest.leaveType) }}
@@ -434,7 +434,7 @@ const handleExport = () => {
   const headers = ['申请编号', '申请人', '请假类型', '请假时间', '请假时长(小时)', '审批状态', '申请时间']
   const rows = exportData.map(item => [
     item.requestNo,
-    getEmployeeName(item.employeeId),
+    item.employeeName || getEmployeeName(item.employeeId),
     getLeaveTypeName(item.leaveType),
     `${formatDate(item.startDate)} ${item.startTime || ''} - ${formatDate(item.endDate)} ${item.endTime || ''}`,
     item.totalHours,
@@ -476,7 +476,16 @@ const getApprovalStatusColor = (status) => {
 }
 
 const getEmployeeName = (employeeId) => {
-  const employee = scheduleEmployeeList.value.find(e => e.id === employeeId) || employeeList.value.find(e => e.id === employeeId)
+  // 优先使用后端 DTO 注入的 employeeName（DTO 模式）
+  if (employeeId == null) return '未知'
+  const targetId = parseInt(employeeId) || 0
+  // 优先检查是否是当前登录用户
+  if (targetId === userStore.employeeId && userStore.employeeName) {
+    return userStore.employeeName
+  }
+  // 从值班表员工列表中查找（兼容 employeeId 字符串/数字类型）
+  const employee = scheduleEmployeeList.value.find(e => parseInt(e.id) === targetId)
+    || employeeList.value.find(e => parseInt(e.id) === targetId)
   return employee ? (employee.employeeName || employee.employeename || employee.name || '未知') : '未知'
 }
 
