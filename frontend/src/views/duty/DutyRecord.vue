@@ -918,9 +918,26 @@ const openEditDialog = async (record) => {
             }
           }
         })
-      
+
       // 将Map转换为数组
       availableShifts.value = Array.from(shiftMap.values())
+
+      // 兜底：编辑时如果 currentRecord.dutyShift 不在 availableShifts 中（因为该班次不在当前值班表的
+      // 当天 assignments 里），手动追加一条 option，避免 el-select 显示 v-model 原值（如 "17"）
+      const fallbackRecord = currentRecord.value
+      if (fallbackRecord && fallbackRecord.dutyShift != null) {
+        const currentShiftId = parseInt(fallbackRecord.dutyShift)
+        if (!isNaN(currentShiftId) && !availableShifts.value.some(s => parseInt(s.value) === currentShiftId)) {
+          // 优先从 shiftConfigs 查找名称，再回退到 getShiftName
+          const config = shiftConfigs.value.find(c => parseInt(c.id) === currentShiftId)
+          const shiftName = (config && config.shiftName) ? config.shiftName : getShiftName(currentShiftId)
+          availableShifts.value.push({
+            label: shiftName,
+            value: currentShiftId,
+            isOvertime: config ? (parseInt(config.isOvertimeShift) === 1) : true
+          })
+        }
+      }
     } catch (error) {
       // console.error('获取值班安排失败:', error)
     }

@@ -5,6 +5,7 @@ import com.lasu.hyperduty.common.annotation.RateLimit;
 import com.lasu.hyperduty.common.dto.PageRequestDTO;
 import com.lasu.hyperduty.common.dto.PageResponseDTO;
 import com.lasu.hyperduty.common.ResponseResult;
+import com.lasu.hyperduty.duty.dto.DutyRecordAddRequest;
 import com.lasu.hyperduty.duty.dto.DutyRecordDTO;
 import com.lasu.hyperduty.duty.entity.DutyRecord;
 import com.lasu.hyperduty.duty.service.DutyRecordService;
@@ -117,12 +118,24 @@ public class DutyRecordController {
 
     /**
      * 添加加班记录
-     * @param dutyRecord 加班记录信息
+     * <p>使用 {@link DutyRecordAddRequest} 校验必填字段（值班表/日期/班次）。
+     * 接收后转为 {@link DutyRecord} 实体再入库，保持实体纯净。</p>
+     * @param addRequest 加班记录新增请求
      * @return 操作结果
      */
     @PostMapping
     @RateLimit(window = 60, max = 20, message = "添加加班记录过于频繁，请60秒后再试")
-    public ResponseResult<Void> addRecord(@Validated @RequestBody DutyRecord dutyRecord) {
+    public ResponseResult<Void> addRecord(@Validated @RequestBody DutyRecordAddRequest addRequest) {
+        // DTO -> Entity 转换（仅拷业务字段，避免直接保存 DTO）
+        DutyRecord dutyRecord = new DutyRecord();
+        dutyRecord.setAssignmentId(addRequest.getAssignmentId());
+        dutyRecord.setScheduleId(addRequest.getScheduleId());
+        dutyRecord.setDutyDate(addRequest.getDutyDate());
+        dutyRecord.setDutyShift(addRequest.getDutyShift());
+        dutyRecord.setEmployeeId(addRequest.getEmployeeId());
+        dutyRecord.setOvertimeHours(addRequest.getOvertimeHours());
+        dutyRecord.setRemark(addRequest.getRemark());
+        dutyRecord.setApprovalStatus(addRequest.getApprovalStatus());
         dutyRecordService.save(dutyRecord);
         return ResponseResult.success();
     }

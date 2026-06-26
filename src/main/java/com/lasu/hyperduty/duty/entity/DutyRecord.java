@@ -3,8 +3,6 @@ package com.lasu.hyperduty.duty.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.lasu.hyperduty.duty.entity.DutyRecord;
-import jakarta.validation.constraints.NotNull;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -18,6 +16,10 @@ import lombok.Data;
 /**
  * 加班记录实体
  * 存储员工加班的详细信息，包括签到签退时间、加班时长、审批状态等
+ *
+ * <p>注意：实体本身不携带 {@code @NotNull} 校验注解。
+ * 新增场景的必填校验由 {@code DutyRecordAddRequest} DTO 负责；
+ * 编辑/审批场景允许只传部分字段（主键ID + 修改项）。</p>
  */
 @Data
 @TableName("duty_record")
@@ -35,23 +37,20 @@ public class DutyRecord implements Serializable {
      * 值班安排ID
      */
     private Long assignmentId;
-    
+
     /**
      * 值班表ID
      */
-    @NotNull(message = "值班表ID不能为空")
     private Long scheduleId;
 
     /**
      * 值班日期
      */
-    @NotNull(message = "值班日期不能为空")
     private LocalDate dutyDate;
 
     /**
      * 班次
      */
-    @NotNull(message = "班次不能为空")
     private Integer dutyShift;
     
     /**
