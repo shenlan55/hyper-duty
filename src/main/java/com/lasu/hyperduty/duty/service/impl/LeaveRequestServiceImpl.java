@@ -629,11 +629,15 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         }
         
         // 根据员工ID列表查询员工信息
+        // 2026-06-27 修复：顶岗人员只能从启用员工中选，禁用员工排除
         if (employeeIds.isEmpty()) {
             return new java.util.ArrayList<>();
         }
-        
-        List<SysEmployee> employees = sysEmployeeService.listByIds(employeeIds);
+
+        List<SysEmployee> employees = sysEmployeeService.lambdaQuery()
+                .in(SysEmployee::getId, employeeIds)
+                .eq(SysEmployee::getStatus, 1)
+                .list();
         
         // 为每个员工添加当月工时信息
         LocalDate currentDate = LocalDate.now();

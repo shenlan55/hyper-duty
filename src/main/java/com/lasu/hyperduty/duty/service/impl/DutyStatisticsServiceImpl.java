@@ -342,7 +342,10 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
         // 获取所有基础数据
         List<DutyAssignment> assignments = dutyAssignmentService.list();
         List<DutyRecord> records = dutyRecordService.list();
-        List<SysEmployee> employees = sysEmployeeService.list();
+        // 2026-06-27 修复：员工统计只统计启用员工（status=1），禁用员工不再出现在个人统计里
+        List<SysEmployee> employees = sysEmployeeService.lambdaQuery()
+                .eq(SysEmployee::getStatus, 1)
+                .list();
         List<DutyShiftConfig> shiftConfigs = dutyShiftConfigService.list();
 
         // 构建员工ID到员工的映射

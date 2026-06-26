@@ -17,6 +17,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -100,7 +103,8 @@ public class ScoreSummaryServiceImpl implements ScoreSummaryService {
 
     @Override
     public List<ScoreSummary> getMonthlySummary(Integer year, Integer month) {
-        // 查询月度汇总并按综合评分降序
+        // 2026-06-27 修复：只展示启用员工（status=1）
+        // 历史 score_summary 中如果员工已被禁用，不应在月度汇总中显示
         List<ScoreSummary> list = scoreSummaryMapper.selectList(
                 new LambdaQueryWrapper<ScoreSummary>()
                         .eq(ScoreSummary::getPeriodYear, year)
@@ -108,15 +112,29 @@ public class ScoreSummaryServiceImpl implements ScoreSummaryService {
                         .orderByDesc(ScoreSummary::getComprehensiveScore)
         );
 
-        // 填充员工姓名
-        for (ScoreSummary summary : list) {
-            SysEmployee employee = sysEmployeeMapper.selectById(summary.getEmployeeId());
-            if (employee != null) {
-                summary.setEmployeeName(employee.getEmployeeName());
-            }
+        if (list.isEmpty()) {
+            return list;
         }
 
-        return list;
+        // 一次性查询所有相关员工，缩小为启用员工
+        Set<Long> employeeIds = list.stream()
+                .map(ScoreSummary::getEmployeeId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> activeEmployeeNameMap = sysEmployeeMapper.selectList(
+                        new LambdaQueryWrapper<SysEmployee>()
+                                .in(SysEmployee::getId, employeeIds)
+                                .eq(SysEmployee::getStatus, 1)
+                                .select(SysEmployee::getId, SysEmployee::getEmployeeName)
+                )
+                .stream()
+                .collect(Collectors.toMap(SysEmployee::getId, SysEmployee::getEmployeeName));
+
+        // 过滤掉禁用员工 + 填充员工姓名
+        return list.stream()
+                .filter(summary -> activeEmployeeNameMap.containsKey(summary.getEmployeeId()))
+                .peek(summary -> summary.setEmployeeName(activeEmployeeNameMap.get(summary.getEmployeeId())))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -160,15 +178,27 @@ public class ScoreSummaryServiceImpl implements ScoreSummaryService {
             monthCountMap.put(empId, monthCountMap.getOrDefault(empId, 0) + 1);
         }
 
-        // 填充员工姓名并计算平均综合评分
+        // 2026-06-27 修复：批量查询启用员工姓名，禁用员工直接排除
+        Set<Long> employeeIds = employeeMap.keySet();
+        Map<Long, String> activeEmployeeNameMap = sysEmployeeMapper.selectList(
+                        new LambdaQueryWrapper<SysEmployee>()
+                                .in(SysEmployee::getId, employeeIds)
+                                .eq(SysEmployee::getStatus, 1)
+                                .select(SysEmployee::getId, SysEmployee::getEmployeeName)
+                )
+                .stream()
+                .collect(Collectors.toMap(SysEmployee::getId, SysEmployee::getEmployeeName));
+
+        // 填充员工姓名并计算平均综合评分（只保留启用员工）
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map.Entry<Long, Map<String, Object>> entry : employeeMap.entrySet()) {
             Long empId = entry.getKey();
-            Map<String, Object> data = entry.getValue();
-            SysEmployee employee = sysEmployeeMapper.selectById(empId);
-            if (employee != null) {
-                data.put("employeeName", employee.getEmployeeName());
+            // 禁用员工直接跳过
+            if (!activeEmployeeNameMap.containsKey(empId)) {
+                continue;
             }
+            Map<String, Object> data = entry.getValue();
+            data.put("employeeName", activeEmployeeNameMap.get(empId));
             // 平均综合评分
             int months = monthCountMap.get(empId);
             BigDecimal avgScore = ((BigDecimal) data.get("totalComprehensiveScore"))

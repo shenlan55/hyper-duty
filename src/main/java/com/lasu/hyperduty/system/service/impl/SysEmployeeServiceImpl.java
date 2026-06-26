@@ -35,14 +35,19 @@ public class SysEmployeeServiceImpl extends CacheableServiceImpl<SysEmployeeMapp
     @Override
     @Cacheable(value = "employee", key = "'allEmployees'")
     public List<SysEmployee> getAllEmployees() {
-        return list();
+        // 2026-06-27 修复：通用人员查询接口默认只返回启用员工（status=1）
+        // 业务模块（积分、值班、项目、AI 等）通过此接口获取可选人员，不应出现已禁用员工
+        // 系统管理-员工管理分页接口 page(...) 仍走全量，不受此影响
+        return lambdaQuery().eq(SysEmployee::getStatus, 1).list();
     }
 
     @Override
     @Cacheable(value = "employee", key = "#deptId")
     public List<SysEmployee> getEmployeesByDeptId(Long deptId) {
+        // 2026-06-27 修复：通用人员查询接口默认只返回启用员工（status=1）
         LambdaQueryWrapper<SysEmployee> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysEmployee::getDeptId, deptId);
+        queryWrapper.eq(SysEmployee::getDeptId, deptId)
+                .eq(SysEmployee::getStatus, 1);
         return list(queryWrapper);
     }
 
@@ -54,14 +59,16 @@ public class SysEmployeeServiceImpl extends CacheableServiceImpl<SysEmployeeMapp
         }
         boolean result = super.save(sysEmployee);
         if (result) {
-            // 清除员工相关的缓存
-            clearEmployeeCache(sysEmployee);
+            // 清除员工相关的缓存（新增时 oldEmployee 传 null 即可，clearEmployeeCache 已处理 null 场景）
+            clearEmployeeCache(sysEmployee, null);
         }
         return result;
     }
 
     @Override
     public boolean updateById(SysEmployee sysEmployee) {
+        // 先查旧记录：用于（1）部门变更时清旧部门 cache（2）状态变更时清掉所有相关 cache
+        SysEmployee oldEmployee = getById(sysEmployee.getId());
         // 使用LambdaUpdateWrapper强制更新所有字段，包括null值
         LambdaUpdateWrapper<SysEmployee> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(SysEmployee::getId, sysEmployee.getId())
@@ -77,30 +84,37 @@ public class SysEmployeeServiceImpl extends CacheableServiceImpl<SysEmployeeMapp
                 .set(SysEmployee::getStatus, sysEmployee.getStatus())
                 .set(SysEmployee::getSort, sysEmployee.getSort())
                 .set(SysEmployee::getUpdateTime, sysEmployee.getUpdateTime());
-        
+
         // 如果密码不为空，则加密密码并更新
         if (sysEmployee.getPassword() != null && !sysEmployee.getPassword().isEmpty()) {
             updateWrapper.set(SysEmployee::getPassword, passwordEncoder.encode(sysEmployee.getPassword()));
         }
-        
+
         boolean result = update(updateWrapper);
         if (result) {
             // 清除员工相关的缓存
-            clearEmployeeCache(sysEmployee);
+            clearEmployeeCache(sysEmployee, oldEmployee);
         }
         return result;
     }
 
     /**
      * 清除员工相关的缓存
-     * @param sysEmployee 员工信息
+     * @param sysEmployee 新员工信息
+     * @param oldEmployee 旧员工信息（可为 null）
      */
-    private void clearEmployeeCache(SysEmployee sysEmployee) {
-        // 清除所有员工缓存
+    private void clearEmployeeCache(SysEmployee sysEmployee, SysEmployee oldEmployee) {
+        // 清除所有员工缓存（getAllEmployees 永远清）
         CacheUtil.delete("employee::allEmployees");
-        // 如果员工有部门ID，清除对应部门的员工缓存
+        // 清除新部门的员工缓存
         if (sysEmployee != null && sysEmployee.getDeptId() != null) {
             CacheUtil.delete("employee::" + sysEmployee.getDeptId());
+        }
+        // 2026-06-27 修复：员工换部门时，旧部门的 cache 也必须清掉
+        // 否则旧部门下选人组件会看到该员工（但实际上已不在该部门）
+        if (oldEmployee != null && oldEmployee.getDeptId() != null
+                && (sysEmployee == null || !oldEmployee.getDeptId().equals(sysEmployee.getDeptId()))) {
+            CacheUtil.delete("employee::" + oldEmployee.getDeptId());
         }
     }
 
@@ -150,8 +164,8 @@ public class SysEmployeeServiceImpl extends CacheableServiceImpl<SysEmployeeMapp
 
     @Override
     protected void clearCache(SysEmployee entity) {
-        // 清除员工相关的缓存
-        clearEmployeeCache(entity);
+        // 清除员工相关的缓存（CacheableServiceImpl 框架调用此方法，oldEmployee 传 null 即可，部门变更场景由 updateById 显式处理）
+        clearEmployeeCache(entity, null);
     }
 
 }
