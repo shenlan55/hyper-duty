@@ -174,8 +174,14 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
     public List<Map<String, Object>> getDeptStatistics(Long deptId) {
         // 获取所有基础数据
         List<DutyAssignment> assignments = dutyAssignmentService.list();
-        List<SysEmployee> employees = sysEmployeeService.list();
-        List<SysDept> depts = sysDeptService.list();
+        // 2026-06-27 修复：部门统计只统计启用员工 + 启用部门
+        // （与 getEmployeeStatistics 保持一致：见 navigator 避坑 #17、#18）
+        List<SysEmployee> employees = sysEmployeeService.lambdaQuery()
+                .eq(SysEmployee::getStatus, 1)
+                .list();
+        List<SysDept> depts = sysDeptService.lambdaQuery()
+                .eq(SysDept::getStatus, 1)
+                .list();
 
         // 构建员工ID到员工的映射
         Map<Long, SysEmployee> employeeMap = employees.stream()

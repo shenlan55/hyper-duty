@@ -41,6 +41,7 @@ description: "积分管理模块开发专家，负责开发和维护积分事件
 | **菜单与权限初始化** | SQL 脚本 | `src/main/resources/sql/hyper_duty_score_dml.sql` |
 | **项目架构与技术栈** | 项目规则 | `.trae/rules/project_rules.md` |
 | **人员查询规范（必读）** | 通用避坑 → 避坑 #17 | `hyper-duty-navigator` 技能 |
+| **部门查询规范（必读）** | 通用避坑 → 避坑 #18 | `hyper-duty-navigator` 技能 |
 
 ## 🔧 关键文件和组件
 
