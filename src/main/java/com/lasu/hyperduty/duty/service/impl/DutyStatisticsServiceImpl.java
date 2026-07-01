@@ -505,26 +505,27 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                         overtimeHours = overtimeHours.add(record.getOvertimeHours());
                     }
                 }
-                // 2. 截至当前正常排班是加班班次的加班时长
+                // 2. 截至当前正常排班是加班班次的加班时长（按排班日期类型选用）
+                // 修复 2026-06-28：原代码直接取 shiftConfig.getOvertimeHours()（日常加班），
+                // 休息日/节假日不生效，与按月分支不一致。改用 pickOvertimeHoursByDate
+                // 走"节假日 → 休息日 → 日常"三级 fallback，与按月分支对齐。
                 for (DutyAssignment assignment : actualAssignments) {
                     DutyShiftConfig shiftConfig = getShiftConfig(assignment, shiftConfigMap);
-                    if (shiftConfig != null &&
-                        shiftConfig.getIsOvertimeShift() != null &&
-                        shiftConfig.getIsOvertimeShift() == 1 &&
-                        shiftConfig.getOvertimeHours() != null) {
-                        overtimeHours = overtimeHours.add(shiftConfig.getOvertimeHours());
+                    BigDecimal hours = pickOvertimeHoursByDate(shiftConfig, assignment.getDutyDate());
+                    if (hours != null) {
+                        overtimeHours = overtimeHours.add(hours);
                     }
                 }
                 stat.put("overtimeHours", overtimeHours);
-                
+
                 // 计算已调休工时：审批通过的调休请假时长
                 BigDecimal usedCompensatoryHours = BigDecimal.ZERO;
                 List<LeaveRequest> leaveRequests = leaveRequestService.list();
                 for (LeaveRequest request : leaveRequests) {
-                    if (request.getEmployeeId().equals(employeeId) && 
-                        request.getApprovalStatus() != null && 
+                    if (request.getEmployeeId().equals(employeeId) &&
+                        request.getApprovalStatus() != null &&
                         "approved".equals(request.getApprovalStatus()) &&
-                        request.getLeaveType() != null && 
+                        request.getLeaveType() != null &&
                         request.getLeaveType() == 4 && // 调休类型
                         request.getTotalHours() != null) {
                         // 检查请假时间是否在目标年份
@@ -535,7 +536,7 @@ public class DutyStatisticsServiceImpl extends ServiceImpl<DutyStatisticsMapper,
                     }
                 }
                 stat.put("usedCompensatoryHours", usedCompensatoryHours);
-                
+
                 // 计算可调休工时：审批通过的加班时长 - 审批通过的调休请假时长
                 BigDecimal compensatoryHours = BigDecimal.ZERO;
                 compensatoryHours = overtimeHours.subtract(usedCompensatoryHours);

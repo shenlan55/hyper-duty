@@ -171,8 +171,9 @@ const statistics = reactive({
 })
 
 const employeeStatistics = ref([])
-// 默认查询类型：按月份查询
-const queryType = ref('month')
+// 默认查询类型：按年份查询（修复 2026-06-28：原默认按月份，但后端按年分支曾漏掉
+// 节假日/休息日差异化加班工时，导致"按年"看起来总是不对；现已与按月分支对齐）
+const queryType = ref('year')
 // 默认查询当前月份
 const currentDate = new Date()
 const formattedMonth = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0')
