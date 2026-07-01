@@ -67,23 +67,27 @@
           class="sidebar-menu"
           router
           unique-opened
+          :collapse="false"
           :background-color="'#fff'"
           :text-color="'#303133'"
           :active-text-color="'#1177BB'"
           :default-openeds="['system']"
         >
-          <template v-if="leftMenus.length > 0">
-            <el-menu-item
-              v-for="menu in leftMenus"
-              :key="menu.path"
-              :index="menu.path"
-            >
+          <!-- 始终挂载 menu-item 容器骨架，仅数据变化时更新内部文本，
+               避免 v-if 异步整块挂载触发 ElMenuCollapseTransition 多重 enter 动画与路由切换撞车 -->
+          <template v-for="menu in leftMenus" :key="menu.path">
+            <el-menu-item :index="menu.path">
               <el-icon>
                 <component :is="getMenuIcon(menu.icon)" />
               </el-icon>
               <span>{{ menu.name }}</span>
             </el-menu-item>
           </template>
+          <!-- 占位项：leftMenus 为空时不让 ElMenuCollapseTransition 整组 enter -->
+          <el-menu-item v-if="leftMenus.length === 0" index="__loading__" disabled>
+            <el-icon><Loading /></el-icon>
+            <span>菜单加载中…</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 

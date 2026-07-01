@@ -109,4 +109,60 @@ public interface WfTaskService {
      */
     HistoricProcessInstanceDTO getHistoryProcessInstance(String processInstanceId);
 
+    // ====================== 驳回相关 ======================
+
+    /**
+     * 列出可驳回的目标节点（按结束时间倒序的历史 UserTask，排除当前任务）
+     * @param taskId 当前任务ID
+     * @return 目标节点列表
+     */
+    List<RejectTargetDTO> listRejectTargets(String taskId);
+
+    /**
+     * 驳回到上一 UserTask（自动按历史顺序找最近的结束过的 userTask）
+     * @param dto 驳回参数
+     */
+    void rejectToPrevious(WfTaskRejectDTO dto);
+
+    /**
+     * 驳回到指定 activityId 的历史 UserTask（自由驳回）
+     * @param dto 驳回参数（dto.targetActivityId 必填）
+     */
+    void rejectToActivity(WfTaskRejectDTO dto);
+
+    /**
+     * 驳回到发起人（删除当前 runtime 任务，流程回到 StartEvent）
+     * @param dto 驳回参数
+     */
+    void rejectToInitiator(WfTaskRejectDTO dto);
+
+    // ====================== 加签/减签/取回 ======================
+
+    /**
+     * 加签：把指定 userId 加入当前 task 的 candidateUsers（多人会签）
+     * @param dto 加签参数
+     */
+    void addSign(WfTaskSignDTO dto);
+
+    /**
+     * 减签：从当前 task 的 candidateUsers 移除指定 userId
+     * @param dto 减签参数
+     */
+    void removeSign(WfTaskSignDTO dto);
+
+    /**
+     * 取回：由发起人 / 上一节点审批人把流程抢回到自己
+     * 触发条件：当前 task 处于 pending（runtime 存在），上一 userTask 已 finished
+     * 行为：runtime jump 回上一节点的 taskDefinitionKey
+     * @param taskId 当前任务ID
+     * @param reason 取回原因
+     */
+    void recall(String taskId, String reason);
+
+    /**
+     * 自由跳转：管理员/特权角色把当前 task 跳到任意指定 activityId
+     * @param dto 跳转参数
+     */
+    void jumpToActivity(WfTaskJumpDTO dto);
+
 }

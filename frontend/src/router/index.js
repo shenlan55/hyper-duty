@@ -269,6 +269,12 @@ const routes = [
                 meta: { title: '流程设计器' }
               },
               {
+                path: 'template-market',
+                name: 'TemplateMarket',
+                component: () => import('../views/workflow/TemplateMarket.vue'),
+                meta: { title: '流程模板市场' }
+              },
+              {
                 path: 'todo-task',
                 name: 'TodoTaskList',
                 component: () => import('../views/workflow/TodoTaskList.vue'),

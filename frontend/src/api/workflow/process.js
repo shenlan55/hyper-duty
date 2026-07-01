@@ -155,10 +155,45 @@ export function withdrawProcess(processInstanceId, reason) {
   })
 }
 
-/** 获取流程跟踪图数据（BPMN XML + 已完成/当前节点） */
+/** 获取流程跟踪图数据（BPMN XML + 已完成/当前节点）*/
 export function getProcessTraceData(processInstanceId) {
   return request({
     url: `/workflow/process/instance/trace/${processInstanceId}`,
     method: 'get'
+  })
+}
+
+// ====================== P1-9 流程版本管理 ======================
+
+/**
+ * 分页查询指定流程 KEY 的所有历史版本
+ */
+export function pageVersions(params) {
+  return request({
+    url: '/workflow/process/definition/versions',
+    method: 'get',
+    params
+  })
+}
+
+/**
+ * 回滚到指定 deploymentId 的历史版本
+ */
+export function rollbackVersion(data) {
+  return request({
+    url: '/workflow/process/definition/rollback',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 对比两个版本
+ */
+export function compareVersions(data) {
+  return request({
+    url: '/workflow/process/definition/compare',
+    method: 'post',
+    data
   })
 }

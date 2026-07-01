@@ -372,3 +372,59 @@ INSERT INTO public.sys_role_menu VALUES (754, 2, 109, '2026-06-24 00:00:00');
 INSERT INTO public.sys_role_menu VALUES (755, 2, 110, '2026-06-24 00:00:00');
 INSERT INTO public.sys_role_menu VALUES (756, 2, 111, '2026-06-24 00:00:00');
 
+-- ===============================================================
+-- P1-8 流程催办记录表
+-- ===============================================================
+CREATE TABLE IF NOT EXISTS public.wf_urge_record (
+    id BIGSERIAL PRIMARY KEY,
+    process_instance_id VARCHAR(64) NOT NULL,
+    task_id VARCHAR(64) NOT NULL,
+    from_user_id BIGINT NOT NULL,
+    to_user_id BIGINT NOT NULL,
+    content TEXT NOT NULL,
+    create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+COMMENT ON TABLE public.wf_urge_record IS '流程催办记录';
+COMMENT ON COLUMN public.wf_urge_record.id IS '主键ID';
+COMMENT ON COLUMN public.wf_urge_record.process_instance_id IS '流程实例ID';
+COMMENT ON COLUMN public.wf_urge_record.task_id IS '任务ID';
+COMMENT ON COLUMN public.wf_urge_record.from_user_id IS '催办人 userId';
+COMMENT ON COLUMN public.wf_urge_record.to_user_id IS '接收人 userId';
+COMMENT ON COLUMN public.wf_urge_record.content IS '催办内容';
+COMMENT ON COLUMN public.wf_urge_record.create_time IS '催办时间';
+
+CREATE INDEX IF NOT EXISTS idx_urge_record_task ON public.wf_urge_record(task_id);
+CREATE INDEX IF NOT EXISTS idx_urge_record_instance ON public.wf_urge_record(process_instance_id);
+CREATE INDEX IF NOT EXISTS idx_urge_record_to_user ON public.wf_urge_record(to_user_id, create_time DESC);
+CREATE INDEX IF NOT EXISTS idx_urge_record_from_user ON public.wf_urge_record(from_user_id, create_time DESC);
+
+
+-- ====================== P3-1 流程模板市场 ======================
+CREATE TABLE IF NOT EXISTS public.wf_template (
+    id BIGSERIAL PRIMARY KEY,
+    template_key VARCHAR(100) NOT NULL,
+    template_name VARCHAR(200) NOT NULL,
+    category VARCHAR(50),
+    description TEXT,
+    bpmn_xml TEXT NOT NULL,
+    icon VARCHAR(255),
+    use_count INT DEFAULT 0,
+    sort_no INT DEFAULT 0,
+    status SMALLINT DEFAULT 1, -- 1启用 0停用
+    create_by VARCHAR(64),
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_by VARCHAR(64),
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted SMALLINT DEFAULT 0,
+    CONSTRAINT uk_template_key UNIQUE (template_key)
+);
+COMMENT ON TABLE public.wf_template IS '流程模板市场：内置 4-5 个常用模板（请假/报销/出差/通用审批）供一键新建';
+COMMENT ON COLUMN public.wf_template.template_key IS '模板 KEY（唯一）';
+COMMENT ON COLUMN public.wf_template.template_name IS '模板名称';
+COMMENT ON COLUMN public.wf_template.category IS '分类（leave/reimburse/trip/general）';
+COMMENT ON COLUMN public.wf_template.bpmn_xml IS 'BPMN 2.0 XML 模板内容';
+COMMENT ON COLUMN public.wf_template.use_count IS '使用次数';
+COMMENT ON COLUMN public.wf_template.status IS '状态：1启用 0停用';
+
+CREATE INDEX IF NOT EXISTS idx_template_category ON public.wf_template(category, status);
+CREATE INDEX IF NOT EXISTS idx_template_sort ON public.wf_template(sort_no, use_count DESC);

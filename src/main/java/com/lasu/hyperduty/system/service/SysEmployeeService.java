@@ -23,6 +23,13 @@ public interface SysEmployeeService extends BasePageService<SysEmployee> {
 
     List<SysEmployee> getEmployeesByDeptId(Long deptId);
 
+    /**
+     * 按登录账号批量查询员工（仅 status=1 启用员工）
+     * @param usernames 登录账号集合
+     * @return 员工列表
+     */
+    List<SysEmployee> getActiveEmployeesByUsernames(java.util.Collection<String> usernames);
+
     Page<SysEmployee> page(
             Page<SysEmployee> page, 
             String keyword, 

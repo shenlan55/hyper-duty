@@ -52,6 +52,19 @@ public class SysEmployeeServiceImpl extends CacheableServiceImpl<SysEmployeeMapp
     }
 
     @Override
+    public List<SysEmployee> getActiveEmployeesByUsernames(java.util.Collection<String> usernames) {
+        // 2026-06-28 新增：驳回目标节点的审批人姓名注入
+        // 走 status=1 过滤（navigator 避坑 #17）；空集合短路返回
+        if (usernames == null || usernames.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return lambdaQuery()
+                .in(SysEmployee::getUsername, usernames)
+                .eq(SysEmployee::getStatus, 1)
+                .list();
+    }
+
+    @Override
     public boolean save(SysEmployee sysEmployee) {
         // 加密密码
         if (sysEmployee.getPassword() != null && !sysEmployee.getPassword().isEmpty()) {

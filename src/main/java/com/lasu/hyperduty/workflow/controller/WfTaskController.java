@@ -122,4 +122,66 @@ public class WfTaskController {
         HistoricProcessInstanceDTO historicProcessInstance = wfTaskService.getHistoryProcessInstance(processInstanceId);
         return ResponseResult.success(historicProcessInstance);
     }
+
+    // ====================== 驳回相关 API ======================
+
+    @Operation(summary = "列出可驳回的目标节点（按历史 UserTask 倒序，排除当前任务）")
+    @GetMapping("/reject-targets/{taskId}")
+    public ResponseResult<List<RejectTargetDTO>> listRejectTargets(@PathVariable String taskId) {
+        List<RejectTargetDTO> list = wfTaskService.listRejectTargets(taskId);
+        return ResponseResult.success("success", list);
+    }
+
+    @Operation(summary = "驳回到上一 UserTask（按历史顺序自动找最近的结束过的 userTask）")
+    @PostMapping("/reject/previous")
+    public ResponseResult<Void> rejectToPrevious(@RequestBody WfTaskRejectDTO dto) {
+        wfTaskService.rejectToPrevious(dto);
+        return ResponseResult.success();
+    }
+
+    @Operation(summary = "驳回到指定 activityId 的历史 UserTask（自由驳回）")
+    @PostMapping("/reject/activity")
+    public ResponseResult<Void> rejectToActivity(@RequestBody WfTaskRejectDTO dto) {
+        wfTaskService.rejectToActivity(dto);
+        return ResponseResult.success();
+    }
+
+    @Operation(summary = "驳回到发起人（runtime 跳回 startActivityId）")
+    @PostMapping("/reject/initiator")
+    public ResponseResult<Void> rejectToInitiator(@RequestBody WfTaskRejectDTO dto) {
+        wfTaskService.rejectToInitiator(dto);
+        return ResponseResult.success();
+    }
+
+    // ====================== 加签/减签/取回 API ======================
+
+    @Operation(summary = "加签：把指定 userId 加入当前 task 的 candidateUsers（多人会签）")
+    @PostMapping("/sign/add")
+    public ResponseResult<Void> addSign(@RequestBody WfTaskSignDTO dto) {
+        wfTaskService.addSign(dto);
+        return ResponseResult.success();
+    }
+
+    @Operation(summary = "减签：从当前 task 的 candidateUsers 移除指定 userId")
+    @PostMapping("/sign/remove")
+    public ResponseResult<Void> removeSign(@RequestBody WfTaskSignDTO dto) {
+        wfTaskService.removeSign(dto);
+        return ResponseResult.success();
+    }
+
+    @Operation(summary = "取回：由发起人 / 上一节点审批人把流程抢回到自己（runtime 跳回上一节点）")
+    @PostMapping("/recall")
+    public ResponseResult<Void> recall(@RequestBody Map<String, String> body) {
+        String taskId = body.get("taskId");
+        String reason = body.get("reason");
+        wfTaskService.recall(taskId, reason);
+        return ResponseResult.success();
+    }
+
+    @Operation(summary = "自由跳转：管理员把当前 task 跳到任意指定 activityId")
+    @PostMapping("/jump")
+    public ResponseResult<Void> jump(@RequestBody WfTaskJumpDTO dto) {
+        wfTaskService.jumpToActivity(dto);
+        return ResponseResult.success();
+    }
 }

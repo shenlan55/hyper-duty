@@ -1,4 +1,5 @@
 /* 全局样式 */
+@import './bpmn-palette.css';
 
 /* 全局富文本内容样式 - 确保图片、表格等元素自适应宽度 */
 .richtext-content {

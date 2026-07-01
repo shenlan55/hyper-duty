@@ -1386,8 +1386,18 @@ const handleCreate = async () => {
       // 构建请求参数
       let recordData
       if (assignment) {
+        // 当天有值班班次：
+        //   修复 2026-06-28 — 后端 DutyRecordAddRequest 用 @NotNull 强校验
+        //   scheduleId/dutyDate/dutyShift 必填，仅发 assignmentId 会 400。
+        //   assignment 反查得到的 scheduleId/dutyDate/shiftConfigId 与表单
+        //   createForm.* 保持一致（前端 handleDateChange 已校验过匹配），
+        //   这里同时带上三必填字段 + assignmentId 兼容两种 service 逻辑。
+        const shiftVal = parseInt(createForm.dutyShift) || 0
         recordData = {
           assignmentId: assignment.id,
+          scheduleId: createForm.scheduleId,
+          dutyDate: createForm.dutyDate,
+          dutyShift: shiftVal,
           employeeId: userStore.employeeId,
           overtimeHours: createForm.overtimeHours,
           remark: createForm.remark,

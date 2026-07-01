@@ -333,4 +333,29 @@ public class WfProcessController {
         return ResponseResult.success(data);
     }
 
+    // ====================== P1-9 流程版本管理 ======================
+
+    @Operation(summary = "分页查询指定流程 KEY 的所有历史版本（按 version 倒序）")
+    @GetMapping("/definition/versions")
+    public ResponseResult<Page<ProcessDefinition>> pageVersions(
+            @RequestParam String processKey,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        return ResponseResult.success(wfProcessService.pageProcessDefinitionVersions(processKey, pageNum, pageSize));
+    }
+
+    @Operation(summary = "回滚到指定 deploymentId 的历史版本（重新部署为新版本）")
+    @PostMapping("/definition/rollback")
+    public ResponseResult<Deployment> rollback(@RequestBody Map<String, String> body) {
+        Deployment d = wfProcessService.rollbackToVersion(body.get("deploymentId"));
+        return ResponseResult.success(d);
+    }
+
+    @Operation(summary = "对比两个 deploymentId 对应版本的 BPMN XML（节点 + 连线维度）")
+    @PostMapping("/definition/compare")
+    public ResponseResult<WfDefinitionDiffDTO> compare(@RequestBody Map<String, String> body) {
+        return ResponseResult.success(wfProcessService.compareVersions(
+                body.get("deploymentIdA"), body.get("deploymentIdB")));
+    }
+
 }

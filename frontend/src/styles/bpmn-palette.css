@@ -1,0 +1,163 @@
+/*
+ * Hyper Duty · 流程设计器 Palette 增强样式
+ * ---------------------------------------------------------------------------
+ * 解决 bpmn-js 默认 Palette 在节点多（49 个 entry）时被父容器裁切、没法滚、
+ * 拖动无反馈、分组标题不显示的 4 个问题。
+ *
+ * 加载位置：src/styles/global.css（@import './bpmn-palette.css'）
+ * 设计参考：bpmn.io 官方 + Element Plus 蓝主题
+ * ---------------------------------------------------------------------------
+ */
+
+/* 1) djs-container 不要裁切 palette —— 让 palette 飘出 canvas 容器 */
+.djs-container {
+  overflow: visible !important;
+}
+
+/* 2) palette 自身可滚动：上限为视口高度 - 头部偏移 */
+.djs-palette {
+  /* 默认 absolute 定位即可；宽度仍保持 bpmn-io 默认 48px */
+  z-index: 10;
+}
+
+.djs-palette-entries {
+  /* 关键：让 entry 容器可滚 */
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  /* 自适应窗口高度（顶部菜单 + tabs + toolbar ≈ 250px） */
+  max-height: calc(100vh - 250px) !important;
+  /* 漂亮滚动条（Webkit） */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 transparent;
+}
+
+.djs-palette-entries::-webkit-scrollbar {
+  width: 6px;
+}
+.djs-palette-entries::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+.djs-palette-entries::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 3) entry 基础样式：加 hover/active 视觉反馈 + 拖动光标 */
+.djs-palette .entry {
+  width: 40px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  margin: 3px !important;
+  color: #1f2937 !important;
+  font-size: 16px !important;
+  border-radius: 6px !important;
+  cursor: grab !important;
+  transition: background-color 0.18s ease-out, transform 0.12s ease-out, box-shadow 0.18s ease-out !important;
+}
+
+.djs-palette .entry:hover {
+  background-color: #e6f4ff !important;
+  transform: scale(1.08) !important;
+  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.25) !important;
+}
+
+.djs-palette .entry:active {
+  cursor: grabbing !important;
+  background-color: #d6e4ff !important;
+  transform: scale(0.96) !important;
+  box-shadow: 0 1px 3px rgba(64, 158, 255, 0.4) inset !important;
+}
+
+/* 4) 分组标题（CustomPalette.js 注入的 entry，bpmn-js 12+ 渲染为
+      <div class="bpmn-palette-group-title-inner bpmn-palette-group-title">）
+      注意：bpmn-js 用 html 字段时不会加 .entry class */
+.djs-palette .bpmn-palette-group-title {
+  width: calc(100% - 6px) !important;
+  height: 26px !important;
+  margin: 6px 3px 2px 3px !important;
+  padding: 0 !important;
+  background: linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%) !important;
+  border-top: 1px solid #d1d5db;
+  border-bottom: 1px solid #d1d5db;
+  border-radius: 4px !important;
+  cursor: default !important;
+  pointer-events: none !important; /* 标题不响应点击/拖动 */
+  text-align: center;
+  line-height: 26px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  letter-spacing: 0.2px;
+  text-indent: 0;
+  position: relative;
+  color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+  /* bpmn-js 默认对 entry 用了 font-style/font-size，需重置 */
+  font-style: normal !important;
+}
+
+/* 内部文本容器（CustomPalette 用 html 注入） */
+.djs-palette .bpmn-palette-group-title-inner {
+  display: block;
+  width: 100%;
+  text-align: center;
+  line-height: 26px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  position: relative;
+  padding-left: 8px;
+  font-style: normal;
+}
+
+.djs-palette .bpmn-palette-group-title-inner::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 12px;
+  background: #409eff;
+  border-radius: 2px;
+}
+
+.djs-palette .bpmn-palette-group-title:hover,
+.djs-palette .bpmn-palette-group-title:active {
+  background: linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%) !important;
+  transform: none !important;
+  box-shadow: none !important;
+  color: #374151 !important;
+}
+
+/* 5) 拖动过程中显示半透明高亮 —— bpmn-js 会给 .entry 加 .dragging 类 */
+.djs-palette .entry.dragging {
+  opacity: 0.45 !important;
+  cursor: grabbing !important;
+}
+
+/* 6) 工具栏 entry（手型/lasso/空格/连接）跟节点 entry 视觉上区分 */
+.djs-palette .bpmn-icon-hand-tool,
+.djs-palette .bpmn-icon-lasso-tool,
+.djs-palette .bpmn-icon-space-tool,
+.djs-palette .bpmn-icon-connection-multi {
+  background-color: #f9fafb !important;
+  border: 1px dashed #d1d5db;
+}
+
+.djs-palette .bpmn-icon-hand-tool:hover,
+.djs-palette .bpmn-icon-lasso-tool:hover,
+.djs-palette .bpmn-icon-space-tool:hover,
+.djs-palette .bpmn-icon-connection-multi:hover {
+  border-style: solid;
+  border-color: #409eff;
+}
+
+/* 7) 折叠按钮：放大触摸区 + 配色统一 */
+.djs-palette-toggle {
+  cursor: pointer !important;
+  transition: background-color 0.15s !important;
+}
+.djs-palette-toggle:hover {
+  background-color: #e6f4ff !important;
+}

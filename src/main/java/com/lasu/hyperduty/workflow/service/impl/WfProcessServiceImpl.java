@@ -2,6 +2,7 @@ package com.lasu.hyperduty.workflow.service.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lasu.hyperduty.common.exception.BusinessException;
+import com.lasu.hyperduty.workflow.dto.WfDefinitionDiffDTO;
 import com.lasu.hyperduty.workflow.dto.WfProcessStartDTO;
 import com.lasu.hyperduty.workflow.service.WfProcessService;
 import com.lasu.hyperduty.workflow.service.WfDelegateService;
@@ -451,5 +452,203 @@ public class WfProcessServiceImpl implements WfProcessService {
         result.put("activities", activities);
         result.put("isEnded", processInstance == null || processInstance.isEnded());
         return result;
+    }
+
+    // ====================== P1-9 流程版本管理 ======================
+
+    @Override
+    public Page<ProcessDefinition> pageProcessDefinitionVersions(String processKey, Integer pageNum, Integer pageSize) {
+        Page<ProcessDefinition> page = new Page<>(pageNum, pageSize);
+        org.flowable.engine.repository.ProcessDefinitionQuery query = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionKey(processKey)
+                .orderByProcessDefinitionVersion().desc();
+        long total = query.count();
+        java.util.List<ProcessDefinition> records = query.listPage((pageNum - 1) * pageSize, pageSize);
+        page.setTotal(total);
+        page.setRecords(records);
+        return page;
+    }
+
+    @Override
+    public Deployment rollbackToVersion(String deploymentId) {
+        if (org.springframework.util.StringUtils.isEmpty(deploymentId)) {
+            throw new BusinessException("deploymentId 不能为空");
+        }
+        // 1. 读取历史 deployment 的资源
+        java.util.List<org.flowable.engine.repository.Deployment> deployments = repositoryService.createDeploymentQuery()
+                .deploymentId(deploymentId).list();
+        if (deployments.isEmpty()) {
+            throw new BusinessException("历史部署不存在：" + deploymentId);
+        }
+        org.flowable.engine.repository.Deployment history = deployments.get(0);
+        java.util.List<String> resourceNames = repositoryService.getDeploymentResourceNames(history.getId());
+        // 2. 拿到对应 processDefinitionKey + version
+        java.util.List<ProcessDefinition> defs = repositoryService.createProcessDefinitionQuery()
+                .deploymentId(history.getId()).list();
+        if (defs.isEmpty()) {
+            throw new BusinessException("历史部署无流程定义");
+        }
+        ProcessDefinition def = defs.get(0);
+        // 3. 重新部署（同 KEY 会 +1 版本）
+        org.flowable.engine.repository.DeploymentBuilder builder = repositoryService.createDeployment()
+                .name("回滚-" + history.getName() + "-v" + def.getVersion())
+                .key(history.getKey());
+        for (String rn : resourceNames) {
+            java.io.InputStream is = repositoryService.getResourceAsStream(history.getId(), rn);
+            builder.addInputStream(rn, is);
+        }
+        Deployment newDeployment = builder.deploy();
+        log.info("回滚成功: historyDeploymentId={} → newDeploymentId={}", history.getId(), newDeployment.getId());
+        return newDeployment;
+    }
+
+    @Override
+    public WfDefinitionDiffDTO compareVersions(String deploymentIdA, String deploymentIdB) {
+        WfDefinitionDiffDTO result = new WfDefinitionDiffDTO();
+        result.setDeploymentIdA(deploymentIdA);
+        result.setDeploymentIdB(deploymentIdB);
+        String xmlA = loadDeploymentXml(deploymentIdA);
+        String xmlB = loadDeploymentXml(deploymentIdB);
+        if (xmlA == null || xmlB == null) {
+            throw new BusinessException("部署资源缺失 BPMN XML");
+        }
+        // 取版本号
+        result.setVersionA(extractVersion(deploymentIdA));
+        result.setVersionB(extractVersion(deploymentIdB));
+        // 解析
+        java.util.Map<String, org.w3c.dom.Element> elementsA = parseBpmnElements(xmlA);
+        java.util.Map<String, org.w3c.dom.Element> elementsB = parseBpmnElements(xmlB);
+        java.util.List<WfDefinitionDiffDTO.DiffNode> nodeDiffs = new java.util.ArrayList<>();
+        java.util.List<WfDefinitionDiffDTO.DiffNode> flowDiffs = new java.util.ArrayList<>();
+        // 处理 A 中存在元素
+        for (java.util.Map.Entry<String, org.w3c.dom.Element> e : elementsA.entrySet()) {
+            String id = e.getKey();
+            org.w3c.dom.Element ea = e.getValue();
+            org.w3c.dom.Element eb = elementsB.get(id);
+            WfDefinitionDiffDTO.DiffNode node = compareElement(id, ea, eb);
+            if ("sequenceFlow".equals(node.getType())) {
+                flowDiffs.add(node);
+            } else {
+                nodeDiffs.add(node);
+            }
+        }
+        // 处理 B 独有（A 没有的）
+        for (java.util.Map.Entry<String, org.w3c.dom.Element> e : elementsB.entrySet()) {
+            if (elementsA.containsKey(e.getKey())) continue;
+            org.w3c.dom.Element eb = e.getValue();
+            WfDefinitionDiffDTO.DiffNode node = compareElement(e.getKey(), null, eb);
+            if ("sequenceFlow".equals(node.getType())) {
+                flowDiffs.add(node);
+            } else {
+                nodeDiffs.add(node);
+            }
+        }
+        result.setNodeDiffs(nodeDiffs);
+        result.setFlowDiffs(flowDiffs);
+        return result;
+    }
+
+    /**
+     * 加载 deployment 的 BPMN XML（取第一个 .bpmn20.xml / .bpmn 资源）
+     */
+    private String loadDeploymentXml(String deploymentId) {
+        java.util.List<String> names = repositoryService.getDeploymentResourceNames(deploymentId);
+        for (String name : names) {
+            if (name.endsWith(".bpmn20.xml") || name.endsWith(".bpmn")) {
+                try (java.io.InputStream is = repositoryService.getResourceAsStream(deploymentId, name)) {
+                    if (is == null) return null;
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[4096];
+                    int len;
+                    while ((len = is.read(buf)) > 0) {
+                        baos.write(buf, 0, len);
+                    }
+                    return baos.toString(java.nio.charset.StandardCharsets.UTF_8.name());
+                } catch (Exception e) {
+                    log.error("读取 BPMN XML 失败: deploymentId={}, name={}", deploymentId, name, e);
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 解析 BPMN XML 中所有"流程节点 + 连线"为 Map<id, Element>
+     * 限定命名空间 http://www.omg.org/spec/BPMN/20100524/MODEL
+     */
+    private java.util.Map<String, org.w3c.dom.Element> parseBpmnElements(String xml) {
+        java.util.Map<String, org.w3c.dom.Element> map = new java.util.HashMap<>();
+        try {
+            javax.xml.parsers.DocumentBuilderFactory dbf = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+            dbf.setNamespaceAware(true);
+            javax.xml.parsers.DocumentBuilder db = dbf.newDocumentBuilder();
+            org.w3c.dom.Document doc = db.parse(new java.io.ByteArrayInputStream(
+                    xml.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            String ns = "http://www.omg.org/spec/BPMN/20100524/MODEL";
+            // 抓 userTask / serviceTask / gateway / intermediateThrowEvent / boundaryEvent / endEvent / startEvent / sequenceFlow
+            String[] tags = {"userTask", "serviceTask", "exclusiveGateway", "inclusiveGateway", "parallelGateway", "eventBasedGateway", "intermediateCatchEvent", "intermediateThrowEvent", "startEvent", "endEvent", "boundaryEvent", "sequenceFlow"};
+            for (String tag : tags) {
+                org.w3c.dom.NodeList list = doc.getElementsByTagNameNS(ns, tag);
+                for (int i = 0; i < list.getLength(); i++) {
+                    org.w3c.dom.Element el = (org.w3c.dom.Element) list.item(i);
+                    String id = el.getAttribute("id");
+                    if (id == null || id.isEmpty()) continue;
+                    el.setAttribute("__bpmn_type__", tag);
+                    map.put(id, el);
+                }
+            }
+        } catch (Exception e) {
+            log.error("解析 BPMN XML 失败", e);
+        }
+        return map;
+    }
+
+    /**
+     * 对比两个 Element（可能为 null）
+     */
+    private WfDefinitionDiffDTO.DiffNode compareElement(String id, org.w3c.dom.Element ea, org.w3c.dom.Element eb) {
+        WfDefinitionDiffDTO.DiffNode node = new WfDefinitionDiffDTO.DiffNode();
+        node.setId(id);
+        org.w3c.dom.Element src = ea != null ? ea : eb;
+        node.setType(src.getAttribute("__bpmn_type__"));
+        node.setName(src.getAttribute("name"));
+        if (ea == null) {
+            node.setStatus("ADDED");
+        } else if (eb == null) {
+            node.setStatus("REMOVED");
+        } else {
+            java.util.Map<String, String[]> changes = new java.util.LinkedHashMap<>();
+            // 比较 name
+            String na = ea.getAttribute("name");
+            String nb = eb.getAttribute("name");
+            if (!na.equals(nb)) {
+                changes.put("name", new String[]{na, nb});
+            }
+            // 比较 assignee（userTask）
+            if ("userTask".equals(node.getType())) {
+                String aa = ea.getAttributeNS("http://flowable.org/bpmn", "assignee");
+                String ab = eb.getAttributeNS("http://flowable.org/bpmn", "assignee");
+                if (!java.util.Objects.equals(aa, ab)) {
+                    changes.put("assignee", new String[]{aa == null ? "" : aa, ab == null ? "" : ab});
+                }
+            }
+            if (changes.isEmpty()) {
+                node.setStatus("UNCHANGED");
+            } else {
+                node.setStatus("MODIFIED");
+                node.setChanges(changes);
+            }
+        }
+        return node;
+    }
+
+    private String extractVersion(String deploymentId) {
+        java.util.List<ProcessDefinition> list = repositoryService.createProcessDefinitionQuery()
+                .deploymentId(deploymentId).list();
+        if (!list.isEmpty()) {
+            return String.valueOf(list.get(0).getVersion());
+        }
+        return deploymentId;
     }
 }

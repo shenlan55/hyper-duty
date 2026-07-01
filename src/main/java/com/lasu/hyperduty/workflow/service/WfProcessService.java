@@ -1,6 +1,7 @@
 package com.lasu.hyperduty.workflow.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lasu.hyperduty.workflow.dto.WfDefinitionDiffDTO;
 import com.lasu.hyperduty.workflow.dto.WfProcessStartDTO;
 import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.history.HistoricProcessInstance;
@@ -105,6 +106,34 @@ public interface WfProcessService {
      * @return 流程变量
      */
     Map<String, Object> getProcessVariables(String processInstanceId);
+
+    /**
+     * ====================== P1-9 流程版本管理 ======================
+     */
+
+    /**
+     * 分页查询指定流程 KEY 的所有历史版本
+     * @param processKey 流程定义 KEY
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @return 历史版本分页（按 version 倒序）
+     */
+    Page<ProcessDefinition> pageProcessDefinitionVersions(String processKey, Integer pageNum, Integer pageSize);
+
+    /**
+     * 回滚到指定 deploymentId 的历史版本（用其 XML 重新部署为新版本）
+     * @param deploymentId 历史部署 ID
+     * @return 新部署结果
+     */
+    Deployment rollbackToVersion(String deploymentId);
+
+    /**
+     * 对比两个版本的 BPMN XML（按节点 + 连线维度）
+     * @param deploymentIdA 版本 A
+     * @param deploymentIdB 版本 B
+     * @return 差异结果
+     */
+    WfDefinitionDiffDTO compareVersions(String deploymentIdA, String deploymentIdB);
 
     /**
      * 设置流程变量
